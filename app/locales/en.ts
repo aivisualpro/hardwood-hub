@@ -1,0 +1,178 @@
+export default {
+  // Navigation Headings
+  'nav.general': 'General',
+  'nav.apps': 'Apps',
+  'nav.crm': 'CRM',
+  'nav.salesCommerce': 'Sales & Commerce',
+  'nav.inventoryWarehouse': 'Inventory & Warehouse',
+  'nav.hrWorkforce': 'HR & Workforce',
+  'nav.financeAccounting': 'Finance & Accounting',
+  'nav.projectManagement': 'Project Management',
+  'nav.support': 'Support',
+  'nav.marketing': 'Marketing',
+  'nav.reports': 'Reports',
+  'nav.pages': 'Pages',
+  'nav.components': 'Components',
+  'nav.documentation': 'Documentation',
+
+  // Nav Items — General
+  'nav.dashboard': 'Dashboard',
+  'nav.email': 'Email',
+  'nav.tasks': 'Tasks',
+
+  // Nav Items — Apps
+  'nav.kanbanBoard': 'Kanban Board',
+  'nav.ganttChart': 'Gantt Chart',
+
+  // Nav Items — CRM
+  'nav.contacts': 'Contacts',
+  'nav.leads': 'Leads',
+  'nav.dealsPipeline': 'Deals Pipeline',
+  'nav.companies': 'Companies',
+  'nav.activities': 'Activities',
+
+  // Nav Items — Sales & Commerce
+  'nav.quotes': 'Quotes',
+  'nav.invoices': 'Invoices',
+  'nav.orders': 'Orders',
+  'nav.products': 'Products',
+  'nav.customers': 'Customers',
+
+  // Nav Items — Inventory
+  'nav.stockOverview': 'Stock Overview',
+  'nav.transfers': 'Transfers',
+  'nav.purchaseOrders': 'Purchase Orders',
+  'nav.vendors': 'Vendors',
+
+  // Nav Items — HR
+  'nav.employees': 'Employees',
+  'nav.attendance': 'Attendance',
+  'nav.payroll': 'Payroll',
+  'nav.recruitment': 'Recruitment',
+  'nav.leaveMgmt': 'Leave Mgmt',
+
+  // Nav Items — Finance
+  'nav.accounts': 'Accounts',
+  'nav.transactions': 'Transactions',
+  'nav.expenses': 'Expenses',
+  'nav.taxManagement': 'Tax Management',
+  'nav.balanceSheet': 'Balance Sheet',
+  'nav.incomeStatement': 'Income Statement',
+  'nav.financialRatios': 'Financial Ratios',
+  'nav.businessHealth': 'Business Health',
+
+  // Nav Items — Project Management
+  'nav.projects': 'Projects',
+  'nav.timesheets': 'Timesheets',
+  'nav.milestones': 'Milestones',
+
+  // Nav Items — Support
+  'nav.tickets': 'Tickets',
+  'nav.knowledgeBase': 'Knowledge Base',
+  'nav.liveChat': 'Live Chat',
+
+  // Nav Items — Marketing
+  'nav.campaigns': 'Campaigns',
+  'nav.emailBlasts': 'Email Blasts',
+  'nav.analytics': 'Analytics',
+
+  // Nav Items — Reports
+  'nav.salesReports': 'Sales Reports',
+  'nav.financialReports': 'Financial Reports',
+  'nav.hrReports': 'HR Reports',
+
+  // Nav Items — Pages
+  'nav.authentication': 'Authentication',
+  'nav.login': 'Login',
+  'nav.loginBasic': 'Login Basic',
+  'nav.register': 'Register',
+  'nav.forgotPassword': 'Forgot Password',
+  'nav.otp': 'OTP',
+  'nav.errors': 'Errors',
+  'nav.settings': 'Settings',
+  'nav.profile': 'Profile',
+  'nav.account': 'Account',
+  'nav.appearance': 'Appearance',
+  'nav.notifications': 'Notifications',
+  'nav.display': 'Display',
+
+  // Nav Bottom
+  'nav.helpSupport': 'Help & Support',
+  'nav.feedback': 'Feedback',
+
+  // Dashboard
+  'dashboard.title': 'Dashboard',
+  'dashboard.description': 'Overview of key metrics and performance',
+  'dashboard.totalRevenue': 'Total Revenue',
+  'dashboard.newCustomers': 'New Customers',
+  'dashboard.activeAccounts': 'Active Accounts',
+  'dashboard.growthRate': 'Growth Rate',
+  'dashboard.trendingUp': 'Trending up this month',
+  'dashboard.down20': 'Down 20% this period',
+  'dashboard.acquisitionAttention': 'Acquisition needs attention',
+  'dashboard.strongRetention': 'Strong user retention',
+  'dashboard.engagementExceed': 'Engagement exceed targets',
+  'dashboard.steadyPerformance': 'Steady performance increase',
+  'dashboard.meetsGrowth': 'Meets growth projections',
+  'dashboard.totalVisitors': 'Total Visitors',
+  'dashboard.totalLast3Months': 'Total for the last 3 months',
+  'dashboard.last3Months': 'Last 3 months',
+  'dashboard.last30Days': 'Last 30 days',
+  'dashboard.last7Days': 'Last 7 days',
+  'dashboard.visitorsLast6Months': 'Visitors for the last 6 months',
+  'dashboard.download': 'Download',
+
+  // Tasks
+  'tasks.title': 'Tasks',
+  'tasks.description': "Here's a list of your tasks for this month!",
+  'tasks.allTasks': 'All Tasks',
+  'tasks.task': 'task',
+  'tasks.tasks': 'tasks',
+  'tasks.projects': 'Projects',
+  'tasks.all': 'All',
+
+  // Email
+  'email.title': 'Email',
+  'email.description': 'Inbox & communications',
+  'email.inbox': 'Inbox',
+  'email.allMail': 'All mail',
+  'email.unread': 'Unread',
+  'email.search': 'Search',
+
+  // Kanban
+  'kanban.title': 'Kanban Board',
+  'kanban.description': 'Manage your projects with drag and drop',
+
+  // Settings/Customizer
+  'customizer.title': 'Template Customizer',
+  'customizer.description': 'Customize & Preview in Real Time',
+  'customizer.theming': 'Theming',
+  'customizer.layout': 'Layout',
+  'customizer.navbarType': 'Navbar Type',
+  'customizer.sidebar': 'Sidebar',
+  'customizer.floating': 'Floating',
+  'customizer.inset': 'Inset',
+  'customizer.direction': 'Direction',
+  'customizer.language': 'Language',
+  'customizer.default': 'Default',
+
+  // Common
+  'common.search': 'Search',
+  'common.noResults': 'No results.',
+  'common.download': 'Download',
+  'common.save': 'Save',
+  'common.cancel': 'Cancel',
+  'common.delete': 'Delete',
+  'common.edit': 'Edit',
+  'common.add': 'Add',
+  'common.close': 'Close',
+  'common.back': 'Back',
+  'common.next': 'Next',
+  'common.previous': 'Previous',
+  'common.loading': 'Loading...',
+  'common.rowsPerPage': 'Rows per page',
+  'common.of': 'of',
+  'common.page': 'Page',
+  'common.selected': 'selected',
+  'common.selectAll': 'Select all',
+} as const

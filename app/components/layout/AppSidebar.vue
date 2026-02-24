@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NavGroup, NavLink, NavSectionTitle } from '~/types/nav'
+import type { TranslationKey } from '~/composables/useLocale'
 import { navMenu, navMenuBottom } from '~/constants/menus'
 
 function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): any {
@@ -7,6 +8,12 @@ function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): an
     return resolveComponent('LayoutSidebarNavGroup')
 
   return resolveComponent('LayoutSidebarNavLink')
+}
+
+const { t } = useLocale()
+
+function getHeading(nav: { heading: string, headingKey?: string }) {
+  return nav.headingKey ? t(nav.headingKey as TranslationKey) : nav.heading
 }
 
 const teams: {
@@ -53,7 +60,7 @@ const { sidebar } = useAppSettings()
     <SidebarContent>
       <SidebarGroup v-for="(nav, indexGroup) in navMenu" :key="indexGroup">
         <SidebarGroupLabel v-if="nav.heading">
-          {{ nav.heading }}
+          {{ getHeading(nav) }}
         </SidebarGroupLabel>
         <component :is="resolveNavItemComponent(item)" v-for="(item, index) in nav.items" :key="index" :item="item" />
       </SidebarGroup>
@@ -67,7 +74,3 @@ const { sidebar } = useAppSettings()
     <SidebarRail />
   </Sidebar>
 </template>
-
-<style scoped>
-
-</style>

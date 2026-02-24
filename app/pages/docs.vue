@@ -522,7 +522,7 @@ const industries = [
     <!-- Footer -->
     <div class="text-center py-4 border-t">
       <p class="text-sm text-muted-foreground">
-        Built with ❤️ by <strong>Adeel Jabbar</strong> · <strong class="text-primary">AI Visual Pro</strong> · MIT License
+        Built with ❤️ by <strong>Adeel Jabbar</strong> · <strong class="text-primary">AI Visual Pro</strong>
       </p>
     </div>
   </div>

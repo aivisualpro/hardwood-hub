@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { SidebarMenuButtonVariants } from '~/components/ui/sidebar'
 import type { NavGroup } from '~/types/nav'
+import type { TranslationKey } from '~/composables/useLocale'
 import { useSidebar } from '~/components/ui/sidebar'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   item: NavGroup
   size?: SidebarMenuButtonVariants['size']
 }>(), {
@@ -11,6 +12,15 @@ withDefaults(defineProps<{
 })
 
 const { setOpenMobile } = useSidebar()
+const { t } = useLocale()
+
+const displayTitle = computed(() =>
+  props.item.titleKey ? t(props.item.titleKey as TranslationKey) : props.item.title,
+)
+
+function getChildTitle(child: { title: string, titleKey?: string }) {
+  return child.titleKey ? t(child.titleKey as TranslationKey) : child.title
+}
 
 const openCollapsible = ref(false)
 </script>
@@ -25,9 +35,9 @@ const openCollapsible = ref(false)
     >
       <SidebarMenuItem>
         <CollapsibleTrigger as-child>
-          <SidebarMenuButton :tooltip="item.title" :size="size">
+          <SidebarMenuButton :tooltip="displayTitle" :size="size">
             <Icon :name="item.icon || ''" mode="svg" />
-            <span>{{ item.title }}</span>
+            <span>{{ displayTitle }}</span>
             <span v-if="item.new" class="rounded-md bg-[#adfa1d] px-1.5 py-0.5 text-xs text-black leading-none no-underline group-hover:no-underline">
               New
             </span>
@@ -42,7 +52,7 @@ const openCollapsible = ref(false)
             >
               <SidebarMenuSubButton as-child :data-active="subItem.link === $route.path">
                 <NuxtLink :to="subItem.link" @click="setOpenMobile(false)">
-                  <span>{{ subItem.title }}</span>
+                  <span>{{ getChildTitle(subItem) }}</span>
                   <span v-if="subItem.new" class="rounded-md bg-[#adfa1d] px-1.5 py-0.5 text-xs text-black leading-none no-underline group-hover:no-underline">
                     New
                   </span>
@@ -55,7 +65,3 @@ const openCollapsible = ref(false)
     </Collapsible>
   </SidebarMenu>
 </template>
-
-<style scoped>
-
-</style>

@@ -1,0 +1,178 @@
+export default {
+  // Navigation Headings
+  'nav.general': 'عام',
+  'nav.apps': 'التطبيقات',
+  'nav.crm': 'إدارة العلاقات',
+  'nav.salesCommerce': 'المبيعات والتجارة',
+  'nav.inventoryWarehouse': 'المخزون والمستودعات',
+  'nav.hrWorkforce': 'الموارد البشرية',
+  'nav.financeAccounting': 'المالية والمحاسبة',
+  'nav.projectManagement': 'إدارة المشاريع',
+  'nav.support': 'الدعم',
+  'nav.marketing': 'التسويق',
+  'nav.reports': 'التقارير',
+  'nav.pages': 'الصفحات',
+  'nav.components': 'المكونات',
+  'nav.documentation': 'التوثيق',
+
+  // Nav Items — General
+  'nav.dashboard': 'لوحة التحكم',
+  'nav.email': 'البريد الإلكتروني',
+  'nav.tasks': 'المهام',
+
+  // Nav Items — Apps
+  'nav.kanbanBoard': 'لوحة كانبان',
+  'nav.ganttChart': 'مخطط جانت',
+
+  // Nav Items — CRM
+  'nav.contacts': 'جهات الاتصال',
+  'nav.leads': 'العملاء المحتملين',
+  'nav.dealsPipeline': 'أنبوب الصفقات',
+  'nav.companies': 'الشركات',
+  'nav.activities': 'الأنشطة',
+
+  // Nav Items — Sales
+  'nav.quotes': 'عروض الأسعار',
+  'nav.invoices': 'الفواتير',
+  'nav.orders': 'الطلبات',
+  'nav.products': 'المنتجات',
+  'nav.customers': 'العملاء',
+
+  // Nav Items — Inventory
+  'nav.stockOverview': 'نظرة عامة على المخزون',
+  'nav.transfers': 'التحويلات',
+  'nav.purchaseOrders': 'أوامر الشراء',
+  'nav.vendors': 'الموردين',
+
+  // Nav Items — HR
+  'nav.employees': 'الموظفين',
+  'nav.attendance': 'الحضور',
+  'nav.payroll': 'الرواتب',
+  'nav.recruitment': 'التوظيف',
+  'nav.leaveMgmt': 'إدارة الإجازات',
+
+  // Nav Items — Finance
+  'nav.accounts': 'الحسابات',
+  'nav.transactions': 'المعاملات',
+  'nav.expenses': 'المصروفات',
+  'nav.taxManagement': 'إدارة الضرائب',
+  'nav.balanceSheet': 'الميزانية العمومية',
+  'nav.incomeStatement': 'قائمة الدخل',
+  'nav.financialRatios': 'النسب المالية',
+  'nav.businessHealth': 'صحة الأعمال',
+
+  // Nav Items — Project Management
+  'nav.projects': 'المشاريع',
+  'nav.timesheets': 'سجلات الوقت',
+  'nav.milestones': 'المعالم',
+
+  // Nav Items — Support
+  'nav.tickets': 'التذاكر',
+  'nav.knowledgeBase': 'قاعدة المعرفة',
+  'nav.liveChat': 'الدردشة المباشرة',
+
+  // Nav Items — Marketing
+  'nav.campaigns': 'الحملات',
+  'nav.emailBlasts': 'الرسائل الجماعية',
+  'nav.analytics': 'التحليلات',
+
+  // Nav Items — Reports
+  'nav.salesReports': 'تقارير المبيعات',
+  'nav.financialReports': 'التقارير المالية',
+  'nav.hrReports': 'تقارير الموارد البشرية',
+
+  // Nav Items — Pages
+  'nav.authentication': 'المصادقة',
+  'nav.login': 'تسجيل الدخول',
+  'nav.loginBasic': 'تسجيل دخول بسيط',
+  'nav.register': 'إنشاء حساب',
+  'nav.forgotPassword': 'نسيت كلمة المرور',
+  'nav.otp': 'رمز التحقق',
+  'nav.errors': 'الأخطاء',
+  'nav.settings': 'الإعدادات',
+  'nav.profile': 'الملف الشخصي',
+  'nav.account': 'الحساب',
+  'nav.appearance': 'المظهر',
+  'nav.notifications': 'الإشعارات',
+  'nav.display': 'العرض',
+
+  // Nav Bottom
+  'nav.helpSupport': 'المساعدة والدعم',
+  'nav.feedback': 'الملاحظات',
+
+  // Dashboard
+  'dashboard.title': 'لوحة التحكم',
+  'dashboard.description': 'نظرة عامة على المقاييس الرئيسية والأداء',
+  'dashboard.totalRevenue': 'إجمالي الإيرادات',
+  'dashboard.newCustomers': 'عملاء جدد',
+  'dashboard.activeAccounts': 'الحسابات النشطة',
+  'dashboard.growthRate': 'معدل النمو',
+  'dashboard.trendingUp': 'اتجاه تصاعدي هذا الشهر',
+  'dashboard.down20': 'انخفاض 20% هذه الفترة',
+  'dashboard.acquisitionAttention': 'الاستحواذ يحتاج اهتمام',
+  'dashboard.strongRetention': 'احتفاظ قوي بالمستخدمين',
+  'dashboard.engagementExceed': 'التفاعل يتجاوز الأهداف',
+  'dashboard.steadyPerformance': 'زيادة مستمرة في الأداء',
+  'dashboard.meetsGrowth': 'يلبي توقعات النمو',
+  'dashboard.totalVisitors': 'إجمالي الزوار',
+  'dashboard.totalLast3Months': 'الإجمالي لآخر 3 أشهر',
+  'dashboard.last3Months': 'آخر 3 أشهر',
+  'dashboard.last30Days': 'آخر 30 يوم',
+  'dashboard.last7Days': 'آخر 7 أيام',
+  'dashboard.visitorsLast6Months': 'الزوار خلال 6 أشهر الأخيرة',
+  'dashboard.download': 'تحميل',
+
+  // Tasks
+  'tasks.title': 'المهام',
+  'tasks.description': 'إليك قائمة مهامك لهذا الشهر!',
+  'tasks.allTasks': 'جميع المهام',
+  'tasks.task': 'مهمة',
+  'tasks.tasks': 'مهام',
+  'tasks.projects': 'المشاريع',
+  'tasks.all': 'الكل',
+
+  // Email
+  'email.title': 'البريد الإلكتروني',
+  'email.description': 'البريد الوارد والاتصالات',
+  'email.inbox': 'البريد الوارد',
+  'email.allMail': 'كل البريد',
+  'email.unread': 'غير مقروء',
+  'email.search': 'بحث',
+
+  // Kanban
+  'kanban.title': 'لوحة كانبان',
+  'kanban.description': 'إدارة مشاريعك بالسحب والإفلات',
+
+  // Settings/Customizer
+  'customizer.title': 'مخصص القالب',
+  'customizer.description': 'تخصيص ومعاينة في الوقت الحقيقي',
+  'customizer.theming': 'السمات',
+  'customizer.layout': 'التخطيط',
+  'customizer.navbarType': 'نوع الشريط',
+  'customizer.sidebar': 'شريط جانبي',
+  'customizer.floating': 'عائم',
+  'customizer.inset': 'مدمج',
+  'customizer.direction': 'الاتجاه',
+  'customizer.language': 'اللغة',
+  'customizer.default': 'افتراضي',
+
+  // Common
+  'common.search': 'بحث',
+  'common.noResults': 'لا توجد نتائج.',
+  'common.download': 'تحميل',
+  'common.save': 'حفظ',
+  'common.cancel': 'إلغاء',
+  'common.delete': 'حذف',
+  'common.edit': 'تعديل',
+  'common.add': 'إضافة',
+  'common.close': 'إغلاق',
+  'common.back': 'رجوع',
+  'common.next': 'التالي',
+  'common.previous': 'السابق',
+  'common.loading': 'جاري التحميل...',
+  'common.rowsPerPage': 'صفوف لكل صفحة',
+  'common.of': 'من',
+  'common.page': 'صفحة',
+  'common.selected': 'محدد',
+  'common.selectAll': 'تحديد الكل',
+} as const
