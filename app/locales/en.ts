@@ -137,6 +137,7 @@ export default {
   'tasks.col.sno': '#',
   'tasks.col.title': 'Title',
   'tasks.col.status': 'Status',
+  'tasks.col.assignees': 'Assignees',
   'tasks.col.priority': 'Priority',
   'tasks.col.createdAt': 'Created',
   'tasks.col.dueDate': 'Due Date',

@@ -58,9 +58,45 @@ const stageCounts = computed(() => {
 // Use a reactive copy of the data so new tasks are reflected
 const localData = ref<Task[]>([...props.data])
 
+// Seed demo assignees for existing tasks
+function seedAssignees(data: Task[]): Task[] {
+  const assigneeIds = ['u1', 'u2', 'u3', 'u4', 'u5']
+  return data.map((task, i) => {
+    if (task.assignees && task.assignees.length > 0) return task
+    // Deterministic assignment based on index
+    const count = (i % 3) + 1 // 1-3 assignees
+    const start = i % assigneeIds.length
+    const picked: string[] = []
+    for (let j = 0; j < count; j++) {
+      picked.push(assigneeIds[(start + j) % assigneeIds.length]!)
+    }
+    return { ...task, assignees: picked }
+  })
+}
+
+localData.value = seedAssignees(localData.value)
+
 watch(() => props.data, (d) => {
-  localData.value = [...d]
+  localData.value = seedAssignees([...d])
 }, { deep: true })
+
+// Provide context for inline cell editing
+function updateTask(taskId: string, updates: Partial<Task>) {
+  localData.value = localData.value.map(t =>
+    t.id === taskId ? { ...t, ...updates } : t
+  )
+}
+
+provide('task-table-context', {
+  updateTask,
+  availableAssignees: [
+    { id: 'u1', name: 'Adeel Jabbar', avatar: '/avatars/adeel.png' },
+    { id: 'u2', name: 'Sarah Khan', avatar: '' },
+    { id: 'u3', name: 'Ahmed Ali', avatar: '' },
+    { id: 'u4', name: 'Maria Lopez', avatar: '' },
+    { id: 'u5', name: 'John Smith', avatar: '' },
+  ],
+})
 
 // Filter tasks based on selected project/stage
 const filteredData = computed(() => {
@@ -324,6 +360,7 @@ function createTask() {
     label: newTaskCategory.value,
     createdAt: new Date().toISOString().split('T')[0],
     dueDate: newTaskDueDate.value || undefined,
+    assignees: newTaskAssignees.value.length ? [...newTaskAssignees.value] : undefined,
   }
   // Register in project map if project and phase selected
   if (newTaskProjectId.value && newTaskPhaseId.value) {
@@ -334,6 +371,23 @@ function createTask() {
   }
   localData.value = [task, ...localData.value]
   showAddTaskDialog.value = false
+}
+
+// Task detail dialog
+const showTaskDetail = ref(false)
+const selectedTask = ref<Task | null>(null)
+
+function openTaskDetail(task: Task) {
+  selectedTask.value = task
+  showTaskDetail.value = true
+}
+
+function onTaskUpdated(updated: Task) {
+  const idx = localData.value.findIndex(t => t.id === updated.id)
+  if (idx >= 0) {
+    localData.value = localData.value.map(t => t.id === updated.id ? updated : t)
+  }
+  selectedTask.value = updated
 }
 </script>
 
@@ -380,6 +434,7 @@ function createTask() {
             :show-grouping="showGrouping"
             @reorder="onReorder"
             @add-task="openAddTaskDialog"
+            @task-click="openTaskDetail"
           />
         </div>
       </ResizablePanel>
@@ -538,4 +593,13 @@ function createTask() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <!-- Task Detail Dialog -->
+  <TasksComponentsTaskDetailDialog
+    :task="selectedTask"
+    :open="showTaskDetail"
+    :available-assignees="availableAssignees"
+    @update:open="showTaskDetail = $event"
+    @update:task="onTaskUpdated"
+  />
 </template>

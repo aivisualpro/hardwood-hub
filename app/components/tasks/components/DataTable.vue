@@ -36,6 +36,7 @@ const props = withDefaults(defineProps<DataTableProps>(), {
 const emit = defineEmits<{
   reorder: [groupKey: string, fromIdx: number, toIdx: number]
   addTask: []
+  taskClick: [task: Task]
 }>()
 
 const sorting = ref<SortingState>([])
@@ -272,8 +273,9 @@ onMounted(() => {
               <TableRow
                 v-else
                 :draggable="true"
-                class="group/row cursor-grab active:cursor-grabbing"
+                class="group/row cursor-pointer hover:bg-muted/40 transition-colors"
                 :class="{ 'task-landed': droppedTaskId === (dRow.row.original as Task).id }"
+                @click="emit('taskClick', dRow.row.original as Task)"
                 @dragstart="onDragStart(dRow.groupKey, dRow.indexInGroup, $event)"
                 @dragover="onDragOver"
                 @drop="onDrop(dRow.groupKey, dRow.indexInGroup)"

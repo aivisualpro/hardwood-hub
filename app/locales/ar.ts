@@ -137,6 +137,7 @@ export default {
   'tasks.col.sno': '#',
   'tasks.col.title': 'العنوان',
   'tasks.col.status': 'الحالة',
+  'tasks.col.assignees': 'المكلفون',
   'tasks.col.priority': 'الأولوية',
   'tasks.col.createdAt': 'تاريخ الإنشاء',
   'tasks.col.dueDate': 'تاريخ الاستحقاق',

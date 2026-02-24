@@ -137,6 +137,7 @@ export default {
   'tasks.col.sno': '#',
   'tasks.col.title': 'כותרת',
   'tasks.col.status': 'סטטוס',
+  'tasks.col.assignees': 'משויכים',
   'tasks.col.priority': 'עדיפות',
   'tasks.col.createdAt': 'תאריך יצירה',
   'tasks.col.dueDate': 'תאריך יעד',
