@@ -28,7 +28,6 @@ function getInitials(name: string) {
     .slice(0, 2)
 }
 
-// Color palette for avatar backgrounds
 const avatarColors = [
   'bg-violet-500/80',
   'bg-sky-500/80',
@@ -64,26 +63,36 @@ function toggleAssignee(id: string) {
         <button
           class="inline-flex items-center rounded-md px-1 py-0.5 hover:bg-muted/80 active:scale-[0.97] transition-all duration-150 cursor-pointer group/assignee"
         >
-          <!-- Stacked avatars -->
+          <!-- Stacked avatars with tooltips -->
           <template v-if="assignees.length">
             <div class="flex -space-x-1.5">
-              <div
-                v-for="(a, i) in assignees.slice(0, 3)"
-                :key="a.id"
-                class="relative flex items-center justify-center size-6 rounded-full border-2 border-background text-[10px] font-semibold text-white shadow-sm transition-transform group-hover/assignee:translate-x-0"
-                :class="getColor(a.id)"
-                :style="{ zIndex: 10 - i }"
-                :title="a.name"
-              >
-                {{ getInitials(a.name) }}
-              </div>
-              <div
-                v-if="assignees.length > 3"
-                class="relative flex items-center justify-center size-6 rounded-full border-2 border-background bg-muted text-[10px] font-semibold text-muted-foreground shadow-sm"
-                :style="{ zIndex: 6 }"
-              >
-                +{{ assignees.length - 3 }}
-              </div>
+              <Tooltip v-for="(a, i) in assignees.slice(0, 3)" :key="a.id">
+                <TooltipTrigger as-child>
+                  <div
+                    class="relative flex items-center justify-center size-6 rounded-full border-2 border-background text-[10px] font-semibold text-white shadow-sm transition-transform group-hover/assignee:translate-x-0"
+                    :class="getColor(a.id)"
+                    :style="{ zIndex: 10 - i }"
+                  >
+                    {{ getInitials(a.name) }}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" :side-offset="4">
+                  <p class="text-xs font-medium">{{ a.name }}</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip v-if="assignees.length > 3">
+                <TooltipTrigger as-child>
+                  <div
+                    class="relative flex items-center justify-center size-6 rounded-full border-2 border-background bg-muted text-[10px] font-semibold text-muted-foreground shadow-sm"
+                    :style="{ zIndex: 6 }"
+                  >
+                    +{{ assignees.length - 3 }}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" :side-offset="4">
+                  <p class="text-xs font-medium">{{ assignees.slice(3).map(a => a.name).join(', ') }}</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </template>
           <!-- Unassigned placeholder -->

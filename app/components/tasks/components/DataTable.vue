@@ -27,16 +27,19 @@ interface DataTableProps {
   data: Task[]
   taskGroupMap?: Map<string, TaskGroupInfo>
   showGrouping?: boolean
+  viewMode?: 'table' | 'kanban'
 }
 const props = withDefaults(defineProps<DataTableProps>(), {
   taskGroupMap: () => new Map(),
   showGrouping: false,
+  viewMode: 'table',
 })
 
 const emit = defineEmits<{
   reorder: [groupKey: string, fromIdx: number, toIdx: number]
   addTask: []
   taskClick: [task: Task]
+  'update:viewMode': [mode: 'table' | 'kanban']
 }>()
 
 const sorting = ref<SortingState>([])
@@ -236,10 +239,10 @@ onMounted(() => {
 <template>
   <!-- Teleport toolbar to header -->
   <Teleport v-if="isMounted" to="#header-toolbar">
-    <DataTableToolbar :table="table" @add-task="emit('addTask')" />
+    <DataTableToolbar :table="table" :view-mode="viewMode" @add-task="emit('addTask')" @update:view-mode="emit('update:viewMode', $event)" />
   </Teleport>
 
-  <div>
+  <div v-show="viewMode === 'table'">
     <div class="border rounded-md">
       <Table>
         <TableHeader>

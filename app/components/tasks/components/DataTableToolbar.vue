@@ -8,11 +8,16 @@ import DataTableViewOptions from './DataTableViewOptions.vue'
 
 interface DataTableToolbarProps {
   table: Table<Task>
+  viewMode?: 'table' | 'kanban'
 }
 
-const props = defineProps<DataTableToolbarProps>()
+const props = withDefaults(defineProps<DataTableToolbarProps>(), {
+  viewMode: 'table',
+})
+
 const emit = defineEmits<{
   addTask: []
+  'update:viewMode': [mode: 'table' | 'kanban']
 }>()
 
 const { t } = useLocale()
@@ -21,6 +26,30 @@ const isFiltered = computed(() => props.table.getState().columnFilters.length > 
 
 <template>
   <div class="flex items-center gap-2">
+    <!-- View Toggle (before search) -->
+    <div class="inline-flex items-center rounded-lg border bg-muted/40 p-0.5 shrink-0">
+      <button
+        class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-200"
+        :class="viewMode === 'table'
+          ? 'bg-background text-foreground shadow-sm'
+          : 'text-muted-foreground hover:text-foreground'"
+        @click="emit('update:viewMode', 'table')"
+      >
+        <Icon name="lucide:table-2" class="size-3.5" />
+        <span class="hidden sm:inline">Table</span>
+      </button>
+      <button
+        class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-200"
+        :class="viewMode === 'kanban'
+          ? 'bg-background text-foreground shadow-sm'
+          : 'text-muted-foreground hover:text-foreground'"
+        @click="emit('update:viewMode', 'kanban')"
+      >
+        <Icon name="lucide:kanban" class="size-3.5" />
+        <span class="hidden sm:inline">Board</span>
+      </button>
+    </div>
+
     <div class="flex flex-1 items-center gap-2">
       <Input
         :placeholder="t('tasks.filterPlaceholder' as any)"

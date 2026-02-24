@@ -373,6 +373,9 @@ function createTask() {
   showAddTaskDialog.value = false
 }
 
+// View mode toggle
+const viewMode = ref<'table' | 'kanban'>('table')
+
 // Task detail dialog
 const showTaskDetail = ref(false)
 const selectedTask = ref<Task | null>(null)
@@ -427,14 +430,24 @@ function onTaskUpdated(updated: Task) {
       <!-- Main Content Panel -->
       <ResizablePanel id="tasks-content-panel" :default-size="defaultLayout[1]" :min-size="50">
         <div class="flex flex-col h-full overflow-auto p-4">
+          <!-- Table View -->
           <DataTable
             :data="sortedData"
             :columns="columns"
             :task-group-map="taskGroupMap"
             :show-grouping="showGrouping"
+            :view-mode="viewMode"
             @reorder="onReorder"
             @add-task="openAddTaskDialog"
             @task-click="openTaskDetail"
+            @update:view-mode="viewMode = $event"
+          />
+          <!-- Kanban View -->
+          <TasksComponentsTasksKanbanBoard
+            v-if="viewMode === 'kanban'"
+            :data="sortedData"
+            @task-click="openTaskDetail"
+            @add-task="openAddTaskDialog"
           />
         </div>
       </ResizablePanel>
