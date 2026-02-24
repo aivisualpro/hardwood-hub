@@ -6,6 +6,7 @@ import { priorities, statuses } from '../data/data'
 import DataTableColumnHeader from './DataTableColumnHeader.vue'
 import DataTableRowActions from './DataTableRowActions.vue'
 import TranslatedLabel from './TranslatedLabel.vue'
+import DueDateBadge from './DueDateBadge.vue'
 
 export const columns: ColumnDef<Task>[] = [
   {
@@ -61,6 +62,34 @@ export const columns: ColumnDef<Task>[] = [
     },
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id))
+    },
+  },
+  {
+    accessorKey: 'createdAt',
+    header: ({ column }) => h(DataTableColumnHeader, { column, titleKey: 'tasks.col.createdAt' }),
+    cell: ({ row }) => {
+      const val = row.getValue('createdAt') as string | undefined
+      if (!val) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      const d = new Date(val)
+      return h('span', { class: 'text-xs text-muted-foreground whitespace-nowrap' },
+        d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      )
+    },
+  },
+  {
+    accessorKey: 'dueDate',
+    header: ({ column }) => h(DataTableColumnHeader, { column, titleKey: 'tasks.col.dueDate' }),
+    cell: ({ row }) => {
+      const val = row.getValue('dueDate') as string | undefined
+      return h(DueDateBadge, { dueDate: val })
+    },
+    sortingFn: (rowA, rowB) => {
+      const a = rowA.getValue('dueDate') as string | undefined
+      const b = rowB.getValue('dueDate') as string | undefined
+      if (!a && !b) return 0
+      if (!a) return 1
+      if (!b) return -1
+      return new Date(a).getTime() - new Date(b).getTime()
     },
   },
   {

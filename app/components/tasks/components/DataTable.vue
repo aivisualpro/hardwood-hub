@@ -195,7 +195,7 @@ function triggerDustEffect(groupKey: string, toIdx: number) {
     droppedTaskId.value = (targetRow.row.original as Task).id
     setTimeout(() => {
       droppedTaskId.value = null
-    }, 700)
+    }, 3200)
   }
 }
 
@@ -340,7 +340,7 @@ onMounted(() => {
 .task-landed {
   animation:
     elastic-settle 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both,
-    glow-fade 0.8s ease-out both;
+    border-glow 3s ease-out both;
   position: relative;
   overflow: hidden;
   z-index: 1;
@@ -364,17 +364,37 @@ onMounted(() => {
   }
 }
 
-/* 2. Soft glow highlight that fades */
-@keyframes glow-fade {
+/* 2. Border glow that pulses and fades over 3 seconds */
+@keyframes border-glow {
   0% {
-    background-color: hsl(var(--primary) / 0.08);
     box-shadow:
-      inset 0 1px 0 hsl(var(--primary) / 0.15),
-      inset 0 -1px 0 hsl(var(--primary) / 0.1);
+      inset 0 0 0 1px hsl(var(--primary) / 0.5),
+      0 0 8px hsl(var(--primary) / 0.15);
+    background-color: hsl(var(--primary) / 0.06);
+  }
+  15% {
+    box-shadow:
+      inset 0 0 0 1px hsl(var(--primary) / 0.35),
+      0 0 12px hsl(var(--primary) / 0.1);
+    background-color: hsl(var(--primary) / 0.04);
+  }
+  30% {
+    box-shadow:
+      inset 0 0 0 1px hsl(var(--primary) / 0.45),
+      0 0 10px hsl(var(--primary) / 0.12);
+    background-color: hsl(var(--primary) / 0.05);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px hsl(var(--primary) / 0.25),
+      0 0 6px hsl(var(--primary) / 0.06);
+    background-color: hsl(var(--primary) / 0.025);
   }
   100% {
+    box-shadow:
+      inset 0 0 0 1px transparent,
+      0 0 0 transparent;
     background-color: transparent;
-    box-shadow: none;
   }
 }
 
