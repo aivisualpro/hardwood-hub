@@ -149,6 +149,7 @@ export default {
   'tasks.priority.low': 'Low',
   'tasks.priority.medium': 'Medium',
   'tasks.priority.high': 'High',
+  'tasks.addTask': 'Add Task',
 
   // Email
   'email.title': 'Email',

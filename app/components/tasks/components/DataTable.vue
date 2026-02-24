@@ -169,6 +169,7 @@ const displayRows = computed<DisplayRow[]>(() => {
 
 // Drag state
 const dragState = ref<{ groupKey: string, fromIdx: number } | null>(null)
+const droppedTaskId = ref<string | null>(null)
 
 function onDragStart(groupKey: string, indexInGroup: number, event: DragEvent) {
   dragState.value = { groupKey, fromIdx: indexInGroup }
@@ -185,6 +186,18 @@ function onDragOver(event: DragEvent) {
   }
 }
 
+function triggerDustEffect(groupKey: string, toIdx: number) {
+  // Find the task at the target position to mark it
+  const targetRows = displayRows.value.filter(r => r.type === 'task' && (r as TaskRow).groupKey === groupKey)
+  const targetRow = targetRows[toIdx] as TaskRow | undefined
+  if (targetRow) {
+    droppedTaskId.value = (targetRow.row.original as Task).id
+    setTimeout(() => {
+      droppedTaskId.value = null
+    }, 700)
+  }
+}
+
 function onDrop(groupKey: string, toIdx: number) {
   if (!dragState.value || dragState.value.groupKey !== groupKey) {
     dragState.value = null
@@ -193,6 +206,8 @@ function onDrop(groupKey: string, toIdx: number) {
   const fromIdx = dragState.value.fromIdx
   if (fromIdx !== toIdx) {
     emit('reorder', groupKey, fromIdx, toIdx)
+    // Trigger dust on next tick after reorder
+    nextTick(() => triggerDustEffect(groupKey, toIdx))
   }
   dragState.value = null
 }
@@ -206,6 +221,7 @@ function moveTask(dRow: TaskRow, direction: 'up' | 'down') {
   const toIdx = direction === 'up' ? dRow.indexInGroup - 1 : dRow.indexInGroup + 1
   if (toIdx < 0 || toIdx >= dRow.groupSize) return
   emit('reorder', dRow.groupKey, dRow.indexInGroup, toIdx)
+  nextTick(() => triggerDustEffect(dRow.groupKey, toIdx))
 }
 
 // Check if teleport target is available (client-side only)
@@ -256,11 +272,13 @@ onMounted(() => {
                 v-else
                 :draggable="true"
                 class="group/row cursor-grab active:cursor-grabbing"
+                :class="{ 'task-landed': droppedTaskId === (dRow.row.original as Task).id }"
                 @dragstart="onDragStart(dRow.groupKey, dRow.indexInGroup, $event)"
                 @dragover="onDragOver"
                 @drop="onDrop(dRow.groupKey, dRow.indexInGroup)"
                 @dragend="onDragEnd"
               >
+
                 <TableCell v-for="(cell, cIdx) in dRow.row.getVisibleCells()" :key="cell.id">
                   <!-- Override S.No column with per-group serial number -->
                   <template v-if="cell.column.id === 'sno'">
@@ -313,3 +331,84 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* === Premium Drop Animation === */
+
+/* 1. Elastic spring settle — row slides in with overshoot */
+.task-landed {
+  animation:
+    elastic-settle 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    glow-fade 0.8s ease-out both;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+@keyframes elastic-settle {
+  0% {
+    transform: translateY(-6px) scaleY(0.97);
+    opacity: 0.6;
+  }
+  40% {
+    transform: translateY(2px) scaleY(1.005);
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(-1px) scaleY(1);
+  }
+  100% {
+    transform: translateY(0) scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* 2. Soft glow highlight that fades */
+@keyframes glow-fade {
+  0% {
+    background-color: hsl(var(--primary) / 0.08);
+    box-shadow:
+      inset 0 1px 0 hsl(var(--primary) / 0.15),
+      inset 0 -1px 0 hsl(var(--primary) / 0.1);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+/* 3. Shimmer sweep — glossy light streak across the row */
+.task-landed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 35%,
+    hsl(var(--primary) / 0.08) 42%,
+    hsl(var(--primary) / 0.15) 50%,
+    hsl(var(--primary) / 0.08) 58%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 250% 100%;
+  animation: shimmer-sweep 0.7s 0.1s ease-out both;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    background-position: 150% 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    background-position: -50% 0;
+    opacity: 0;
+  }
+}
+</style>

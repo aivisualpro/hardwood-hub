@@ -11,14 +11,17 @@ interface DataTableToolbarProps {
 }
 
 const props = defineProps<DataTableToolbarProps>()
+const emit = defineEmits<{
+  addTask: []
+}>()
 
 const { t } = useLocale()
 const isFiltered = computed(() => props.table.getState().columnFilters.length > 0)
 </script>
 
 <template>
-  <div class="flex items-center justify-between">
-    <div class="flex flex-1 items-center space-x-2">
+  <div class="flex items-center gap-2">
+    <div class="flex flex-1 items-center gap-2">
       <Input
         :placeholder="t('tasks.filterPlaceholder' as any)"
         :model-value="(table.getColumn('title')?.getFilterValue() as string) ?? ''"
@@ -48,6 +51,16 @@ const isFiltered = computed(() => props.table.getState().columnFilters.length > 
         <Icon name="i-radix-icons-cross-2" class="ml-2 h-4 w-4" />
       </Button>
     </div>
+
     <DataTableViewOptions :table="table" />
+
+    <Button
+      size="sm"
+      class="h-8"
+      @click="emit('addTask')"
+    >
+      <Icon name="lucide:plus" class="size-4 mr-1" />
+      {{ t('tasks.addTask' as any) }}
+    </Button>
   </div>
 </template>

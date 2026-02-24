@@ -22,7 +22,7 @@ const columns = computed(() => props.table.getAllColumns()
       <Button
         variant="outline"
         size="sm"
-        class="ml-auto hidden h-8 lg:flex"
+        class="hidden h-8 lg:flex"
       >
         <Icon name="i-radix-icons-mixer-horizontal" class="mr-2 h-4 w-4" />
         View
@@ -37,7 +37,7 @@ const columns = computed(() => props.table.getAllColumns()
         :key="column.id"
         class="capitalize"
         :checked="column.getIsVisible()"
-        @update:checked="(value) => column.toggleVisibility(!!value)"
+        @update:checked="(value: boolean) => column.toggleVisibility(!!value)"
       >
         {{ column.id }}
       </DropdownMenuCheckboxItem>

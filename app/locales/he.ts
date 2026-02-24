@@ -149,6 +149,7 @@ export default {
   'tasks.priority.low': 'נמוכה',
   'tasks.priority.medium': 'בינונית',
   'tasks.priority.high': 'גבוהה',
+  'tasks.addTask': 'הוסף משימה',
 
   // Email
   'email.title': 'דוא״ל',

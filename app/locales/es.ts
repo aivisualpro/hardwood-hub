@@ -149,6 +149,7 @@ export default {
   'tasks.priority.low': 'Baja',
   'tasks.priority.medium': 'Media',
   'tasks.priority.high': 'Alta',
+  'tasks.addTask': 'Agregar tarea',
 
   // Email
   'email.title': 'Correo',
