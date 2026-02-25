@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { NavMenu } from '~/types/nav'
+import type { NavGroup, NavMenu } from '~/types/nav'
+import type { TranslationKey } from '~/composables/useLocale'
 import { navMenu } from '@/constants/menus'
 
 const { metaSymbol } = useShortcuts()
@@ -12,21 +13,12 @@ defineShortcuts({
   Meta_K: () => openCommand.value = true,
 })
 
-// Flatten all nav sections with navigable items only
-const navSections = computed(() =>
-  navMenu
-    .map((section: NavMenu) => ({
-      heading: section.headingKey ? t(section.headingKey as any) : section.heading,
-      items: section.items
-        .filter((item: any) => item.link)
-        .map((item: any) => ({
-          title: item.titleKey ? t(item.titleKey as any) : item.title,
-          icon: item.icon,
-          link: item.link,
-        })),
-    }))
-    .filter(section => section.items.length > 0),
-)
+const componentsNav = computed<NavGroup | undefined>(() => {
+  return navMenu
+    .flatMap((nav: NavMenu) => nav.items)
+    // @ts-expect-error - We know that the title is unique
+    .find((item: NavGroup) => item.title === 'Components')
+})
 
 function handleSelectLink(link: string) {
   router.push(link)
@@ -47,24 +39,38 @@ function handleSelectLink(link: string) {
   </SidebarMenuButton>
 
   <CommandDialog v-model:open="openCommand">
-    <CommandInput :placeholder="t('common.search') + ' menu...'" />
+    <CommandInput :placeholder="t('common.search') + '...'" />
     <CommandList>
       <CommandEmpty>{{ t('common.noResults') }}</CommandEmpty>
-      <template v-for="section in navSections" :key="section.heading">
-        <CommandGroup :heading="section.heading">
-          <CommandItem
-            v-for="item in section.items"
-            :key="item.link"
-            :value="`${section.heading} ${item.title}`"
-            class="gap-2"
-            @select="handleSelectLink(item.link)"
-          >
-            <Icon :name="item.icon" class="size-4 text-muted-foreground shrink-0" />
-            {{ item.title }}
-          </CommandItem>
-        </CommandGroup>
-        <CommandSeparator />
-      </template>
+      <CommandGroup heading="Suggestions">
+        <CommandItem value="Home" @select="handleSelectLink('/')">
+          {{ t('nav.dashboard') }}
+          <CommandShortcut>
+            <Kbd>G</Kbd>
+            <Kbd>H</Kbd>
+          </CommandShortcut>
+        </CommandItem>
+        <CommandItem value="email" @select="handleSelectLink('/email')">
+          {{ t('nav.email') }}
+          <CommandShortcut>
+            <Kbd>G</Kbd>
+            <Kbd>E</Kbd>
+          </CommandShortcut>
+        </CommandItem>
+      </CommandGroup>
+      <CommandSeparator />
+      <CommandGroup heading="Components">
+        <CommandItem
+          v-for="nav in componentsNav?.children"
+          :key="nav.title"
+          :value="nav.title"
+          class="gap-2"
+          @select="handleSelectLink(nav.link)"
+        >
+          <Icon name="i-radix-icons-circle" />
+          {{ nav.title }}
+        </CommandItem>
+      </CommandGroup>
     </CommandList>
   </CommandDialog>
 </template>

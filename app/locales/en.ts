@@ -1,6 +1,5 @@
 export default {
   // Navigation Headings
-  'nav.administration': 'Administration',
   'nav.general': 'General',
   'nav.apps': 'Apps',
   'nav.crm': 'CRM',
@@ -15,10 +14,6 @@ export default {
   'nav.pages': 'Pages',
   'nav.components': 'Components',
   'nav.documentation': 'Documentation',
-
-  // Nav Items — Administration
-  'nav.users': 'Users',
-  'nav.rolesPermissions': 'Roles & Permissions',
 
   // Nav Items — General
   'nav.dashboard': 'Dashboard',
