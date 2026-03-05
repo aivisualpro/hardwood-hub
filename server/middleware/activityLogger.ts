@@ -15,6 +15,7 @@ const moduleMap: Record<string, string> = {
     'auth': 'Authentication',
     'app-settings': 'App Settings',
     'upload': 'File Upload',
+    'tasks': 'Tasks',
 }
 
 const actionMap: Record<string, string> = {
