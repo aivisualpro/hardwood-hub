@@ -90,13 +90,47 @@ const timelineEvents = computed(() => {
 // ─── Bonus Report ────────
 const bonusReport = computed(() => {
   if (!treeData.value) return []
-  const rules = bonusRulesData.value || []
+  const generalRules = bonusRulesData.value || []
 
   // Create skill reviews map
   const skillReviewsMap = new Map<string, any[]>()
   for (const r of (recordsData.value || [])) {
      if (!skillReviewsMap.has(r.skill)) skillReviewsMap.set(r.skill, [])
      skillReviewsMap.get(r.skill)!.push(r)
+  }
+
+  // Helper: evaluate a set of rules against skills in a sub-category
+  function evaluateRules(rulesToCheck: any[], skillsInSub: any[]): number {
+    let maxBonus = 0
+    for (const rule of rulesToCheck) {
+      const requiredLevelIdx = levelIndex(rule.skillSet)
+      const requiredTimes = rule.reviewedTimes || 1
+      const isUnique = rule.supervisorCheck === 'Unique'
+
+      let ruleMet = true
+      for (const sk of skillsInSub) {
+        const reviews = skillReviewsMap.get(sk._id) || []
+        const qualifying = reviews.filter(r => levelIndex(r.currentSkillLevel) >= requiredLevelIdx)
+
+        if (qualifying.length < requiredTimes) {
+          ruleMet = false
+          break
+        }
+
+        if (isUnique) {
+          const uniqueReviewers = new Set(qualifying.map(r => r.createdBy))
+          if (uniqueReviewers.size < requiredTimes) {
+            ruleMet = false
+            break
+          }
+        }
+      }
+
+      if (ruleMet) {
+        maxBonus = Math.max(maxBonus, rule.bonusAmount || 0)
+      }
+    }
+    return maxBonus
   }
 
   const report = []
@@ -118,37 +152,14 @@ const bonusReport = computed(() => {
          }
       }
 
-      // Calculate Bonus Earned based on Rules
+      // Calculate Bonus Earned:
+      // 1. If sub-category has its own bonusRules override → use those exclusively
+      // 2. Otherwise → fall back to general skill-bonus rules
       let maxBonus = 0
       if (totalSkills > 0) {
-        for (const rule of rules) {
-           const requiredLevelIdx = levelIndex(rule.skillSet)
-           const requiredTimes = rule.reviewedTimes || 1
-           const isUnique = rule.supervisorCheck === 'Unique'
-
-           let ruleMet = true
-           for (const sk of skillsInSub) {
-              const reviews = skillReviewsMap.get(sk._id) || []
-              const qualifying = reviews.filter(r => levelIndex(r.currentSkillLevel) >= requiredLevelIdx)
-              
-              if (qualifying.length < requiredTimes) {
-                 ruleMet = false
-                 break
-              }
-
-              if (isUnique) {
-                 const uniqueReviewers = new Set(qualifying.map(r => r.createdBy))
-                 if (uniqueReviewers.size < requiredTimes) {
-                    ruleMet = false
-                    break
-                 }
-              }
-           }
-
-           if (ruleMet) {
-              maxBonus = Math.max(maxBonus, rule.bonusAmount || 0)
-           }
-        }
+        const subOverrideRules = sub.bonusRules || []
+        const rulesToUse = subOverrideRules.length > 0 ? subOverrideRules : generalRules
+        maxBonus = evaluateRules(rulesToUse, skillsInSub)
       }
 
       report.push({
@@ -158,7 +169,8 @@ const bonusReport = computed(() => {
          totalSkills,
          cntProficient,
          cntMastered,
-         bonusEarned: maxBonus
+         bonusEarned: maxBonus,
+         hasOverride: (sub.bonusRules || []).length > 0
       })
     }
   }
@@ -475,7 +487,13 @@ const tabs = [
                           <tbody class="divide-y divide-border/30">
                             <tr v-for="row in catGroup.subCategories" :key="row.id" class="hover:bg-muted/10 transition-colors">
                               <td class="px-5 py-3">
-                                <p class="font-medium">{{ row.name }}</p>
+                                <div class="flex items-center gap-2">
+                                  <p class="font-medium">{{ row.name }}</p>
+                                  <span v-if="row.hasOverride" class="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-500 border border-violet-500/20" title="Using custom bonus rules for this sub-category">
+                                    <Icon name="i-lucide-sparkles" class="size-2.5" />
+                                    Custom
+                                  </span>
+                                </div>
                               </td>
                               <td class="px-5 py-3 text-center font-semibold text-muted-foreground">
                                 {{ row.totalSkills }}
