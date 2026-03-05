@@ -787,6 +787,7 @@ async function deleteSelected() {
                   <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Skill</th>
                   <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Level</th>
                   <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Date</th>
+                  <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Reviewed By</th>
                   <th class="px-4 py-3 w-12 text-center">
                     <button
                       class="size-4 rounded border-2 transition-all inline-flex items-center justify-center"
@@ -832,6 +833,9 @@ async function deleteSelected() {
                     </div>
                   </td>
                   <td class="px-4 py-3 text-muted-foreground text-xs">{{ formatDate(r.createdAt) }}</td>
+                  <td class="px-4 py-3">
+                    <span class="text-xs font-medium text-muted-foreground">{{ r.createdByName || '—' }}</span>
+                  </td>
                   <td class="px-4 py-3 text-center">
                     <button
                       class="size-4 rounded border-2 transition-all inline-flex items-center justify-center"
