@@ -184,11 +184,12 @@ function selectChip(key: string, value: string) {
 }
 
 function toggleMultiChip(key: string, value: string) {
-  const arr: string[] = (form.value as any)[key]
+  let arr: string[] = (form.value as any)[key]
+  if (!Array.isArray(arr)) arr = arr ? [arr] : []
   if (arr.includes(value)) {
     ;(form.value as any)[key] = arr.filter((v: string) => v !== value)
   } else {
-    arr.push(value)
+    ;(form.value as any)[key] = [...arr, value]
   }
 }
 
@@ -214,7 +215,17 @@ function openCreate() {
 }
 
 function openEdit(rec: any) {
-  form.value = { ...emptyForm(), ...rec }
+  const base = emptyForm()
+  const merged = { ...base, ...rec }
+  // Ensure multi-select fields are always arrays (handles legacy string data)
+  const arrayFields = ['whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply', 'gradeOfFlooring', 'widthOfFlooring', 'cutOfFlooring', 'fidBox']
+  for (const key of arrayFields) {
+    const val = merged[key]
+    if (!Array.isArray(val)) {
+      merged[key] = val ? [val] : []
+    }
+  }
+  form.value = merged
   editingId.value = rec._id
   activeTab.value = 'form'
 }
