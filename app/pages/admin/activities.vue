@@ -333,6 +333,14 @@ const stats = computed(() => {
                     </p>
                   </div>
 
+                  <!-- Target Info (who it was done to) -->
+                  <div v-if="act.targetName" class="mt-1 ml-0">
+                    <span class="inline-flex items-center gap-1.5 text-xs text-foreground/70">
+                      <Icon name="i-lucide-arrow-right" class="size-3 text-muted-foreground/50" />
+                      <span class="font-medium">{{ act.targetName }}</span>
+                    </span>
+                  </div>
+
                   <!-- Tags -->
                   <div class="flex items-center gap-2 mt-1.5">
                     <span
