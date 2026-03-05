@@ -169,6 +169,40 @@ const bonusReport = computed(() => {
   })
 })
 
+const bonusReportByCategory = computed(() => {
+  const grouped = new Map<string, { id: string, name: string, totalCategoryBonus: number, subCategories: any[] }>()
+  
+  for (const item of bonusReport.value) {
+    if (!grouped.has(item.categoryName)) {
+      grouped.set(item.categoryName, {
+        id: item.categoryName,
+        name: item.categoryName,
+        totalCategoryBonus: 0,
+        subCategories: []
+      })
+    }
+    const catGroup = grouped.get(item.categoryName)!
+    catGroup.subCategories.push(item)
+    catGroup.totalCategoryBonus += item.bonusEarned
+  }
+  
+  return Array.from(grouped.values()).sort((a,b) => a.name.localeCompare(b.name))
+})
+
+const totalBonusEarned = computed(() => {
+  return bonusReport.value.reduce((sum, item) => sum + item.bonusEarned, 0)
+})
+
+const expandedCategories = ref<Set<string>>(new Set())
+
+function toggleCategory(catName: string) {
+  if (expandedCategories.value.has(catName)) {
+    expandedCategories.value.delete(catName)
+  } else {
+    expandedCategories.value.add(catName)
+  }
+}
+
 const tabs = [
   { id: 'summary', label: 'Progress Summary', icon: 'i-lucide-pie-chart' },
   { id: 'growth', label: 'My Growth Rate', icon: 'i-lucide-trending-up' },
@@ -359,56 +393,119 @@ const tabs = [
 
           <!-- 3. Bonus Report Tab -->
           <div v-else-if="activeTab === 'bonus'" class="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
-            <h2 class="text-2xl font-bold flex items-center gap-2">
-              <Icon name="i-lucide-award" class="text-amber-500" />
-              Bonus Report
-            </h2>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h2 class="text-2xl font-bold flex items-center gap-2">
+                <Icon name="i-lucide-award" class="text-amber-500" />
+                Bonus Report
+              </h2>
+              
+              <div class="flex items-center gap-3 px-4 py-2 rounded-xl border border-amber-500/20 bg-amber-500/5 shadow-sm">
+                <div class="size-8 rounded-full bg-amber-500/10 flex items-center justify-center">
+                  <Icon name="i-lucide-coins" class="size-4 text-amber-500" />
+                </div>
+                <div>
+                  <p class="text-[10px] font-medium uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70">Total Earned</p>
+                  <p class="text-xl font-black text-amber-600 dark:text-amber-400 leading-none">${{ Number(totalBonusEarned).toFixed(2) }}</p>
+                </div>
+              </div>
+            </div>
             
-            <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
-              <div v-if="bonusReport.length === 0" class="p-12 text-center text-muted-foreground">
+            <div class="space-y-4">
+              <div v-if="bonusReportByCategory.length === 0" class="p-12 text-center text-muted-foreground rounded-xl border border-border/50 bg-card">
                 <p>No skills reviewed yet.</p>
               </div>
-              <table v-else class="w-full text-sm">
-                <thead>
-                  <tr class="bg-muted/40 border-b border-border/60">
-                    <th class="px-5 py-4 text-left font-semibold">Sub-Category</th>
-                    <th class="px-5 py-4 text-center font-semibold text-muted-foreground">Total Skills</th>
-                    <th class="px-5 py-4 text-center font-semibold text-blue-500">Proficient</th>
-                    <th class="px-5 py-4 text-center font-semibold text-emerald-500">Mastered</th>
-                    <th class="px-5 py-4 text-center font-semibold text-amber-500">Bonus Earned</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-border/40">
-                  <tr v-for="row in bonusReport" :key="row.id" class="hover:bg-muted/10 transition-colors">
-                    <td class="px-5 py-4">
-                      <p class="font-medium">{{ row.name }}</p>
-                      <p class="text-xs text-muted-foreground mt-0.5">{{ row.categoryName }}</p>
-                    </td>
-                    <td class="px-5 py-4 text-center font-semibold text-muted-foreground">
-                      {{ row.totalSkills }}
-                    </td>
-                    <td class="px-5 py-4 text-center">
-                      <span v-if="row.cntProficient" class="inline-flex size-7 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 font-bold border border-blue-500/20">
-                        {{ row.cntProficient }}
+              
+              <div 
+                v-for="catGroup in bonusReportByCategory" 
+                :key="catGroup.id"
+                class="rounded-xl border border-border/50 bg-card overflow-hidden shadow-sm transition-all"
+              >
+                <!-- Accordion Header -->
+                <div 
+                  role="button"
+                  tabindex="0"
+                  class="flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors cursor-pointer select-none"
+                  @click="toggleCategory(catGroup.name)"
+                >
+                  <div class="flex items-center gap-3 w-full">
+                    <Icon 
+                      name="i-lucide-chevron-right" 
+                      class="size-4 text-muted-foreground transition-transform duration-200"
+                      :class="expandedCategories.has(catGroup.name) ? 'rotate-90' : ''"
+                    />
+                    <div class="size-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
+                      <Icon name="i-lucide-layers" class="size-4 text-primary" />
+                    </div>
+                    <div class="flex-1">
+                      <h3 class="font-semibold text-lg">{{ catGroup.name }}</h3>
+                      <p class="text-xs text-muted-foreground mt-0.5">{{ catGroup.subCategories.length }} Sub-Categories</p>
+                    </div>
+                    <div v-if="catGroup.totalCategoryBonus > 0" class="shrink-0 text-right">
+                      <p class="text-[10px] font-medium uppercase tracking-wider text-amber-500/80 mb-0.5">Category Bonus</p>
+                      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 text-sm">
+                        +${{ Number(catGroup.totalCategoryBonus).toFixed(2) }}
                       </span>
-                      <span v-else class="text-muted-foreground/30 font-medium">-</span>
-                    </td>
-                    <td class="px-5 py-4 text-center">
-                      <span v-if="row.cntMastered" class="inline-flex size-7 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 font-bold border border-emerald-500/20">
-                        {{ row.cntMastered }}
-                      </span>
-                      <span v-else class="text-muted-foreground/30 font-medium">-</span>
-                    </td>
-                    <td class="px-5 py-4 text-center">
-                      <div v-if="row.bonusEarned > 0" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20">
-                        <Icon name="i-lucide-coins" class="size-3.5" />
-                        ${{ Number(row.bonusEarned).toFixed(2) }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Accordion Body -->
+                <Transition
+                  enter-active-class="transition-all duration-300 ease-out"
+                  enter-from-class="grid-rows-[0fr] opacity-0"
+                  enter-to-class="grid-rows-[1fr] opacity-100"
+                  leave-active-class="transition-all duration-200 ease-in"
+                  leave-from-class="grid-rows-[1fr] opacity-100"
+                  leave-to-class="grid-rows-[0fr] opacity-0"
+                >
+                  <div v-show="expandedCategories.has(catGroup.name)" class="grid" :class="expandedCategories.has(catGroup.name) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'">
+                    <div class="overflow-hidden border-t border-border/50">
+                      <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                          <thead>
+                            <tr class="bg-muted/20 border-b border-border/40">
+                              <th class="px-5 py-3 text-left font-semibold text-xs tracking-wider uppercase text-muted-foreground">Sub-Category</th>
+                              <th class="px-5 py-3 text-center font-semibold text-xs tracking-wider uppercase text-muted-foreground">Total Skills</th>
+                              <th class="px-5 py-3 text-center font-semibold text-xs tracking-wider uppercase text-blue-500">Proficient</th>
+                              <th class="px-5 py-3 text-center font-semibold text-xs tracking-wider uppercase text-emerald-500">Mastered</th>
+                              <th class="px-5 py-3 text-center font-semibold text-xs tracking-wider uppercase text-amber-500">Bonus Earned</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-border/30">
+                            <tr v-for="row in catGroup.subCategories" :key="row.id" class="hover:bg-muted/10 transition-colors">
+                              <td class="px-5 py-3">
+                                <p class="font-medium">{{ row.name }}</p>
+                              </td>
+                              <td class="px-5 py-3 text-center font-semibold text-muted-foreground">
+                                {{ row.totalSkills }}
+                              </td>
+                              <td class="px-5 py-3 text-center">
+                                <span v-if="row.cntProficient" class="inline-flex size-6 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 font-bold border border-blue-500/20 text-xs">
+                                  {{ row.cntProficient }}
+                                </span>
+                                <span v-else class="text-muted-foreground/30 font-medium">-</span>
+                              </td>
+                              <td class="px-5 py-3 text-center">
+                                <span v-if="row.cntMastered" class="inline-flex size-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 font-bold border border-emerald-500/20 text-xs">
+                                  {{ row.cntMastered }}
+                                </span>
+                                <span v-else class="text-muted-foreground/30 font-medium">-</span>
+                              </td>
+                              <td class="px-5 py-3 text-center">
+                                <div v-if="row.bonusEarned > 0" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 text-xs">
+                                  <Icon name="i-lucide-coins" class="size-3" />
+                                  ${{ Number(row.bonusEarned).toFixed(2) }}
+                                </div>
+                                <span v-else class="text-muted-foreground/30 font-medium text-xs">Unmet</span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                      <span v-else class="text-muted-foreground/30 font-medium text-xs">Unmet</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </div>
+                  </div>
+                </Transition>
+              </div>
             </div>
           </div>
         </template>
