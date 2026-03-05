@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose'
 
 export interface IDailyProduction extends Document {
+    date?: string
     employeeName?: string
     jobClient?: string
     wereYouOnTime?: string
@@ -33,6 +34,7 @@ export interface IDailyProduction extends Document {
 
 const DailyProductionSchema = new Schema(
     {
+        date: { type: String, default: null },
         employeeName: { type: String, default: null },
         jobClient: { type: String, default: null },
         wereYouOnTime: { type: String, default: null },

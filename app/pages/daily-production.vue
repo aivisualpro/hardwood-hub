@@ -7,6 +7,7 @@ setHeader({ title: 'Daily Production Report', icon: 'i-lucide-clipboard-list', d
 // ─── Types ───────────────────────────────────────────────
 interface DailyProductionRecord {
   _id: string
+  date: string | null
   employeeName: string | null
   jobClient: string | null
   wereYouOnTime: string | null
@@ -45,7 +46,17 @@ const loading = ref(true)
 const saving = ref(false)
 const editingId = ref<string | null>(null)
 
+// ─── Employees List ──────────────────────────────────────
+const employees = ref<{ _id: string, employee: string }[]>([])
+async function fetchEmployees() {
+  try {
+    const res = await $fetch<{ success: boolean, data: any[] }>('/api/employees')
+    employees.value = res.data.map(e => ({ _id: e._id, employee: e.employee }))
+  } catch { /* silent */ }
+}
+
 const emptyForm = () => ({
+  date: new Date().toISOString().split('T')[0],
   employeeName: '',
   jobClient: '',
   wereYouOnTime: '',
@@ -102,28 +113,12 @@ const activeSectionIdx = ref(0)
 const sections = computed(() => {
   const base = [
     {
-      id: 'employee-info',
-      title: 'Employee & Job Info',
+      id: 'employee-attendance',
+      title: 'Employee & Attendance',
       icon: 'i-lucide-user-circle',
-      description: 'Who are you and what job/client today?',
+      description: 'Employee info, date, punctuality & site departure details',
       color: 'from-blue-500/20 to-blue-500/5 border-blue-500/30',
       iconColor: 'text-blue-400',
-    },
-    {
-      id: 'attendance',
-      title: 'Attendance & Punctuality',
-      icon: 'i-lucide-clock',
-      description: 'Were you on time? Any time off site?',
-      color: 'from-amber-500/20 to-amber-500/5 border-amber-500/30',
-      iconColor: 'text-amber-400',
-    },
-    {
-      id: 'leaving-site',
-      title: 'Leaving Site Details',
-      icon: 'i-lucide-map-pin-off',
-      description: 'Time off-site not including lunch',
-      color: 'from-orange-500/20 to-orange-500/5 border-orange-500/30',
-      iconColor: 'text-orange-400',
     },
     {
       id: 'work-performed',
@@ -134,61 +129,22 @@ const sections = computed(() => {
       iconColor: 'text-emerald-400',
     },
     {
-      id: 'block-1',
-      title: 'Block 1 — Production Details',
+      id: 'detail-entry',
+      title: 'Detail Entry',
       icon: 'i-lucide-box',
-      description: 'Primary work block for today',
+      description: 'Repeatable production blocks — up to 3 work types per day',
       color: 'from-violet-500/20 to-violet-500/5 border-violet-500/30',
       iconColor: 'text-violet-400',
     },
     {
-      id: 'block-2-toggle',
-      title: 'Block 2 — Second Work Type',
-      icon: 'i-lucide-boxes',
-      description: 'If you did split work, add a second block',
-      color: 'from-cyan-500/20 to-cyan-500/5 border-cyan-500/30',
-      iconColor: 'text-cyan-400',
+      id: 'blockers',
+      title: 'Blockers & Issues',
+      icon: 'i-lucide-alert-triangle',
+      description: 'Report any blockers or missing data',
+      color: 'from-red-500/20 to-red-500/5 border-red-500/30',
+      iconColor: 'text-red-400',
     },
   ]
-
-  if (form.value.didYouDoASecondTypeOfWorkToday === 'Yes') {
-    base.push({
-      id: 'block-2-detail',
-      title: 'Block 2 — Production Details',
-      icon: 'i-lucide-boxes',
-      description: 'Second work block details',
-      color: 'from-cyan-500/20 to-cyan-500/5 border-cyan-500/30',
-      iconColor: 'text-cyan-400',
-    })
-    base.push({
-      id: 'block-3-toggle',
-      title: 'Block 3 — Third Work Type',
-      icon: 'i-lucide-layers',
-      description: 'If you did a third type of work today',
-      color: 'from-pink-500/20 to-pink-500/5 border-pink-500/30',
-      iconColor: 'text-pink-400',
-    })
-  }
-
-  if (form.value.didYouDoAThirdTypeOfWorkToday === 'Yes') {
-    base.push({
-      id: 'block-3-detail',
-      title: 'Block 3 — Production Details',
-      icon: 'i-lucide-layers',
-      description: 'Third work block details',
-      color: 'from-pink-500/20 to-pink-500/5 border-pink-500/30',
-      iconColor: 'text-pink-400',
-    })
-  }
-
-  base.push({
-    id: 'blockers',
-    title: 'Blockers & Issues',
-    icon: 'i-lucide-alert-triangle',
-    description: 'Report any blockers or missing data',
-    color: 'from-red-500/20 to-red-500/5 border-red-500/30',
-    iconColor: 'text-red-400',
-  })
 
   return base
 })
@@ -197,15 +153,9 @@ const sections = computed(() => {
 function isSectionDone(sectionId: string) {
   const f = form.value
   switch (sectionId) {
-    case 'employee-info': return !!f.employeeName && !!f.jobClient
-    case 'attendance': return !!f.wereYouOnTime
-    case 'leaving-site': return !!f.didYouLeaveTheJobForAnythingOtherThanLunch
+    case 'employee-attendance': return !!f.employeeName && !!f.jobClient && !!f.date && !!f.wereYouOnTime && !!f.didYouLeaveTheJobForAnythingOtherThanLunch
     case 'work-performed': return f.whatWorkDidYouPerformTodaySelectAllThatApply.length > 0
-    case 'block-1': return !!f.block1Category && f.productionHours !== undefined && f.productionHours !== null
-    case 'block-2-toggle': return !!f.didYouDoASecondTypeOfWorkToday
-    case 'block-2-detail': return !!f.block2Category && f.productionHoursBlock2 !== undefined && f.productionHoursBlock2 !== null
-    case 'block-3-toggle': return !!f.didYouDoAThirdTypeOfWorkToday
-    case 'block-3-detail': return !!f.block3Category && f.productionHoursBlock3 !== undefined && f.productionHoursBlock3 !== null
+    case 'detail-entry': return !!f.block1Category && f.productionHours !== undefined && f.productionHours !== null
     case 'blockers': return true // optional
     default: return false
   }
@@ -235,7 +185,10 @@ async function fetchRecords() {
   }
 }
 
-onMounted(fetchRecords)
+onMounted(() => {
+  fetchRecords()
+  fetchEmployees()
+})
 
 function openCreate() {
   form.value = emptyForm()
@@ -540,15 +493,30 @@ const lateCount = computed(() => {
             <!-- Section Content -->
             <div class="px-5 pb-6 space-y-5">
 
-              <!-- ── Employee Info ── -->
-              <template v-if="section.id === 'employee-info'">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <!-- ── Employee & Attendance (combined) ── -->
+              <template v-if="section.id === 'employee-attendance'">
+                <!-- Row 1: Employee + Date + Job -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                   <div class="flex flex-col gap-1.5">
                     <Label for="dp-name" class="flex items-center gap-1.5">
                       <Icon name="i-lucide-user" class="size-3.5 text-muted-foreground" />
                       Employee Name <span class="text-destructive">*</span>
                     </Label>
-                    <Input id="dp-name" v-model="form.employeeName" placeholder="Enter your full name" />
+                    <Select v-model="form.employeeName">
+                      <SelectTrigger id="dp-name">
+                        <SelectValue placeholder="Select employee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem v-for="emp in employees" :key="emp._id" :value="emp.employee">{{ emp.employee }}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <Label for="dp-date" class="flex items-center gap-1.5">
+                      <Icon name="i-lucide-calendar" class="size-3.5 text-muted-foreground" />
+                      Date <span class="text-destructive">*</span>
+                    </Label>
+                    <Input id="dp-date" v-model="form.date" type="date" />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <Label for="dp-client" class="flex items-center gap-1.5">
@@ -558,104 +526,101 @@ const lateCount = computed(() => {
                     <Input id="dp-client" v-model="form.jobClient" placeholder="Client or job name" />
                   </div>
                 </div>
-              </template>
 
-              <!-- ── Attendance ── -->
-              <template v-if="section.id === 'attendance'">
-                <div class="space-y-5">
-                  <div class="flex flex-col gap-2">
-                    <Label class="flex items-center gap-1.5">
-                      <Icon name="i-lucide-clock" class="size-3.5 text-muted-foreground" />
-                      Were you on time? <span class="text-destructive">*</span>
-                    </Label>
-                    <p class="text-xs text-muted-foreground -mt-1 ml-5">If you arrived to work late make sure this is filled out — this will be referenced to your time card so make sure missed or late punches are corrected ASAP</p>
-                    <div class="flex gap-3">
-                      <button
-                        v-for="opt in ['Yes', 'No']"
-                        :key="opt"
-                        class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 min-w-[100px] justify-center"
+                <Separator class="my-1" />
+
+                <!-- Were you on time? -->
+                <div class="flex flex-col gap-2">
+                  <Label class="flex items-center gap-1.5">
+                    <Icon name="i-lucide-clock" class="size-3.5 text-muted-foreground" />
+                    Were you on time? <span class="text-destructive">*</span>
+                  </Label>
+                  <p class="text-xs text-muted-foreground -mt-1 ml-5">If you arrived late, this will be referenced to your time card — make sure missed or late punches are corrected ASAP</p>
+                  <div class="flex gap-3">
+                    <button
+                      v-for="opt in ['Yes', 'No']"
+                      :key="opt"
+                      class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 min-w-[100px] justify-center"
+                      :class="form.wereYouOnTime === opt
+                        ? opt === 'Yes' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/40 shadow-sm' : 'bg-red-500/10 text-red-500 border-red-500/40 shadow-sm'
+                        : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
+                      @click="form.wereYouOnTime = form.wereYouOnTime === opt ? '' : opt"
+                    >
+                      <span
+                        class="size-4 rounded-full border-2 flex items-center justify-center transition-colors"
                         :class="form.wereYouOnTime === opt
-                          ? opt === 'Yes' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/40 shadow-sm' : 'bg-red-500/10 text-red-500 border-red-500/40 shadow-sm'
-                          : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
-                        @click="form.wereYouOnTime = form.wereYouOnTime === opt ? '' : opt"
+                          ? opt === 'Yes' ? 'border-emerald-500 bg-emerald-500' : 'border-red-500 bg-red-500'
+                          : 'border-border/60'"
                       >
-                        <span
-                          class="size-4 rounded-full border-2 flex items-center justify-center transition-colors"
-                          :class="form.wereYouOnTime === opt
-                            ? opt === 'Yes' ? 'border-emerald-500 bg-emerald-500' : 'border-red-500 bg-red-500'
-                            : 'border-border/60'"
-                        >
-                          <span v-if="form.wereYouOnTime === opt" class="size-1.5 rounded-full bg-white" />
-                        </span>
-                        {{ opt }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- If Late -->
-                  <div v-if="form.wereYouOnTime === 'No'" class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-4">
-                    <div class="flex items-center gap-2 text-amber-500 text-xs font-bold uppercase tracking-wider">
-                      <Icon name="i-lucide-alert-triangle" class="size-3.5" />
-                      Lateness Details
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <Label for="dp-minutes-late">Total Minutes Late</Label>
-                      <Input id="dp-minutes-late" v-model.number="form.totalMinutesLate" type="number" min="0" step="5" placeholder="e.g. 15" />
-                    </div>
+                        <span v-if="form.wereYouOnTime === opt" class="size-1.5 rounded-full bg-white" />
+                      </span>
+                      {{ opt }}
+                    </button>
                   </div>
                 </div>
-              </template>
 
-              <!-- ── Leaving Site ── -->
-              <template v-if="section.id === 'leaving-site'">
-                <div class="space-y-5">
-                  <div class="flex flex-col gap-2">
-                    <Label class="flex items-center gap-1.5">
-                      <Icon name="i-lucide-map-pin-off" class="size-3.5 text-muted-foreground" />
-                      Did you leave the job for anything other than lunch? <span class="text-destructive">*</span>
-                    </Label>
-                    <div class="flex gap-3">
-                      <button
-                        v-for="opt in ['Yes', 'No']"
-                        :key="opt"
-                        class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 min-w-[100px] justify-center"
-                        :class="form.didYouLeaveTheJobForAnythingOtherThanLunch === opt
-                          ? 'bg-primary/10 text-primary border-primary/40 shadow-sm'
-                          : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
-                        @click="form.didYouLeaveTheJobForAnythingOtherThanLunch = form.didYouLeaveTheJobForAnythingOtherThanLunch === opt ? '' : opt"
-                      >
-                        <span
-                          class="size-4 rounded-full border-2 flex items-center justify-center transition-colors"
-                          :class="form.didYouLeaveTheJobForAnythingOtherThanLunch === opt ? 'border-primary bg-primary' : 'border-border/60'"
-                        >
-                          <span v-if="form.didYouLeaveTheJobForAnythingOtherThanLunch === opt" class="size-1.5 rounded-full bg-white" />
-                        </span>
-                        {{ opt }}
-                      </button>
-                    </div>
+                <!-- If Late -->
+                <div v-if="form.wereYouOnTime === 'No'" class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-4">
+                  <div class="flex items-center gap-2 text-amber-500 text-xs font-bold uppercase tracking-wider">
+                    <Icon name="i-lucide-alert-triangle" class="size-3.5" />
+                    Lateness Details
                   </div>
+                  <div class="flex flex-col gap-1.5">
+                    <Label for="dp-minutes-late">Total Minutes Late</Label>
+                    <Input id="dp-minutes-late" v-model.number="form.totalMinutesLate" type="number" min="0" step="5" placeholder="e.g. 15" />
+                  </div>
+                </div>
 
-                  <div v-if="form.didYouLeaveTheJobForAnythingOtherThanLunch === 'Yes'" class="rounded-lg border border-orange-500/30 bg-orange-500/5 p-4 space-y-4">
-                    <div class="flex items-center gap-2 text-orange-500 text-xs font-bold uppercase tracking-wider">
-                      <Icon name="i-lucide-map-pin-off" class="size-3.5" />
-                      Off-site Details
+                <Separator class="my-1" />
+
+                <!-- Did you leave the job? -->
+                <div class="flex flex-col gap-2">
+                  <Label class="flex items-center gap-1.5">
+                    <Icon name="i-lucide-map-pin-off" class="size-3.5 text-muted-foreground" />
+                    Did you leave the job for anything other than lunch? <span class="text-destructive">*</span>
+                  </Label>
+                  <div class="flex gap-3">
+                    <button
+                      v-for="opt in ['Yes', 'No']"
+                      :key="opt"
+                      class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 min-w-[100px] justify-center"
+                      :class="form.didYouLeaveTheJobForAnythingOtherThanLunch === opt
+                        ? 'bg-primary/10 text-primary border-primary/40 shadow-sm'
+                        : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
+                      @click="form.didYouLeaveTheJobForAnythingOtherThanLunch = form.didYouLeaveTheJobForAnythingOtherThanLunch === opt ? '' : opt"
+                    >
+                      <span
+                        class="size-4 rounded-full border-2 flex items-center justify-center transition-colors"
+                        :class="form.didYouLeaveTheJobForAnythingOtherThanLunch === opt ? 'border-primary bg-primary' : 'border-border/60'"
+                      >
+                        <span v-if="form.didYouLeaveTheJobForAnythingOtherThanLunch === opt" class="size-1.5 rounded-full bg-white" />
+                      </span>
+                      {{ opt }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Off-site details -->
+                <div v-if="form.didYouLeaveTheJobForAnythingOtherThanLunch === 'Yes'" class="rounded-lg border border-orange-500/30 bg-orange-500/5 p-4 space-y-4">
+                  <div class="flex items-center gap-2 text-orange-500 text-xs font-bold uppercase tracking-wider">
+                    <Icon name="i-lucide-map-pin-off" class="size-3.5" />
+                    Off-site Details
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1.5">
+                      <Label for="dp-off-site-min">Total Minutes Off Site (Not Including Lunch)</Label>
+                      <Input id="dp-off-site-min" v-model.number="form.totalMinutesOffSiteNotIncludingLunch" type="number" min="0" placeholder="e.g. 30" />
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div class="flex flex-col gap-1.5">
-                        <Label for="dp-off-site-min">Total Minutes Off Site (Not Including Lunch)</Label>
-                        <Input id="dp-off-site-min" v-model.number="form.totalMinutesOffSiteNotIncludingLunch" type="number" min="0" placeholder="e.g. 30" />
-                      </div>
-                      <div class="flex flex-col gap-1.5">
-                        <Label for="dp-reason">Reason for Leaving</Label>
-                        <Select v-model="form.reasonForLeaving">
-                          <SelectTrigger id="dp-reason">
-                            <SelectValue placeholder="Select reason" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem v-for="r in REASON_FOR_LEAVING_OPTIONS" :key="r" :value="r">{{ r }}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div class="flex flex-col gap-1.5">
+                      <Label for="dp-reason">Reason for Leaving</Label>
+                      <Select v-model="form.reasonForLeaving">
+                        <SelectTrigger id="dp-reason">
+                          <SelectValue placeholder="Select reason" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem v-for="r in REASON_FOR_LEAVING_OPTIONS" :key="r" :value="r">{{ r }}</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -690,12 +655,21 @@ const lateCount = computed(() => {
                 </div>
               </template>
 
-              <!-- ── Block 1 ── -->
-              <template v-if="section.id === 'block-1'">
-                <p class="text-xs text-muted-foreground -mt-1 mb-2">To handle "split days," you'll do <b>up to 3 blocks</b>. Most will use 1–2.</p>
-                <div class="space-y-4">
+              <!-- ── Detail Entry (repeatable blocks) ── -->
+              <template v-if="section.id === 'detail-entry'">
+                <p class="text-xs text-muted-foreground -mt-1 mb-3">To handle "split days," fill <b>up to 3 blocks</b>. Most crews use 1–2.</p>
+
+                <!-- ▸ Block 1 -->
+                <div class="rounded-lg border border-violet-500/30 bg-violet-500/[0.03] p-4 space-y-4">
+                  <div class="flex items-center gap-2">
+                    <div class="size-7 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-500/5 border border-violet-500/20 flex items-center justify-center">
+                      <Icon name="i-lucide-box" class="size-3.5 text-violet-400" />
+                    </div>
+                    <span class="text-sm font-bold">Block 1</span>
+                    <span class="text-[10px] text-muted-foreground">— Primary work type</span>
+                  </div>
                   <div class="flex flex-col gap-1.5">
-                    <Label for="dp-b1-cat" class="flex items-center gap-1.5">Block 1 Category <span class="text-destructive">*</span></Label>
+                    <Label for="dp-b1-cat" class="flex items-center gap-1.5">Category <span class="text-destructive">*</span></Label>
                     <Select v-model="form.block1Category">
                       <SelectTrigger id="dp-b1-cat">
                         <SelectValue placeholder="Choose category" />
@@ -707,10 +681,8 @@ const lateCount = computed(() => {
                   </div>
                   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div class="flex flex-col gap-1.5">
-                      <Label for="dp-b1-hours" class="text-xs">
-                        Production Hours <span class="text-destructive">*</span>
-                      </Label>
-                      <p class="text-[10px] text-muted-foreground -mt-1">Use 1/4 hr increments (e.g. 2.25)</p>
+                      <Label for="dp-b1-hours" class="text-xs">Production Hours <span class="text-destructive">*</span></Label>
+                      <p class="text-[10px] text-muted-foreground -mt-1">1/4 hr increments (e.g. 2.25)</p>
                       <Input id="dp-b1-hours" v-model.number="form.productionHours" type="number" min="0" step="0.25" placeholder="0.00" />
                     </div>
                     <div class="flex flex-col gap-1.5">
@@ -730,140 +702,129 @@ const lateCount = computed(() => {
                     </div>
                   </div>
                 </div>
-              </template>
 
-              <!-- ── Block 2 Toggle ── -->
-              <template v-if="section.id === 'block-2-toggle'">
-                <div class="flex flex-col gap-2">
-                  <Label class="flex items-center gap-1.5">
-                    Did you do a second type of work today? <span class="text-destructive">*</span>
-                  </Label>
-                  <p class="text-xs text-muted-foreground -mt-1 ml-0">If you only did one type of work leave block 2–3 blank</p>
-                  <div class="flex gap-3 mt-1">
-                    <button
-                      v-for="opt in ['No', 'Yes']"
-                      :key="opt"
-                      class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 min-w-[100px] justify-center"
-                      :class="form.didYouDoASecondTypeOfWorkToday === opt
-                        ? 'bg-primary/10 text-primary border-primary/40 shadow-sm'
-                        : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
-                      @click="form.didYouDoASecondTypeOfWorkToday = opt"
-                    >
-                      <span
-                        class="size-4 rounded-full border-2 flex items-center justify-center transition-colors"
-                        :class="form.didYouDoASecondTypeOfWorkToday === opt ? 'border-primary bg-primary' : 'border-border/60'"
+                <!-- ▸ Block 2 Toggle + Detail -->
+                <div class="rounded-lg border border-cyan-500/20 bg-cyan-500/[0.02] p-4 space-y-4 mt-4">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <div class="size-7 rounded-lg bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 border border-cyan-500/20 flex items-center justify-center">
+                        <Icon name="i-lucide-boxes" class="size-3.5 text-cyan-400" />
+                      </div>
+                      <span class="text-sm font-bold">Block 2</span>
+                      <span class="text-[10px] text-muted-foreground">— Second work type</span>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        v-for="opt in ['No', 'Yes']"
+                        :key="opt"
+                        class="px-3 py-1 rounded-full border text-xs font-semibold transition-all duration-150"
+                        :class="form.didYouDoASecondTypeOfWorkToday === opt
+                          ? 'bg-primary/10 text-primary border-primary/40'
+                          : 'bg-card text-muted-foreground border-border/50 hover:bg-muted/30'"
+                        @click="form.didYouDoASecondTypeOfWorkToday = opt"
                       >
-                        <span v-if="form.didYouDoASecondTypeOfWorkToday === opt" class="size-1.5 rounded-full bg-white" />
-                      </span>
-                      {{ opt }}
-                    </button>
+                        {{ opt }}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </template>
 
-              <!-- ── Block 2 Details ── -->
-              <template v-if="section.id === 'block-2-detail'">
-                <div class="space-y-4">
-                  <div class="flex flex-col gap-1.5">
-                    <Label for="dp-b2-cat" class="flex items-center gap-1.5">Block 2 Category <span class="text-destructive">*</span></Label>
-                    <Select v-model="form.block2Category">
-                      <SelectTrigger id="dp-b2-cat">
-                        <SelectValue placeholder="Choose category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem v-for="c in BLOCK_CATEGORIES" :key="c" :value="c">{{ c }}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <template v-if="form.didYouDoASecondTypeOfWorkToday === 'Yes'">
                     <div class="flex flex-col gap-1.5">
-                      <Label for="dp-b2-hours" class="text-xs">Production Hours <span class="text-destructive">*</span></Label>
-                      <p class="text-[10px] text-muted-foreground -mt-1">Use 1/4 hr increments</p>
-                      <Input id="dp-b2-hours" v-model.number="form.productionHoursBlock2" type="number" min="0" step="0.25" placeholder="0.00" />
+                      <Label for="dp-b2-cat" class="flex items-center gap-1.5">Category <span class="text-destructive">*</span></Label>
+                      <Select v-model="form.block2Category">
+                        <SelectTrigger id="dp-b2-cat">
+                          <SelectValue placeholder="Choose category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem v-for="c in BLOCK_CATEGORIES" :key="c" :value="c">{{ c }}</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div class="flex flex-col gap-1.5">
-                      <Label for="dp-b2-sqft" class="text-xs">Square Feet</Label>
-                      <p class="text-[10px] text-muted-foreground -mt-1">Installation, sanding, finishing</p>
-                      <Input id="dp-b2-sqft" v-model.number="form.squareFeetCompletedBlock2" type="number" min="0" placeholder="0" />
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div class="flex flex-col gap-1.5">
+                        <Label for="dp-b2-hours" class="text-xs">Production Hours <span class="text-destructive">*</span></Label>
+                        <p class="text-[10px] text-muted-foreground -mt-1">1/4 hr increments</p>
+                        <Input id="dp-b2-hours" v-model.number="form.productionHoursBlock2" type="number" min="0" step="0.25" placeholder="0.00" />
+                      </div>
+                      <div class="flex flex-col gap-1.5">
+                        <Label for="dp-b2-sqft" class="text-xs">Square Feet</Label>
+                        <p class="text-[10px] text-muted-foreground -mt-1">Installation, sanding, finishing</p>
+                        <Input id="dp-b2-sqft" v-model.number="form.squareFeetCompletedBlock2" type="number" min="0" placeholder="0" />
+                      </div>
+                      <div class="flex flex-col gap-1.5">
+                        <Label for="dp-b2-lft" class="text-xs">Linear Feet</Label>
+                        <p class="text-[10px] text-muted-foreground -mt-1">Edging, trim, shoe, base</p>
+                        <Input id="dp-b2-lft" v-model.number="form.linearFeetCompletedBlock2" type="number" min="0" placeholder="0" />
+                      </div>
+                      <div class="flex flex-col gap-1.5">
+                        <Label for="dp-b2-count" class="text-xs">Count</Label>
+                        <p class="text-[10px] text-muted-foreground -mt-1">Vents, stairs, boards</p>
+                        <Input id="dp-b2-count" v-model.number="form.countBlock2" type="number" min="0" placeholder="0" />
+                      </div>
                     </div>
-                    <div class="flex flex-col gap-1.5">
-                      <Label for="dp-b2-lft" class="text-xs">Linear Feet</Label>
-                      <p class="text-[10px] text-muted-foreground -mt-1">Edging, trim, shoe, base</p>
-                      <Input id="dp-b2-lft" v-model.number="form.linearFeetCompletedBlock2" type="number" min="0" placeholder="0" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <Label for="dp-b2-count" class="text-xs">Count</Label>
-                      <p class="text-[10px] text-muted-foreground -mt-1">Vents, stairs, boards</p>
-                      <Input id="dp-b2-count" v-model.number="form.countBlock2" type="number" min="0" placeholder="0" />
-                    </div>
-                  </div>
+                  </template>
                 </div>
-              </template>
 
-              <!-- ── Block 3 Toggle ── -->
-              <template v-if="section.id === 'block-3-toggle'">
-                <div class="flex flex-col gap-2">
-                  <Label class="flex items-center gap-1.5">
-                    Did you do a third type of work today? <span class="text-destructive">*</span>
-                  </Label>
-                  <div class="flex gap-3 mt-1">
-                    <button
-                      v-for="opt in ['No', 'Yes']"
-                      :key="opt"
-                      class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 min-w-[100px] justify-center"
-                      :class="form.didYouDoAThirdTypeOfWorkToday === opt
-                        ? 'bg-primary/10 text-primary border-primary/40 shadow-sm'
-                        : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
-                      @click="form.didYouDoAThirdTypeOfWorkToday = opt"
-                    >
-                      <span
-                        class="size-4 rounded-full border-2 flex items-center justify-center transition-colors"
-                        :class="form.didYouDoAThirdTypeOfWorkToday === opt ? 'border-primary bg-primary' : 'border-border/60'"
+                <!-- ▸ Block 3 Toggle + Detail -->
+                <div v-if="form.didYouDoASecondTypeOfWorkToday === 'Yes'" class="rounded-lg border border-pink-500/20 bg-pink-500/[0.02] p-4 space-y-4 mt-4">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <div class="size-7 rounded-lg bg-gradient-to-br from-pink-500/20 to-pink-500/5 border border-pink-500/20 flex items-center justify-center">
+                        <Icon name="i-lucide-layers" class="size-3.5 text-pink-400" />
+                      </div>
+                      <span class="text-sm font-bold">Block 3</span>
+                      <span class="text-[10px] text-muted-foreground">— Third work type</span>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        v-for="opt in ['No', 'Yes']"
+                        :key="opt"
+                        class="px-3 py-1 rounded-full border text-xs font-semibold transition-all duration-150"
+                        :class="form.didYouDoAThirdTypeOfWorkToday === opt
+                          ? 'bg-primary/10 text-primary border-primary/40'
+                          : 'bg-card text-muted-foreground border-border/50 hover:bg-muted/30'"
+                        @click="form.didYouDoAThirdTypeOfWorkToday = opt"
                       >
-                        <span v-if="form.didYouDoAThirdTypeOfWorkToday === opt" class="size-1.5 rounded-full bg-white" />
-                      </span>
-                      {{ opt }}
-                    </button>
+                        {{ opt }}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </template>
 
-              <!-- ── Block 3 Details ── -->
-              <template v-if="section.id === 'block-3-detail'">
-                <div class="space-y-4">
-                  <div class="flex flex-col gap-1.5">
-                    <Label for="dp-b3-cat" class="flex items-center gap-1.5">Block 3 Category <span class="text-destructive">*</span></Label>
-                    <Select v-model="form.block3Category">
-                      <SelectTrigger id="dp-b3-cat">
-                        <SelectValue placeholder="Choose category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem v-for="c in BLOCK_CATEGORIES" :key="c" :value="c">{{ c }}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <template v-if="form.didYouDoAThirdTypeOfWorkToday === 'Yes'">
                     <div class="flex flex-col gap-1.5">
-                      <Label for="dp-b3-hours" class="text-xs">Production Hours <span class="text-destructive">*</span></Label>
-                      <p class="text-[10px] text-muted-foreground -mt-1">Use 1/4 hr increments</p>
-                      <Input id="dp-b3-hours" v-model.number="form.productionHoursBlock3" type="number" min="0" step="0.25" placeholder="0.00" />
+                      <Label for="dp-b3-cat" class="flex items-center gap-1.5">Category <span class="text-destructive">*</span></Label>
+                      <Select v-model="form.block3Category">
+                        <SelectTrigger id="dp-b3-cat">
+                          <SelectValue placeholder="Choose category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem v-for="c in BLOCK_CATEGORIES" :key="c" :value="c">{{ c }}</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div class="flex flex-col gap-1.5">
-                      <Label for="dp-b3-sqft" class="text-xs">Square Feet</Label>
-                      <p class="text-[10px] text-muted-foreground -mt-1">Installation, sanding, finishing</p>
-                      <Input id="dp-b3-sqft" v-model.number="form.squareFeetCompletedBlock3" type="number" min="0" placeholder="0" />
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div class="flex flex-col gap-1.5">
+                        <Label for="dp-b3-hours" class="text-xs">Production Hours <span class="text-destructive">*</span></Label>
+                        <p class="text-[10px] text-muted-foreground -mt-1">1/4 hr increments</p>
+                        <Input id="dp-b3-hours" v-model.number="form.productionHoursBlock3" type="number" min="0" step="0.25" placeholder="0.00" />
+                      </div>
+                      <div class="flex flex-col gap-1.5">
+                        <Label for="dp-b3-sqft" class="text-xs">Square Feet</Label>
+                        <p class="text-[10px] text-muted-foreground -mt-1">Installation, sanding, finishing</p>
+                        <Input id="dp-b3-sqft" v-model.number="form.squareFeetCompletedBlock3" type="number" min="0" placeholder="0" />
+                      </div>
+                      <div class="flex flex-col gap-1.5">
+                        <Label for="dp-b3-lft" class="text-xs">Linear Feet</Label>
+                        <p class="text-[10px] text-muted-foreground -mt-1">Edging, trim, shoe, base</p>
+                        <Input id="dp-b3-lft" v-model.number="form.linearFeetCompletedBlock3" type="number" min="0" placeholder="0" />
+                      </div>
+                      <div class="flex flex-col gap-1.5">
+                        <Label for="dp-b3-count" class="text-xs">Count</Label>
+                        <p class="text-[10px] text-muted-foreground -mt-1">Vents, stairs, boards</p>
+                        <Input id="dp-b3-count" v-model.number="form.countBlock3" type="number" min="0" placeholder="0" />
+                      </div>
                     </div>
-                    <div class="flex flex-col gap-1.5">
-                      <Label for="dp-b3-lft" class="text-xs">Linear Feet</Label>
-                      <p class="text-[10px] text-muted-foreground -mt-1">Edging, trim, shoe, base</p>
-                      <Input id="dp-b3-lft" v-model.number="form.linearFeetCompletedBlock3" type="number" min="0" placeholder="0" />
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                      <Label for="dp-b3-count" class="text-xs">Count</Label>
-                      <p class="text-[10px] text-muted-foreground -mt-1">Vents, stairs, boards</p>
-                      <Input id="dp-b3-count" v-model.number="form.countBlock3" type="number" min="0" placeholder="0" />
-                    </div>
-                  </div>
+                  </template>
                 </div>
               </template>
 
