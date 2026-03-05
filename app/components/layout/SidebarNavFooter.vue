@@ -11,7 +11,10 @@ defineProps<{
 
 const { isMobile, setOpenMobile } = useSidebar()
 
-function handleLogout() {
+async function handleLogout() {
+  try { await $fetch('/api/auth/logout', { method: 'POST' }) } catch {}
+  const userCookie = useCookie('hardwood_user')
+  userCookie.value = null
   navigateTo('/login')
 }
 
@@ -73,9 +76,9 @@ const showModalTheme = ref(false)
               Account
             </DropdownMenuItem>
             <DropdownMenuItem as-child>
-              <NuxtLink to="/settings" @click="setOpenMobile(false)">
+              <NuxtLink to="/general-settings" @click="setOpenMobile(false)">
                 <Icon name="i-lucide-settings" />
-                Settings
+                General Settings
               </NuxtLink>
             </DropdownMenuItem>
             <DropdownMenuItem>

@@ -399,8 +399,8 @@ async function deleteSelected() {
           :key="emp._id"
           class="group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 relative"
           :class="selectedEmployeeId === emp._id
-            ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+            : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'"
           @click="selectedEmployeeId = emp._id"
         >
           <img

@@ -9,24 +9,18 @@ defineProps<{
     class="relative flex items-center justify-center px-4 h-dvh lg:max-w-none lg:px-0"
     :class="{ 'flex-row-reverse': reverse }"
   >
-    <div class="relative hidden h-full flex-1 flex-col bg-muted p-10 text-white lg:flex dark:border-r">
-      <div class="absolute inset-0 bg-zinc-900" />
-      <div class="relative z-20 flex items-center text-lg font-medium gap-2">
-        <img src="/logo-192.png" alt="Hardwood Hub" class="size-7 rounded-md" />
-        Hardwood Hub
-      </div>
+    <div class="relative hidden h-full flex-[2] flex-col p-10 text-white lg:flex dark:border-r overflow-hidden">
+      <img src="/hardwood image.png" alt="" class="absolute inset-0 w-full h-full object-cover object-center" />
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
       <div class="relative z-20 mt-auto">
         <blockquote class="space-y-2">
           <p class="text-lg">
-            &ldquo;Hardwood Hub has transformed how we manage our entire business — from CRM to inventory to finance, all in one beautiful platform.&rdquo;
+            &ldquo;Manage employee skills, track performance across categories, and streamline workforce development — all from one powerful, intuitive platform.&rdquo;
           </p>
-          <footer class="text-sm">
-            Adeel Jabbar, Founder
-          </footer>
         </blockquote>
       </div>
     </div>
-    <div class="mx-auto flex-1 lg:p-8">
+    <div class="mx-auto flex-[3] lg:p-16">
       <slot />
     </div>
   </div>

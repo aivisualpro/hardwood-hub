@@ -67,7 +67,6 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/components': { redirect: '/components/accordion' },
-    '/settings': { redirect: '/settings/profile' },
   },
 
   imports: {
@@ -81,6 +80,11 @@ export default defineNuxtConfig({
     cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
     cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
+    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    sessionSecret: process.env.SESSION_SECRET || 'hardwood-hub-default-secret-change-in-production',
+    public: {
+      googleClientId: process.env.GOOGLE_CLIENT_ID,
+    },
   },
 
   compatibilityDate: '2024-12-14',

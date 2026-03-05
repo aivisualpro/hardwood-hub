@@ -41,6 +41,16 @@ export const navMenu: NavMenu[] = [
       },
     ],
   },
+  {
+    heading: '',
+    items: [
+      {
+        title: 'My Profile',
+        icon: 'i-lucide-user-circle',
+        link: '/my-profile',
+      },
+    ],
+  },
 ]
 
 export const navMenuConcepts: NavMenu = {
@@ -104,4 +114,10 @@ export const navMenuConcepts: NavMenu = {
   ],
 }
 
-export const navMenuBottom: NavMenuItems = []
+export const navMenuBottom: NavMenuItems = [
+  {
+    title: 'General Settings',
+    icon: 'i-lucide-settings',
+    link: '/general-settings',
+  },
+]

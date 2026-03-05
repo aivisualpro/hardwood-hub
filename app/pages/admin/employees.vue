@@ -15,6 +15,7 @@ interface Employee {
   email: string
   position: string
   profileImage: string
+  status: string
   createdAt?: string
 }
 
@@ -34,6 +35,7 @@ const emptyForm = () => ({
   email: '',
   position: '',
   profileImage: '',
+  status: 'Active',
 })
 
 const form = ref(emptyForm())
@@ -111,7 +113,7 @@ function openCreate() {
 }
 
 function openEdit(emp: Employee) {
-  form.value = { employee: emp.employee, email: emp.email, position: emp.position, profileImage: emp.profileImage }
+  form.value = { employee: emp.employee, email: emp.email, position: emp.position, profileImage: emp.profileImage, status: emp.status || 'Active' }
   editId.value = emp._id
   previewUrl.value = emp.profileImage
   isEditing.value = true
@@ -163,6 +165,20 @@ async function deleteEmployee() {
   }
 }
 
+// ─── Toggle Status ────────────────────────────────────────
+async function toggleStatus(emp: Employee) {
+  const newStatus = emp.status === 'Active' ? 'Inactive' : 'Active'
+  const prev = emp.status
+  emp.status = newStatus // optimistic
+  try {
+    await $fetch(`/api/employees/${emp._id}`, { method: 'PUT', body: { status: newStatus } })
+    notify('Status updated', `${emp.employee} is now ${newStatus}`)
+  }
+  catch (e: any) {
+    emp.status = prev
+    notify('Error', e?.message || 'Failed to update status', 'destructive')
+  }
+}
 
 </script>
 
@@ -231,10 +247,33 @@ async function deleteEmployee() {
           <p class="font-semibold text-sm truncate">{{ emp.employee }}</p>
           <Badge variant="secondary" class="mx-auto text-xs">{{ emp.position }}</Badge>
           <p class="text-xs text-muted-foreground truncate mt-1">{{ emp.email }}</p>
+          <div class="flex items-center justify-center gap-1.5 mt-1.5">
+            <span
+              class="size-2 rounded-full"
+              :class="emp.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'"
+            />
+            <span
+              class="text-[10px] font-semibold"
+              :class="emp.status === 'Active' ? 'text-emerald-400' : 'text-muted-foreground'"
+            >
+              {{ emp.status || 'Active' }}
+            </span>
+          </div>
         </div>
 
         <!-- Actions (visible on hover) -->
-        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
+        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
+          <Button
+            variant="ghost" size="icon" class="size-7"
+            :title="emp.status === 'Active' ? 'Deactivate' : 'Activate'"
+            @click="toggleStatus(emp)"
+          >
+            <Icon
+              :name="emp.status === 'Active' ? 'i-lucide-user-x' : 'i-lucide-user-check'"
+              class="size-3.5"
+              :class="emp.status === 'Active' ? 'text-amber-400' : 'text-emerald-400'"
+            />
+          </Button>
           <Button variant="ghost" size="icon" class="size-7" @click="openEdit(emp)">
             <Icon name="i-lucide-pencil" class="size-3.5" />
           </Button>
