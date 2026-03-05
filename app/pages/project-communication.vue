@@ -18,10 +18,10 @@ const emptyForm = () => ({
   pleaseMarkIfThisProjectIsFullyCompleteOrNot: '',
   leaveAnyNotesAboutThingsThatStillNeedToBeDoneForFutureCrews: '',
   whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply: [] as string[],
-  gradeOfFlooring: '',
-  widthOfFlooring: '',
-  cutOfFlooring: '',
-  fidBox: '',
+  gradeOfFlooring: [] as string[],
+  widthOfFlooring: [] as string[],
+  cutOfFlooring: [] as string[],
+  fidBox: [] as string[],
   stain: '',
   ifMixWhatColorsAndRatio: '',
   whatSealerWasUsed: '',
@@ -47,8 +47,9 @@ const technicianOptions = ['Jacob', 'Jordan', 'Tom', 'Ian']
 const completionOptions = ['Still in Progress', 'Fully Complete']
 const woodSpeciesOptions = ['Birch', 'Beech', 'Cherry', 'Douglas Fir', 'Hickory', 'Jatoba', 'Maple', 'Red Oak', 'Red & White Oak Mix', 'White Oak', 'Yellow Pine', 'Vinyl', 'Other']
 const gradeOptions = ['Clear', 'Select & Better', '#1 Common', '#2 Common', '1st Grade "Maple only"', '2nd Grade "Maple only"']
-const widthOptions = ['2 1/4"', '3 1/4"', '4"', '5"', '6"', '7"', '8"', 'Other']
-const cutOptions = ['Plain Sawn', 'Quarter Sawn', 'Rift Sawn', 'Rift & Quarter', 'Other']
+const widthOptions = ['1 1/2"', '2 1/4"', '3"', '3 1/4"', '4"', '5"', '6"', '7"', '8"', '9"', '10"']
+const cutOptions = ['Plain Sawn', 'Live Sawn aka "Euro sawn"', 'Rift Sawn', 'Quarter Sawn', 'Rift & Quarter Sawn']
+const fidBoxOptions = ['No Fid box installed', 'Fid box Installed', 'Customer has app and has been given access to fid box']
 const sheenOptions = ['Matte', 'Satin', 'Semi-Gloss', 'Gloss']
 const ratingOptions = ['1', '2', '3', '4', '5']
 const yesNoOptions = ['Yes', 'No']
@@ -81,10 +82,10 @@ const sections = computed(() => [
     icon: 'i-lucide-trees',
     fields: [
       { key: 'whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply', label: 'What type of wood/flooring was used on the project — select all that apply', type: 'multi-chips', options: woodSpeciesOptions },
-      { key: 'gradeOfFlooring', label: 'Grade of flooring', type: 'chips', options: gradeOptions },
-      { key: 'widthOfFlooring', label: 'Width of flooring', type: 'chips', options: widthOptions },
-      { key: 'cutOfFlooring', label: 'Cut of flooring', type: 'chips', options: cutOptions },
-      { key: 'fidBox', label: 'FID Box', type: 'input' },
+      { key: 'gradeOfFlooring', label: 'Grade of flooring', type: 'multi-chips', options: gradeOptions },
+      { key: 'widthOfFlooring', label: 'Width of flooring', type: 'multi-chips', options: widthOptions },
+      { key: 'cutOfFlooring', label: 'Cut of flooring', type: 'multi-chips', options: cutOptions },
+      { key: 'fidBox', label: 'Fid Box', type: 'multi-chips', options: fidBoxOptions },
     ]
   },
   {

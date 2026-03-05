@@ -5,10 +5,10 @@ export interface IProjectCommunication extends Document {
     pleaseMarkIfThisProjectIsFullyCompleteOrNot?: string
     leaveAnyNotesAboutThingsThatStillNeedToBeDoneForFutureCrews?: string
     whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply?: string[]
-    gradeOfFlooring?: string
-    widthOfFlooring?: string
-    cutOfFlooring?: string
-    fidBox?: string
+    gradeOfFlooring?: string[]
+    widthOfFlooring?: string[]
+    cutOfFlooring?: string[]
+    fidBox?: string[]
     stain?: string
     ifMixWhatColorsAndRatio?: string
     whatSealerWasUsed?: string
@@ -34,10 +34,10 @@ const ProjectCommunicationSchema = new Schema(
         pleaseMarkIfThisProjectIsFullyCompleteOrNot: { type: String, default: '' },
         leaveAnyNotesAboutThingsThatStillNeedToBeDoneForFutureCrews: { type: String, default: '' },
         whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply: { type: [String], default: [] },
-        gradeOfFlooring: { type: String, default: '' },
-        widthOfFlooring: { type: String, default: '' },
-        cutOfFlooring: { type: String, default: '' },
-        fidBox: { type: String, default: '' },
+        gradeOfFlooring: { type: [String], default: [] },
+        widthOfFlooring: { type: [String], default: [] },
+        cutOfFlooring: { type: [String], default: [] },
+        fidBox: { type: [String], default: [] },
         stain: { type: String, default: '' },
         ifMixWhatColorsAndRatio: { type: String, default: '' },
         whatSealerWasUsed: { type: String, default: '' },
