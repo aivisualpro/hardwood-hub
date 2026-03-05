@@ -1,7 +1,7 @@
 // GET /api/auth/me — return current authenticated user from session
 import { connectDB } from '../../utils/mongoose'
 import { Employee } from '../../models/Employee'
-import { verifySessionToken } from '../../utils/session'
+import { verifySessionToken } from '../../lib/session'
 
 export default defineEventHandler(async (event) => {
     const token = getCookie(event, 'hardwood_session')

@@ -1,7 +1,7 @@
 // POST /api/auth/google — verify Google credential and create a session
 import { connectDB } from '../../utils/mongoose'
 import { Employee } from '../../models/Employee'
-import { createSessionToken } from '../../utils/session'
+import { createSessionToken } from '../../lib/session'
 
 // Verify Google ID token via Google's tokeninfo endpoint
 async function verifyGoogleToken(credential: string): Promise<{
