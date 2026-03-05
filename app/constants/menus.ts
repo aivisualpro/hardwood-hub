@@ -27,6 +27,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-bar-chart-3',
         link: '/admin/employee-performance',
       },
+      {
+        title: 'Activities',
+        icon: 'i-lucide-activity',
+        link: '/admin/activities',
+      },
     ],
   },
   {
