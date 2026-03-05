@@ -22,6 +22,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-graduation-cap',
         link: '/admin/skills',
       },
+      {
+        title: 'Employee Performance',
+        icon: 'i-lucide-bar-chart-3',
+        link: '/admin/employee-performance',
+      },
     ],
   },
   {

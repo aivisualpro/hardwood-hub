@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
 
     if (event.method === 'PUT') {
         const body = await readBody(event)
-        const updated = await Employee.findByIdAndUpdate(id, body, { new: true, runValidators: true }).lean()
+        const updated = await Employee.findByIdAndUpdate(id, body, { returnDocument: 'after', runValidators: true }).lean()
         if (!updated) throw createError({ statusCode: 404, message: 'Employee not found' })
         return { success: true, data: updated }
     }

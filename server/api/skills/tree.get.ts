@@ -36,6 +36,10 @@ export default defineEventHandler(async () => {
                     description: sub.description || '',
                     icon: sub.icon || '',
                     category: catId,
+                    predecessor: sub.predecessor || '',
+                    predecessorName: sub.predecessor
+                        ? (subCategories.find((s: any) => String(s._id) === String(sub.predecessor))?.subCategory ?? '')
+                        : '',
                     skills: subSkills.map((sk: any) => ({
                         _id: String(sk._id),
                         name: sk.skill,         // normalised to 'name' for frontend

@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
         if (body.category !== undefined) update.category = body.category
         if (body.subCategory !== undefined) update.subCategory = body.subCategory
 
-        const updated = await Skill.findByIdAndUpdate(id, update, { new: true, returnDocument: 'after' }).lean()
+        const updated = await Skill.findByIdAndUpdate(id, update, { returnDocument: 'after' }).lean()
         if (!updated) throw createError({ statusCode: 404, message: 'Skill not found' })
         return { success: true, data: updated }
     }
