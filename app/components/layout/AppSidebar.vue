@@ -22,7 +22,7 @@ const teams: {
   plan: string
 }[] = [
   {
-    name: 'AI Visual Pro',
+    name: 'Hardwood Hub',
     logo: 'i-lucide-gallery-vertical-end',
     plan: 'Enterprise',
   },
@@ -44,7 +44,7 @@ const user: {
   avatar: string
 } = {
   name: 'Adeel Jabbar',
-  email: 'adeel@aivisualpro.com',
+  email: 'adeel@hardwoodhub.com',
   avatar: '/avatars/adeel.png',
 }
 

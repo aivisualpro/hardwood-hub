@@ -42,19 +42,19 @@ useHead({
   },
 })
 
-const title = 'AI Visual Pro — Enterprise ERP & CRM Platform'
-const description = 'A comprehensive enterprise resource planning and CRM platform by AI Visual Pro. Built with Nuxt 4, Shadcn Vue, and TailwindCSS — featuring 12+ modules, full CRUD, dark mode, and multi-theme support.'
+const title = 'Hardwood Hub — Enterprise ERP & CRM Platform'
+const description = 'A comprehensive enterprise resource planning and CRM platform by Hardwood Hub. Built with Nuxt 4, Shadcn Vue, and TailwindCSS — featuring 12+ modules, full CRUD, dark mode, and multi-theme support.'
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
-  ogUrl: 'https://aivisualpro.com',
-  ogImage: 'https://aivisualpro.com/social-card.png',
+  ogUrl: 'https://hardwoodhub.com',
+  ogImage: 'https://hardwoodhub.com/social-card.png',
   twitterTitle: title,
   twitterDescription: description,
-  twitterImage: 'https://aivisualpro.com/social-card.png',
+  twitterImage: 'https://hardwoodhub.com/social-card.png',
   twitterCard: 'summary_large_image',
 })
 
