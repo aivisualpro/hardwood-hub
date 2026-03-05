@@ -56,8 +56,8 @@ const firstCoatOptions = ['Power', 'Easy finish', 'Duo', 'Emulsion', 'Magic Oil'
 const finalCoatOptions = ['Power', 'Gold', 'Emulsion', 'Easy finish', 'Duo', 'Supra AT', 'Invisible', 'Anti Slip', 'Prefinished', 'N/A']
 const sheenOptions = ['Ultra Matte', 'Matte', 'Satin', 'Semi Gloss', 'Invisible']
 const additivesOptions = ['None', 'Whitener 1st coat', 'Whitener 1st & 2nd coat', 'Whitener all 3 coats', 'Amberizer 1st coat', 'Amberizer 1st & 2nd coat', 'Amberizer all 3 coats']
-const ratingOptions = ['1', '2', '3', '4', '5']
-const yesNoOptions = ['Yes', 'No']
+const ratingOptions = ['1', '2', '3', '4', '5', 'N/A']
+const yesNoOptions = ['Yes', 'No', 'N/A']
 
 // ─── Sections Definition for Checklist ─────────────────
 const sections = computed(() => [
@@ -109,29 +109,45 @@ const sections = computed(() => [
     ]
   },
   {
-    id: 'task-tracking',
-    title: 'Task & Change Order Tracking',
-    description: 'Track QC task completion and any change orders',
+    id: 'qc-tasks',
+    title: 'All Tasks assigned to project lead from QC are completed',
+    description: 'Confirm all quality control tasks have been completed',
     icon: 'i-lucide-clipboard-check',
     fields: [
-      { key: 'allTasksAssignedToProjectLeadFromQcAreCompleted', label: 'All tasks assigned to project lead from QC are completed?', type: 'chips', options: yesNoOptions },
-      { key: 'ifNoWhatNeedsToBeDone', label: 'If no, what needs to be done?', type: 'textarea' },
-      { key: 'wasThereAChangeOrderFilledOut', label: 'Was there a change order filled out?', type: 'chips', options: yesNoOptions },
-      { key: 'wasThereAnyWorkAdded', label: 'Was there any work added?', type: 'chips', options: yesNoOptions },
-      { key: 'wasThereAnyWorkNotCompletedThatShouldBeRemovedFromTheInvoice', label: 'Was there any work not completed that should be removed from the invoice?', type: 'chips', options: yesNoOptions },
-      { key: 'listAnyWorkRemovedOrAddedPleaseGiveAsMuchDetailAsPossibleForBilling', label: 'List any work removed or added — provide as much detail as possible for billing', type: 'textarea' },
+      { key: 'allTasksAssignedToProjectLeadFromQcAreCompleted', label: 'All Tasks assigned to project lead from QC are completed', type: 'chips', options: yesNoOptions },
+      { key: 'ifNoWhatNeedsToBeDone', label: 'If no what needs to be done', type: 'textarea' },
     ]
   },
   {
-    id: 'project-review',
-    title: 'Project Review',
-    description: 'Rate your team\'s performance and client interactions',
-    icon: 'i-lucide-star',
+    id: 'invoice-changes',
+    title: 'Changes to the invoice',
+    description: 'Fill out this section to inform any changes',
+    icon: 'i-lucide-file-edit',
     fields: [
-      { key: 'howWouldYouRateYourTeamsPerformanceOnThisProject', label: 'How would you rate your team\'s performance on this project?', type: 'chips', options: ratingOptions },
-      { key: 'howWouldYouRateYourInteractionsWithTheClient', label: 'How would you rate your interactions with the client?', type: 'chips', options: ratingOptions },
-      { key: 'didYouTakeFinalPictures', label: 'Did you take final pictures?', type: 'chips', options: yesNoOptions },
-      { key: 'anyOtherNotesAboutThisProject', label: 'Any other notes about this project', type: 'textarea' },
+      { key: 'wasThereAChangeOrderFilledOut', label: 'Was there a change order filled out?', type: 'chips', options: yesNoOptions },
+      { key: 'wasThereAnyWorkAdded', label: 'Was there any work added', type: 'chips', options: yesNoOptions },
+      { key: 'wasThereAnyWorkNotCompletedThatShouldBeRemovedFromTheInvoice', label: 'Was there any work not completed that should be removed from the invoice', type: 'chips', options: yesNoOptions },
+      { key: 'listAnyWorkRemovedOrAddedPleaseGiveAsMuchDetailAsPossibleForBilling', label: 'List any work removed or added, please give as much detail as possible for billing', type: 'textarea' },
+    ]
+  },
+  {
+    id: 'notes-feedback',
+    title: 'Notes and feed back',
+    description: 'Please fill out any feed back about this project',
+    icon: 'i-lucide-message-circle',
+    fields: [
+      { key: 'howWouldYouRateYourTeamsPerformanceOnThisProject', label: 'How would you rate your teams performance on this Project', type: 'chips', options: ratingOptions },
+      { key: 'howWouldYouRateYourInteractionsWithTheClient', label: 'How would you rate your interactions with the client', type: 'chips', options: ratingOptions },
+      { key: 'anyOtherNotesAboutThisProject', label: 'Any other notes about this Project', type: 'textarea' },
+    ]
+  },
+  {
+    id: 'pictures',
+    title: 'Pictures',
+    description: 'Photos Required',
+    icon: 'i-lucide-camera',
+    fields: [
+      { key: 'didYouTakeFinalPictures', label: 'Did you take final pictures', type: 'chips', options: yesNoOptions },
     ]
   },
 ])
