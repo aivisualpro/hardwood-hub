@@ -1,5 +1,5 @@
 // Server middleware: protect all API routes (except /api/auth/*) with session verification
-import { verifySessionToken } from '../api/auth/google.post'
+import { verifySessionToken } from '../utils/session'
 
 export default defineEventHandler((event) => {
     const path = event.path || ''
