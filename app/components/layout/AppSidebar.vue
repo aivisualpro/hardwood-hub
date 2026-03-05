@@ -16,32 +16,44 @@ function getHeading(nav: { heading: string, headingKey?: string }) {
   return nav.headingKey ? t(nav.headingKey as TranslationKey) : nav.heading
 }
 
-const teams: {
-  name: string
-  logo: string
-  plan: string
-}[] = [
-  {
-    name: 'Admin Workspace',
-    logo: 'i-lucide-shield-check',
-    plan: 'Full Access',
+const { data: workspacesRes } = await useFetch('/api/workspaces')
+const teams = computed(() => workspacesRes.value?.data || [])
+
+const activeTeamId = useCookie<string>('active_workspace_id')
+const activeTeam = computed({
+  get() {
+    const t = teams.value.find((t: any) => t._id === activeTeamId.value)
+    return t || teams.value[0] || { name: 'Admin Workspace', logo: 'i-lucide-shield-check', plan: 'Full Access', allowedMenus: ['*'] }
   },
-  {
-    name: 'Crew Member Workspace',
-    logo: 'i-lucide-hard-hat',
-    plan: 'Field View',
-  },
-  {
-    name: 'Supervisor Workspace',
-    logo: 'i-lucide-clipboard-list',
-    plan: 'Team Lead',
-  },
-  {
-    name: 'Finance Workspace',
-    logo: 'i-lucide-landmark',
-    plan: 'Finance Access',
-  },
-]
+  set(val: any) {
+    activeTeamId.value = val._id
+  }
+})
+
+function isAllowed(link?: string) {
+  if (!link) return false
+  const allowed = activeTeam.value?.allowedMenus || []
+  if (allowed.includes('*')) return true
+  return allowed.includes(link)
+}
+
+const filteredNavMenu = computed(() => {
+  return navMenu.map(group => ({
+    ...group,
+    items: group.items.filter((item: any) => isAllowed(item.link))
+  })).filter(group => group.items.length > 0)
+})
+
+const filteredNavMenuConcepts = computed(() => {
+  return {
+    ...navMenuConcepts,
+    items: navMenuConcepts.items.filter((item: any) => isAllowed(item.link))
+  }
+})
+
+const filteredNavMenuBottom = computed(() => {
+  return navMenuBottom.filter((item: any) => isAllowed(item.link))
+})
 
 const userCookie = useCookie<{ employee: string, email: string, position: string, profileImage: string } | null>('hardwood_user')
 
@@ -61,24 +73,24 @@ const { sidebar } = useAppSettings()
 <template>
   <Sidebar :collapsible="sidebar?.collapsible" :side="sidebar?.side" :variant="sidebar?.variant">
     <SidebarHeader>
-      <LayoutSidebarNavHeader :teams="teams" />
+      <LayoutSidebarNavHeader v-model="activeTeam" :teams="teams" />
       <Search />
     </SidebarHeader>
     <SidebarContent>
-      <SidebarGroup v-for="(nav, indexGroup) in navMenu" :key="indexGroup">
+      <SidebarGroup v-for="(nav, indexGroup) in filteredNavMenu" :key="indexGroup">
         <SidebarGroupLabel v-if="nav.heading">
           {{ getHeading(nav) }}
         </SidebarGroupLabel>
         <component :is="resolveNavItemComponent(item)" v-for="(item, index) in nav.items" :key="index" :item="item" />
       </SidebarGroup>
-      <SidebarGroup class="mt-auto">
-        <SidebarGroupLabel v-if="navMenuConcepts.heading">
-          {{ getHeading(navMenuConcepts) }}
+      <SidebarGroup v-if="filteredNavMenuConcepts.items?.length" class="mt-auto">
+        <SidebarGroupLabel v-if="filteredNavMenuConcepts.heading">
+          {{ getHeading(filteredNavMenuConcepts) }}
         </SidebarGroupLabel>
-        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in navMenuConcepts.items" :key="index" :item="item" />
+        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in filteredNavMenuConcepts.items" :key="index" :item="item" />
       </SidebarGroup>
-      <SidebarGroup v-if="navMenuBottom.length">
-        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in navMenuBottom" :key="index" :item="item" size="sm" />
+      <SidebarGroup v-if="filteredNavMenuBottom.length">
+        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in filteredNavMenuBottom" :key="index" :item="item" size="sm" />
       </SidebarGroup>
     </SidebarContent>
     <SidebarFooter>

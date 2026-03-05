@@ -3,15 +3,24 @@ import { useSidebar } from '~/components/ui/sidebar'
 
 const props = defineProps<{
   teams: {
+    _id: string
     name: string
     logo: string
     plan: string
   }[]
+  modelValue?: any
+}>()
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: any): void
 }>()
 
 const { isMobile } = useSidebar()
 
-const activeTeam = ref(props.teams[0])
+const activeTeam = computed({
+  get: () => props.modelValue || props.teams[0],
+  set: (val) => emit('update:modelValue', val)
+})
 </script>
 
 <template>
@@ -56,12 +65,12 @@ const activeTeam = ref(props.teams[0])
             <DropdownMenuShortcut>⌘{{ index + 1 }}</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem class="gap-2 p-2">
+          <DropdownMenuItem class="gap-2 p-2" @click="navigateTo('/general-settings')">
             <div class="size-6 flex items-center justify-center border rounded-md bg-background">
-              <Icon name="i-lucide-plus" class="size-4" />
+              <Icon name="i-lucide-settings" class="size-4" />
             </div>
             <div class="text-muted-foreground font-medium">
-              Add workspace
+              Manage Workspaces
             </div>
           </DropdownMenuItem>
         </DropdownMenuContent>

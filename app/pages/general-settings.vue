@@ -13,6 +13,15 @@ interface SkillBonusRecord {
   bonusAmount: number
 }
 
+interface WorkspaceRecord {
+  _id: string
+  name: string
+  logo: string
+  plan: string
+  allowedMenus: string[]
+  isLocked: boolean
+}
+
 // ─── State ───────────────────────────────────────────────
 const activeTab = ref('skill-bonus')
 const records = ref<SkillBonusRecord[]>([])
@@ -32,9 +41,24 @@ const emptyForm = () => ({
 })
 const form = ref(emptyForm())
 
+// ─── Workspace State ─────────────────────────────────────
+const workspaces = ref<WorkspaceRecord[]>([])
+const loadingWp = ref(true)
+const showWpModal = ref(false)
+const savingWp = ref(false)
+const editingWpId = ref<string | null>(null)
+
+const emptyWpForm = () => ({
+  name: '',
+  logo: 'i-lucide-building',
+  plan: '',
+  allowedMenus: [] as string[]
+})
+const wpForm = ref(emptyWpForm())
+
 const tabs = [
   { id: 'skill-bonus', label: 'Skill Bonus', icon: 'i-lucide-trophy' },
-  { id: 'other', label: 'Other', icon: 'i-lucide-sliders-horizontal' },
+  { id: 'workspaces', label: 'Workspaces', icon: 'i-lucide-network' },
 ]
 
 // ─── Fetch ───────────────────────────────────────────────
@@ -49,7 +73,23 @@ async function fetchRecords() {
   }
   finally { loading.value = false }
 }
-onMounted(fetchRecords)
+
+async function fetchWorkspaces() {
+  loadingWp.value = true
+  try {
+    const res = await $fetch<{ success: boolean, data: WorkspaceRecord[] }>('/api/workspaces')
+    workspaces.value = res.data
+  }
+  catch (e: any) {
+    toast.error('Failed to load workspaces', { description: e?.message })
+  }
+  finally { loadingWp.value = false }
+}
+
+onMounted(() => {
+  fetchRecords()
+  fetchWorkspaces()
+})
 
 // ─── Open modals ─────────────────────────────────────────
 function openCreate() {
@@ -107,6 +147,60 @@ async function deleteRecord(id: string) {
   }
 }
 
+// ─── Workspace Modal Utils ───────────────────────────────
+function openWpCreate() {
+  wpForm.value = emptyWpForm()
+  editingWpId.value = null
+  showWpModal.value = true
+}
+
+function openWpEdit(rec: WorkspaceRecord) {
+  wpForm.value = {
+    name: rec.name,
+    logo: rec.logo,
+    plan: rec.plan,
+    allowedMenus: [...rec.allowedMenus]
+  }
+  editingWpId.value = rec._id
+  showWpModal.value = true
+}
+
+async function saveWorkspace() {
+  if (!wpForm.value.name) return toast.error('Workspace name is required')
+  savingWp.value = true
+  try {
+    if (editingWpId.value) {
+      await $fetch(`/api/workspaces/${editingWpId.value}`, { method: 'PUT', body: wpForm.value })
+      toast.success('Workspace updated')
+    }
+    else {
+      await $fetch('/api/workspaces', { method: 'POST', body: wpForm.value })
+      toast.success('Workspace created')
+    }
+    showWpModal.value = false
+    await fetchWorkspaces()
+    
+    // Refresh the page to reload the dynamic sidebar
+    if (editingWpId.value) {
+      setTimeout(() => location.reload(), 500)
+    }
+  }
+  catch (e: any) {
+    toast.error('Save failed', { description: e?.message })
+  }
+  finally { savingWp.value = false }
+}
+
+async function deleteWorkspace(id: string) {
+  try {
+    await $fetch(`/api/workspaces/${id}`, { method: 'DELETE' })
+    toast.success('Workspace deleted')
+    await fetchWorkspaces()
+  } catch (e: any) {
+    toast.error('Delete failed', { description: e?.message })
+  }
+}
+
 // ─── Level color helpers ─────────────────────────────────
 function levelColor(lvl: string) {
   if (lvl === 'Mastered') return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
@@ -114,6 +208,65 @@ function levelColor(lvl: string) {
   if (lvl === 'Needs Improvement') return 'bg-amber-500/15 text-amber-400 border-amber-500/30'
   return 'bg-muted text-muted-foreground border-border/40'
 }
+
+import { navMenu, navMenuConcepts, navMenuBottom } from '~/constants/menus'
+
+const availableMenus = computed(() => {
+  const menus: { id: string, title: string, group: string }[] = []
+  
+  navMenu.forEach(group => {
+    group.items.forEach((item: any) => {
+      menus.push({ id: item.link, title: item.title, group: group.heading || 'Admin' })
+    })
+  })
+  
+  navMenuConcepts.items.forEach((item: any) => {
+    menus.push({ id: item.link, title: item.title, group: navMenuConcepts.heading })
+  })
+  
+  navMenuBottom.forEach((item: any) => {
+    menus.push({ id: item.link, title: item.title, group: 'System Controls' })
+  })
+  
+  return menus
+})
+
+const menusByGroup = computed(() => {
+  const map = new Map<string, typeof availableMenus.value>()
+  for (const m of availableMenus.value) {
+    if (!map.has(m.group)) map.set(m.group, [])
+    map.get(m.group)!.push(m)
+  }
+  return Array.from(map.entries()).map(([group, items]) => ({ group, items }))
+})
+
+function hasAllInGroup(groupItems: any[]) {
+   return groupItems.every(i => wpForm.value.allowedMenus.includes(i.id))
+}
+function toggleGroup(groupItems: any[]) {
+   if (hasAllInGroup(groupItems)) {
+      wpForm.value.allowedMenus = wpForm.value.allowedMenus.filter(m => !groupItems.some(i => i.id === m))
+   } else {
+      for (const i of groupItems) {
+         if (!wpForm.value.allowedMenus.includes(i.id)) {
+            wpForm.value.allowedMenus.push(i.id)
+         }
+      }
+   }
+}
+
+const WpIconsList = [
+  'i-lucide-shield-check',
+  'i-lucide-hard-hat',
+  'i-lucide-user',
+  'i-lucide-users',
+  'i-lucide-clipboard-list',
+  'i-lucide-landmark',
+  'i-lucide-activity',
+  'i-lucide-building',
+  'i-lucide-box',
+  'i-lucide-briefcase',
+]
 </script>
 <template>
   <div class="flex gap-0 -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden">
@@ -152,6 +305,10 @@ function levelColor(lvl: string) {
         <Button v-if="activeTab === 'skill-bonus'" size="sm" @click="openCreate">
           <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
           Add Rule
+        </Button>
+        <Button v-if="activeTab === 'workspaces'" size="sm" @click="openWpCreate">
+          <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
+          Add Workspace
         </Button>
       </div>
 
@@ -290,16 +447,65 @@ function levelColor(lvl: string) {
           </div>
         </template>
 
-        <!-- ═══════ OTHER TAB ═══════ -->
-        <template v-else-if="activeTab === 'other'">
-          <div class="flex flex-col items-center justify-center py-24 gap-4 text-center">
+        <!-- ═══════ WORKSPACES TAB ═══════ -->
+        <template v-else-if="activeTab === 'workspaces'">
+          <div v-if="loadingWp" class="space-y-3">
+             <div class="h-10 bg-muted/60 rounded-lg animate-pulse" />
+             <div v-for="i in 3" :key="i" class="h-16 bg-muted/40 rounded-lg animate-pulse" />
+          </div>
+
+          <div v-else-if="workspaces.length === 0" class="flex flex-col items-center justify-center py-24 gap-4 text-center">
             <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-              <Icon name="i-lucide-sliders-horizontal" class="size-8 text-primary" />
+              <Icon name="i-lucide-network" class="size-8 text-primary" />
             </div>
-            <h3 class="text-lg font-semibold">Other Settings</h3>
+            <h3 class="text-lg font-semibold">No Workspaces Found</h3>
             <p class="text-sm text-muted-foreground max-w-sm">
-              Additional configuration options will appear here as needed.
+              Create different workspaces to limit access to certain dashboard modules for your team.
             </p>
+            <Button @click="openWpCreate">
+              <Icon name="i-lucide-plus" class="mr-1.5 size-4" />
+              Create Workspace
+            </Button>
+          </div>
+
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div 
+              v-for="wp in workspaces" 
+              :key="wp._id"
+              class="relative rounded-xl border border-border/50 bg-card p-5 group flex flex-col min-h-[160px]"
+            >
+              <div v-if="wp.isLocked" class="absolute top-4 right-4" title="Admin Workspace is locked.">
+                 <Icon name="i-lucide-lock" class="size-4 text-amber-500/70" />
+              </div>
+              
+              <div class="flex items-center gap-4 mb-4">
+                <div class="size-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <Icon :name="wp.logo || 'i-lucide-building'" class="size-6 text-primary" />
+                </div>
+                <div>
+                  <h3 class="font-bold text-base line-clamp-1">{{ wp.name }}</h3>
+                  <p class="text-xs text-muted-foreground">{{ wp.plan || 'Workspace' }}</p>
+                </div>
+              </div>
+
+              <div class="mt-auto">
+                 <!-- Actions -->
+                 <div class="flex items-center gap-2 pt-4 border-t border-border/50">
+                    <Button variant="secondary" size="sm" class="flex-1" @click="openWpEdit(wp)">
+                      <Icon name="i-lucide-settings-2" class="mr-1.5 size-3.5" /> Configure
+                    </Button>
+                    <Button 
+                      v-if="!wp.isLocked"
+                      variant="outline" 
+                      size="sm" 
+                      class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      @click="deleteWorkspace(wp._id)"
+                    >
+                      <Icon name="i-lucide-trash-2" class="size-3.5" />
+                    </Button>
+                 </div>
+              </div>
+            </div>
           </div>
         </template>
 
@@ -362,6 +568,96 @@ function levelColor(lvl: string) {
           <Button :disabled="saving" @click="saveRecord">
             <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
             {{ editingId ? 'Save Changes' : 'Add Rule' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- ═══════ WORKSPACE MODAL ═══════ -->
+    <Dialog v-model:open="showWpModal">
+      <DialogContent class="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{{ editingWpId ? 'Configure Workspace' : 'Add Workspace' }}</DialogTitle>
+          <DialogDescription>
+             Define the scope of this workspace and toggle exactly which modules its members can access.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="flex flex-col gap-5 py-3 overflow-y-auto max-h-[65vh] pr-2">
+          
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Name -->
+            <div class="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
+              <Label for="wp-name">Workspace Name</Label>
+              <Input id="wp-name" v-model="wpForm.name" placeholder="Management Team" />
+            </div>
+            <!-- Plan Label -->
+            <div class="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
+              <Label for="wp-plan">Badge / Plan Name</Label>
+              <Input id="wp-plan" v-model="wpForm.plan" placeholder="Full Access" />
+            </div>
+          </div>
+
+          <!-- Logo -->
+          <div class="flex flex-col gap-2">
+            <Label>Workspace Icon</Label>
+            <div class="flex flex-wrap gap-2">
+               <button
+                 v-for="icon in WpIconsList" :key="icon"
+                 class="size-10 rounded-lg border flex items-center justify-center transition-all"
+                 :class="wpForm.logo === icon ? 'bg-primary text-primary-foreground border-primary shadow-sm ring-2 ring-primary/20' : 'bg-card text-muted-foreground border-border/50 hover:bg-muted'"
+                 @click="wpForm.logo = icon"
+               >
+                 <Icon :name="icon" class="size-5" />
+               </button>
+            </div>
+          </div>
+
+          <Separator class="my-1" />
+
+          <!-- Permissions Builder -->
+          <div class="flex flex-col gap-4">
+             <div>
+                <Label class="text-base font-semibold">Dashboard Menu Visibility</Label>
+                <p class="text-xs text-muted-foreground mt-0.5 mb-4">Toggle switches to allow these modules to render in the sidebar for this workspace.</p>
+             </div>
+
+             <!-- Render all grouped menus -->
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div v-for="g in menusByGroup" :key="g.group" class="rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
+                   <div class="px-4 py-2 bg-muted/30 border-b border-border/50 flex items-center justify-between">
+                      <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">{{ g.group }}</span>
+                      <button class="text-[10px] font-medium text-primary hover:underline uppercase" @click="toggleGroup(g.items)">
+                         {{ hasAllInGroup(g.items) ? 'Deselect All' : 'Select All' }}
+                      </button>
+                   </div>
+                   <div class="p-2 flex flex-col gap-1 text-sm bg-card">
+                      <label 
+                         v-for="item in g.items" 
+                         :key="item.id" 
+                         class="group flex items-center justify-between px-3 py-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                      >
+                         <span class="font-medium text-foreground group-hover:text-primary transition-colors select-none">{{ item.title }}</span>
+                         <input 
+                            type="checkbox" 
+                            :value="item.id" 
+                            v-model="wpForm.allowedMenus" 
+                            class="size-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-background"
+                          />
+                      </label>
+                   </div>
+                </div>
+             </div>
+
+          </div>
+
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showWpModal = false">Cancel</Button>
+          <Button :disabled="savingWp" @click="saveWorkspace">
+            <Icon v-if="savingWp" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+            {{ editingWpId ? 'Save Configuration' : 'Create Workspace' }}
           </Button>
         </DialogFooter>
       </DialogContent>
