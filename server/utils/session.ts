@@ -1,4 +1,4 @@
-import crypto from 'node:crypto'
+import crypto from 'crypto'
 
 // Create a signed session token
 export function createSessionToken(employeeId: string, email: string): string {
