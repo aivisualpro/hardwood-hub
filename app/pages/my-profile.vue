@@ -21,6 +21,11 @@ const { data: treeData, pending: loadingTree } = await useFetch('/api/skills/tre
   transform: (res: any) => res.data || []
 })
 
+const { data: bonusRulesData, pending: loadingRules } = await useFetch('/api/skill-bonus', {
+  lazy: true,
+  transform: (res: any) => res.data || []
+})
+
 // Utilities
 function levelIndex(lvl: string) {
   return ['Needs Improvement', 'Proficient', 'Mastered'].indexOf(lvl)
@@ -83,34 +88,82 @@ const timelineEvents = computed(() => {
 })
 
 // ─── Bonus Report ────────
-const subCatTotalMap = computed(() => {
-  const map = new Map<string, number>()
-  if (!treeData.value) return map
+const bonusReport = computed(() => {
+  if (!treeData.value) return []
+  const rules = bonusRulesData.value || []
+
+  // Create skill reviews map
+  const skillReviewsMap = new Map<string, any[]>()
+  for (const r of (recordsData.value || [])) {
+     if (!skillReviewsMap.has(r.skill)) skillReviewsMap.set(r.skill, [])
+     skillReviewsMap.get(r.skill)!.push(r)
+  }
+
+  const report = []
+
   for (const cat of treeData.value) {
     for (const sub of cat.subCategories) {
-      map.set(sub._id, sub.skills.length)
-    }
-  }
-  return map
-})
+      const skillsInSub = sub.skills
+      const totalSkills = skillsInSub.length
+      
+      let cntProficient = 0
+      let cntMastered = 0
 
-const bonusReport = computed(() => {
-  const map = new Map<string, { id: string, name: string, categoryName: string, cntProficient: number, cntMastered: number }>()
-  for (const r of highestPerfMap.value.values()) {
-    if (!map.has(r.subCategory)) {
-      map.set(r.subCategory, { 
-        id: r.subCategory, 
-        name: r.subCategoryName, 
-        categoryName: r.categoryName,
-        cntProficient: 0, 
-        cntMastered: 0 
+      // Calculate Proficient/Mastered based on highest map
+      for (const sk of skillsInSub) {
+         const highestR = highestPerfMap.value.get(sk._id)
+         if (highestR) {
+           if (highestR.currentSkillLevel === 'Mastered') cntMastered++
+           else if (highestR.currentSkillLevel === 'Proficient') cntProficient++
+         }
+      }
+
+      // Calculate Bonus Earned based on Rules
+      let maxBonus = 0
+      if (totalSkills > 0) {
+        for (const rule of rules) {
+           const requiredLevelIdx = levelIndex(rule.skillSet)
+           const requiredTimes = rule.reviewedTimes || 1
+           const isUnique = rule.supervisorCheck === 'Unique'
+
+           let ruleMet = true
+           for (const sk of skillsInSub) {
+              const reviews = skillReviewsMap.get(sk._id) || []
+              const qualifying = reviews.filter(r => levelIndex(r.currentSkillLevel) >= requiredLevelIdx)
+              
+              if (qualifying.length < requiredTimes) {
+                 ruleMet = false
+                 break
+              }
+
+              if (isUnique) {
+                 const uniqueReviewers = new Set(qualifying.map(r => r.createdBy))
+                 if (uniqueReviewers.size < requiredTimes) {
+                    ruleMet = false
+                    break
+                 }
+              }
+           }
+
+           if (ruleMet) {
+              maxBonus = Math.max(maxBonus, rule.bonusAmount || 0)
+           }
+        }
+      }
+
+      report.push({
+         id: sub._id,
+         name: sub.name,
+         categoryName: cat.name,
+         totalSkills,
+         cntProficient,
+         cntMastered,
+         bonusEarned: maxBonus
       })
     }
-    const stats = map.get(r.subCategory)!
-    if (r.currentSkillLevel === 'Mastered') stats.cntMastered++
-    if (r.currentSkillLevel === 'Proficient') stats.cntProficient++
   }
-  return Array.from(map.values()).sort((a,b) => {
+
+  return report.sort((a,b) => {
     if (a.categoryName !== b.categoryName) return a.categoryName.localeCompare(b.categoryName)
     return a.name.localeCompare(b.name)
   })
@@ -169,7 +222,7 @@ const tabs = [
       <div class="min-h-[400px]">
         
         <!-- Loading -->
-        <div v-if="loadingRecords || loadingTree" class="flex flex-col items-center justify-center h-full py-20 text-muted-foreground gap-4">
+        <div v-if="loadingRecords || loadingTree || loadingRules" class="flex flex-col items-center justify-center h-full py-20 text-muted-foreground gap-4">
           <Icon name="i-lucide-loader-2" class="size-8 animate-spin text-primary" />
           <p>Loading your profile data...</p>
         </div>
@@ -322,6 +375,7 @@ const tabs = [
                     <th class="px-5 py-4 text-center font-semibold text-muted-foreground">Total Skills</th>
                     <th class="px-5 py-4 text-center font-semibold text-blue-500">Proficient</th>
                     <th class="px-5 py-4 text-center font-semibold text-emerald-500">Mastered</th>
+                    <th class="px-5 py-4 text-center font-semibold text-amber-500">Bonus Earned</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-border/40">
@@ -331,7 +385,7 @@ const tabs = [
                       <p class="text-xs text-muted-foreground mt-0.5">{{ row.categoryName }}</p>
                     </td>
                     <td class="px-5 py-4 text-center font-semibold text-muted-foreground">
-                      {{ subCatTotalMap.get(row.id) || 0 }}
+                      {{ row.totalSkills }}
                     </td>
                     <td class="px-5 py-4 text-center">
                       <span v-if="row.cntProficient" class="inline-flex size-7 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 font-bold border border-blue-500/20">
@@ -344,6 +398,13 @@ const tabs = [
                         {{ row.cntMastered }}
                       </span>
                       <span v-else class="text-muted-foreground/30 font-medium">-</span>
+                    </td>
+                    <td class="px-5 py-4 text-center">
+                      <div v-if="row.bonusEarned > 0" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20">
+                        <Icon name="i-lucide-coins" class="size-3.5" />
+                        ${{ Number(row.bonusEarned).toFixed(2) }}
+                      </div>
+                      <span v-else class="text-muted-foreground/30 font-medium text-xs">Unmet</span>
                     </td>
                   </tr>
                 </tbody>
