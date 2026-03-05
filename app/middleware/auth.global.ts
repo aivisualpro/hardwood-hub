@@ -1,11 +1,4 @@
-// Global middleware: redirect unauthenticated users to /login
-export default defineNuxtRouteMiddleware((to) => {
-    // Allow auth-related pages
-    if (to.path === '/login' || to.path === '/login-basic') return
-
-    // Check for session cookie
-    const sessionCookie = useCookie('hardwood_session')
-    if (!sessionCookie.value) {
-        return navigateTo('/login')
-    }
+// Global middleware: temporarily disabled for Vercel debugging
+export default defineNuxtRouteMiddleware((_to) => {
+    // Auth check disabled — will re-enable after fixing Vercel crash
 })
