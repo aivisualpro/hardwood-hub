@@ -21,19 +21,22 @@ const actionMap: Record<string, string> = {
     'DELETE': 'delete',
 }
 
-function extractUserFromCookie(event: any): string {
+function extractUserFromCookie(event: any): { name: string, image: string } {
     const cookieHeader = getHeader(event, 'cookie') || ''
     const match = cookieHeader.match(/hardwood_user=([^;]+)/)
     if (match) {
         try {
             const decoded = decodeURIComponent(match[1])
             const parsed = JSON.parse(decoded)
-            return parsed.employee || parsed.email || 'Unknown'
+            return {
+                name: parsed.employee || parsed.email || 'Unknown',
+                image: parsed.profileImage || ''
+            }
         } catch {
-            return 'Unknown'
+            return { name: 'Unknown', image: '' }
         }
     }
-    return 'Unknown'
+    return { name: 'Unknown', image: '' }
 }
 
 export default defineEventHandler(async (event) => {
@@ -56,7 +59,7 @@ export default defineEventHandler(async (event) => {
                 const targetId = pathParts[1] || ''
                 const action = actionMap[method] || method.toLowerCase()
                 const moduleLabel = moduleMap[moduleName] || moduleName
-                const user = extractUserFromCookie(event)
+                const { name: user, image: userImage } = extractUserFromCookie(event)
                 const ip = getHeader(event, 'x-forwarded-for') || getHeader(event, 'x-real-ip') || ''
                 const userAgent = getHeader(event, 'user-agent') || ''
 
@@ -66,12 +69,12 @@ export default defineEventHandler(async (event) => {
                     const subRoute = pathParts[1] || ''
                     if (subRoute === 'login' || subRoute === 'google') {
                         description = `${user} logged in`
-                        await logActivity({ user, action: 'login', module: 'Authentication', description, ip, userAgent })
+                        await logActivity({ user, action: 'login', module: 'Authentication', description, ip, userAgent, userImage })
                         return
                     }
                     if (subRoute === 'logout') {
                         description = `${user} logged out`
-                        await logActivity({ user, action: 'logout', module: 'Authentication', description, ip, userAgent })
+                        await logActivity({ user, action: 'logout', module: 'Authentication', description, ip, userAgent, userImage })
                         return
                     }
                 }
@@ -102,7 +105,8 @@ export default defineEventHandler(async (event) => {
                     description,
                     targetId,
                     ip,
-                    userAgent
+                    userAgent,
+                    userImage
                 })
             }
         } catch (err) {

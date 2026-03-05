@@ -11,6 +11,7 @@ interface LogActivityParams {
     metadata?: Record<string, any>
     ip?: string
     userAgent?: string
+    userImage?: string
 }
 
 export async function logActivity(params: LogActivityParams) {
@@ -26,6 +27,7 @@ export async function logActivity(params: LogActivityParams) {
             metadata: params.metadata || {},
             ip: params.ip || '',
             userAgent: params.userAgent || '',
+            userImage: params.userImage || '',
         })
     } catch (err) {
         // Silently fail — never block the main request for logging

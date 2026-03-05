@@ -145,7 +145,7 @@ const groupedActivities = computed(() => {
       groups.push({ label, items: [] })
       currentLabel = label
     }
-    groups[groups.length - 1].items.push(act)
+    groups[groups.length - 1]?.items.push(act)
   }
   return groups
 })
@@ -295,32 +295,37 @@ const stats = computed(() => {
           <!-- Timeline -->
           <div class="relative">
             <!-- Vertical line -->
-            <div class="absolute left-5 top-0 bottom-0 w-px bg-border/30" />
+            <div class="absolute left-[22px] top-0 bottom-0 w-px bg-border/30" />
 
-            <div class="space-y-1" >
+            <div class="space-y-1">
               <div
                 v-for="act in group.items"
                 :key="act._id"
-                class="relative flex items-start gap-4 pl-12 pr-4 py-3 rounded-lg hover:bg-muted/10 transition-colors group"
+                class="relative flex items-start gap-4 pl-14 pr-4 py-3 rounded-lg hover:bg-muted/10 transition-colors group"
               >
-                <!-- Timeline dot -->
-                <div
-                  class="absolute left-3 top-4 size-5 rounded-full border-2 flex items-center justify-center z-10 transition-all"
-                  :class="actionColor(act.action)"
-                >
-                  <div class="size-2 rounded-full bg-current" />
+                <!-- Avatar as Timeline Node -->
+                <div class="absolute left-1 top-3 z-10">
+                  <div
+                    class="size-[42px] rounded-full border-2 flex items-center justify-center overflow-hidden"
+                    :class="actionColor(act.action)"
+                  >
+                    <img
+                      v-if="act.userImage"
+                      :src="act.userImage"
+                      :alt="act.user"
+                      class="size-full rounded-full object-cover"
+                    />
+                    <span v-else class="text-[11px] font-bold">
+                      {{ getInitials(act.user) }}
+                    </span>
+                  </div>
                 </div>
 
                 <!-- Content -->
                 <div class="flex-1 min-w-0">
                   <div class="flex items-start gap-2 flex-wrap">
-                    <!-- User Badge -->
-                    <span class="inline-flex items-center gap-1.5 shrink-0">
-                      <span class="size-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[10px] font-bold">
-                        {{ getInitials(act.user) }}
-                      </span>
-                      <span class="font-semibold text-sm">{{ act.user }}</span>
-                    </span>
+                    <!-- User Name -->
+                    <span class="font-semibold text-sm shrink-0">{{ act.user }}</span>
 
                     <!-- Description -->
                     <p class="text-sm text-muted-foreground leading-relaxed">

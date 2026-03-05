@@ -10,6 +10,7 @@ export interface IActivityLog extends Document {
     metadata?: Record<string, any>
     ip?: string
     userAgent?: string
+    userImage?: string
     createdAt: Date
 }
 
@@ -24,6 +25,7 @@ const ActivityLogSchema = new Schema(
         metadata: { type: Schema.Types.Mixed, default: {} },
         ip: { type: String, default: '' },
         userAgent: { type: String, default: '' },
+        userImage: { type: String, default: '' },
     },
     { timestamps: true }
 )
