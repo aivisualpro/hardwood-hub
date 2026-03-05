@@ -9,13 +9,13 @@ export interface IProjectCommunication extends Document {
     widthOfFlooring?: string[]
     cutOfFlooring?: string[]
     fidBox?: string[]
-    stain?: string
+    stain?: string[]
     ifMixWhatColorsAndRatio?: string
-    whatSealerWasUsed?: string
-    whatWasTheFirstCoatOfFinish?: string
-    whatWasTheFinalCoatOfFinish?: string
-    whatSheen?: string
-    whatAdditivesToFinish?: string
+    whatSealerWasUsed?: string[]
+    whatWasTheFirstCoatOfFinish?: string[]
+    whatWasTheFinalCoatOfFinish?: string[]
+    whatSheen?: string[]
+    whatAdditivesToFinish?: string[]
     allTasksAssignedToProjectLeadFromQcAreCompleted?: string
     ifNoWhatNeedsToBeDone?: string
     wasThereAChangeOrderFilledOut?: string
@@ -38,13 +38,13 @@ const ProjectCommunicationSchema = new Schema(
         widthOfFlooring: { type: [String], default: [] },
         cutOfFlooring: { type: [String], default: [] },
         fidBox: { type: [String], default: [] },
-        stain: { type: String, default: '' },
+        stain: { type: [String], default: [] },
         ifMixWhatColorsAndRatio: { type: String, default: '' },
-        whatSealerWasUsed: { type: String, default: '' },
-        whatWasTheFirstCoatOfFinish: { type: String, default: '' },
-        whatWasTheFinalCoatOfFinish: { type: String, default: '' },
-        whatSheen: { type: String, default: '' },
-        whatAdditivesToFinish: { type: String, default: '' },
+        whatSealerWasUsed: { type: [String], default: [] },
+        whatWasTheFirstCoatOfFinish: { type: [String], default: [] },
+        whatWasTheFinalCoatOfFinish: { type: [String], default: [] },
+        whatSheen: { type: [String], default: [] },
+        whatAdditivesToFinish: { type: [String], default: [] },
         allTasksAssignedToProjectLeadFromQcAreCompleted: { type: String, default: '' },
         ifNoWhatNeedsToBeDone: { type: String, default: '' },
         wasThereAChangeOrderFilledOut: { type: String, default: '' },

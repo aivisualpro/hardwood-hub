@@ -22,13 +22,13 @@ const emptyForm = () => ({
   widthOfFlooring: [] as string[],
   cutOfFlooring: [] as string[],
   fidBox: [] as string[],
-  stain: '',
+  stain: [] as string[],
   ifMixWhatColorsAndRatio: '',
-  whatSealerWasUsed: '',
-  whatWasTheFirstCoatOfFinish: '',
-  whatWasTheFinalCoatOfFinish: '',
-  whatSheen: '',
-  whatAdditivesToFinish: '',
+  whatSealerWasUsed: [] as string[],
+  whatWasTheFirstCoatOfFinish: [] as string[],
+  whatWasTheFinalCoatOfFinish: [] as string[],
+  whatSheen: [] as string[],
+  whatAdditivesToFinish: [] as string[],
   allTasksAssignedToProjectLeadFromQcAreCompleted: '',
   ifNoWhatNeedsToBeDone: '',
   wasThereAChangeOrderFilledOut: '',
@@ -50,7 +50,12 @@ const gradeOptions = ['Clear', 'Select & Better', '#1 Common', '#2 Common', '1st
 const widthOptions = ['1 1/2"', '2 1/4"', '3"', '3 1/4"', '4"', '5"', '6"', '7"', '8"', '9"', '10"']
 const cutOptions = ['Plain Sawn', 'Live Sawn aka "Euro sawn"', 'Rift Sawn', 'Quarter Sawn', 'Rift & Quarter Sawn']
 const fidBoxOptions = ['No Fid box installed', 'Fid box Installed', 'Customer has app and has been given access to fid box']
-const sheenOptions = ['Matte', 'Satin', 'Semi-Gloss', 'Gloss']
+const stainOptions = ['No Stain', 'Red Out', 'TRUE BLACK', 'HERITAGE BROWN', 'AGED BARREL', 'DARK GRAY', 'WARM GRAY', 'RUSTIC BEIGE', 'SILVERED GRAY', 'JACOBEAN', 'ESPRESSO', 'CLASSIC GRAY', 'DARK WALNUT', 'WEATHERED OAK', 'GUNSTOCK', 'GOLDEN PECAN', 'SEDONA RED', 'FRUITWOOD', 'COLONIAL MAPLE', 'ROSEWOOD', 'SPICE BROWN', 'CHERRY', 'ENGLISH CHESTNUT', 'EBONY', 'EARLY AMERICAN', 'MEDIUM BROWN', 'RED MAHOGANY', 'SPECIAL WALNUT', 'COFFEE BROWN', 'GOLDEN BROWN', 'ANTIQUE BROWN', 'GOLDEN OAK', 'PROVINCIAL', 'NEUTRAL', 'ROYAL MAHOGANY', 'CHESTNUT', 'NUTMEG', 'Mix']
+const sealerOptions = ['Easy Prime w/no additive', 'Easy Prime w/ whitener', 'Easy Prime w/ Amber', 'Pallmann Clear', 'Pallmann Color', 'Emulsion', 'N/A']
+const firstCoatOptions = ['Power', 'Easy finish', 'Duo', 'Emulsion', 'Magic Oil', 'Prefinished']
+const finalCoatOptions = ['Power', 'Gold', 'Emulsion', 'Easy finish', 'Duo', 'Supra AT', 'Invisible', 'Anti Slip', 'Prefinished', 'N/A']
+const sheenOptions = ['Ultra Matte', 'Matte', 'Satin', 'Semi Gloss', 'Invisible']
+const additivesOptions = ['None', 'Whitener 1st coat', 'Whitener 1st & 2nd coat', 'Whitener all 3 coats', 'Amberizer 1st coat', 'Amberizer 1st & 2nd coat', 'Amberizer all 3 coats']
 const ratingOptions = ['1', '2', '3', '4', '5']
 const yesNoOptions = ['Yes', 'No']
 
@@ -89,18 +94,18 @@ const sections = computed(() => [
     ]
   },
   {
-    id: 'stain-finish',
-    title: 'Stain & Finish',
-    description: 'Record stain and finish specifications for the project',
+    id: 'coatings',
+    title: 'Coatings',
+    description: 'Please take some final pictures of the job at least 3-5',
     icon: 'i-lucide-paintbrush',
     fields: [
-      { key: 'stain', label: 'Stain', type: 'input' },
-      { key: 'ifMixWhatColorsAndRatio', label: 'If mix, what colors and ratio?', type: 'input' },
-      { key: 'whatSealerWasUsed', label: 'What sealer was used?', type: 'input' },
-      { key: 'whatWasTheFirstCoatOfFinish', label: 'What was the first coat of finish?', type: 'input' },
-      { key: 'whatWasTheFinalCoatOfFinish', label: 'What was the final coat of finish?', type: 'input' },
-      { key: 'whatSheen', label: 'What sheen?', type: 'chips', options: sheenOptions },
-      { key: 'whatAdditivesToFinish', label: 'What additives to finish?', type: 'input' },
+      { key: 'stain', label: 'Stain', type: 'multi-chips', options: stainOptions },
+      { key: 'ifMixWhatColorsAndRatio', label: 'If Mix What colors and ratio', type: 'input' },
+      { key: 'whatSealerWasUsed', label: 'What sealer was used', type: 'multi-chips', options: sealerOptions },
+      { key: 'whatWasTheFirstCoatOfFinish', label: 'What was the first coat of finish', type: 'multi-chips', options: firstCoatOptions },
+      { key: 'whatWasTheFinalCoatOfFinish', label: 'What was the final coat of finish', type: 'multi-chips', options: finalCoatOptions },
+      { key: 'whatSheen', label: 'What sheen', type: 'multi-chips', options: sheenOptions },
+      { key: 'whatAdditivesToFinish', label: 'What additives to finish', type: 'multi-chips', options: additivesOptions },
     ]
   },
   {
@@ -218,7 +223,7 @@ function openEdit(rec: any) {
   const base = emptyForm()
   const merged = { ...base, ...rec }
   // Ensure multi-select fields are always arrays (handles legacy string data)
-  const arrayFields = ['whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply', 'gradeOfFlooring', 'widthOfFlooring', 'cutOfFlooring', 'fidBox']
+  const arrayFields = ['whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply', 'gradeOfFlooring', 'widthOfFlooring', 'cutOfFlooring', 'fidBox', 'stain', 'whatSealerWasUsed', 'whatWasTheFirstCoatOfFinish', 'whatWasTheFinalCoatOfFinish', 'whatSheen', 'whatAdditivesToFinish']
   for (const key of arrayFields) {
     const val = merged[key]
     if (!Array.isArray(val)) {
