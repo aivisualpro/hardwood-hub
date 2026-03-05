@@ -7,6 +7,17 @@ const SubCategorySchema = new mongoose.Schema(
         description: { type: String, default: '' },
         icon: { type: String, default: '' },
         predecessor: { type: String, default: '' },               // optional: another subCategory _id
+        bonusRules: {
+            type: [
+                {
+                    skillSet: { type: String, required: true },
+                    reviewedTimes: { type: Number, default: 1 },
+                    supervisorCheck: { type: String, default: 'Any' },
+                    bonusAmount: { type: Number, default: 0 },
+                },
+            ],
+            default: [],
+        },
     },
     { timestamps: true, collection: 'hardwoodDB_subCategories' },
 )

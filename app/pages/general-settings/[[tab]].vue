@@ -23,8 +23,17 @@ interface WorkspaceRecord {
   isLocked: boolean
 }
 
-// ─── State ───────────────────────────────────────────────
-const activeTab = ref('skill-bonus')
+// ─── Route-based tab ─────────────────────────────────────
+const route = useRoute()
+const activeTab = computed(() => {
+  const slug = route.params.tab as string | undefined
+  return slug || 'skill-bonus'
+})
+
+// Redirect /general-settings → /general-settings/skill-bonus
+if (!route.params.tab) {
+  navigateTo('/general-settings/skill-bonus', { replace: true })
+}
 const records = ref<SkillBonusRecord[]>([])
 const loading = ref(true)
 const showCreateModal = ref(false)
@@ -346,7 +355,7 @@ const WpIconsList = [
           :class="activeTab === tab.id
             ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
             : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'"
-          @click="activeTab = tab.id"
+          @click="navigateTo(`/general-settings/${tab.id}`)"
         >
           <Icon :name="tab.icon" class="size-4 shrink-0" />
           <span class="text-sm font-medium">{{ tab.label }}</span>

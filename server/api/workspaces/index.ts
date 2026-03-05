@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
 
     if (event.method === 'POST') {
         const body = await readBody(event)
-        const { name, logo, plan, allowedMenus } = body
+        const { name, logo, plan, allowedMenus, menuPermissions } = body
         if (!name)
             throw createError({ statusCode: 400, message: 'Workspace name is required' })
 
@@ -33,6 +33,7 @@ export default defineEventHandler(async (event) => {
             logo: logo || 'i-lucide-building',
             plan: plan || 'Workspace',
             allowedMenus: allowedMenus || [],
+            menuPermissions: menuPermissions || {},
             isLocked: false
         })
         return { success: true, data: doc }

@@ -12,12 +12,19 @@ interface SkillItem {
   subCategory: string
   isRequired?: boolean
 }
+interface BonusRule {
+  skillSet: string
+  reviewedTimes: number
+  supervisorCheck: string
+  bonusAmount: number
+}
 interface SubCat {
   _id: string
   name: string
   category: string
   predecessor?: string
   predecessorName?: string
+  bonusRules: BonusRule[]
   skills: SkillItem[]
 }
 interface Cat {
@@ -46,6 +53,57 @@ const editingForm = ref({ skill: '', isRequired: false })
 // ─── Predecessor picker state ─────────────────────────────
 const editingPredecessorSubId = ref<string | null>(null)
 const predecessorSearch = ref('')
+
+// ─── Bonus Rules state ────────────────────────────────────
+const SKILL_LEVELS = ['Needs Improvement', 'Proficient', 'Mastered'] as const
+const SUPERVISOR_OPTIONS = ['Any', 'Unique'] as const
+const showBonusModal = ref(false)
+const bonusSubId = ref<string | null>(null)
+const bonusRules = ref<BonusRule[]>([])
+const savingBonus = ref(false)
+
+function openBonusRules(sub: SubCat) {
+  bonusSubId.value = sub._id
+  bonusRules.value = JSON.parse(JSON.stringify(sub.bonusRules || []))
+  showBonusModal.value = true
+}
+
+function addBonusRule() {
+  bonusRules.value.push({ skillSet: '', reviewedTimes: 1, supervisorCheck: 'Any', bonusAmount: 0 })
+}
+
+function removeBonusRule(idx: number) {
+  bonusRules.value.splice(idx, 1)
+}
+
+async function saveBonusRules() {
+  if (!bonusSubId.value) return
+  // Validate
+  for (const r of bonusRules.value) {
+    if (!r.skillSet) return toast.error('Each rule needs a Skill Set')
+  }
+  savingBonus.value = true
+  const found = findSub(bonusSubId.value)
+  const prev = found ? JSON.parse(JSON.stringify(found.sub.bonusRules)) : []
+
+  // Optimistic
+  if (found) found.sub.bonusRules = JSON.parse(JSON.stringify(bonusRules.value))
+  showBonusModal.value = false
+
+  try {
+    await $fetch(`/api/subcategories/${bonusSubId.value}`, {
+      method: 'PUT',
+      body: { bonusRules: bonusRules.value },
+    })
+    toast.success('Bonus rules saved', { duration: 2000 })
+  } catch (e: any) {
+    if (found) found.sub.bonusRules = prev
+    showBonusModal.value = true
+    toast.error('Failed to save bonus rules', { description: e?.message })
+  } finally {
+    savingBonus.value = false
+  }
+}
 
 // ─── Initial load ────────────────────────────────────────
 async function fetchTree() {
@@ -447,6 +505,22 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 </p>
               </div>
 
+              <!-- Bonus Rule button -->
+              <div
+                role="button"
+                tabindex="0"
+                class="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer shrink-0"
+                :class="sub.bonusRules?.length
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                  : 'opacity-0 group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted'"
+                @click.stop="openBonusRules(sub)"
+                @keydown.enter.stop="openBonusRules(sub)"
+              >
+                <Icon name="i-lucide-trophy" class="size-3" />
+                <span v-if="sub.bonusRules?.length">{{ sub.bonusRules.length }} rule{{ sub.bonusRules.length !== 1 ? 's' : '' }}</span>
+                <span v-else>Bonus</span>
+              </div>
+
               <!-- Predecessor picker trigger -->
               <div
                 role="button"
@@ -710,6 +784,104 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
             Add Skill
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- ══════════════════════ BONUS RULES MODAL ══════════════════════ -->
+    <Dialog v-model:open="showBonusModal">
+      <DialogContent class="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Bonus Rules Override</DialogTitle>
+          <DialogDescription>
+            Define custom bonus rules for this sub-category. These will override the general skill bonus settings.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="flex flex-col gap-4 py-2 max-h-[55vh] overflow-y-auto pr-1">
+          <!-- Empty state -->
+          <div v-if="bonusRules.length === 0" class="flex flex-col items-center justify-center py-10 gap-3 text-center">
+            <div class="size-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center">
+              <Icon name="i-lucide-trophy" class="size-6 text-emerald-400" />
+            </div>
+            <p class="text-sm text-muted-foreground">No custom rules yet. Add one to override the global settings.</p>
+          </div>
+
+          <!-- Rules list -->
+          <div
+            v-for="(rule, idx) in bonusRules"
+            :key="idx"
+            class="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-3 relative"
+          >
+            <!-- Remove button -->
+            <button
+              class="absolute top-3 right-3 size-6 rounded flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+              @click="removeBonusRule(idx)"
+            >
+              <Icon name="i-lucide-trash-2" class="size-3.5" />
+            </button>
+
+            <div class="flex items-center gap-2">
+              <div class="size-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                <span class="text-[10px] font-bold text-emerald-400">{{ idx + 1 }}</span>
+              </div>
+              <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rule {{ idx + 1 }}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Skill Set -->
+              <div class="flex flex-col gap-1">
+                <Label class="text-xs">Skill Set <span class="text-destructive">*</span></Label>
+                <Select v-model="rule.skillSet">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="lvl in SKILL_LEVELS" :key="lvl" :value="lvl">{{ lvl }}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <!-- Reviewed Times -->
+              <div class="flex flex-col gap-1">
+                <Label class="text-xs">Reviewed Times</Label>
+                <Input v-model.number="rule.reviewedTimes" type="number" min="0" placeholder="1" />
+              </div>
+
+              <!-- Supervisor Check -->
+              <div class="flex flex-col gap-1">
+                <Label class="text-xs">Supervisor Check</Label>
+                <Select v-model="rule.supervisorCheck">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Any" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="opt in SUPERVISOR_OPTIONS" :key="opt" :value="opt">{{ opt }}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <!-- Bonus Amount -->
+              <div class="flex flex-col gap-1">
+                <Label class="text-xs">Bonus Amount ($)</Label>
+                <Input v-model.number="rule.bonusAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <Button variant="outline" size="sm" @click="addBonusRule">
+            <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
+            Add Rule
+          </Button>
+          <div class="flex gap-2">
+            <Button variant="outline" @click="showBonusModal = false">Cancel</Button>
+            <Button :disabled="savingBonus" @click="saveBonusRules">
+              <Icon v-if="savingBonus" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+              Save Rules
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
 

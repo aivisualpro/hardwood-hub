@@ -19,6 +19,7 @@ export default defineEventHandler(async (event) => {
         if (body.predecessor !== undefined) update.predecessor = body.predecessor
         if (body.subCategory !== undefined) update.subCategory = body.subCategory
         if (body.description !== undefined) update.description = body.description
+        if (body.bonusRules !== undefined) update.bonusRules = body.bonusRules
 
         const updated = await SubCategory.findByIdAndUpdate(id, update, { returnDocument: 'after' }).lean()
         if (!updated) throw createError({ statusCode: 404, message: 'SubCategory not found' })

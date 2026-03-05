@@ -24,7 +24,8 @@ export default defineEventHandler(async (event) => {
                 name: body.name,
                 logo: body.logo,
                 plan: body.plan,
-                allowedMenus: body.allowedMenus
+                allowedMenus: body.allowedMenus,
+                menuPermissions: body.menuPermissions || {},
             },
             { new: true }
         )

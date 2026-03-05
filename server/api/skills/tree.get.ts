@@ -40,6 +40,7 @@ export default defineEventHandler(async () => {
                     predecessorName: sub.predecessor
                         ? (subCategories.find((s: any) => String(s._id) === String(sub.predecessor))?.subCategory ?? '')
                         : '',
+                    bonusRules: sub.bonusRules || [],
                     skills: subSkills.map((sk: any) => ({
                         _id: String(sk._id),
                         name: sk.skill,         // normalised to 'name' for frontend
