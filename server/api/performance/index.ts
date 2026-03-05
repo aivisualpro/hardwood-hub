@@ -51,9 +51,9 @@ export default defineEventHandler(async (event) => {
         if (!employee || !category || !subCategory || !skill)
             throw createError({ statusCode: 400, message: 'employee, category, subCategory, and skill are required' })
 
-        // Upsert: if record for this employee+skill already exists, update it
+        // Upsert: if record for this employee+skill+reviewer already exists, update it
         const doc = await EmpSkillPerformance.findOneAndUpdate(
-            { employee, skill },
+            { employee, skill, createdBy },
             {
                 employee,
                 category,

@@ -31,6 +31,9 @@ const activeView = ref<'tree' | 'table'>('tree')
 const minProgressionLevel = ref('Proficient')
 const savingSettings = ref(false)
 
+const userCookie = useCookie<{ _id: string, employee: string, email: string } | null>('hardwood_user')
+const currentUserId = computed(() => userCookie.value?._id)
+
 // ─── Fetch all data ──────────────────────────────────────
 async function fetchAll() {
   loading.value = true
@@ -87,24 +90,44 @@ const selectedEmployee = computed(() =>
   employees.value.find(e => e._id === selectedEmployeeId.value) ?? null,
 )
 
-// Perf records for the selected employee, indexed by skill _id
-const empPerfMap = computed(() => {
+// Highest perf records for locking/progress calculations
+const highestPerfMap = computed(() => {
   const map = new Map<string, PerfRecord>()
   for (const r of perfRecords.value) {
     if (r.employee === selectedEmployeeId.value) {
+      const existing = map.get(r.skill)
+      if (!existing || levelIndex(r.currentSkillLevel) > levelIndex(existing.currentSkillLevel)) {
+         map.set(r.skill, r)
+      }
+    }
+  }
+  return map
+})
+
+// Current user's perf records for button state highlighting
+const myPerfMap = computed(() => {
+  const map = new Map<string, PerfRecord>()
+  const myId = currentUserId.value
+  for (const r of perfRecords.value) {
+    if (r.employee === selectedEmployeeId.value && r.createdBy === myId) {
       map.set(r.skill, r)
     }
   }
   return map
 })
 
-// Count of assessed skills for an employee
+// Count of uniquely assessed skills for an employee
 const empAssessedCount = computed(() => {
-  const map = new Map<string, number>()
+  const map = new Map<string, Set<string>>()
   for (const r of perfRecords.value) {
-    map.set(r.employee, (map.get(r.employee) ?? 0) + 1)
+    if (!map.has(r.employee)) map.set(r.employee, new Set())
+    map.get(r.employee)!.add(r.skill)
   }
-  return map
+  const countMap = new Map<string, number>()
+  for (const [emp, skills] of map.entries()) {
+    countMap.set(emp, skills.size)
+  }
+  return countMap
 })
 
 // Total skills across tree
@@ -133,7 +156,7 @@ function isSubCatLocked(sub: SubCatNode): boolean {
   if (requiredSkills.length === 0) return false // no required skills = unlocked
   // All required skills must meet the threshold
   return !requiredSkills.every(sk => {
-    const rec = empPerfMap.value.get(sk._id)
+    const rec = highestPerfMap.value.get(sk._id)
     return rec && levelMeetsThreshold(rec.currentSkillLevel)
   })
 }
@@ -144,7 +167,7 @@ function predecessorProgress(sub: SubCatNode): { met: number; total: number; pre
   if (!predSub) return { met: 0, total: 0, predName: '' }
   const required = predSub.skills.filter(sk => sk.isRequired)
   const met = required.filter(sk => {
-    const rec = empPerfMap.value.get(sk._id)
+    const rec = highestPerfMap.value.get(sk._id)
     return rec && levelMeetsThreshold(rec.currentSkillLevel)
   }).length
   return { met, total: required.length, predName: predSub.name }
@@ -235,11 +258,18 @@ function pal(idx: number) { return catPalette[idx % catPalette.length]! }
 // ─── Mark skill level (optimistic upsert) ────────────────
 async function markSkill(skill: SkillNode, level: string, catId: string) {
   if (!selectedEmployeeId.value) return
+  if (!currentUserId.value) {
+    toast.error('You must be logged in to review')
+    return
+  }
   const empId = selectedEmployeeId.value
+  const myId = currentUserId.value
 
   // Optimistic: update local state immediately
-  const existing = empPerfMap.value.get(skill._id)
+  const existingRecordIndex = perfRecords.value.findIndex(r => r.employee === empId && r.skill === skill._id && r.createdBy === myId)
+  const existing = existingRecordIndex !== -1 ? perfRecords.value[existingRecordIndex] : null
   let prevLevel = ''
+  
   if (existing) {
     prevLevel = existing.currentSkillLevel
     existing.currentSkillLevel = level
@@ -259,8 +289,8 @@ async function markSkill(skill: SkillNode, level: string, catId: string) {
       skillName: skill.name,
       currentSkillLevel: level,
       createdAt: new Date().toISOString(),
-      createdBy: empId,
-      createdByName: selectedEmployee.value?.employee ?? '',
+      createdBy: myId,
+      createdByName: userCookie.value?.employee ?? '',
     }
     perfRecords.value.push(tempRecord)
   }
@@ -274,12 +304,12 @@ async function markSkill(skill: SkillNode, level: string, catId: string) {
         subCategory: skill.subCategory,
         skill: skill._id,
         currentSkillLevel: level,
-        createdBy: empId,
+        createdBy: myId,
       },
     })
     // Replace temp _id with real one
     if (!existing && res.data?._id) {
-      const temp = perfRecords.value.find(r => r.skill === skill._id && r.employee === empId && r._id.startsWith('temp-'))
+      const temp = perfRecords.value.find(r => r.skill === skill._id && r.employee === empId && r.createdBy === myId && r._id.startsWith('temp-'))
       if (temp) temp._id = String(res.data._id)
     }
     toast.success(`Marked as ${level}`, { description: skill.name, duration: 2000 })
@@ -288,7 +318,7 @@ async function markSkill(skill: SkillNode, level: string, catId: string) {
     // Revert
     if (existing) existing.currentSkillLevel = prevLevel
     else {
-      const idx = perfRecords.value.findIndex(r => r.skill === skill._id && r.employee === empId && r._id.startsWith('temp-'))
+      const idx = perfRecords.value.findIndex(r => r.skill === skill._id && r.employee === empId && r.createdBy === myId && r._id.startsWith('temp-'))
       if (idx !== -1) perfRecords.value.splice(idx, 1)
     }
     toast.error('Failed to save', { description: e?.message })
@@ -627,13 +657,13 @@ async function deleteSelected() {
                       :style="{
                         width: `${cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) === 0
                           ? 0
-                          : (cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => empPerfMap.get(sk._id)).length, 0)
+                          : (cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => highestPerfMap.get(sk._id)).length, 0)
                             / cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) * 100)}%`,
                       }"
                     />
                   </div>
                   <span class="text-[10px] font-medium text-muted-foreground min-w-[2rem] text-right">
-                    {{ cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => empPerfMap.get(sk._id)).length, 0) }}/{{ cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) }}
+                    {{ cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => highestPerfMap.get(sk._id)).length, 0) }}/{{ cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) }}
                   </span>
                 </div>
               </div>
@@ -700,7 +730,7 @@ async function deleteSelected() {
 
                       <!-- Sub progress -->
                       <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
-                        {{ sub.skills.filter(sk => empPerfMap.get(sk._id)).length }}/{{ sub.skills.length }}
+                        {{ sub.skills.filter(sk => highestPerfMap.get(sk._id)).length }}/{{ sub.skills.length }}
                       </span>
                     </div>
 
@@ -744,7 +774,7 @@ async function deleteSelected() {
                               v-for="level in LEVEL_STEPS"
                               :key="level"
                               class="text-[10px] font-semibold px-2.5 py-1 rounded-md border transition-all duration-150"
-                              :class="empPerfMap.get(sk._id)?.currentSkillLevel === level
+                              :class="myPerfMap.get(sk._id)?.currentSkillLevel === level
                                 ? `${levelColor(level)} ring-1 ring-offset-1 ring-offset-background ${level === 'Mastered' ? 'ring-emerald-500/40' : level === 'Proficient' ? 'ring-blue-500/40' : 'ring-amber-500/40'}`
                                 : 'border-border/40 bg-muted/40 text-muted-foreground/70 hover:bg-muted hover:text-foreground hover:border-border'"
                               @click.stop="markSkill(sk, level, cat._id)"
