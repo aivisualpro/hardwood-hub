@@ -23,13 +23,12 @@ const activeTeam = ref(props.teams[0])
             size="lg"
             class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
           >
-            <div class="aspect-square size-8 flex items-center justify-center rounded-lg overflow-hidden bg-sidebar-primary">
+            <!-- Logo only in the trigger button, no background -->
+            <div class="aspect-square size-8 flex items-center justify-center rounded-lg overflow-hidden">
               <img src="/logo-192.png" alt="Hardwood Hub" class="size-8 object-cover" />
             </div>
             <div class="grid flex-1 text-left text-sm leading-tight">
-              <span class="truncate font-semibold">
-                {{ activeTeam!.name }}
-              </span>
+              <span class="truncate font-semibold">{{ activeTeam!.name }}</span>
               <span class="truncate text-xs">{{ activeTeam!.plan }}</span>
             </div>
             <Icon name="i-lucide-chevrons-up-down" class="ml-auto" />
@@ -41,7 +40,7 @@ const activeTeam = ref(props.teams[0])
           :side="isMobile ? 'bottom' : 'right'"
         >
           <DropdownMenuLabel class="text-xs text-muted-foreground">
-            Teams
+            Workspaces
           </DropdownMenuLabel>
           <DropdownMenuItem
             v-for="(team, index) in teams"
@@ -49,8 +48,9 @@ const activeTeam = ref(props.teams[0])
             class="gap-2 p-2"
             @click="activeTeam = team"
           >
-            <div class="size-6 flex items-center justify-center rounded-sm overflow-hidden border">
-              <img src="/logo-192.png" alt="" class="size-6 object-cover" />
+            <!-- Lucide icon instead of logo image -->
+            <div class="size-6 flex items-center justify-center rounded-sm bg-sidebar-accent text-sidebar-accent-foreground shrink-0">
+              <Icon :name="team.logo" class="size-3.5" />
             </div>
             {{ team.name }}
             <DropdownMenuShortcut>⌘{{ index + 1 }}</DropdownMenuShortcut>
@@ -61,7 +61,7 @@ const activeTeam = ref(props.teams[0])
               <Icon name="i-lucide-plus" class="size-4" />
             </div>
             <div class="text-muted-foreground font-medium">
-              Add team
+              Add workspace
             </div>
           </DropdownMenuItem>
         </DropdownMenuContent>

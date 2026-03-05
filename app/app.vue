@@ -69,12 +69,10 @@ defineShortcuts({
 <template>
   <Body class="overscroll-none antialiased bg-background text-foreground">
     <ConfigProvider :dir="dir">
-      <div id="app" vaul-drawer-wrapper class="relative">
+      <div id="app" vaul-drawer-wrapper class="relative h-screen overflow-hidden">
         <NuxtLayout>
           <NuxtPage />
         </NuxtLayout>
-
-        <AppSettings />
       </div>
 
       <Toaster :theme="colorMode.preference as any || 'system'" />

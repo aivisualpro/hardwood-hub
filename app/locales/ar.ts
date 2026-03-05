@@ -1,7 +1,9 @@
 export default {
   // Navigation Headings
   'nav.general': 'عام',
+  'nav.admin': 'الإدارة',
   'nav.apps': 'التطبيقات',
+  'nav.concepts': 'المفاهيم',
   'nav.crm': 'إدارة العلاقات',
   'nav.salesCommerce': 'المبيعات والتجارة',
   'nav.inventoryWarehouse': 'المخزون والمستودعات',

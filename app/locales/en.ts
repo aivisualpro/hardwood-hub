@@ -1,7 +1,9 @@
 export default {
   // Navigation Headings
   'nav.general': 'General',
+  'nav.admin': 'Admin',
   'nav.apps': 'Apps',
+  'nav.concepts': 'Concepts',
   'nav.crm': 'CRM',
   'nav.salesCommerce': 'Sales & Commerce',
   'nav.inventoryWarehouse': 'Inventory & Warehouse',

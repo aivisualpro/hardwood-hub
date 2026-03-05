@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NavGroup, NavLink, NavSectionTitle } from '~/types/nav'
 import type { TranslationKey } from '~/composables/useLocale'
-import { navMenu, navMenuBottom } from '~/constants/menus'
+import { navMenu, navMenuBottom, navMenuConcepts } from '~/constants/menus'
 
 function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): any {
   if ('children' in item)
@@ -22,19 +22,24 @@ const teams: {
   plan: string
 }[] = [
   {
-    name: 'Hardwood Hub',
-    logo: 'i-lucide-gallery-vertical-end',
-    plan: 'Enterprise',
+    name: 'Admin Workspace',
+    logo: 'i-lucide-shield-check',
+    plan: 'Full Access',
   },
   {
-    name: 'Full Stack CRM',
-    logo: 'i-lucide-audio-waveform',
-    plan: 'Professional',
+    name: 'Crew Member Workspace',
+    logo: 'i-lucide-hard-hat',
+    plan: 'Field View',
   },
   {
-    name: 'Demo Workspace',
-    logo: 'i-lucide-command',
-    plan: 'Free',
+    name: 'Supervisor Workspace',
+    logo: 'i-lucide-clipboard-list',
+    plan: 'Team Lead',
+  },
+  {
+    name: 'Finance Workspace',
+    logo: 'i-lucide-landmark',
+    plan: 'Finance Access',
   },
 ]
 
@@ -65,6 +70,12 @@ const { sidebar } = useAppSettings()
         <component :is="resolveNavItemComponent(item)" v-for="(item, index) in nav.items" :key="index" :item="item" />
       </SidebarGroup>
       <SidebarGroup class="mt-auto">
+        <SidebarGroupLabel v-if="navMenuConcepts.heading">
+          {{ getHeading(navMenuConcepts) }}
+        </SidebarGroupLabel>
+        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in navMenuConcepts.items" :key="index" :item="item" />
+      </SidebarGroup>
+      <SidebarGroup v-if="navMenuBottom.length">
         <component :is="resolveNavItemComponent(item)" v-for="(item, index) in navMenuBottom" :key="index" :item="item" size="sm" />
       </SidebarGroup>
     </SidebarContent>

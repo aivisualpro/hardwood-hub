@@ -1,7 +1,9 @@
 export default {
   // Navigation Headings
   'nav.general': 'כללי',
+  'nav.admin': 'אדמיניסטרציה',
   'nav.apps': 'אפליקציות',
+  'nav.concepts': 'קונספטים',
   'nav.crm': 'ניהול לקוחות',
   'nav.salesCommerce': 'מכירות ומסחר',
   'nav.inventoryWarehouse': 'מלאי ומחסן',
