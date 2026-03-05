@@ -39,6 +39,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-layout-dashboard',
         link: '/tasks',
       },
+      {
+        title: 'Project Communication',
+        icon: 'i-lucide-message-square',
+        link: '/project-communication',
+      },
     ],
   },
   {
