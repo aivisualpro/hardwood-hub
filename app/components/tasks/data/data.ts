@@ -21,34 +21,28 @@ export const labels = [
 
 export const statuses = [
   {
-    value: 'backlog',
-    label: 'Backlog',
-    labelKey: 'tasks.status.backlog' as const,
-    icon: h(Icon, { name: 'i-radix-icons-question-mark-circled' }),
-  },
-  {
     value: 'todo',
     label: 'Todo',
     labelKey: 'tasks.status.todo' as const,
     icon: h(Icon, { name: 'i-radix-icons-circle' }),
   },
   {
-    value: 'in progress',
+    value: 'in-progress',
     label: 'In Progress',
     labelKey: 'tasks.status.inProgress' as const,
     icon: h(Icon, { name: 'i-radix-icons-stopwatch' }),
+  },
+  {
+    value: 'in-review',
+    label: 'In Review',
+    labelKey: 'tasks.status.inReview' as const,
+    icon: h(Icon, { name: 'i-radix-icons-eye-open' }),
   },
   {
     value: 'done',
     label: 'Done',
     labelKey: 'tasks.status.done' as const,
     icon: h(Icon, { name: 'i-radix-icons-check-circled' }),
-  },
-  {
-    value: 'canceled',
-    label: 'Canceled',
-    labelKey: 'tasks.status.canceled' as const,
-    icon: h(Icon, { name: 'i-radix-icons-cross-circled' }),
   },
 ]
 

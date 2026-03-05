@@ -27,7 +27,7 @@ const ActivityLogSchema = new Schema(
         userAgent: { type: String, default: '' },
         userImage: { type: String, default: '' },
     },
-    { timestamps: true }
+    { timestamps: true, collection: 'hardwoodDB_activitylogs' }
 )
 
 // Compound index for fast querying
