@@ -3,9 +3,9 @@ export default defineNuxtRouteMiddleware((to) => {
     // Allow auth-related pages
     if (to.path === '/login' || to.path === '/login-basic') return
 
-    // Check for session cookie
-    const sessionCookie = useCookie('hardwood_session')
-    if (!sessionCookie.value) {
+    // Check for user cookie (used for client-side auth state, since session is httpOnly)
+    const userCookie = useCookie('hardwood_user')
+    if (!userCookie.value) {
         return navigateTo('/login')
     }
 })
