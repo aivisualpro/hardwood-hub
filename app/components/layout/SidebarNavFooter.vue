@@ -19,7 +19,7 @@ async function handleLogout() {
   navigateTo('/login')
 }
 
-const showModalTheme = ref(false)
+
 </script>
 
 <template>
@@ -64,13 +64,6 @@ const showModalTheme = ref(false)
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem @click="showModalTheme = true">
-              <Icon name="i-lucide-paintbrush" />
-              Theme
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
           <DropdownMenuItem @click="handleLogout">
             <Icon name="i-lucide-log-out" />
             Log out
@@ -80,17 +73,7 @@ const showModalTheme = ref(false)
     </SidebarMenuItem>
   </SidebarMenu>
 
-  <Dialog v-model:open="showModalTheme">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Customize</DialogTitle>
-        <DialogDescription class="text-xs text-muted-foreground">
-          Customize & Preview in Real Time
-        </DialogDescription>
-      </DialogHeader>
-      <ThemeCustomize />
-    </DialogContent>
-  </Dialog>
+
 </template>
 
 <style scoped>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { NavGroup, NavMenu } from '~/types/nav'
-import type { TranslationKey } from '~/composables/useLocale'
-import { navMenu } from '@/constants/menus'
+import type { NavMenu } from '~/types/nav'
+import { navMenu, navMenuConcepts, navMenuBottom } from '@/constants/menus'
 
 const { metaSymbol } = useShortcuts()
 const { t } = useLocale()
@@ -13,11 +12,61 @@ defineShortcuts({
   Meta_K: () => openCommand.value = true,
 })
 
-const componentsNav = computed<NavGroup | undefined>(() => {
-  return navMenu
-    .flatMap((nav: NavMenu) => nav.items)
-    // @ts-expect-error - We know that the title is unique
-    .find((item: NavGroup) => item.title === 'Components')
+// Build a flat list of all navigable menu items from all menu sources
+const allMenuItems = computed(() => {
+  const items: { title: string, icon: string, link: string, group: string }[] = []
+
+  // Main nav menus (Admin, Apps, etc.)
+  for (const menu of navMenu) {
+    const groupLabel = menu.heading || 'Navigation'
+    for (const item of menu.items) {
+      if ('link' in item && item.link) {
+        items.push({
+          title: item.title,
+          icon: item.icon || 'i-lucide-circle',
+          link: item.link,
+          group: groupLabel,
+        })
+      }
+    }
+  }
+
+  // Concepts menu
+  if (navMenuConcepts?.items) {
+    for (const item of navMenuConcepts.items) {
+      if ('link' in item && item.link) {
+        items.push({
+          title: item.title,
+          icon: item.icon || 'i-lucide-circle',
+          link: item.link,
+          group: navMenuConcepts.heading || 'Concepts',
+        })
+      }
+    }
+  }
+
+  // Bottom menu (Settings)
+  for (const item of navMenuBottom) {
+    if ('link' in item && item.link) {
+      items.push({
+        title: item.title,
+        icon: item.icon || 'i-lucide-circle',
+        link: item.link,
+        group: 'Settings',
+      })
+    }
+  }
+
+  return items
+})
+
+// Group items by their group label
+const groupedMenuItems = computed(() => {
+  const groups: Record<string, typeof allMenuItems.value> = {}
+  for (const item of allMenuItems.value) {
+    ;(groups[item.group] ??= []).push(item)
+  }
+  return groups
 })
 
 function handleSelectLink(link: string) {
@@ -42,35 +91,21 @@ function handleSelectLink(link: string) {
     <CommandInput :placeholder="t('common.search') + '...'" />
     <CommandList>
       <CommandEmpty>{{ t('common.noResults') }}</CommandEmpty>
-      <CommandGroup heading="Suggestions">
-        <CommandItem value="Home" @select="handleSelectLink('/')">
-          {{ t('nav.dashboard') }}
-          <CommandShortcut>
-            <Kbd>G</Kbd>
-            <Kbd>H</Kbd>
-          </CommandShortcut>
-        </CommandItem>
-        <CommandItem value="email" @select="handleSelectLink('/email')">
-          {{ t('nav.email') }}
-          <CommandShortcut>
-            <Kbd>G</Kbd>
-            <Kbd>E</Kbd>
-          </CommandShortcut>
-        </CommandItem>
-      </CommandGroup>
-      <CommandSeparator />
-      <CommandGroup heading="Components">
-        <CommandItem
-          v-for="nav in componentsNav?.children"
-          :key="nav.title"
-          :value="nav.title"
-          class="gap-2"
-          @select="handleSelectLink(nav.link)"
-        >
-          <Icon name="i-radix-icons-circle" />
-          {{ nav.title }}
-        </CommandItem>
-      </CommandGroup>
+      <template v-for="(items, group) in groupedMenuItems" :key="group">
+        <CommandGroup :heading="group">
+          <CommandItem
+            v-for="item in items"
+            :key="item.link"
+            :value="item.title"
+            class="gap-2"
+            @select="handleSelectLink(item.link)"
+          >
+            <Icon :name="item.icon" class="size-4 text-muted-foreground" />
+            {{ item.title }}
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+      </template>
     </CommandList>
   </CommandDialog>
 </template>

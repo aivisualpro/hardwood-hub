@@ -19,6 +19,7 @@ interface WorkspaceRecord {
   logo: string
   plan: string
   allowedMenus: string[]
+  menuPermissions: Record<string, string[]>
   isLocked: boolean
 }
 
@@ -52,7 +53,8 @@ const emptyWpForm = () => ({
   name: '',
   logo: 'i-lucide-building',
   plan: '',
-  allowedMenus: [] as string[]
+  allowedMenus: [] as string[],
+  menuPermissions: {} as Record<string, string[]>
 })
 const wpForm = ref(emptyWpForm())
 
@@ -159,7 +161,8 @@ function openWpEdit(rec: WorkspaceRecord) {
     name: rec.name,
     logo: rec.logo,
     plan: rec.plan,
-    allowedMenus: [...rec.allowedMenus]
+    allowedMenus: [...rec.allowedMenus],
+    menuPermissions: JSON.parse(JSON.stringify(rec.menuPermissions || {}))
   }
   editingWpId.value = rec._id
   showWpModal.value = true
@@ -179,11 +182,7 @@ async function saveWorkspace() {
     }
     showWpModal.value = false
     await fetchWorkspaces()
-    
-    // Refresh the page to reload the dynamic sidebar
-    if (editingWpId.value) {
-      setTimeout(() => location.reload(), 500)
-    }
+    await refreshNuxtData('workspaces-list')
   }
   catch (e: any) {
     toast.error('Save failed', { description: e?.message })
@@ -196,6 +195,7 @@ async function deleteWorkspace(id: string) {
     await $fetch(`/api/workspaces/${id}`, { method: 'DELETE' })
     toast.success('Workspace deleted')
     await fetchWorkspaces()
+    await refreshNuxtData('workspaces-list')
   } catch (e: any) {
     toast.error('Delete failed', { description: e?.message })
   }
@@ -210,6 +210,66 @@ function levelColor(lvl: string) {
 }
 
 import { navMenu, navMenuConcepts, navMenuBottom } from '~/constants/menus'
+
+// ─── Route Capabilities (which CRUD ops each route supports) ─────
+const ROUTE_CAPS: Record<string, { ops: string[], icon: string }> = {
+  '/admin/dashboard': { ops: ['read'], icon: 'i-lucide-layout-dashboard' },
+  '/admin/employees': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-users' },
+  '/admin/skills': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-graduation-cap' },
+  '/admin/employee-performance': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-bar-chart-3' },
+  '/admin/activities': { ops: ['read'], icon: 'i-lucide-activity' },
+  '/tasks': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-layout-dashboard' },
+  '/project-communication': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-message-square' },
+  '/daily-production': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-clipboard-list' },
+  '/my-profile': { ops: ['read'], icon: 'i-lucide-user-circle' },
+  '/email': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-mail' },
+  '/sales/quotes': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-file-text' },
+  '/sales/invoices': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-receipt' },
+  '/sales/orders': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-shopping-cart' },
+  '/sales/customers': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-users' },
+  '/reports/sales': { ops: ['read'], icon: 'i-lucide-trending-up' },
+  '/reports/financial': { ops: ['read'], icon: 'i-lucide-pie-chart' },
+  '/general-settings': { ops: ['read', 'update'], icon: 'i-lucide-settings' },
+}
+
+const OP_META: Record<string, { label: string, color: string, icon: string }> = {
+  create: { label: 'Create', color: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25', icon: 'i-lucide-plus' },
+  read:   { label: 'View',   color: 'bg-blue-500/15 text-blue-500 border-blue-500/30 hover:bg-blue-500/25',    icon: 'i-lucide-eye' },
+  update: { label: 'Edit',   color: 'bg-amber-500/15 text-amber-500 border-amber-500/30 hover:bg-amber-500/25', icon: 'i-lucide-pencil' },
+  delete: { label: 'Delete', color: 'bg-red-500/15 text-red-500 border-red-500/30 hover:bg-red-500/25',         icon: 'i-lucide-trash-2' },
+}
+
+function getCaps(routeId: string) {
+  return ROUTE_CAPS[routeId] || { ops: ['read'], icon: 'i-lucide-circle' }
+}
+function isViewOnly(routeId: string) {
+  const c = getCaps(routeId)
+  return c.ops.length === 1 && c.ops[0] === 'read'
+}
+function hasPerm(menuId: string, op: string) {
+  return wpForm.value.menuPermissions[menuId]?.includes(op) || false
+}
+function togglePerm(menuId: string, op: string) {
+  if (!wpForm.value.menuPermissions[menuId]) wpForm.value.menuPermissions[menuId] = []
+  const perms = wpForm.value.menuPermissions[menuId]
+  const idx = perms.indexOf(op)
+  if (idx >= 0) {
+    if (op === 'read') return
+    perms.splice(idx, 1)
+  } else {
+    perms.push(op)
+  }
+}
+function toggleMenu(menuId: string) {
+  const idx = wpForm.value.allowedMenus.indexOf(menuId)
+  if (idx >= 0) {
+    wpForm.value.allowedMenus.splice(idx, 1)
+    delete wpForm.value.menuPermissions[menuId]
+  } else {
+    wpForm.value.allowedMenus.push(menuId)
+    wpForm.value.menuPermissions[menuId] = [...getCaps(menuId).ops]
+  }
+}
 
 const availableMenus = computed(() => {
   const menus: { id: string, title: string, group: string }[] = []
@@ -246,10 +306,12 @@ function hasAllInGroup(groupItems: any[]) {
 function toggleGroup(groupItems: any[]) {
    if (hasAllInGroup(groupItems)) {
       wpForm.value.allowedMenus = wpForm.value.allowedMenus.filter(m => !groupItems.some(i => i.id === m))
+      for (const i of groupItems) delete wpForm.value.menuPermissions[i.id]
    } else {
       for (const i of groupItems) {
          if (!wpForm.value.allowedMenus.includes(i.id)) {
             wpForm.value.allowedMenus.push(i.id)
+            wpForm.value.menuPermissions[i.id] = [...getCaps(i.id).ops]
          }
       }
    }
@@ -618,33 +680,77 @@ const WpIconsList = [
           <!-- Permissions Builder -->
           <div class="flex flex-col gap-4">
              <div>
-                <Label class="text-base font-semibold">Dashboard Menu Visibility</Label>
-                <p class="text-xs text-muted-foreground mt-0.5 mb-4">Toggle switches to allow these modules to render in the sidebar for this workspace.</p>
+                <Label class="text-base font-semibold">Menu Access & Permissions</Label>
+                <p class="text-xs text-muted-foreground mt-0.5 mb-4">Toggle modules on/off and configure granular CRUD permissions for each route.</p>
              </div>
 
              <!-- Render all grouped menus -->
-             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+             <div class="grid grid-cols-1 gap-5">
                 <div v-for="g in menusByGroup" :key="g.group" class="rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
-                   <div class="px-4 py-2 bg-muted/30 border-b border-border/50 flex items-center justify-between">
+                   <div class="px-4 py-2.5 bg-muted/30 border-b border-border/50 flex items-center justify-between">
                       <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">{{ g.group }}</span>
                       <button class="text-[10px] font-medium text-primary hover:underline uppercase" @click="toggleGroup(g.items)">
                          {{ hasAllInGroup(g.items) ? 'Deselect All' : 'Select All' }}
                       </button>
                    </div>
-                   <div class="p-2 flex flex-col gap-1 text-sm bg-card">
-                      <label 
+                   <div class="divide-y divide-border/30 bg-card">
+                      <div 
                          v-for="item in g.items" 
                          :key="item.id" 
-                         class="group flex items-center justify-between px-3 py-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                         class="transition-all duration-200"
+                         :class="wpForm.allowedMenus.includes(item.id) ? 'bg-card' : 'bg-muted/10 opacity-50'"
                       >
-                         <span class="font-medium text-foreground group-hover:text-primary transition-colors select-none">{{ item.title }}</span>
-                         <input 
-                            type="checkbox" 
-                            :value="item.id" 
-                            v-model="wpForm.allowedMenus" 
-                            class="size-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-background"
-                          />
-                      </label>
+                         <!-- Menu toggle row -->
+                         <div 
+                           class="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+                           @click="toggleMenu(item.id)"
+                         >
+                           <div 
+                             class="size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                             :class="wpForm.allowedMenus.includes(item.id) ? 'bg-primary/10 border border-primary/20' : 'bg-muted border border-border/50'"
+                           >
+                             <Icon :name="getCaps(item.id).icon" class="size-4" :class="wpForm.allowedMenus.includes(item.id) ? 'text-primary' : 'text-muted-foreground'" />
+                           </div>
+                           <div class="flex-1 min-w-0">
+                             <span class="font-medium text-sm" :class="wpForm.allowedMenus.includes(item.id) ? 'text-foreground' : 'text-muted-foreground'">{{ item.title }}</span>
+                             <p v-if="isViewOnly(item.id) && wpForm.allowedMenus.includes(item.id)" class="text-[10px] text-blue-500/70 mt-0.5 flex items-center gap-1">
+                               <Icon name="i-lucide-lock" class="size-2.5" />
+                               View only — no editable actions
+                             </p>
+                           </div>
+                           <div class="shrink-0">
+                             <div 
+                               class="size-5 rounded-md border-2 flex items-center justify-center transition-all"
+                               :class="wpForm.allowedMenus.includes(item.id) ? 'bg-primary border-primary' : 'border-border'"
+                             >
+                               <Icon v-if="wpForm.allowedMenus.includes(item.id)" name="i-lucide-check" class="size-3 text-primary-foreground" />
+                             </div>
+                           </div>
+                         </div>
+
+                         <!-- CRUD Permission pills (shown when active & has multiple ops) -->
+                         <div 
+                           v-if="wpForm.allowedMenus.includes(item.id) && !isViewOnly(item.id)" 
+                           class="px-4 pb-3 pt-0 ml-11"
+                         >
+                           <div class="flex flex-wrap gap-1.5">
+                             <button
+                               v-for="op in getCaps(item.id).ops"
+                               :key="op"
+                               class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-semibold uppercase tracking-wider transition-all cursor-pointer"
+                               :class="hasPerm(item.id, op) 
+                                 ? OP_META[op]?.color 
+                                 : 'bg-muted/30 text-muted-foreground/40 border-border/30 hover:bg-muted/50'"
+                               :title="op === 'read' ? 'View is always enabled' : `Toggle ${OP_META[op]?.label ?? op}`"
+                               @click.stop="togglePerm(item.id, op)"
+                             >
+                               <Icon :name="OP_META[op]?.icon ?? 'i-lucide-circle'" class="size-2.5" />
+                               {{ OP_META[op]?.label ?? op }}
+                               <Icon v-if="op === 'read'" name="i-lucide-lock" class="size-2 opacity-50" />
+                             </button>
+                           </div>
+                         </div>
+                      </div>
                    </div>
                 </div>
              </div>

@@ -49,6 +49,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-message-square',
         link: '/project-communication',
       },
+      {
+        title: 'Daily Production Report',
+        icon: 'i-lucide-clipboard-list',
+        link: '/daily-production',
+      },
     ],
   },
   {
@@ -91,12 +96,7 @@ export const navMenuConcepts: NavMenu = {
       icon: 'i-lucide-shopping-cart',
       link: '/sales/orders',
     },
-    {
-      title: 'Products',
-      titleKey: 'nav.products',
-      icon: 'i-lucide-package',
-      link: '/sales/products',
-    },
+
     {
       title: 'Customers',
       titleKey: 'nav.customers',
@@ -115,12 +115,7 @@ export const navMenuConcepts: NavMenu = {
       icon: 'i-lucide-pie-chart',
       link: '/reports/financial',
     },
-    {
-      title: 'HR Reports',
-      titleKey: 'nav.hrReports',
-      icon: 'i-lucide-file-bar-chart',
-      link: '/reports/hr',
-    },
+
   ],
 }
 

@@ -7,6 +7,7 @@ const EmployeeSchema = new mongoose.Schema(
         position: { type: String, required: true, trim: true },
         profileImage: { type: String, default: '' }, // Always a Cloudinary URL
         status: { type: String, default: 'Active', enum: ['Active', 'Inactive'] },
+        workspace: { type: String, default: '' }, // Workspace ID
     },
     { timestamps: true, collection: 'hardwoodDB_Employees' },
 )

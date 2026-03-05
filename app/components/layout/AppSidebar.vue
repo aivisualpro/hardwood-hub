@@ -16,14 +16,14 @@ function getHeading(nav: { heading: string, headingKey?: string }) {
   return nav.headingKey ? t(nav.headingKey as TranslationKey) : nav.heading
 }
 
-const { data: workspacesRes } = await useFetch('/api/workspaces')
-const teams = computed(() => workspacesRes.value?.data || [])
+const { data: workspacesRes } = await useFetch('/api/workspaces', { key: 'workspaces-list' })
+const allTeams = computed(() => workspacesRes.value?.data || [])
 
 const activeTeamId = useCookie<string>('active_workspace_id')
 const activeTeam = computed({
   get() {
-    const t = teams.value.find((t: any) => t._id === activeTeamId.value)
-    return t || teams.value[0] || { name: 'Admin Workspace', logo: 'i-lucide-shield-check', plan: 'Full Access', allowedMenus: ['*'] }
+    const t = userTeams.value.find((t: any) => t._id === activeTeamId.value)
+    return t || userTeams.value[0] || { name: 'Admin Workspace', logo: 'i-lucide-shield-check', plan: 'Full Access', allowedMenus: ['*'] }
   },
   set(val: any) {
     activeTeamId.value = val._id
@@ -44,6 +44,10 @@ const filteredNavMenu = computed(() => {
   })).filter(group => group.items.length > 0)
 })
 
+const flattenedNavItems = computed(() => {
+  return filteredNavMenu.value.flatMap(group => group.items)
+})
+
 const filteredNavMenuConcepts = computed(() => {
   return {
     ...navMenuConcepts,
@@ -55,7 +59,17 @@ const filteredNavMenuBottom = computed(() => {
   return navMenuBottom.filter((item: any) => isAllowed(item.link))
 })
 
-const userCookie = useCookie<{ employee: string, email: string, position: string, profileImage: string } | null>('hardwood_user')
+const userCookie = useCookie<{ employee: string, email: string, position: string, profileImage: string, workspace?: string } | null>('hardwood_user')
+
+// Filter workspaces: if the user has a workspace assigned, only show that one
+const userTeams = computed(() => {
+  const userWs = userCookie.value?.workspace
+  if (userWs) {
+    const matched = allTeams.value.filter((t: any) => t._id === userWs)
+    return matched.length > 0 ? matched : allTeams.value
+  }
+  return allTeams.value
+})
 
 const user = computed(() => {
   const u = userCookie.value
@@ -73,15 +87,12 @@ const { sidebar } = useAppSettings()
 <template>
   <Sidebar :collapsible="sidebar?.collapsible" :side="sidebar?.side" :variant="sidebar?.variant">
     <SidebarHeader>
-      <LayoutSidebarNavHeader v-model="activeTeam" :teams="teams" />
+      <LayoutSidebarNavHeader v-model="activeTeam" :teams="userTeams" />
       <Search />
     </SidebarHeader>
     <SidebarContent>
-      <SidebarGroup v-for="(nav, indexGroup) in filteredNavMenu" :key="indexGroup">
-        <SidebarGroupLabel v-if="nav.heading">
-          {{ getHeading(nav) }}
-        </SidebarGroupLabel>
-        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in nav.items" :key="index" :item="item" />
+      <SidebarGroup>
+        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in flattenedNavItems" :key="index" :item="item" />
       </SidebarGroup>
       <SidebarGroup v-if="filteredNavMenuConcepts.items?.length" class="mt-auto">
         <SidebarGroupLabel v-if="filteredNavMenuConcepts.heading">

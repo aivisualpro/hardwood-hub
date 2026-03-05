@@ -138,7 +138,8 @@ const avatarColors = [
 </script>
 
 <template>
-  <div class="w-full flex flex-col gap-5">
+  <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
+    <div class="w-full flex flex-col gap-5 p-1">
     <!-- Tab Navigation -->
     <div class="flex items-center gap-1 border rounded-lg p-1 bg-muted/30 w-fit">
       <button
@@ -558,5 +559,6 @@ const avatarColors = [
         </Card>
       </div>
     </template>
+    </div>
   </div>
 </template>

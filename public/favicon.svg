@@ -1,24 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <circle cx="256" cy="256" r="240" stroke="#1e293b" stroke-width="28" fill="none"/>
-  <circle cx="256" cy="256" r="180" stroke="#475569" stroke-width="20" fill="none" stroke-dasharray="80 40"/>
-  <circle cx="256" cy="256" r="120" stroke="#1e293b" stroke-width="16" fill="none" stroke-dasharray="60 30"/>
-  <!-- Core dot -->
-  <circle cx="256" cy="256" r="36" fill="#1e293b"/>
-  <!-- Circuit nodes -->
-  <circle cx="256" cy="136" r="14" fill="#475569"/>
-  <circle cx="360" cy="200" r="12" fill="#64748b"/>
-  <circle cx="360" cy="312" r="14" fill="#475569"/>
-  <circle cx="256" cy="376" r="12" fill="#64748b"/>
-  <circle cx="152" cy="312" r="14" fill="#475569"/>
-  <circle cx="152" cy="200" r="12" fill="#64748b"/>
-  <!-- Connection lines -->
-  <line x1="256" y1="150" x2="256" y2="220" stroke="#475569" stroke-width="4" stroke-linecap="round"/>
-  <line x1="292" y1="256" x2="348" y2="204" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
-  <line x1="292" y1="256" x2="348" y2="308" stroke="#475569" stroke-width="4" stroke-linecap="round"/>
-  <line x1="256" y1="292" x2="256" y2="364" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
-  <line x1="220" y1="256" x2="164" y2="308" stroke="#475569" stroke-width="4" stroke-linecap="round"/>
-  <line x1="220" y1="256" x2="164" y2="204" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
-  <!-- Outer accent arcs -->
-  <path d="M 100 180 A 200 200 0 0 1 256 56" stroke="#94a3b8" stroke-width="10" fill="none" stroke-linecap="round"/>
-  <path d="M 412 180 A 200 200 0 0 1 412 332" stroke="#94a3b8" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <!-- Background rounded square -->
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="#1a1a2e"/>
+
+  <!-- Hardwood plank pattern -->
+  <!-- Plank 1 (left) -->
+  <rect x="96" y="100" width="88" height="312" rx="8" fill="#8B5E3C" opacity="0.85"/>
+  <rect x="100" y="104" width="80" height="304" rx="6" fill="#A0714F"/>
+  <!-- Grain lines -->
+  <line x1="120" y1="120" x2="120" y2="390" stroke="#8B5E3C" stroke-width="1.5" opacity="0.4"/>
+  <line x1="140" y1="110" x2="140" y2="400" stroke="#8B5E3C" stroke-width="1" opacity="0.3"/>
+  <line x1="160" y1="115" x2="160" y2="395" stroke="#8B5E3C" stroke-width="1.5" opacity="0.35"/>
+
+  <!-- Plank 2 (center-left) -->
+  <rect x="196" y="140" width="88" height="272" rx="8" fill="#7D5234" opacity="0.85"/>
+  <rect x="200" y="144" width="80" height="264" rx="6" fill="#C4956A"/>
+  <!-- Grain lines -->
+  <line x1="220" y1="155" x2="220" y2="395" stroke="#A0714F" stroke-width="1.5" opacity="0.4"/>
+  <line x1="240" y1="150" x2="240" y2="400" stroke="#A0714F" stroke-width="1" opacity="0.3"/>
+  <line x1="260" y1="148" x2="260" y2="402" stroke="#A0714F" stroke-width="1.5" opacity="0.35"/>
+
+  <!-- Plank 3 (center-right) -->
+  <rect x="296" y="80" width="88" height="332" rx="8" fill="#6B4226" opacity="0.85"/>
+  <rect x="300" y="84" width="80" height="324" rx="6" fill="#B8845A"/>
+  <!-- Grain lines -->
+  <line x1="320" y1="95" x2="320" y2="395" stroke="#8B5E3C" stroke-width="1" opacity="0.35"/>
+  <line x1="340" y1="90" x2="340" y2="400" stroke="#8B5E3C" stroke-width="1.5" opacity="0.4"/>
+  <line x1="360" y1="92" x2="360" y2="398" stroke="#8B5E3C" stroke-width="1" opacity="0.3"/>
+
+  <!-- "H" Letter Overlay -->
+  <!-- Left vertical -->
+  <rect x="130" y="150" width="36" height="210" rx="6" fill="#F5E6D3" opacity="0.95"/>
+  <!-- Right vertical -->
+  <rect x="330" y="150" width="36" height="210" rx="6" fill="#F5E6D3" opacity="0.95"/>
+  <!-- Horizontal bar -->
+  <rect x="130" y="235" width="236" height="36" rx="6" fill="#F5E6D3" opacity="0.95"/>
+
+  <!-- Subtle shine -->
+  <rect x="134" y="154" width="10" height="60" rx="5" fill="white" opacity="0.15"/>
+  <rect x="334" y="154" width="10" height="60" rx="5" fill="white" opacity="0.15"/>
 </svg>

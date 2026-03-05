@@ -16,6 +16,7 @@ interface Employee {
   position: string
   profileImage: string
   status: string
+  workspace: string
   createdAt?: string
 }
 
@@ -36,6 +37,7 @@ const emptyForm = () => ({
   position: '',
   profileImage: '',
   status: 'Active',
+  workspace: 'none',
 })
 
 const form = ref(emptyForm())
@@ -69,6 +71,20 @@ async function fetchEmployees() {
 }
 
 onMounted(fetchEmployees)
+
+// ─── Fetch Workspaces ─────────────────────────────────────
+const workspacesList = ref<{ _id: string, name: string }[]>([])
+async function fetchWorkspaces() {
+  try {
+    const res = await $fetch<{ success: boolean, data: any[] }>('/api/workspaces')
+    workspacesList.value = res.data
+  } catch {}
+}
+onMounted(fetchWorkspaces)
+
+function workspaceName(id: string) {
+  return workspacesList.value.find(w => w._id === id)?.name || ''
+}
 
 // ─── Image Upload (→ Cloudinary via server) ───────────────
 async function onFileChange(e: Event) {
@@ -113,7 +129,7 @@ function openCreate() {
 }
 
 function openEdit(emp: Employee) {
-  form.value = { employee: emp.employee, email: emp.email, position: emp.position, profileImage: emp.profileImage, status: emp.status || 'Active' }
+  form.value = { employee: emp.employee, email: emp.email, position: emp.position, profileImage: emp.profileImage, status: emp.status || 'Active', workspace: emp.workspace || 'none' }
   editId.value = emp._id
   previewUrl.value = emp.profileImage
   isEditing.value = true
@@ -129,12 +145,13 @@ async function saveEmployee() {
 
   saving.value = true
   try {
+    const payload = { ...form.value, workspace: form.value.workspace === 'none' ? '' : form.value.workspace }
     if (isEditing.value && editId.value) {
-      await $fetch(`/api/employees/${editId.value}`, { method: 'PUT', body: form.value })
+      await $fetch(`/api/employees/${editId.value}`, { method: 'PUT', body: payload })
       notify('Updated', `${form.value.employee} updated successfully`)
     }
     else {
-      await $fetch('/api/employees', { method: 'POST', body: form.value })
+      await $fetch('/api/employees', { method: 'POST', body: payload })
       notify('Created', `${form.value.employee} added to the team`)
     }
     showModal.value = false
@@ -259,6 +276,10 @@ async function toggleStatus(emp: Employee) {
               {{ emp.status || 'Active' }}
             </span>
           </div>
+          <div v-if="workspaceName(emp.workspace)" class="flex items-center justify-center gap-1.5 mt-1">
+            <Icon name="i-lucide-building" class="size-3 text-muted-foreground/60" />
+            <span class="text-[10px] text-muted-foreground">{{ workspaceName(emp.workspace) }}</span>
+          </div>
         </div>
 
         <!-- Actions (visible on hover) -->
@@ -355,6 +376,20 @@ async function toggleStatus(emp: Employee) {
                 <SelectItem value="Finance">Finance</SelectItem>
                 <SelectItem value="Super Admin">Super Admin</SelectItem>
                 <SelectItem value="Supervisor">Supervisor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <!-- Workspace -->
+          <div class="flex flex-col gap-1.5">
+            <Label for="emp-workspace">Workspace</Label>
+            <Select v-model="form.workspace">
+              <SelectTrigger id="emp-workspace">
+                <SelectValue placeholder="Select a workspace" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">All Workspaces (Admin)</SelectItem>
+                <SelectItem v-for="ws in workspacesList" :key="ws._id" :value="ws._id">{{ ws.name }}</SelectItem>
               </SelectContent>
             </Select>
           </div>

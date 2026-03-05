@@ -26,7 +26,23 @@ const activeTeam = computed({
 <template>
   <SidebarMenu>
     <SidebarMenuItem>
-      <DropdownMenu>
+      <!-- Single workspace: static display, no dropdown -->
+      <template v-if="teams.length <= 1">
+        <SidebarMenuButton
+          size="lg"
+        >
+          <div class="aspect-square size-8 flex items-center justify-center rounded-lg overflow-hidden">
+            <img src="/logo-192.png" alt="Hardwood Hub" class="size-8 object-cover" />
+          </div>
+          <div class="grid flex-1 text-left text-sm leading-tight">
+            <span class="truncate font-semibold">{{ activeTeam!.name }}</span>
+            <span class="truncate text-xs">{{ activeTeam!.plan }}</span>
+          </div>
+        </SidebarMenuButton>
+      </template>
+
+      <!-- Multiple workspaces: show dropdown switcher -->
+      <DropdownMenu v-else>
         <DropdownMenuTrigger as-child>
           <SidebarMenuButton
             size="lg"

@@ -2,7 +2,7 @@
 import KanbanBoard from '~/components/kanban/KanbanBoard.vue'
 
 const { setHeader } = usePageHeader()
-setHeader({ titleKey: 'kanban.title', icon: 'i-lucide-kanban', descriptionKey: 'kanban.description' })
+setHeader({ title: 'Tasks', icon: 'i-lucide-kanban', description: 'Manage your projects with drag and drop' })
 </script>
 
 <template>

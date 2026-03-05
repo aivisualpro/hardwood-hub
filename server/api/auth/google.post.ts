@@ -78,6 +78,7 @@ export default defineEventHandler(async (event) => {
             position: employee.position,
             profileImage: employee.profileImage || googleUser.picture,
             status: employee.status,
+            workspace: employee.workspace || '',
         },
     }
 })

@@ -207,6 +207,7 @@ const tabs = [
   { id: 'summary', label: 'Progress Summary', icon: 'i-lucide-pie-chart' },
   { id: 'growth', label: 'My Growth Rate', icon: 'i-lucide-trending-up' },
   { id: 'bonus', label: 'Bonus Report', icon: 'i-lucide-award' },
+  { id: 'theme', label: 'Theme', icon: 'i-lucide-paintbrush' },
 ]
 </script>
 
@@ -506,6 +507,17 @@ const tabs = [
                   </div>
                 </Transition>
               </div>
+            </div>
+          </div>
+
+          <!-- 4. Theme Tab -->
+          <div v-else-if="activeTab === 'theme'" class="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
+            <h2 class="text-2xl font-bold flex items-center gap-2">
+              <Icon name="i-lucide-paintbrush" class="text-primary" />
+              Customize Theme
+            </h2>
+            <div class="rounded-xl border border-border/50 bg-card p-6 max-w-xl">
+              <ThemeCustomize />
             </div>
           </div>
         </template>

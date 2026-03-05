@@ -197,11 +197,11 @@ function handleAddComment(colId: string, taskId: string) {
 </script>
 
 <template>
-  <div class="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 h-[calc(100vh-theme(spacing.24))]">
+  <div class="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 h-[calc(100vh-theme(spacing.24))] px-2">
 
     <!-- Loading State -->
     <template v-if="loading">
-      <div v-for="i in 4" :key="i" class="w-[300px] shrink-0 rounded-xl border border-border/50 bg-card p-4 space-y-3 self-start">
+      <div v-for="i in 4" :key="i" class="flex-1 min-w-[250px] rounded-xl border border-border/50 bg-card p-4 space-y-3 self-start">
         <div class="h-5 w-24 bg-muted/40 rounded animate-pulse" />
         <div v-for="j in 3" :key="j" class="rounded-lg border border-border/30 p-3 space-y-2">
           <div class="h-3 w-16 bg-muted/30 rounded animate-pulse" />
@@ -215,7 +215,7 @@ function handleAddComment(colId: string, taskId: string) {
     <template v-else>
       <Draggable
         v-model="board.columns"
-        class="flex gap-4 min-w-max h-full"
+        class="flex gap-4 w-full h-full"
         item-key="id"
         :animation="180"
         handle=".col-handle"
@@ -223,7 +223,7 @@ function handleAddComment(colId: string, taskId: string) {
         @end="onTaskDrop"
       >
         <template #item="{ element: col }: { element: Column }">
-          <Card class="w-[300px] shrink-0 py-2 gap-0 flex flex-col h-full">
+          <Card class="flex-1 min-w-[250px] py-2 gap-0 flex flex-col h-full">
             <CardHeader class="flex flex-row items-center justify-between gap-2 px-3 shrink-0">
               <CardTitle class="font-semibold text-sm flex items-center gap-2">
                 <Icon :name="columnIcon(col.id)" class="size-4 col-handle cursor-grab" :class="columnColor(col.id)" />
