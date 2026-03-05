@@ -43,15 +43,17 @@ const teams: {
   },
 ]
 
-const user: {
-  name: string
-  email: string
-  avatar: string
-} = {
-  name: 'Adeel Jabbar',
-  email: 'adeel@hardwoodhub.com',
-  avatar: '/avatars/adeel.png',
-}
+const userCookie = useCookie<{ employee: string, email: string, position: string, profileImage: string } | null>('hardwood_user')
+
+const user = computed(() => {
+  const u = userCookie.value
+  return {
+    name: u?.employee || 'Unknown User',
+    email: u?.email || '',
+    avatar: u?.profileImage || '',
+    position: u?.position || ''
+  }
+})
 
 const { sidebar } = useAppSettings()
 </script>
