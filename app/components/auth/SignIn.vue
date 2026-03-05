@@ -83,7 +83,7 @@ async function handleGoogleResponse(response: { credential: string }) {
     userCookie.value = JSON.stringify(res.data)
 
     toast.success(`Welcome, ${res.data.employee}!`)
-    navigateTo('/')
+    navigateTo('/my-profile')
   }
   catch (e: any) {
     const msg = e?.data?.message || e?.message || 'Login failed'

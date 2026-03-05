@@ -4,6 +4,8 @@ import { toast } from 'vue-sonner'
 const { setHeader } = usePageHeader()
 setHeader({ title: 'Project Communication', icon: 'i-lucide-message-square', description: 'Manage and Track Field Project Communications' })
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/project-communication')
+
 // ─── Setup ─────────────────────────────────────────────
 const activeTab = ref('list') // 'list' or 'form'
 const records = ref<any[]>([])
@@ -301,7 +303,7 @@ function formatDate(d: string) {
     <div v-if="activeTab === 'list'" class="p-6 space-y-6 max-w-7xl mx-auto">
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold tracking-tight">Project Communications</h1>
-        <Button @click="openCreate">
+        <Button v-if="canCreate()" @click="openCreate">
           <Icon name="i-lucide-plus" class="mr-2 size-4" />
           New Checklist
         </Button>
@@ -317,7 +319,7 @@ function formatDate(d: string) {
           </div>
           <h3 class="text-xl font-bold mb-2">No checklists yet</h3>
           <p class="text-sm text-muted-foreground max-w-sm mb-6">Create your first project communication checklist to start tracking field data.</p>
-          <Button @click="openCreate" size="lg">
+          <Button v-if="canCreate()" @click="openCreate" size="lg">
             <Icon name="i-lucide-plus" class="mr-2 size-4" />
             Create First Checklist
           </Button>
@@ -359,10 +361,10 @@ function formatDate(d: string) {
                 </td>
                 <td class="px-5 py-3">{{ r.wasThereAChangeOrderFilledOut || '—' }}</td>
                 <td class="px-5 py-3 text-right" @click.stop>
-                  <Button variant="ghost" size="sm" class="h-8 px-2" @click="openEdit(r)">
+                  <Button v-if="canUpdate()" variant="ghost" size="sm" class="h-8 px-2" @click="openEdit(r)">
                     <Icon name="i-lucide-pencil" class="size-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" class="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" @click="deleteRecord(r._id)">
+                  <Button v-if="canDelete()" variant="ghost" size="sm" class="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" @click="deleteRecord(r._id)">
                     <Icon name="i-lucide-trash-2" class="size-4" />
                   </Button>
                 </td>

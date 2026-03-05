@@ -4,6 +4,8 @@ import { toast } from 'vue-sonner'
 const { setHeader } = usePageHeader()
 setHeader({ title: 'Daily Production Report', icon: 'i-lucide-clipboard-list', description: 'Track daily crew production, attendance & work blocks' })
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/daily-production')
+
 // ─── Types ───────────────────────────────────────────────
 interface DailyProductionRecord {
   _id: string
@@ -294,7 +296,7 @@ const lateCount = computed(() => {
           <h1 class="text-2xl font-bold tracking-tight">Daily Production Reports</h1>
           <p class="text-sm text-muted-foreground mt-1">Track employee attendance, work output, and production metrics</p>
         </div>
-        <Button @click="openCreate">
+        <Button v-if="canCreate()" @click="openCreate">
           <Icon name="i-lucide-plus" class="mr-2 size-4" />
           New Report
         </Button>
@@ -385,10 +387,10 @@ const lateCount = computed(() => {
                   {{ ((r.squareFeetCompleted || 0) + (r.squareFeetCompletedBlock2 || 0) + (r.squareFeetCompletedBlock3 || 0)) || '—' }}
                 </td>
                 <td class="px-5 py-3 text-right" @click.stop>
-                  <Button variant="ghost" size="sm" class="h-8 px-2" @click="openEdit(r)">
+                  <Button v-if="canUpdate()" variant="ghost" size="sm" class="h-8 px-2" @click="openEdit(r)">
                     <Icon name="i-lucide-pencil" class="size-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" class="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" @click="deleteRecord(r._id)">
+                  <Button v-if="canDelete()" variant="ghost" size="sm" class="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" @click="deleteRecord(r._id)">
                     <Icon name="i-lucide-trash-2" class="size-4" />
                   </Button>
                 </td>

@@ -4,6 +4,8 @@ import { toast } from 'vue-sonner'
 const { setHeader } = usePageHeader()
 setHeader({ title: 'Employees', icon: 'i-lucide-users', description: 'Manage your team members' })
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/admin/employees')
+
 function notify(title: string, description: string, variant?: string) {
   if (variant === 'destructive') toast.error(title, { description })
   else toast.success(title, { description })
@@ -209,7 +211,7 @@ async function toggleStatus(emp: Employee) {
         <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
         <Input v-model="searchQuery" placeholder="Search employees…" class="pl-9" />
       </div>
-      <Button @click="openCreate">
+      <Button v-if="canCreate()" @click="openCreate">
         <Icon name="i-lucide-plus" class="mr-2 size-4" />
         Add Employee
       </Button>
@@ -231,7 +233,7 @@ async function toggleStatus(emp: Employee) {
       </div>
       <h3 class="text-lg font-semibold">No employees found</h3>
       <p class="text-sm text-muted-foreground">Add your first team member to get started.</p>
-      <Button @click="openCreate">
+      <Button v-if="canCreate()" @click="openCreate">
         <Icon name="i-lucide-plus" class="mr-2 size-4" />
         Add Employee
       </Button>
@@ -284,8 +286,9 @@ async function toggleStatus(emp: Employee) {
         </div>
 
         <!-- Actions (visible on hover) -->
-        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
+        <div v-if="canUpdate() || canDelete()" class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
           <Button
+            v-if="canUpdate()"
             variant="ghost" size="icon" class="size-7"
             :title="emp.status === 'Active' ? 'Deactivate' : 'Activate'"
             @click="toggleStatus(emp)"
@@ -296,10 +299,10 @@ async function toggleStatus(emp: Employee) {
               :class="emp.status === 'Active' ? 'text-amber-400' : 'text-emerald-400'"
             />
           </Button>
-          <Button variant="ghost" size="icon" class="size-7" @click="openEdit(emp)">
+          <Button v-if="canUpdate()" variant="ghost" size="icon" class="size-7" @click="openEdit(emp)">
             <Icon name="i-lucide-pencil" class="size-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" class="size-7 text-destructive hover:text-destructive" @click="confirmDelete(emp)">
+          <Button v-if="canDelete()" variant="ghost" size="icon" class="size-7 text-destructive hover:text-destructive" @click="confirmDelete(emp)">
             <Icon name="i-lucide-trash-2" class="size-3.5" />
           </Button>
         </div>

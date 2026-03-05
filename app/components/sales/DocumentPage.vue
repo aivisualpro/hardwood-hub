@@ -24,6 +24,8 @@ const props = defineProps<{
 const { setHeader } = usePageHeader()
 setHeader({ title: props.title, description: props.description, icon: props.icon })
 
+const { canCreate, canUpdate, canDelete } = usePermissions()
+
 const { items, isLoaded, createDoc, updateDoc, removeDoc, resetDocs } = useSalesDocument(props.storeKey, props.initialData)
 
 // ── State ──────────────────────────────────────────
@@ -316,7 +318,7 @@ const previewHtml = computed(() => {
           <Icon name="i-lucide-rotate-ccw" class="mr-1 size-4" />
           Reset
         </Button>
-        <Button size="sm" @click="openCreate">
+        <Button v-if="canCreate()" size="sm" @click="openCreate">
           <Icon name="i-lucide-plus" class="mr-1 size-4" />
           New {{ docType }}
         </Button>
@@ -384,10 +386,10 @@ const previewHtml = computed(() => {
                   <Button variant="ghost" size="icon" class="size-7" title="Download PDF" @click.stop="handleDownload(item)">
                     <Icon name="i-lucide-download" class="size-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" class="size-7" title="Edit" @click.stop="openEdit(item)">
+                  <Button v-if="canUpdate()" variant="ghost" size="icon" class="size-7" title="Edit" @click.stop="openEdit(item)">
                     <Icon name="i-lucide-pencil" class="size-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" class="size-7 text-destructive" title="Delete" @click.stop="confirmDelete(item)">
+                  <Button v-if="canDelete()" variant="ghost" size="icon" class="size-7 text-destructive" title="Delete" @click.stop="confirmDelete(item)">
                     <Icon name="i-lucide-trash-2" class="size-3.5" />
                   </Button>
                 </div>
@@ -706,11 +708,11 @@ const previewHtml = computed(() => {
             <Icon name="i-lucide-download" class="mr-1 size-4" />
             Download PDF
           </Button>
-          <Button variant="outline" size="sm" @click="showDetail = false; openEdit(selectedDoc!)">
+          <Button v-if="canUpdate()" variant="outline" size="sm" @click="showDetail = false; openEdit(selectedDoc!)">
             <Icon name="i-lucide-pencil" class="mr-1 size-4" />
             Edit
           </Button>
-          <Button variant="destructive" size="sm" @click="confirmDelete(selectedDoc!)">
+          <Button v-if="canDelete()" variant="destructive" size="sm" @click="confirmDelete(selectedDoc!)">
             <Icon name="i-lucide-trash-2" class="mr-1 size-4" />
             Delete
           </Button>

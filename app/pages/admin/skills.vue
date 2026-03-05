@@ -4,6 +4,8 @@ import { toast } from 'vue-sonner'
 const { setHeader } = usePageHeader()
 setHeader({ title: 'Skills', icon: 'i-lucide-graduation-cap', description: 'Manage skill categories and competencies' })
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/admin/skills')
+
 // ─── Types ───────────────────────────────────────────────
 interface SkillItem {
   _id: string
@@ -616,6 +618,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
               <!-- Add skill (visible on hover) -->
               <div
+                v-if="canCreate()"
                 role="button"
                 tabindex="0"
                 class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 shrink-0 cursor-pointer"
@@ -641,7 +644,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 <div v-if="sub.skills.length === 0" class="flex flex-col items-center justify-center py-8 gap-2">
                   <Icon name="i-lucide-sparkles" class="size-6 text-muted-foreground/50" />
                   <p class="text-xs text-muted-foreground">No skills yet in this sub-category</p>
-                  <Button size="sm" variant="outline" class="mt-1" @click="openCreateSkill(selectedCat!._id, sub._id)">
+                  <Button v-if="canCreate()" size="sm" variant="outline" class="mt-1" @click="openCreateSkill(selectedCat!._id, sub._id)">
                     <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
                     Add first skill
                   </Button>
@@ -660,14 +663,16 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                       <!-- ── VIEW MODE ── -->
                       <template v-if="editingSkillId !== sk._id">
                         <!-- Action buttons (top-right, hover) -->
-                        <div class="absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                        <div v-if="canUpdate() || canDelete()" class="absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
                           <button
+                            v-if="canUpdate()"
                             class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                             @click="startInlineEdit(sk)"
                           >
                             <Icon name="i-lucide-pencil" class="size-3" />
                           </button>
                           <button
+                            v-if="canDelete()"
                             class="size-6 rounded flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                             @click="deleteSkill(sk._id)"
                           >

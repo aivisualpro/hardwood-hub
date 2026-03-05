@@ -23,6 +23,9 @@ const {
 // Get current user for comments
 const userCookie = useCookie<{ employee: string, profileImage: string } | null>('hardwood_user')
 
+// Permissions
+const { canCreate, canUpdate, canDelete } = usePermissions('/tasks')
+
 onMounted(() => fetchBoard())
 
 const newSubtaskTitle = ref('')
@@ -232,7 +235,7 @@ function handleAddComment(colId: string, taskId: string) {
                   {{ columnTotals[col.id] || col.tasks.length }}
                 </Badge>
               </CardTitle>
-              <CardAction class="flex">
+              <CardAction v-if="canCreate()" class="flex">
                 <Button size="icon-sm" variant="ghost" class="size-7 text-muted-foreground" @click="openNewTask(col.id)">
                   <Icon name="lucide:plus" />
                 </Button>
@@ -246,11 +249,12 @@ function handleAddComment(colId: string, taskId: string) {
               <!-- Tasks within the column -->
               <Draggable
                 v-model="col.tasks"
-                :group="{ name: 'kanban-tasks', pull: true, put: true }"
+                :group="canUpdate() ? { name: 'kanban-tasks', pull: true, put: true } : { name: 'kanban-tasks', pull: false, put: false }"
                 item-key="id"
                 :animation="180"
                 class="flex flex-col gap-2 min-h-[24px] p-0.5"
                 ghost-class="opacity-50"
+                :disabled="!canUpdate()"
                 @end="onTaskDrop"
               >
                 <template #item="{ element: t }: { element: Task }">
@@ -259,19 +263,19 @@ function handleAddComment(colId: string, taskId: string) {
                       <div class="text-[11px] text-muted-foreground font-mono">
                         {{ t.id }}
                       </div>
-                      <DropdownMenu>
+                      <DropdownMenu v-if="canUpdate() || canDelete()">
                         <DropdownMenuTrigger as-child>
                           <Button size="icon-sm" variant="ghost" class="size-6 text-muted-foreground" title="More actions">
                             <Icon name="lucide:ellipsis-vertical" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent class="w-20" align="start">
-                          <DropdownMenuItem @click="showEditTask(col.id, t.id)">
+                          <DropdownMenuItem v-if="canUpdate()" @click="showEditTask(col.id, t.id)">
                             <Icon name="lucide:edit-2" class="size-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem variant="destructive" class="text-destructive" @click="removeTask(col.id, t.id)">
+                          <DropdownMenuSeparator v-if="canUpdate() && canDelete()" />
+                          <DropdownMenuItem v-if="canDelete()" variant="destructive" class="text-destructive" @click="removeTask(col.id, t.id)">
                             <Icon name="lucide:trash-2" class="size-4" />
                             Delete
                           </DropdownMenuItem>
@@ -415,7 +419,7 @@ function handleAddComment(colId: string, taskId: string) {
               </div>
             </CardContent>
 
-            <CardFooter class="px-2 mt-auto shrink-0">
+            <CardFooter v-if="canCreate()" class="px-2 mt-auto shrink-0">
               <Button size="sm" variant="ghost" class="text-muted-foreground w-full justify-start" @click="openNewTask(col.id)">
                 <Icon name="lucide:plus" />
                 Add Task
