@@ -81,7 +81,7 @@ const activeTeam = computed({
             <DropdownMenuShortcut>⌘{{ index + 1 }}</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem class="gap-2 p-2" @click="navigateTo('/general-settings')">
+          <DropdownMenuItem class="gap-2 p-2" @click="navigateTo('/admin/general-settings')">
             <div class="size-6 flex items-center justify-center border rounded-md bg-background">
               <Icon name="i-lucide-settings" class="size-4" />
             </div>

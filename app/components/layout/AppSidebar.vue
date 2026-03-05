@@ -82,6 +82,8 @@ const user = computed(() => {
 })
 
 const { sidebar } = useAppSettings()
+
+const conceptsOpen = ref(false)
 </script>
 
 <template>
@@ -91,14 +93,28 @@ const { sidebar } = useAppSettings()
       <Search />
     </SidebarHeader>
     <SidebarContent>
-      <SidebarGroup>
-        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in flattenedNavItems" :key="index" :item="item" />
-      </SidebarGroup>
-      <SidebarGroup v-if="filteredNavMenuConcepts.items?.length" class="mt-auto">
-        <SidebarGroupLabel v-if="filteredNavMenuConcepts.heading">
-          {{ getHeading(filteredNavMenuConcepts) }}
+      <SidebarGroup v-for="(group, gIdx) in filteredNavMenu" :key="gIdx">
+        <SidebarGroupLabel v-if="group.heading">
+          {{ getHeading(group) }}
         </SidebarGroupLabel>
-        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in filteredNavMenuConcepts.items" :key="index" :item="item" />
+        <component :is="resolveNavItemComponent(item)" v-for="(item, index) in group.items" :key="index" :item="item" />
+      </SidebarGroup>
+      <SidebarGroup v-if="filteredNavMenuConcepts.items?.length">
+        <Collapsible v-model:open="conceptsOpen">
+          <CollapsibleTrigger as-child>
+            <SidebarGroupLabel class="cursor-pointer hover:text-foreground transition-colors select-none group/concepts">
+              {{ getHeading(filteredNavMenuConcepts) }}
+              <Icon 
+                name="i-lucide-chevron-right" 
+                class="ml-auto size-3.5 text-muted-foreground/60 transition-transform duration-200" 
+                :class="conceptsOpen ? 'rotate-90' : ''" 
+              />
+            </SidebarGroupLabel>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <component :is="resolveNavItemComponent(item)" v-for="(item, index) in filteredNavMenuConcepts.items" :key="index" :item="item" />
+          </CollapsibleContent>
+        </Collapsible>
       </SidebarGroup>
       <SidebarGroup v-if="filteredNavMenuBottom.length">
         <component :is="resolveNavItemComponent(item)" v-for="(item, index) in filteredNavMenuBottom" :key="index" :item="item" size="sm" />

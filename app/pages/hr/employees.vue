@@ -4,7 +4,7 @@ import { toast } from 'vue-sonner'
 const { setHeader } = usePageHeader()
 setHeader({ title: 'Employees', icon: 'i-lucide-users', description: 'Manage your team members' })
 
-const { canCreate, canUpdate, canDelete } = usePermissions('/admin/employees')
+const { canCreate, canUpdate, canDelete } = usePermissions('/hr/employees')
 
 function notify(title: string, description: string, variant?: string) {
   if (variant === 'destructive') toast.error(title, { description })
@@ -286,7 +286,10 @@ async function toggleStatus(emp: Employee) {
         </div>
 
         <!-- Actions (visible on hover) -->
-        <div v-if="canUpdate() || canDelete()" class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
+        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
+          <Button variant="ghost" size="icon" class="size-7" title="View Profile" @click="navigateTo(`/my-profile?employee=${emp._id}`)">
+            <Icon name="i-lucide-eye" class="size-3.5 text-primary" />
+          </Button>
           <Button
             v-if="canUpdate()"
             variant="ghost" size="icon" class="size-7"

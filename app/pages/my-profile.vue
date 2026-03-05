@@ -2,18 +2,42 @@
 import { computed, ref } from 'vue'
 
 const { setHeader } = usePageHeader()
-setHeader({ title: 'My Profile', icon: 'i-lucide-user-circle', description: 'View your profile and track skill growth' })
+
+const route = useRoute()
+const viewingEmployeeId = computed(() => route.query.employee as string | undefined)
 
 const userCookie = useCookie<{ _id: string, employee: string, email: string, profileImage: string, position: string } | null>('hardwood_user')
 const currentUserId = computed(() => userCookie.value?._id)
-const userProfile = computed(() => userCookie.value)
+
+// If viewing another employee, fetch their profile; otherwise use logged-in user
+const { data: fetchedEmployee } = viewingEmployeeId.value
+  ? await useFetch<{ success: boolean, data: any }>(`/api/employees/${viewingEmployeeId.value}`, {
+      lazy: true,
+      transform: (res: any) => res.data || null
+    })
+  : { data: ref(null) }
+
+const profileUserId = computed(() => viewingEmployeeId.value || currentUserId.value)
+const userProfile = computed<any>(() => {
+  if (viewingEmployeeId.value && fetchedEmployee.value) {
+    return fetchedEmployee.value
+  }
+  return userCookie.value
+})
+const isViewingOther = computed(() => !!viewingEmployeeId.value && viewingEmployeeId.value !== currentUserId.value)
+
+setHeader({ 
+  title: isViewingOther.value ? `${userProfile.value?.employee || 'Employee'}'s Profile` : 'My Profile', 
+  icon: 'i-lucide-user-circle', 
+  description: isViewingOther.value ? 'Viewing employee profile and skill progress' : 'View your profile and track skill growth'
+})
 
 const activeTab = ref('summary')
 
-// Data fetching
+// Data fetching — filter performance records for the target employee
 const { data: recordsData, pending: loadingRecords } = await useFetch('/api/performance', {
   lazy: true,
-  transform: (res: any) => res.data?.filter((r: any) => r.employee === currentUserId.value) || []
+  transform: (res: any) => res.data?.filter((r: any) => r.employee === profileUserId.value) || []
 })
 
 const { data: treeData, pending: loadingTree } = await useFetch('/api/skills/tree', {
@@ -215,16 +239,31 @@ function toggleCategory(catName: string) {
   }
 }
 
-const tabs = [
-  { id: 'summary', label: 'Progress Summary', icon: 'i-lucide-pie-chart' },
-  { id: 'growth', label: 'My Growth Rate', icon: 'i-lucide-trending-up' },
-  { id: 'bonus', label: 'Bonus Report', icon: 'i-lucide-award' },
-  { id: 'theme', label: 'Theme', icon: 'i-lucide-paintbrush' },
-]
+const tabs = computed(() => {
+  const base = [
+    { id: 'summary', label: 'Progress Summary', icon: 'i-lucide-pie-chart' },
+    { id: 'growth', label: isViewingOther.value ? 'Growth Rate' : 'My Growth Rate', icon: 'i-lucide-trending-up' },
+    { id: 'bonus', label: 'Bonus Report', icon: 'i-lucide-award' },
+  ]
+  if (!isViewingOther.value) {
+    base.push({ id: 'theme', label: 'Theme', icon: 'i-lucide-paintbrush' })
+  }
+  return base
+})
 </script>
 
 <template>
   <div class="px-5 py-6 space-y-8 max-w-7xl mx-auto h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
+    <!-- Back button when viewing another employee -->
+    <button
+      v-if="isViewingOther"
+      class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group cursor-pointer"
+      @click="navigateTo('/hr/employees')"
+    >
+      <Icon name="i-lucide-arrow-left" class="size-4 group-hover:-translate-x-0.5 transition-transform" />
+      Back to Employees
+    </button>
+
     <!-- Header banner -->
     <div class="rounded-2xl border border-border/50 bg-card shadow-sm overflow-hidden relative">
       <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent pointer-events-none" />

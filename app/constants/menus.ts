@@ -12,36 +12,50 @@ export const navMenu: NavMenu[] = [
         link: '/admin/dashboard',
       },
       {
-        title: 'Employees',
-        titleKey: 'nav.employees',
-        icon: 'i-lucide-users',
-        link: '/admin/employees',
-      },
-      {
         title: 'Skills',
         icon: 'i-lucide-graduation-cap',
         link: '/admin/skills',
-      },
-      {
-        title: 'Employee Performance',
-        icon: 'i-lucide-bar-chart-3',
-        link: '/admin/employee-performance',
       },
       {
         title: 'Activities',
         icon: 'i-lucide-activity',
         link: '/admin/activities',
       },
+      {
+        title: 'General Settings',
+        icon: 'i-lucide-settings',
+        link: '/admin/general-settings',
+      },
     ],
   },
   {
-    heading: 'Apps',
-    headingKey: 'nav.apps',
+    heading: 'HR',
+    items: [
+      {
+        title: 'Employees',
+        titleKey: 'nav.employees',
+        icon: 'i-lucide-users',
+        link: '/hr/employees',
+      },
+      {
+        title: 'Employee Performance',
+        icon: 'i-lucide-bar-chart-3',
+        link: '/hr/employee-performance',
+      },
+      {
+        title: 'Bonus Report',
+        icon: 'i-lucide-trophy',
+        link: '/hr/employees-bonus-report',
+      },
+    ],
+  },
+  {
+    heading: 'Project Management',
     items: [
       {
         title: 'Tasks',
         titleKey: 'nav.tasks',
-        icon: 'i-lucide-layout-dashboard',
+        icon: 'i-lucide-kanban',
         link: '/tasks',
       },
       {
@@ -53,16 +67,6 @@ export const navMenu: NavMenu[] = [
         title: 'Daily Production Report',
         icon: 'i-lucide-clipboard-list',
         link: '/daily-production',
-      },
-    ],
-  },
-  {
-    heading: '',
-    items: [
-      {
-        title: 'My Profile',
-        icon: 'i-lucide-user-circle',
-        link: '/my-profile',
       },
     ],
   },
@@ -96,7 +100,6 @@ export const navMenuConcepts: NavMenu = {
       icon: 'i-lucide-shopping-cart',
       link: '/sales/orders',
     },
-
     {
       title: 'Customers',
       titleKey: 'nav.customers',
@@ -115,14 +118,7 @@ export const navMenuConcepts: NavMenu = {
       icon: 'i-lucide-pie-chart',
       link: '/reports/financial',
     },
-
   ],
 }
 
-export const navMenuBottom: NavMenuItems = [
-  {
-    title: 'General Settings',
-    icon: 'i-lucide-settings',
-    link: '/general-settings',
-  },
-]
+export const navMenuBottom: NavMenuItems = []

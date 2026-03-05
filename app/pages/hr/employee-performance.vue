@@ -50,9 +50,15 @@ async function fetchAll() {
     if (settingsRes.data?.minSkillProgressionLevel) {
       minProgressionLevel.value = settingsRes.data.minSkillProgressionLevel
     }
-    // Auto-select first employee
+    // Auto-select employee from query param or default to first
+    const route = useRoute()
+    const queryEmpId = route.query.employee as string | undefined
     if (empRes.data.length && !selectedEmployeeId.value) {
-      selectedEmployeeId.value = empRes.data[0]!._id
+      if (queryEmpId && empRes.data.some(e => e._id === queryEmpId)) {
+        selectedEmployeeId.value = queryEmpId
+      } else {
+        selectedEmployeeId.value = empRes.data[0]!._id
+      }
     }
     // Expand first category by default
     if (treeRes.data.length) {

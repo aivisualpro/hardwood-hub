@@ -110,7 +110,7 @@ const metricCards = computed(() => [
     gradient: 'from-violet-500/20 to-purple-500/5',
     borderColor: 'border-violet-500/20',
     iconColor: 'text-violet-400',
-    link: '/admin/employees',
+    link: '/hr/employees',
   },
   {
     label: 'Total Tasks',
@@ -362,7 +362,7 @@ const metricCards = computed(() => [
                   <p class="text-[10px] text-muted-foreground">Latest additions</p>
                 </div>
               </div>
-              <NuxtLink to="/admin/employees" class="text-xs text-primary hover:underline font-medium">
+              <NuxtLink to="/hr/employees" class="text-xs text-primary hover:underline font-medium">
                 View all →
               </NuxtLink>
             </div>

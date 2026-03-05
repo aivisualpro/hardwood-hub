@@ -8,7 +8,7 @@
  * Usage:
  *   const { canCreate, canRead, canUpdate, canDelete, can } = usePermissions()
  *   if (canCreate('/tasks')) { ... }
- *   if (can('delete', '/admin/employees')) { ... }
+ *   if (can('delete', '/hr/employees')) { ... }
  */
 export function usePermissions(routeOverride?: string) {
     // Active workspace (mirrors logic in AppSidebar.vue)

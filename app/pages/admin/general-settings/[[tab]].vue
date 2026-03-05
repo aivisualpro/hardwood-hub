@@ -30,9 +30,9 @@ const activeTab = computed(() => {
   return slug || 'skill-bonus'
 })
 
-// Redirect /general-settings → /general-settings/skill-bonus
+// Redirect /admin/general-settings → /admin/general-settings/skill-bonus
 if (!route.params.tab) {
-  navigateTo('/general-settings/skill-bonus', { replace: true })
+  navigateTo('/admin/general-settings/skill-bonus', { replace: true })
 }
 const records = ref<SkillBonusRecord[]>([])
 const loading = ref(true)
@@ -223,14 +223,14 @@ import { navMenu, navMenuConcepts, navMenuBottom } from '~/constants/menus'
 // ─── Route Capabilities (which CRUD ops each route supports) ─────
 const ROUTE_CAPS: Record<string, { ops: string[], icon: string }> = {
   '/admin/dashboard': { ops: ['read'], icon: 'i-lucide-layout-dashboard' },
-  '/admin/employees': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-users' },
   '/admin/skills': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-graduation-cap' },
-  '/admin/employee-performance': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-bar-chart-3' },
   '/admin/activities': { ops: ['read'], icon: 'i-lucide-activity' },
+  '/hr/employees': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-users' },
+  '/hr/employee-performance': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-bar-chart-3' },
+  '/hr/employees-bonus-report': { ops: ['read'], icon: 'i-lucide-trophy' },
   '/tasks': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-layout-dashboard' },
   '/project-communication': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-message-square' },
   '/daily-production': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-clipboard-list' },
-  '/my-profile': { ops: ['read'], icon: 'i-lucide-user-circle' },
   '/email': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-mail' },
   '/sales/quotes': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-file-text' },
   '/sales/invoices': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-receipt' },
@@ -238,7 +238,7 @@ const ROUTE_CAPS: Record<string, { ops: string[], icon: string }> = {
   '/sales/customers': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-users' },
   '/reports/sales': { ops: ['read'], icon: 'i-lucide-trending-up' },
   '/reports/financial': { ops: ['read'], icon: 'i-lucide-pie-chart' },
-  '/general-settings': { ops: ['read', 'update'], icon: 'i-lucide-settings' },
+  '/admin/general-settings': { ops: ['read', 'update'], icon: 'i-lucide-settings' },
 }
 
 const OP_META: Record<string, { label: string, color: string, icon: string }> = {
@@ -355,7 +355,7 @@ const WpIconsList = [
           :class="activeTab === tab.id
             ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
             : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'"
-          @click="navigateTo(`/general-settings/${tab.id}`)"
+          @click="navigateTo(`/admin/general-settings/${tab.id}`)"
         >
           <Icon :name="tab.icon" class="size-4 shrink-0" />
           <span class="text-sm font-medium">{{ tab.label }}</span>
