@@ -8,4 +8,9 @@ export default defineNuxtRouteMiddleware((to) => {
     if (!userCookie.value) {
         return navigateTo('/login')
     }
+
+    // Authenticated users hitting root → redirect to profile
+    if (to.path === '/') {
+        return navigateTo('/my-profile')
+    }
 })

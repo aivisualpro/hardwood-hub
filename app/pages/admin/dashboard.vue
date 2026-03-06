@@ -157,28 +157,28 @@ const metricCards = computed(() => [
 
 <template>
   <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
-    <div class="w-full flex flex-col gap-6 p-6">
+    <div class="w-full flex flex-col gap-4 sm:gap-6 p-3 sm:p-6">
 
       <!-- ══════ Loading Skeleton ══════ -->
       <template v-if="loading">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          <div v-for="i in 5" :key="i" class="h-32 rounded-xl border bg-card animate-pulse" />
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+          <div v-for="i in 5" :key="i" class="h-28 sm:h-32 rounded-xl border bg-card animate-pulse" :class="i === 5 ? 'col-span-2 sm:col-span-1' : ''" />
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="lg:col-span-2 h-72 rounded-xl border bg-card animate-pulse" />
-          <div class="h-72 rounded-xl border bg-card animate-pulse" />
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div class="lg:col-span-2 h-56 sm:h-72 rounded-xl border bg-card animate-pulse" />
+          <div class="h-56 sm:h-72 rounded-xl border bg-card animate-pulse" />
         </div>
       </template>
 
       <template v-else-if="stats">
         <!-- ══════ METRIC CARDS ══════ -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
           <NuxtLink
-            v-for="card in metricCards"
+            v-for="(card, idx) in metricCards"
             :key="card.label"
             :to="card.link"
-            class="group relative rounded-xl border bg-card p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
-            :class="card.borderColor"
+            class="group relative rounded-xl border bg-card p-3.5 sm:p-5 flex flex-col gap-2 sm:gap-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+            :class="[card.borderColor, idx === metricCards.length - 1 && metricCards.length % 2 !== 0 ? 'col-span-2 sm:col-span-1' : '']"
           >
             <!-- Gradient glow -->
             <div
@@ -188,104 +188,104 @@ const metricCards = computed(() => [
 
             <div class="relative flex items-center justify-between">
               <div
-                class="size-10 rounded-lg bg-gradient-to-br flex items-center justify-center border"
+                class="size-8 sm:size-10 rounded-lg bg-gradient-to-br flex items-center justify-center border"
                 :class="[card.gradient, card.borderColor]"
               >
-                <Icon :name="card.icon" class="size-5" :class="card.iconColor" />
+                <Icon :name="card.icon" class="size-4 sm:size-5" :class="card.iconColor" />
               </div>
-              <Icon name="i-lucide-arrow-up-right" class="size-4 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all duration-200" />
+              <Icon name="i-lucide-arrow-up-right" class="size-3.5 sm:size-4 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all duration-200" />
             </div>
 
             <div class="relative">
-              <p class="text-2xl font-bold tabular-nums">
+              <p class="text-xl sm:text-2xl font-bold tabular-nums">
                 <NumberFlow :value="card.value" />
               </p>
-              <p class="text-xs text-muted-foreground font-medium mt-0.5">{{ card.label }}</p>
+              <p class="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5">{{ card.label }}</p>
             </div>
 
             <div class="relative">
-              <span class="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider">{{ card.sub }}</span>
+              <span class="text-[9px] sm:text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider">{{ card.sub }}</span>
             </div>
           </NuxtLink>
         </div>
 
         <!-- ══════ MIDDLE ROW ══════ -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 
           <!-- ─── Recent Tasks ─── -->
           <div class="lg:col-span-2 rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-border/50">
+            <div class="flex items-center justify-between px-3.5 sm:px-5 py-3 sm:py-4 border-b border-border/50">
               <div class="flex items-center gap-2">
-                <div class="size-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                  <Icon name="i-lucide-check-square" class="size-4 text-blue-400" />
+                <div class="size-7 sm:size-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                  <Icon name="i-lucide-check-square" class="size-3.5 sm:size-4 text-blue-400" />
                 </div>
                 <div>
-                  <h3 class="text-sm font-semibold">Recent Tasks</h3>
-                  <p class="text-[10px] text-muted-foreground">Latest activity</p>
+                  <h3 class="text-xs sm:text-sm font-semibold">Recent Tasks</h3>
+                  <p class="text-[9px] sm:text-[10px] text-muted-foreground">Latest activity</p>
                 </div>
               </div>
-              <NuxtLink to="/tasks" class="text-xs text-primary hover:underline font-medium">
+              <NuxtLink to="/tasks" class="text-[10px] sm:text-xs text-primary hover:underline font-medium">
                 View all →
               </NuxtLink>
             </div>
 
-            <div v-if="stats.recent.tasks.length === 0" class="flex flex-col items-center justify-center py-12 gap-2">
-              <Icon name="i-lucide-inbox" class="size-8 text-muted-foreground/40" />
-              <p class="text-xs text-muted-foreground">No tasks yet</p>
+            <div v-if="stats.recent.tasks.length === 0" class="flex flex-col items-center justify-center py-10 sm:py-12 gap-2">
+              <Icon name="i-lucide-inbox" class="size-7 sm:size-8 text-muted-foreground/40" />
+              <p class="text-[10px] sm:text-xs text-muted-foreground">No tasks yet</p>
             </div>
 
             <div v-else class="divide-y divide-border/30">
               <div
                 v-for="task in stats.recent.tasks"
                 :key="task._id"
-                class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors"
+                class="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-5 py-2.5 sm:py-3 hover:bg-muted/20 transition-colors"
               >
-                <Icon :name="priorityIcon(task.priority)" class="size-4 shrink-0" :class="priorityColor(task.priority)" />
+                <Icon :name="priorityIcon(task.priority)" class="size-3.5 sm:size-4 shrink-0" :class="priorityColor(task.priority)" />
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium truncate">{{ task.title }}</p>
-                  <p v-if="task.assigneeName" class="text-[10px] text-muted-foreground truncate">{{ task.assigneeName }}</p>
+                  <p class="text-xs sm:text-sm font-medium truncate">{{ task.title }}</p>
+                  <p v-if="task.assigneeName" class="text-[9px] sm:text-[10px] text-muted-foreground truncate">{{ task.assigneeName }}</p>
                 </div>
                 <span
-                  class="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0"
+                  class="inline-flex items-center text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full border shrink-0"
                   :class="statusColor(task.status)"
                 >
                   {{ task.status }}
                 </span>
-                <span class="text-[10px] text-muted-foreground/60 shrink-0 w-14 text-right">{{ timeAgo(task.createdAt) }}</span>
+                <span class="text-[9px] sm:text-[10px] text-muted-foreground/60 shrink-0 w-10 sm:w-14 text-right hidden xs:inline">{{ timeAgo(task.createdAt) }}</span>
               </div>
             </div>
           </div>
 
           <!-- ─── Task Status Breakdown ─── -->
           <div class="rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
-            <div class="flex items-center gap-2 px-5 py-4 border-b border-border/50">
-              <div class="size-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                <Icon name="i-lucide-pie-chart" class="size-4 text-violet-400" />
+            <div class="flex items-center gap-2 px-3.5 sm:px-5 py-3 sm:py-4 border-b border-border/50">
+              <div class="size-7 sm:size-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                <Icon name="i-lucide-pie-chart" class="size-3.5 sm:size-4 text-violet-400" />
               </div>
               <div>
-                <h3 class="text-sm font-semibold">Tasks by Status</h3>
-                <p class="text-[10px] text-muted-foreground">Distribution</p>
+                <h3 class="text-xs sm:text-sm font-semibold">Tasks by Status</h3>
+                <p class="text-[9px] sm:text-[10px] text-muted-foreground">Distribution</p>
               </div>
             </div>
 
-            <div v-if="taskStatusEntries.length === 0" class="flex flex-col items-center justify-center py-12 gap-2">
-              <Icon name="i-lucide-bar-chart-3" class="size-8 text-muted-foreground/40" />
-              <p class="text-xs text-muted-foreground">No data yet</p>
+            <div v-if="taskStatusEntries.length === 0" class="flex flex-col items-center justify-center py-10 sm:py-12 gap-2">
+              <Icon name="i-lucide-bar-chart-3" class="size-7 sm:size-8 text-muted-foreground/40" />
+              <p class="text-[10px] sm:text-xs text-muted-foreground">No data yet</p>
             </div>
 
-            <div v-else class="p-5 flex flex-col gap-3">
+            <div v-else class="p-3.5 sm:p-5 flex flex-col gap-2.5 sm:gap-3">
               <div
                 v-for="[status, count] in taskStatusEntries"
                 :key="status"
-                class="flex items-center gap-3"
+                class="flex items-center gap-2 sm:gap-3"
               >
                 <span
-                  class="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border w-24 justify-center shrink-0"
+                  class="inline-flex items-center text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full border w-20 sm:w-24 justify-center shrink-0"
                   :class="statusColor(status)"
                 >
                   {{ status }}
                 </span>
-                <div class="flex-1 h-2 rounded-full bg-muted/40 overflow-hidden">
+                <div class="flex-1 h-1.5 sm:h-2 rounded-full bg-muted/40 overflow-hidden">
                   <div
                     class="h-full rounded-full transition-all duration-700 ease-out"
                     :class="status.toLowerCase().includes('done') || status.toLowerCase().includes('completed')
@@ -298,53 +298,53 @@ const metricCards = computed(() => [
                     :style="{ width: `${stats ? Math.max(8, (count / stats.tasks.total) * 100) : 0}%` }"
                   />
                 </div>
-                <span class="text-xs font-bold tabular-nums w-8 text-right">{{ count }}</span>
+                <span class="text-[10px] sm:text-xs font-bold tabular-nums w-6 sm:w-8 text-right">{{ count }}</span>
               </div>
             </div>
           </div>
         </div>
 
         <!-- ══════ BOTTOM ROW ══════ -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
 
           <!-- ─── Recent Production ─── -->
           <div class="rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-border/50">
+            <div class="flex items-center justify-between px-3.5 sm:px-5 py-3 sm:py-4 border-b border-border/50">
               <div class="flex items-center gap-2">
-                <div class="size-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                  <Icon name="i-lucide-clipboard-list" class="size-4 text-amber-400" />
+                <div class="size-7 sm:size-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Icon name="i-lucide-clipboard-list" class="size-3.5 sm:size-4 text-amber-400" />
                 </div>
                 <div>
-                  <h3 class="text-sm font-semibold">Recent Production</h3>
-                  <p class="text-[10px] text-muted-foreground">Latest daily reports</p>
+                  <h3 class="text-xs sm:text-sm font-semibold">Recent Production</h3>
+                  <p class="text-[9px] sm:text-[10px] text-muted-foreground">Latest daily reports</p>
                 </div>
               </div>
-              <NuxtLink to="/daily-production" class="text-xs text-primary hover:underline font-medium">
+              <NuxtLink to="/daily-production" class="text-[10px] sm:text-xs text-primary hover:underline font-medium">
                 View all →
               </NuxtLink>
             </div>
 
-            <div v-if="stats.recent.production.length === 0" class="flex flex-col items-center justify-center py-12 gap-2">
-              <Icon name="i-lucide-clipboard" class="size-8 text-muted-foreground/40" />
-              <p class="text-xs text-muted-foreground">No production reports yet</p>
+            <div v-if="stats.recent.production.length === 0" class="flex flex-col items-center justify-center py-10 sm:py-12 gap-2">
+              <Icon name="i-lucide-clipboard" class="size-7 sm:size-8 text-muted-foreground/40" />
+              <p class="text-[10px] sm:text-xs text-muted-foreground">No production reports yet</p>
             </div>
 
             <div v-else class="divide-y divide-border/30">
               <div
                 v-for="prod in stats.recent.production"
                 :key="prod._id"
-                class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors"
+                class="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-5 py-2.5 sm:py-3 hover:bg-muted/20 transition-colors"
               >
-                <div class="size-8 rounded-full bg-muted flex items-center justify-center ring-1 ring-border text-xs font-bold text-muted-foreground">
+                <div class="size-7 sm:size-8 rounded-full bg-muted flex items-center justify-center ring-1 ring-border text-[10px] sm:text-xs font-bold text-muted-foreground shrink-0">
                   {{ prod.employeeName?.charAt(0)?.toUpperCase() || '?' }}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium truncate">{{ prod.employeeName }}</p>
-                  <p class="text-[10px] text-muted-foreground truncate">{{ prod.block1Category || 'No category' }}</p>
+                  <p class="text-xs sm:text-sm font-medium truncate">{{ prod.employeeName }}</p>
+                  <p class="text-[9px] sm:text-[10px] text-muted-foreground truncate">{{ prod.block1Category || 'No category' }}</p>
                 </div>
                 <div class="text-right shrink-0">
-                  <p v-if="prod.squareFeetCompleted" class="text-xs font-bold text-emerald-400">{{ prod.squareFeetCompleted }} sqft</p>
-                  <p v-if="prod.productionHours" class="text-[10px] text-muted-foreground">{{ prod.productionHours }}h</p>
+                  <p v-if="prod.squareFeetCompleted" class="text-[10px] sm:text-xs font-bold text-emerald-400">{{ prod.squareFeetCompleted }} sqft</p>
+                  <p v-if="prod.productionHours" class="text-[9px] sm:text-[10px] text-muted-foreground">{{ prod.productionHours }}h</p>
                 </div>
               </div>
             </div>
@@ -352,55 +352,55 @@ const metricCards = computed(() => [
 
           <!-- ─── Recent Team Members ─── -->
           <div class="rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-border/50">
+            <div class="flex items-center justify-between px-3.5 sm:px-5 py-3 sm:py-4 border-b border-border/50">
               <div class="flex items-center gap-2">
-                <div class="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                  <Icon name="i-lucide-user-plus" class="size-4 text-emerald-400" />
+                <div class="size-7 sm:size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                  <Icon name="i-lucide-user-plus" class="size-3.5 sm:size-4 text-emerald-400" />
                 </div>
                 <div>
-                  <h3 class="text-sm font-semibold">Team Members</h3>
-                  <p class="text-[10px] text-muted-foreground">Latest additions</p>
+                  <h3 class="text-xs sm:text-sm font-semibold">Team Members</h3>
+                  <p class="text-[9px] sm:text-[10px] text-muted-foreground">Latest additions</p>
                 </div>
               </div>
-              <NuxtLink to="/hr/employees" class="text-xs text-primary hover:underline font-medium">
+              <NuxtLink to="/hr/employees" class="text-[10px] sm:text-xs text-primary hover:underline font-medium">
                 View all →
               </NuxtLink>
             </div>
 
-            <div v-if="stats.recent.employees.length === 0" class="flex flex-col items-center justify-center py-12 gap-2">
-              <Icon name="i-lucide-users" class="size-8 text-muted-foreground/40" />
-              <p class="text-xs text-muted-foreground">No employees added yet</p>
+            <div v-if="stats.recent.employees.length === 0" class="flex flex-col items-center justify-center py-10 sm:py-12 gap-2">
+              <Icon name="i-lucide-users" class="size-7 sm:size-8 text-muted-foreground/40" />
+              <p class="text-[10px] sm:text-xs text-muted-foreground">No employees added yet</p>
             </div>
 
             <div v-else class="divide-y divide-border/30">
               <div
                 v-for="emp in stats.recent.employees"
                 :key="emp._id"
-                class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors"
+                class="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-5 py-2.5 sm:py-3 hover:bg-muted/20 transition-colors"
               >
                 <img
                   v-if="emp.profileImage"
                   :src="emp.profileImage"
                   :alt="emp.employee"
-                  class="size-8 rounded-full object-cover ring-1 ring-border"
+                  class="size-7 sm:size-8 rounded-full object-cover ring-1 ring-border shrink-0"
                 />
                 <div
                   v-else
-                  class="size-8 rounded-full bg-muted flex items-center justify-center ring-1 ring-border text-xs font-bold text-muted-foreground"
+                  class="size-7 sm:size-8 rounded-full bg-muted flex items-center justify-center ring-1 ring-border text-[10px] sm:text-xs font-bold text-muted-foreground shrink-0"
                 >
                   {{ emp.employee?.charAt(0)?.toUpperCase() || '?' }}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium truncate">{{ emp.employee }}</p>
-                  <p class="text-[10px] text-muted-foreground truncate">{{ emp.position }}</p>
+                  <p class="text-xs sm:text-sm font-medium truncate">{{ emp.employee }}</p>
+                  <p class="text-[9px] sm:text-[10px] text-muted-foreground truncate">{{ emp.position }}</p>
                 </div>
-                <div class="flex items-center gap-1.5 shrink-0">
+                <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
                   <span
-                    class="size-2 rounded-full"
+                    class="size-1.5 sm:size-2 rounded-full"
                     :class="emp.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'"
                   />
                   <span
-                    class="text-[10px] font-semibold"
+                    class="text-[9px] sm:text-[10px] font-semibold"
                     :class="emp.status === 'Active' ? 'text-emerald-400' : 'text-muted-foreground'"
                   >
                     {{ emp.status }}

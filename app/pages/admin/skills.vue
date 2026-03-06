@@ -42,6 +42,7 @@ const loading = ref(true)
 const selectedCatId = ref<string | null>(null)
 const expandedSubs = ref<Set<string>>(new Set())
 const searchQuery = ref('')
+const showMobileSidebar = ref(false)
 
 // ─── Modal state (create only) ───────────────────────────
 const showSkillModal = ref(false)
@@ -430,11 +431,37 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 <template>
   <div class="flex gap-0 -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden">
 
+    <!-- ══════════════════════ MOBILE SIDEBAR OVERLAY ══════════════════════ -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-150"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showMobileSidebar"
+        class="md:hidden fixed inset-0 bg-black/50 z-40"
+        @click="showMobileSidebar = false"
+      />
+    </Transition>
+
     <!-- ══════════════════════ LEFT PANEL: Category sidebar ══════════════════════ -->
-    <aside class="w-64 shrink-0 border-r border-border/60 bg-background flex flex-col h-full">
+    <aside
+      class="shrink-0 border-r border-border/60 bg-background flex flex-col h-full transition-transform duration-200 z-50"
+      :class="[
+        'w-64',
+        showMobileSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        'fixed md:relative inset-y-0 left-0 md:inset-auto'
+      ]"
+    >
       <!-- Header -->
-      <div class="px-4 py-4 border-b border-border/60">
+      <div class="px-4 py-3.5 sm:py-4 border-b border-border/60 flex items-center justify-between">
         <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Categories</p>
+        <button class="md:hidden size-7 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground" @click="showMobileSidebar = false">
+          <Icon name="i-lucide-x" class="size-4" />
+        </button>
       </div>
 
       <!-- Loading skeleton -->
@@ -451,7 +478,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           :class="selectedCatId === cat._id
             ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
             : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
-          @click="selectedCatId = cat._id"
+          @click="selectedCatId = cat._id; showMobileSidebar = false"
         >
           <!-- Color dot -->
           <span
@@ -484,21 +511,29 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
     <main class="flex-1 flex flex-col min-h-0 h-full">
 
       <!-- Top toolbar -->
-      <div class="flex items-center gap-3 px-5 py-4 border-b border-border/60 bg-background/80 backdrop-blur-sm">
+      <div class="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 border-b border-border/60 bg-background/80 backdrop-blur-sm">
+        <!-- Mobile sidebar toggle -->
+        <button
+          class="md:hidden size-8 rounded-lg border border-border/50 flex items-center justify-center hover:bg-muted text-muted-foreground shrink-0"
+          @click="showMobileSidebar = true"
+        >
+          <Icon name="i-lucide-panel-left" class="size-4" />
+        </button>
+
         <!-- Category pill -->
         <div
           v-if="selectedCat"
-          class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium bg-gradient-to-r shrink-0"
+          class="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border text-xs sm:text-sm font-medium bg-gradient-to-r shrink-0"
           :class="catGradient(selectedCatIndex)"
         >
-          <span class="size-2 rounded-full" :class="catDot(selectedCatIndex)" />
-          <span :class="catText(selectedCatIndex)">{{ selectedCat.name }}</span>
+          <span class="size-1.5 sm:size-2 rounded-full" :class="catDot(selectedCatIndex)" />
+          <span :class="catText(selectedCatIndex)" class="max-w-[80px] sm:max-w-none truncate">{{ selectedCat.name }}</span>
         </div>
 
         <!-- Search -->
-        <div class="relative flex-1 max-w-xs">
-          <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-          <Input v-model="searchQuery" placeholder="Search skills…" class="pl-9 h-9 bg-muted/50 border-border/50" />
+        <div class="relative flex-1 max-w-[180px] sm:max-w-xs">
+          <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5 sm:size-4" />
+          <Input v-model="searchQuery" placeholder="Search…" class="pl-8 sm:pl-9 h-8 sm:h-9 bg-muted/50 border-border/50 text-xs sm:text-sm" />
         </div>
 
         <!-- Add Sub Category button -->
@@ -506,17 +541,18 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           v-if="canCreate() && selectedCat"
           size="sm"
           variant="outline"
-          class="shrink-0 gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
+          class="shrink-0 gap-1 sm:gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
           @click="openCreateSubCat"
         >
-          <Icon name="i-lucide-plus" class="size-3.5" />
-          Add Sub Category
+          <Icon name="i-lucide-plus" class="size-3 sm:size-3.5" />
+          <span class="hidden xs:inline">Add Sub Category</span>
+          <span class="xs:hidden">Sub Cat</span>
         </Button>
 
         <div class="flex-1" />
 
         <!-- Sub-stats -->
-        <div v-if="selectedCat" class="hidden md:flex items-center gap-4 text-xs text-muted-foreground">
+        <div v-if="selectedCat" class="hidden lg:flex items-center gap-4 text-xs text-muted-foreground">
           <span class="flex items-center gap-1.5">
             <Icon name="i-lucide-layers-2" class="size-3.5" />
             {{ selectedCat.subCategories.length }} sub-categories
@@ -529,36 +565,40 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
       </div>
 
       <!-- Skills content area -->
-      <div class="p-5 flex-1 overflow-y-auto">
+      <div class="p-3 sm:p-5 flex-1 overflow-y-auto">
 
         <!-- Loading state -->
-        <div v-if="loading" class="flex flex-col gap-4">
+        <div v-if="loading" class="flex flex-col gap-3 sm:gap-4">
           <div v-for="i in 3" :key="i" class="rounded-xl border border-border/50 overflow-hidden animate-pulse">
-            <div class="h-12 bg-muted/60" />
-            <div class="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div v-for="j in 4" :key="j" class="h-20 rounded-lg bg-muted/40" />
+            <div class="h-11 sm:h-12 bg-muted/60" />
+            <div class="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div v-for="j in 4" :key="j" class="h-16 sm:h-20 rounded-lg bg-muted/40" />
             </div>
           </div>
         </div>
 
         <!-- No category selected -->
-        <div v-else-if="!selectedCat" class="flex flex-col items-center justify-center h-full gap-4 text-center py-24">
-          <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-            <Icon name="i-lucide-graduation-cap" class="size-8 text-primary" />
+        <div v-else-if="!selectedCat" class="flex flex-col items-center justify-center h-full gap-3 sm:gap-4 text-center py-16 sm:py-24 px-4">
+          <div class="size-14 sm:size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+            <Icon name="i-lucide-graduation-cap" class="size-6 sm:size-8 text-primary" />
           </div>
-          <h3 class="text-lg font-semibold">Select a category</h3>
-          <p class="text-sm text-muted-foreground max-w-xs">Choose a skill category from the left panel to view and manage its sub-categories and skills.</p>
+          <h3 class="text-base sm:text-lg font-semibold">Select a category</h3>
+          <p class="text-xs sm:text-sm text-muted-foreground max-w-xs">Choose a skill category from the <span class="md:hidden">menu</span><span class="hidden md:inline">left panel</span> to view and manage its sub-categories and skills.</p>
+          <Button class="md:hidden" size="sm" variant="outline" @click="showMobileSidebar = true">
+            <Icon name="i-lucide-panel-left" class="size-3.5 mr-1.5" />
+            Open Categories
+          </Button>
         </div>
 
         <!-- No results for search -->
-        <div v-else-if="filteredSubs.length === 0 && searchQuery" class="flex flex-col items-center justify-center py-24 gap-3">
-          <Icon name="i-lucide-search-x" class="size-10 text-muted-foreground" />
-          <p class="text-sm text-muted-foreground">No skills match "<strong>{{ searchQuery }}</strong>"</p>
+        <div v-else-if="filteredSubs.length === 0 && searchQuery" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3">
+          <Icon name="i-lucide-search-x" class="size-8 sm:size-10 text-muted-foreground" />
+          <p class="text-xs sm:text-sm text-muted-foreground">No skills match "<strong>{{ searchQuery }}</strong>"</p>
           <Button variant="ghost" size="sm" @click="searchQuery = ''">Clear search</Button>
         </div>
 
         <!-- SubCategory accordions -->
-        <div v-else class="flex flex-col gap-3">
+        <div v-else class="flex flex-col gap-2.5 sm:gap-3">
           <div
             v-for="sub in filteredSubs"
             :key="sub._id"
@@ -568,30 +608,30 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
             <div
               role="button"
               tabindex="0"
-              class="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors group cursor-pointer select-none"
+              class="w-full flex items-center flex-wrap sm:flex-nowrap gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3.5 text-left hover:bg-muted/30 transition-colors group cursor-pointer select-none"
               @click="toggleSub(sub._id)"
               @keydown.enter.space.prevent="toggleSub(sub._id)"
             >
               <!-- Expand icon -->
               <Icon
                 name="i-lucide-chevron-right"
-                class="size-4 text-muted-foreground transition-transform duration-200 shrink-0"
+                class="size-3.5 sm:size-4 text-muted-foreground transition-transform duration-200 shrink-0"
                 :class="expandedSubs.has(sub._id) ? 'rotate-90' : ''"
               />
 
               <!-- Sub icon -->
               <div
-                class="size-7 rounded-lg flex items-center justify-center shrink-0 bg-gradient-to-br"
+                class="size-6 sm:size-7 rounded-lg flex items-center justify-center shrink-0 bg-gradient-to-br"
                 :class="catGradient(selectedCatIndex)"
               >
-                <Icon name="i-lucide-tag" class="size-3.5" :class="catText(selectedCatIndex)" />
+                <Icon name="i-lucide-tag" class="size-3 sm:size-3.5" :class="catText(selectedCatIndex)" />
               </div>
 
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold">{{ sub.name }}</p>
+                <p class="text-xs sm:text-sm font-semibold truncate">{{ sub.name }}</p>
                 <!-- Predecessor label (view mode) -->
-                <p v-if="sub.predecessorName && editingPredecessorSubId !== sub._id" class="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                  <Icon name="i-lucide-arrow-right" class="size-3 shrink-0" />
+                <p v-if="sub.predecessorName && editingPredecessorSubId !== sub._id" class="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                  <Icon name="i-lucide-arrow-right" class="size-2.5 sm:size-3 shrink-0" />
                   <span class="truncate">{{ sub.predecessorName }}</span>
                 </p>
               </div>
@@ -600,16 +640,16 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
               <div
                 role="button"
                 tabindex="0"
-                class="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer shrink-0"
+                class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border transition-all cursor-pointer shrink-0"
                 :class="sub.bonusRules?.length
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                  : 'opacity-0 group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted'"
+                  : 'sm:opacity-0 sm:group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted hidden sm:flex'"
                 @click.stop="openBonusRules(sub)"
                 @keydown.enter.stop="openBonusRules(sub)"
               >
-                <Icon name="i-lucide-trophy" class="size-3" />
+                <Icon name="i-lucide-trophy" class="size-2.5 sm:size-3" />
                 <span v-if="sub.bonusRules?.length">{{ sub.bonusRules.length }} rule{{ sub.bonusRules.length !== 1 ? 's' : '' }}</span>
-                <span v-else>Bonus</span>
+                <span v-else class="hidden sm:inline">Bonus</span>
               </div>
 
               <!-- Predecessor picker trigger -->
@@ -622,14 +662,14 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
               >
                 <!-- Trigger button -->
                 <div
-                  class="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer"
+                  class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border transition-all cursor-pointer"
                   :class="sub.predecessor
                     ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
-                    : 'opacity-0 group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted'"
+                    : 'sm:opacity-0 sm:group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted hidden sm:flex'"
                   @click.stop="editingPredecessorSubId = editingPredecessorSubId === sub._id ? null : sub._id; predecessorSearch = ''"
                 >
-                  <Icon name="i-lucide-git-branch" class="size-3" />
-                  <span class="max-w-[100px] truncate">
+                  <Icon name="i-lucide-git-branch" class="size-2.5 sm:size-3" />
+                  <span class="max-w-[60px] sm:max-w-[100px] truncate">
                     {{ sub.predecessorName || 'Predecessor' }}
                   </span>
                 </div>
@@ -701,8 +741,8 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
               </div>
 
               <!-- Skill count -->
-              <span class="text-xs font-bold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
-                {{ sub.skills.length }} skill{{ sub.skills.length !== 1 ? 's' : '' }}
+              <span class="text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
+                {{ sub.skills.length }}<span class="hidden sm:inline"> skill{{ sub.skills.length !== 1 ? 's' : '' }}</span>
               </span>
 
               <!-- Delete sub-category (visible on hover, only if no skills) -->
@@ -710,12 +750,12 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 v-if="canDelete() && sub.skills.length === 0"
                 role="button"
                 tabindex="0"
-                class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shrink-0 cursor-pointer"
+                class="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shrink-0 cursor-pointer"
                 @click.stop="deleteSubCat(sub._id)"
                 @keydown.enter.stop="deleteSubCat(sub._id)"
               >
-                <Icon name="i-lucide-trash-2" class="size-3" />
-                Delete
+                <Icon name="i-lucide-trash-2" class="size-2.5 sm:size-3" />
+                <span class="hidden sm:inline">Delete</span>
               </div>
 
               <!-- Add skill (visible on hover) -->
@@ -723,12 +763,12 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 v-if="canCreate()"
                 role="button"
                 tabindex="0"
-                class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 shrink-0 cursor-pointer"
+                class="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 shrink-0 cursor-pointer"
                 @click.stop="openCreateSkill(selectedCat!._id, sub._id)"
                 @keydown.enter.stop="openCreateSkill(selectedCat!._id, sub._id)"
               >
-                <Icon name="i-lucide-plus" class="size-3" />
-                Add
+                <Icon name="i-lucide-plus" class="size-2.5 sm:size-3" />
+                <span class="hidden sm:inline">Add</span>
               </div>
             </div>
 
@@ -743,21 +783,21 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
             >
               <div v-if="expandedSubs.has(sub._id)" class="border-t border-border/40 bg-muted/20 overflow-hidden">
                 <!-- Empty sub-category -->
-                <div v-if="sub.skills.length === 0" class="flex flex-col items-center justify-center py-8 gap-2">
-                  <Icon name="i-lucide-sparkles" class="size-6 text-muted-foreground/50" />
-                  <p class="text-xs text-muted-foreground">No skills yet in this sub-category</p>
-                  <Button v-if="canCreate()" size="sm" variant="outline" class="mt-1" @click="openCreateSkill(selectedCat!._id, sub._id)">
+                <div v-if="sub.skills.length === 0" class="flex flex-col items-center justify-center py-6 sm:py-8 gap-2">
+                  <Icon name="i-lucide-sparkles" class="size-5 sm:size-6 text-muted-foreground/50" />
+                  <p class="text-[10px] sm:text-xs text-muted-foreground">No skills yet in this sub-category</p>
+                  <Button v-if="canCreate()" size="sm" variant="outline" class="mt-1 text-xs" @click="openCreateSkill(selectedCat!._id, sub._id)">
                     <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
                     Add first skill
                   </Button>
                 </div>
 
                   <!-- Skills grid -->
-                  <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
+                  <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3 p-3 sm:p-4">
                     <div
                       v-for="sk in sub.skills"
                       :key="sk._id"
-                      class="group/card relative flex flex-col gap-2.5 rounded-lg border bg-background p-3.5 transition-all duration-150"
+                      class="group/card relative flex flex-col gap-2 sm:gap-2.5 rounded-lg border bg-background p-3 sm:p-3.5 transition-all duration-150"
                       :class="editingSkillId === sk._id
                         ? 'border-primary/40 shadow-md ring-1 ring-primary/20'
                         : 'border-border/50 hover:shadow-md hover:border-border'"
@@ -765,7 +805,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                       <!-- ── VIEW MODE ── -->
                       <template v-if="editingSkillId !== sk._id">
                         <!-- Action buttons (top-right, hover) -->
-                        <div v-if="canUpdate() || canDelete()" class="absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                        <div v-if="canUpdate() || canDelete()" class="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 flex gap-0.5 sm:gap-1 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity">
                           <button
                             v-if="canUpdate()"
                             class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -783,7 +823,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                         </div>
 
                         <!-- Skill text -->
-                        <p class="text-sm leading-relaxed pr-12">{{ sk.name }}</p>
+                        <p class="text-xs sm:text-sm leading-relaxed pr-10 sm:pr-12">{{ sk.name }}</p>
 
                         <!-- Required badge -->
                         <div v-if="sk.isRequired" class="mt-auto">
