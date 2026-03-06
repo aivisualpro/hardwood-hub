@@ -26,5 +26,11 @@ export default defineEventHandler(async (event) => {
         return { success: true, data: updated }
     }
 
+    if (event.method === 'DELETE') {
+        const deleted = await SubCategory.findByIdAndDelete(id).lean()
+        if (!deleted) throw createError({ statusCode: 404, message: 'SubCategory not found' })
+        return { success: true, data: deleted }
+    }
+
     throw createError({ statusCode: 405, message: 'Method not allowed' })
 })

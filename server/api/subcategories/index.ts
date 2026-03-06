@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
     if (event.method === 'GET') {
         const query = getQuery(event)
         const filter: any = {}
-        if (query.category) filter.Category = query.category
+        if (query.category) filter.category = query.category
         const subs = await SubCategory.find(filter).sort({ name: 1 }).lean()
         return { success: true, data: subs }
     }
@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
         const body = await readBody(event)
         const { name, Category: cat, description, icon } = body
         if (!name || !cat) throw createError({ statusCode: 400, message: 'name and Category are required' })
-        const doc = await SubCategory.create({ name, Category: cat, description, icon })
+        const doc = await SubCategory.create({ subCategory: name, category: cat, description, icon })
         return { success: true, data: doc }
     }
 

@@ -56,6 +56,83 @@ const editingForm = ref({ skill: '', isRequired: false })
 const editingPredecessorSubId = ref<string | null>(null)
 const predecessorSearch = ref('')
 
+// ─── Sub-category creation state ──────────────────────────
+const showSubCatModal = ref(false)
+const savingSubCat = ref(false)
+const subCatForm = ref({ name: '' })
+
+function openCreateSubCat() {
+  subCatForm.value = { name: '' }
+  showSubCatModal.value = true
+}
+
+async function saveSubCat() {
+  if (!subCatForm.value.name.trim()) return toast.error('Sub-category name is required')
+  if (!selectedCatId.value) return toast.error('Please select a category first')
+  savingSubCat.value = true
+
+  // Optimistic: close modal immediately, add placeholder
+  const tempId = `temp-sub-${Date.now()}`
+  const newSub: SubCat = {
+    _id: tempId,
+    name: subCatForm.value.name,
+    category: selectedCatId.value,
+    predecessor: '',
+    predecessorName: '',
+    bonusRules: [],
+    skills: [],
+  }
+  const cat = tree.value.find(c => c._id === selectedCatId.value)
+  if (cat) cat.subCategories.push(newSub)
+  showSubCatModal.value = false
+
+  try {
+    const res = await $fetch<{ success: boolean, data: any }>('/api/subcategories', {
+      method: 'POST',
+      body: { name: subCatForm.value.name, Category: selectedCatId.value },
+    })
+    // Replace temp _id with real one from server
+    if (cat) {
+      const idx = cat.subCategories.findIndex(s => s._id === tempId)
+      if (idx !== -1 && res.data?._id) cat.subCategories[idx]!._id = res.data._id
+    }
+    toast.success('Sub-category added')
+  } catch (e: any) {
+    // Revert: remove the temp sub-category
+    if (cat) {
+      const idx = cat.subCategories.findIndex(s => s._id === tempId)
+      if (idx !== -1) cat.subCategories.splice(idx, 1)
+    }
+    showSubCatModal.value = true
+    toast.error('Failed to create sub-category', { description: e?.message })
+  } finally {
+    savingSubCat.value = false
+  }
+}
+
+// ─── Delete sub-category ──────────────────────────────────
+async function deleteSubCat(subId: string) {
+  const found = findSub(subId)
+  if (!found) return
+  if (found.sub.skills.length > 0) return toast.error('Cannot delete a sub-category with skills')
+
+  // Snapshot for revert
+  const idx = found.cat.subCategories.findIndex(s => s._id === subId)
+  const snapshot = found.cat.subCategories[idx]
+
+  // Optimistic: remove immediately
+  found.cat.subCategories.splice(idx, 1)
+
+  try {
+    await $fetch(`/api/subcategories/${subId}`, { method: 'DELETE' })
+    toast.success('Sub-category removed', { duration: 2000 })
+  } catch (e: any) {
+    // Revert
+    if (snapshot) found.cat.subCategories.splice(idx, 0, snapshot)
+    toast.error('Failed to delete sub-category', { description: e?.message })
+  }
+}
+
 // ─── Bonus Rules state ────────────────────────────────────
 const SKILL_LEVELS = ['Needs Improvement', 'Proficient', 'Mastered'] as const
 const SUPERVISOR_OPTIONS = ['Any', 'Unique'] as const
@@ -424,6 +501,18 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           <Input v-model="searchQuery" placeholder="Search skills…" class="pl-9 h-9 bg-muted/50 border-border/50" />
         </div>
 
+        <!-- Add Sub Category button -->
+        <Button
+          v-if="canCreate() && selectedCat"
+          size="sm"
+          variant="outline"
+          class="shrink-0 gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
+          @click="openCreateSubCat"
+        >
+          <Icon name="i-lucide-plus" class="size-3.5" />
+          Add Sub Category
+        </Button>
+
         <div class="flex-1" />
 
         <!-- Sub-stats -->
@@ -615,6 +704,19 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
               <span class="text-xs font-bold px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
                 {{ sub.skills.length }} skill{{ sub.skills.length !== 1 ? 's' : '' }}
               </span>
+
+              <!-- Delete sub-category (visible on hover, only if no skills) -->
+              <div
+                v-if="canDelete() && sub.skills.length === 0"
+                role="button"
+                tabindex="0"
+                class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shrink-0 cursor-pointer"
+                @click.stop="deleteSubCat(sub._id)"
+                @keydown.enter.stop="deleteSubCat(sub._id)"
+              >
+                <Icon name="i-lucide-trash-2" class="size-3" />
+                Delete
+              </div>
 
               <!-- Add skill (visible on hover) -->
               <div
@@ -887,6 +989,36 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
             </Button>
           </div>
         </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- ══════════════════════ CREATE SUB-CATEGORY MODAL ══════════════════════ -->
+    <Dialog v-model:open="showSubCatModal">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Sub Category</DialogTitle>
+          <DialogDescription>Create a new sub-category under <strong>{{ selectedCat?.name }}</strong>.</DialogDescription>
+        </DialogHeader>
+
+        <div class="flex flex-col gap-4 py-2">
+          <div class="flex flex-col gap-1.5">
+            <Label for="subcat-name">Sub Category Name</Label>
+            <Input
+              id="subcat-name"
+              v-model="subCatForm.name"
+              placeholder="e.g. Floor Preparation"
+              @keydown.enter="saveSubCat"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showSubCatModal = false">Cancel</Button>
+          <Button :disabled="savingSubCat" @click="saveSubCat">
+            <Icon v-if="savingSubCat" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+            Add Sub Category
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
 
