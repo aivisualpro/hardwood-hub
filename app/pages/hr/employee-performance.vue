@@ -349,6 +349,7 @@ async function deleteRecord(id: string) {
 
 // ─── Settings popover state ──────────────────────────────
 const showSettings = ref(false)
+const showMobileSidebar = ref(false)
 
 // ─── Table selection state ───────────────────────────────
 const selectedIds = ref<Set<string>>(new Set())
@@ -410,11 +411,37 @@ async function deleteSelected() {
 <template>
   <div class="flex gap-0 -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden">
 
+    <!-- Mobile sidebar overlay -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-150"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showMobileSidebar"
+        class="md:hidden fixed inset-0 bg-black/50 z-40"
+        @click="showMobileSidebar = false"
+      />
+    </Transition>
+
     <!-- ══════════════════════ LEFT PANEL: Employee sidebar ══════════════════════ -->
-    <aside class="w-64 shrink-0 border-r border-border/60 bg-background flex flex-col h-full">
+    <aside
+      class="shrink-0 border-r border-border/60 bg-background flex flex-col h-full transition-transform duration-200 z-50"
+      :class="[
+        'w-56 md:w-64',
+        showMobileSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        'fixed md:relative inset-y-0 left-0 md:inset-auto'
+      ]"
+    >
       <!-- Header -->
-      <div class="px-4 py-4 border-b border-border/60">
+      <div class="px-4 py-3.5 sm:py-4 border-b border-border/60 flex items-center justify-between">
         <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Employees</p>
+        <button class="md:hidden size-7 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground" @click="showMobileSidebar = false">
+          <Icon name="i-lucide-x" class="size-4" />
+        </button>
       </div>
 
       <!-- Loading skeleton -->
@@ -433,33 +460,33 @@ async function deleteSelected() {
         <button
           v-for="emp in employees"
           :key="emp._id"
-          class="group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 relative"
+          class="group w-full flex items-center gap-2.5 sm:gap-3 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-lg text-left transition-all duration-150 relative"
           :class="selectedEmployeeId === emp._id
             ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
             : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'"
-          @click="selectedEmployeeId = emp._id"
+          @click="selectedEmployeeId = emp._id; showMobileSidebar = false"
         >
           <img
             v-if="emp.profileImage"
             :src="emp.profileImage"
             :alt="emp.employee"
-            class="size-8 rounded-full object-cover ring-1 ring-border shrink-0"
+            class="size-7 sm:size-8 rounded-full object-cover ring-1 ring-border shrink-0"
           />
           <div
             v-else
-            class="size-8 rounded-full bg-muted flex items-center justify-center ring-1 ring-border shrink-0 text-xs font-bold"
+            class="size-7 sm:size-8 rounded-full bg-muted flex items-center justify-center ring-1 ring-border shrink-0 text-[10px] sm:text-xs font-bold"
           >
             {{ emp.employee.charAt(0).toUpperCase() }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium truncate">{{ emp.employee }}</p>
-            <p class="text-[10px] text-muted-foreground/70">
+            <p class="text-xs sm:text-sm font-medium truncate">{{ emp.employee }}</p>
+            <p class="text-[9px] sm:text-[10px] text-muted-foreground/70">
               {{ empAssessedCount.get(emp._id) ?? 0 }} / {{ totalSkills }} skills
             </p>
           </div>
           <!-- Progress ring -->
           <span
-            class="text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 transition-all"
+            class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 transition-all"
             :class="selectedEmployeeId === emp._id
               ? 'bg-primary/20 text-primary border-primary/30'
               : 'bg-muted text-muted-foreground border-border/40'"
@@ -481,55 +508,86 @@ async function deleteSelected() {
     <main class="flex-1 flex flex-col min-h-0 h-full">
 
       <!-- Top toolbar -->
-      <div class="flex items-center gap-3 px-5 py-3 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
-        <!-- Employee pill -->
-        <div
-          v-if="selectedEmployee"
-          class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium bg-gradient-to-r from-primary/15 to-primary/5 border-primary/25 shrink-0"
-        >
-          <img v-if="selectedEmployee.profileImage" :src="selectedEmployee.profileImage" :alt="selectedEmployee.employee" class="size-5 rounded-full object-cover" />
-          <div v-else class="size-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
-            {{ selectedEmployee.employee.charAt(0).toUpperCase() }}
+      <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
+
+        <!-- Mobile: Employee banner with big avatar -->
+        <div class="flex items-center gap-3 sm:hidden">
+          <button
+            class="size-10 rounded-xl border border-border/50 flex items-center justify-center hover:bg-muted text-muted-foreground shrink-0"
+            @click="showMobileSidebar = true"
+          >
+            <Icon name="i-lucide-panel-left" class="size-5" />
+          </button>
+          <div v-if="selectedEmployee" class="flex items-center gap-3 flex-1 min-w-0" @click="showMobileSidebar = true">
+            <img v-if="selectedEmployee.profileImage" :src="selectedEmployee.profileImage" :alt="selectedEmployee.employee" class="size-10 rounded-full object-cover ring-2 ring-primary/30" />
+            <div v-else class="size-10 rounded-full bg-primary/15 flex items-center justify-center ring-2 ring-primary/30 text-base font-bold text-primary">
+              {{ selectedEmployee.employee.charAt(0).toUpperCase() }}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold truncate">{{ selectedEmployee.employee }}</p>
+              <p class="text-[10px] text-muted-foreground">Tap to switch employee</p>
+            </div>
           </div>
-          <span class="text-primary">{{ selectedEmployee.employee }}</span>
         </div>
 
-        <!-- Search -->
-        <div class="relative flex-1 max-w-xs">
-          <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-          <Input v-model="searchQuery" placeholder="Search skills…" class="pl-9 h-9 bg-muted/50 border-border/50" />
-        </div>
-
-        <div class="flex-1" />
-
-        <!-- View toggle -->
-        <div class="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border/40">
+        <!-- Desktop: Employee pill + search + toggle row -->
+        <div class="hidden sm:flex items-center gap-3 flex-1">
+          <!-- Desktop sidebar toggle -->
           <button
-            class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all"
-            :class="activeView === 'tree' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
-            @click="activeView = 'tree'"
+            class="md:hidden size-9 rounded-lg border border-border/50 flex items-center justify-center hover:bg-muted text-muted-foreground shrink-0"
+            @click="showMobileSidebar = true"
           >
-            <Icon name="i-lucide-network" class="size-3.5" />
-            Tree
+            <Icon name="i-lucide-panel-left" class="size-4" />
           </button>
-          <button
-            class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all"
-            :class="activeView === 'table' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
-            @click="activeView = 'table'"
-          >
-            <Icon name="i-lucide-table" class="size-3.5" />
-            Table
-          </button>
-        </div>
 
-        <!-- Settings button -->
-        <div class="relative">
-          <button
-            class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border/40 bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all"
-            @click="showSettings = !showSettings"
+          <!-- Employee pill -->
+          <div
+            v-if="selectedEmployee"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium bg-gradient-to-r from-primary/15 to-primary/5 border-primary/25 shrink-0"
           >
-            <Icon name="i-lucide-settings-2" class="size-3.5" />
-            Settings
+            <img v-if="selectedEmployee.profileImage" :src="selectedEmployee.profileImage" :alt="selectedEmployee.employee" class="size-5 rounded-full object-cover" />
+            <div v-else class="size-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+              {{ selectedEmployee.employee.charAt(0).toUpperCase() }}
+            </div>
+            <span class="text-primary">{{ selectedEmployee.employee }}</span>
+          </div>
+
+          <!-- Search -->
+          <div class="relative flex-1 max-w-xs">
+            <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
+            <Input v-model="searchQuery" placeholder="Search skills…" class="pl-9 h-9 bg-muted/50 border-border/50" />
+          </div>
+
+          <div class="flex-1" />
+
+          <!-- View toggle (desktop) -->
+          <div class="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border/40">
+            <button
+              class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all"
+              :class="activeView === 'tree' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+              @click="activeView = 'tree'"
+            >
+              <Icon name="i-lucide-network" class="size-3.5" />
+              Tree
+            </button>
+            <button
+              class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-all"
+              :class="activeView === 'table' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+              @click="activeView = 'table'"
+            >
+              <Icon name="i-lucide-table" class="size-3.5" />
+              Table
+            </button>
+          </div>
+
+          <!-- Settings button -->
+          <div class="relative">
+            <button
+              class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border/40 bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all"
+              @click="showSettings = !showSettings"
+            >
+              <Icon name="i-lucide-settings-2" class="size-3.5" />
+              Settings
           </button>
 
           <!-- Settings popover -->
@@ -543,25 +601,25 @@ async function deleteSelected() {
           >
             <div
               v-if="showSettings"
-              class="absolute right-0 top-full mt-2 z-50 w-80 rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
+              class="absolute right-0 top-full mt-2 z-50 w-72 sm:w-80 rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
             >
-              <div class="px-4 py-3 border-b border-border/50 bg-muted/20">
-                <p class="text-sm font-semibold">Progression Settings</p>
-                <p class="text-[11px] text-muted-foreground mt-0.5">
+              <div class="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border/50 bg-muted/20">
+                <p class="text-xs sm:text-sm font-semibold">Progression Settings</p>
+                <p class="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">
                   Configure prerequisite requirements
                 </p>
               </div>
-              <div class="p-4 space-y-3">
+              <div class="p-3 sm:p-4 space-y-3">
                 <div>
-                  <p class="text-xs font-medium mb-2">Minimum level to unlock next sub-category</p>
-                  <p class="text-[10px] text-muted-foreground mb-3">
+                  <p class="text-[10px] sm:text-xs font-medium mb-2">Minimum level to unlock next sub-category</p>
+                  <p class="text-[9px] sm:text-[10px] text-muted-foreground mb-3">
                     Employees must achieve at least this level in all <strong>required skills</strong> of a predecessor sub-category before the next one unlocks.
                   </p>
                   <div class="flex flex-col gap-1.5">
                     <button
                       v-for="level in LEVEL_STEPS"
                       :key="level"
-                      class="flex items-center gap-3 px-3 py-2 rounded-lg border text-xs font-medium transition-all"
+                      class="flex items-center gap-2.5 sm:gap-3 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border text-[10px] sm:text-xs font-medium transition-all"
                       :class="minProgressionLevel === level
                         ? 'border-primary/40 bg-primary/10 text-primary ring-1 ring-primary/20'
                         : 'border-border/40 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
@@ -572,27 +630,63 @@ async function deleteSelected() {
                       <Icon
                         v-if="minProgressionLevel === level"
                         name="i-lucide-check"
-                        class="size-3.5 ml-auto text-primary"
+                        class="size-3 sm:size-3.5 ml-auto text-primary"
                       />
                     </button>
                   </div>
                 </div>
               </div>
-              <div class="px-4 py-2.5 border-t border-border/50 bg-muted/10 flex justify-end">
+              <div class="px-3 sm:px-4 py-2 sm:py-2.5 border-t border-border/50 bg-muted/10 flex justify-end">
                 <button
-                  class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  class="text-[10px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors"
                   @click="showSettings = false"
                 >
                   Close
                 </button>
               </div>
             </div>
-          </Transition>
+            </Transition>
+          </div>
+        </div>
+
+        <!-- Mobile: View toggle + search row -->
+        <div class="flex items-center gap-2 sm:hidden">
+          <!-- Big view toggle -->
+          <div class="flex items-center bg-muted/50 rounded-xl p-1 border border-border/40 shrink-0">
+            <button
+              class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition-all min-h-[38px]"
+              :class="activeView === 'tree' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'"
+              @click="activeView = 'tree'"
+            >
+              <Icon name="i-lucide-network" class="size-4" />
+              Tree
+            </button>
+            <button
+              class="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition-all min-h-[38px]"
+              :class="activeView === 'table' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'"
+              @click="activeView = 'table'"
+            >
+              <Icon name="i-lucide-table" class="size-4" />
+              Table
+            </button>
+          </div>
+          <!-- Search -->
+          <div class="relative flex-1 min-w-0">
+            <Icon name="i-lucide-search" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
+            <Input v-model="searchQuery" placeholder="Search…" class="pl-8 h-[38px] bg-muted/50 border-border/50 text-xs rounded-xl" />
+          </div>
+          <!-- Settings -->
+          <button
+            class="size-[38px] rounded-xl border border-border/40 bg-muted/40 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all shrink-0"
+            @click="showSettings = !showSettings"
+          >
+            <Icon name="i-lucide-settings-2" class="size-4" />
+          </button>
         </div>
       </div>
 
       <!-- Content area -->
-      <div class="flex-1 overflow-y-auto p-5">
+      <div class="flex-1 overflow-y-auto p-3 sm:p-5">
 
         <!-- Loading state -->
         <div v-if="loading" class="flex flex-col gap-4">
@@ -605,12 +699,16 @@ async function deleteSelected() {
         </div>
 
         <!-- No employee selected -->
-        <div v-else-if="!selectedEmployee" class="flex flex-col items-center justify-center h-full gap-4 text-center py-24">
-          <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-            <Icon name="i-lucide-bar-chart-3" class="size-8 text-primary" />
+        <div v-else-if="!selectedEmployee" class="flex flex-col items-center justify-center h-full gap-3 sm:gap-4 text-center py-16 sm:py-24 px-4">
+          <div class="size-14 sm:size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+            <Icon name="i-lucide-bar-chart-3" class="size-6 sm:size-8 text-primary" />
           </div>
-          <h3 class="text-lg font-semibold">Select an employee</h3>
-          <p class="text-sm text-muted-foreground max-w-xs">Choose an employee from the left panel to manage their skill assessments.</p>
+          <h3 class="text-base sm:text-lg font-semibold">Select an employee</h3>
+          <p class="text-xs sm:text-sm text-muted-foreground max-w-xs">Choose an employee from the left panel to manage their skill assessments.</p>
+          <Button variant="outline" size="sm" class="md:hidden" @click="showMobileSidebar = true">
+            <Icon name="i-lucide-panel-left" class="mr-1.5 size-3.5" />
+            Open Employee List
+          </Button>
         </div>
 
         <!-- ═══════ TREE VIEW ═══════ -->
@@ -623,7 +721,7 @@ async function deleteSelected() {
           </div>
 
           <!-- Category accordion list -->
-          <div v-else class="flex flex-col gap-4">
+          <div v-else class="flex flex-col gap-3 sm:gap-4">
             <div
               v-for="(cat, catIdx) in filteredTree"
               :key="cat._id"
@@ -633,30 +731,30 @@ async function deleteSelected() {
               <div
                 role="button"
                 tabindex="0"
-                class="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/20 transition-colors cursor-pointer select-none group"
+                class="w-full flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3.5 sm:py-3.5 text-left hover:bg-muted/20 transition-colors cursor-pointer select-none group"
                 @click="toggleCat(cat._id)"
                 @keydown.enter.space.prevent="toggleCat(cat._id)"
               >
                 <Icon
                   name="i-lucide-chevron-right"
-                  class="size-4 text-muted-foreground transition-transform duration-200 shrink-0"
+                  class="size-3.5 sm:size-4 text-muted-foreground transition-transform duration-200 shrink-0"
                   :class="expandedCats.has(cat._id) ? 'rotate-90' : ''"
                 />
                 <div
-                  class="size-8 rounded-lg flex items-center justify-center shrink-0 bg-gradient-to-br border"
+                  class="size-8 sm:size-8 rounded-lg flex items-center justify-center shrink-0 bg-gradient-to-br border"
                   :class="pal(catIdx).gradient"
                 >
-                  <Icon name="i-lucide-layers" class="size-4" :class="pal(catIdx).icon" />
+                  <Icon name="i-lucide-layers" class="size-3.5 sm:size-4" :class="pal(catIdx).icon" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-semibold" :class="pal(catIdx).text">{{ cat.name }}</p>
-                  <p class="text-[10px] text-muted-foreground mt-0.5">
-                    {{ cat.subCategories.length }} sub-categories · {{ cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) }} skills
+                  <p class="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
+                    {{ cat.subCategories.length }} sub-cat · {{ cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) }} skills
                   </p>
                 </div>
                 <!-- Category progress -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <div class="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <div class="w-14 sm:w-20 h-1.5 sm:h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
                       class="h-full rounded-full transition-all duration-500"
                       :class="pal(catIdx).dot"
@@ -668,8 +766,8 @@ async function deleteSelected() {
                       }"
                     />
                   </div>
-                  <span class="text-[10px] font-medium text-muted-foreground min-w-[2rem] text-right">
-                    {{ cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => highestPerfMap.get(sk._id)).length, 0) }}/{{ cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) }}
+                  <span class="text-[10px] font-bold text-muted-foreground min-w-[2.5rem] text-right" :class="pal(catIdx).text">
+                    {{ cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) === 0 ? '0' : Math.round(cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => highestPerfMap.get(sk._id)).length, 0) / cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) * 100) }}%
                   </span>
                 </div>
               </div>
@@ -693,7 +791,7 @@ async function deleteSelected() {
                     <div
                       role="button"
                       tabindex="0"
-                      class="w-full flex items-center gap-3 pl-10 pr-4 py-3 text-left transition-colors cursor-pointer select-none group"
+                      class="w-full flex items-center gap-2.5 sm:gap-3 pl-6 sm:pl-10 pr-3 sm:pr-4 py-3 sm:py-3 text-left transition-colors cursor-pointer select-none group"
                       :class="isSubCatLocked(sub) ? 'opacity-60' : 'hover:bg-muted/20'"
                       @click="!isSubCatLocked(sub) && toggleSub(sub._id)"
                       @keydown.enter.space.prevent="!isSubCatLocked(sub) && toggleSub(sub._id)"
@@ -711,7 +809,7 @@ async function deleteSelected() {
                         :class="expandedSubs.has(sub._id) ? 'rotate-90' : ''"
                       />
 
-                      <div class="size-6 rounded-md flex items-center justify-center shrink-0 bg-muted/60 border border-border/30">
+                      <div class="size-6 sm:size-6 rounded-md flex items-center justify-center shrink-0 bg-muted/60 border border-border/30">
                         <Icon name="i-lucide-tag" class="size-3" :class="pal(catIdx).icon" />
                       </div>
 
@@ -760,26 +858,26 @@ async function deleteSelected() {
                         <div
                           v-for="sk in sub.skills"
                           :key="sk._id"
-                          class="flex items-center gap-3 pl-[4.5rem] pr-4 py-2.5 border-b border-border/10 last:border-0 group/skill hover:bg-muted/20 transition-colors"
+                          class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 pl-10 sm:pl-[4.5rem] pr-3 sm:pr-4 py-3 sm:py-2.5 border-b border-border/10 last:border-0 group/skill hover:bg-muted/20 transition-colors"
                         >
                           <!-- Skill info -->
-                          <div class="flex-1 min-w-0 flex items-center gap-2">
-                            <p class="text-sm leading-snug">{{ sk.name }}</p>
+                          <div class="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2">
+                            <p class="text-[13px] sm:text-sm leading-snug">{{ sk.name }}</p>
                             <span
                               v-if="sk.isRequired"
-                              class="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border bg-rose-500/15 text-rose-400 border-rose-500/30 shrink-0"
+                              class="inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] font-semibold px-1 sm:px-1.5 py-0.5 rounded-full border bg-rose-500/15 text-rose-400 border-rose-500/30 shrink-0"
                             >
-                              <Icon name="i-lucide-star" class="size-2" />
-                              Required
+                              <Icon name="i-lucide-star" class="size-1.5 sm:size-2" />
+                              Req
                             </span>
                           </div>
 
                           <!-- Level buttons (always visible) -->
-                          <div class="flex items-center gap-1 shrink-0">
+                          <div class="flex items-center gap-1.5 sm:gap-1 w-full sm:w-auto sm:shrink-0 self-stretch sm:self-auto">
                             <button
                               v-for="level in LEVEL_STEPS"
                               :key="level"
-                              class="text-[10px] font-semibold px-2.5 py-1 rounded-md border transition-all duration-150"
+                              class="flex-1 sm:flex-none text-[11px] sm:text-[10px] font-semibold px-2 sm:px-2.5 py-2 sm:py-1 rounded-xl sm:rounded-md border transition-all duration-150 min-h-[40px] sm:min-h-0 text-center"
                               :class="myPerfMap.get(sk._id)?.currentSkillLevel === level
                                 ? `${levelColor(level)} ring-1 ring-offset-1 ring-offset-background ${level === 'Mastered' ? 'ring-emerald-500/40' : level === 'Proficient' ? 'ring-blue-500/40' : 'ring-amber-500/40'}`
                                 : 'border-border/40 bg-muted/40 text-muted-foreground/70 hover:bg-muted hover:text-foreground hover:border-border'"
@@ -815,7 +913,8 @@ async function deleteSelected() {
 
           <!-- Data table -->
           <div v-else class="rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
-            <table class="w-full text-sm">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm" style="min-width: 640px">
               <thead>
                 <tr class="border-b border-border/50 bg-muted/30">
                   <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Category</th>
@@ -885,7 +984,8 @@ async function deleteSelected() {
                   </td>
                 </tr>
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
 
           <!-- Floating bulk action bar -->
@@ -899,22 +999,23 @@ async function deleteSelected() {
           >
             <div
               v-if="selectedIds.size > 0"
-              class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-5 py-3 rounded-xl border border-border bg-popover shadow-2xl backdrop-blur-sm"
+              class="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl border border-border bg-popover shadow-2xl backdrop-blur-sm"
             >
-              <span class="text-sm font-medium">
-                {{ selectedIds.size }} record{{ selectedIds.size > 1 ? 's' : '' }} selected
+              <span class="text-xs sm:text-sm font-medium">
+                {{ selectedIds.size }} selected
               </span>
-              <div class="w-px h-5 bg-border" />
+              <div class="w-px h-4 sm:h-5 bg-border" />
               <Button
                 variant="destructive"
                 size="sm"
+                class="h-7 sm:h-8 text-xs"
                 @click="deleteSelected"
               >
-                <Icon name="i-lucide-trash-2" class="mr-1.5 size-3.5" />
-                Delete Selected
+                <Icon name="i-lucide-trash-2" class="mr-1 sm:mr-1.5 size-3 sm:size-3.5" />
+                Delete
               </Button>
               <button
-                class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                class="text-[10px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors"
                 @click="selectedIds.clear()"
               >
                 Cancel

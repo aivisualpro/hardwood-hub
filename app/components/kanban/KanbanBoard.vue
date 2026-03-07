@@ -200,11 +200,11 @@ function handleAddComment(colId: string, taskId: string) {
 </script>
 
 <template>
-  <div class="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 h-[calc(100vh-theme(spacing.24))] px-2">
+  <div class="flex gap-2.5 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 h-[calc(100vh-theme(spacing.24))] px-1.5 sm:px-2 snap-x snap-mandatory sm:snap-none">
 
     <!-- Loading State -->
     <template v-if="loading">
-      <div v-for="i in 4" :key="i" class="flex-1 min-w-[250px] rounded-xl border border-border/50 bg-card p-4 space-y-3 self-start">
+      <div v-for="i in 4" :key="i" class="flex-1 min-w-[220px] sm:min-w-[250px] rounded-xl border border-border/50 bg-card p-3 sm:p-4 space-y-3 self-start snap-center">
         <div class="h-5 w-24 bg-muted/40 rounded animate-pulse" />
         <div v-for="j in 3" :key="j" class="rounded-lg border border-border/30 p-3 space-y-2">
           <div class="h-3 w-16 bg-muted/30 rounded animate-pulse" />
@@ -218,7 +218,7 @@ function handleAddComment(colId: string, taskId: string) {
     <template v-else>
       <Draggable
         v-model="board.columns"
-        class="flex gap-4 w-full h-full"
+        class="flex gap-2.5 sm:gap-4 w-full h-full"
         item-key="id"
         :animation="180"
         handle=".col-handle"
@@ -226,24 +226,24 @@ function handleAddComment(colId: string, taskId: string) {
         @end="onTaskDrop"
       >
         <template #item="{ element: col }: { element: Column }">
-          <Card class="flex-1 min-w-[250px] py-2 gap-0 flex flex-col h-full">
-            <CardHeader class="flex flex-row items-center justify-between gap-2 px-3 shrink-0">
-              <CardTitle class="font-semibold text-sm flex items-center gap-2">
-                <Icon :name="columnIcon(col.id)" class="size-4 col-handle cursor-grab" :class="columnColor(col.id)" />
-                <span>{{ col.title }}</span>
+          <Card class="flex-1 min-w-[220px] sm:min-w-[250px] py-2 gap-0 flex flex-col h-full snap-center">
+            <CardHeader class="flex flex-row items-center justify-between gap-2 px-2.5 sm:px-3 shrink-0">
+              <CardTitle class="font-semibold text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2">
+                <Icon :name="columnIcon(col.id)" class="size-3.5 sm:size-4 col-handle cursor-grab" :class="columnColor(col.id)" />
+                <span class="truncate">{{ col.title }}</span>
                 <Badge variant="secondary" class="h-5 min-w-5 px-1.5 font-mono tabular-nums text-[10px]">
                   {{ columnTotals[col.id] || col.tasks.length }}
                 </Badge>
               </CardTitle>
               <CardAction v-if="canCreate()" class="flex">
-                <Button size="icon-sm" variant="ghost" class="size-7 text-muted-foreground" @click="openNewTask(col.id)">
+                <Button size="icon-sm" variant="ghost" class="size-7 sm:size-7 text-muted-foreground" @click="openNewTask(col.id)">
                   <Icon name="lucide:plus" />
                 </Button>
               </CardAction>
             </CardHeader>
 
             <CardContent
-              class="px-2 overflow-y-auto flex-1 min-h-0"
+              class="px-1.5 sm:px-2 overflow-y-auto flex-1 min-h-0"
               @scroll="onColumnScroll($event, col.id)"
             >
               <!-- Tasks within the column -->
@@ -252,20 +252,20 @@ function handleAddComment(colId: string, taskId: string) {
                 :group="canUpdate() ? { name: 'kanban-tasks', pull: true, put: true } : { name: 'kanban-tasks', pull: false, put: false }"
                 item-key="id"
                 :animation="180"
-                class="flex flex-col gap-2 min-h-[24px] p-0.5"
+                class="flex flex-col gap-1.5 sm:gap-2 min-h-[24px] p-0.5"
                 ghost-class="opacity-50"
                 :disabled="!canUpdate()"
                 @end="onTaskDrop"
               >
                 <template #item="{ element: t }: { element: Task }">
-                  <div class="rounded-xl border bg-card px-3 py-2 shadow-sm hover:bg-accent/50 cursor-pointer transition-colors">
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="text-[11px] text-muted-foreground font-mono">
+                  <div class="rounded-xl border bg-card px-2.5 sm:px-3 py-2 shadow-sm hover:bg-accent/50 cursor-pointer transition-colors">
+                    <div class="flex items-start justify-between gap-1.5 sm:gap-2">
+                      <div class="text-[10px] sm:text-[11px] text-muted-foreground font-mono">
                         {{ t.id }}
                       </div>
                       <DropdownMenu v-if="canUpdate() || canDelete()">
                         <DropdownMenuTrigger as-child>
-                          <Button size="icon-sm" variant="ghost" class="size-6 text-muted-foreground" title="More actions">
+                          <Button size="icon-sm" variant="ghost" class="size-6 sm:size-6 text-muted-foreground shrink-0" title="More actions">
                             <Icon name="lucide:ellipsis-vertical" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -282,25 +282,25 @@ function handleAddComment(colId: string, taskId: string) {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <p class="font-medium leading-5 mt-1 text-sm">
+                    <p class="font-medium leading-5 mt-1 text-[13px] sm:text-sm">
                       {{ t.title }}
                     </p>
-                    <div v-if="t.labels?.length" class="mt-2 flex items-center gap-1 flex-wrap">
-                      <Badge v-for="label in t.labels" :key="label" variant="outline" class="text-[10px] px-1.5 py-0">
+                    <div v-if="t.labels?.length" class="mt-1.5 sm:mt-2 flex items-center gap-1 flex-wrap">
+                      <Badge v-for="label in t.labels" :key="label" variant="outline" class="text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0">
                         {{ label }}
                       </Badge>
                     </div>
-                    <div class="mt-2 flex items-center justify-between gap-2">
-                      <div class="flex items-center gap-2">
+                    <div class="mt-1.5 sm:mt-2 flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-2 sm:gap-2">
                         <!-- Subtasks Popover -->
                         <Popover>
                           <PopoverTrigger as-child>
-                            <button class="flex items-center text-xs text-muted-foreground gap-1 hover:text-foreground transition-colors cursor-pointer">
+                            <button class="flex items-center text-[10px] sm:text-xs text-muted-foreground gap-0.5 sm:gap-1 hover:text-foreground transition-colors cursor-pointer min-h-[28px] sm:min-h-0 px-1 sm:px-0">
                               <Icon name="lucide:square-check-big" class="size-3.5" />
                               <span class="tabular-nums">{{ t.subtasks?.filter(s => s.completed).length || 0 }}/{{ t.subtasks?.length || 0 }}</span>
                             </button>
                           </PopoverTrigger>
-                          <PopoverContent class="w-72 p-0" align="start" @click.stop>
+                          <PopoverContent class="w-[260px] sm:w-72 p-0" align="start" @click.stop>
                             <div class="px-3 py-2 border-b">
                               <p class="text-sm font-semibold">Subtasks</p>
                             </div>
@@ -308,18 +308,18 @@ function handleAddComment(colId: string, taskId: string) {
                               <div v-if="!t.subtasks?.length" class="px-3 py-4 text-sm text-muted-foreground text-center">
                                 No subtasks yet
                               </div>
-                              <div v-for="st in t.subtasks" :key="st.id" class="flex items-center gap-2 px-3 py-1.5 hover:bg-accent/50 group">
+                              <div v-for="st in t.subtasks" :key="st.id" class="flex items-center gap-2 px-3 py-2 sm:py-1.5 hover:bg-accent/50 group">
                                 <Checkbox :checked="st.completed" @update:checked="toggleSubtask(col.id, t.id, st.id)" />
-                                <span class="text-sm flex-1" :class="st.completed ? 'line-through text-muted-foreground' : ''">{{ st.title }}</span>
-                                <button class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all cursor-pointer" @click="removeSubtask(col.id, t.id, st.id)">
+                                <span class="text-xs sm:text-sm flex-1" :class="st.completed ? 'line-through text-muted-foreground' : ''">{{ st.title }}</span>
+                                <button class="sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all cursor-pointer p-1" @click="removeSubtask(col.id, t.id, st.id)">
                                   <Icon name="lucide:x" class="size-3.5" />
                                 </button>
                               </div>
                             </div>
                             <div class="border-t px-2 py-2">
                               <form class="flex gap-1.5" @submit.prevent="() => { if (newSubtaskTitle.trim()) { addSubtask(col.id, t.id, newSubtaskTitle.trim()); newSubtaskTitle = '' } }">
-                                <Input v-model="newSubtaskTitle" placeholder="Add subtask..." class="h-7 text-xs" />
-                                <Button type="submit" size="icon" variant="ghost" class="size-7 shrink-0">
+                                <Input v-model="newSubtaskTitle" placeholder="Add subtask..." class="h-8 sm:h-7 text-xs" />
+                                <Button type="submit" size="icon" variant="ghost" class="size-8 sm:size-7 shrink-0">
                                   <Icon name="lucide:plus" class="size-3.5" />
                                 </Button>
                               </form>
@@ -330,12 +330,12 @@ function handleAddComment(colId: string, taskId: string) {
                         <!-- Comments Popover -->
                         <Popover>
                           <PopoverTrigger as-child>
-                            <button class="flex items-center text-xs text-muted-foreground gap-1 hover:text-foreground transition-colors cursor-pointer">
+                            <button class="flex items-center text-[10px] sm:text-xs text-muted-foreground gap-0.5 sm:gap-1 hover:text-foreground transition-colors cursor-pointer min-h-[28px] sm:min-h-0 px-1 sm:px-0">
                               <Icon name="lucide:message-square" class="size-3.5" />
                               <span class="tabular-nums">{{ t.comments?.length || 0 }}</span>
                             </button>
                           </PopoverTrigger>
-                          <PopoverContent class="w-80 p-0" align="start" @click.stop>
+                          <PopoverContent class="w-[280px] sm:w-80 p-0" align="start" @click.stop>
                             <div class="px-3 py-2 border-b">
                               <p class="text-sm font-semibold">Comments</p>
                             </div>
@@ -356,7 +356,7 @@ function handleAddComment(colId: string, taskId: string) {
                                   </div>
                                   <div class="flex items-center gap-1">
                                     <span class="text-[10px] text-muted-foreground">{{ useTimeAgo(cm.createdAt ?? '', OPTIONS) }}</span>
-                                    <button class="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all cursor-pointer" @click="removeComment(col.id, t.id, cm.id)">
+                                    <button class="sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all cursor-pointer p-1" @click="removeComment(col.id, t.id, cm.id)">
                                       <Icon name="lucide:x" class="size-3" />
                                     </button>
                                   </div>
@@ -368,8 +368,8 @@ function handleAddComment(colId: string, taskId: string) {
                             </div>
                             <div class="border-t px-2 py-2">
                               <form class="flex gap-1.5" @submit.prevent="handleAddComment(col.id, t.id)">
-                                <Input v-model="newCommentText" placeholder="Write a comment..." class="h-7 text-xs" />
-                                <Button type="submit" size="icon" variant="ghost" class="size-7 shrink-0">
+                                <Input v-model="newCommentText" placeholder="Write a comment..." class="h-8 sm:h-7 text-xs" />
+                                <Button type="submit" size="icon" variant="ghost" class="size-8 sm:size-7 shrink-0">
                                   <Icon name="lucide:send" class="size-3.5" />
                                 </Button>
                               </form>
@@ -377,15 +377,15 @@ function handleAddComment(colId: string, taskId: string) {
                           </PopoverContent>
                         </Popover>
 
-                        <div v-if="t.dueDate" class="flex items-center text-xs text-muted-foreground gap-1">
-                          <Icon name="lucide:clock-fading" class="size-3.5" />
+                        <div v-if="t.dueDate" class="flex items-center text-[10px] sm:text-xs text-muted-foreground gap-0.5 sm:gap-1">
+                          <Icon name="lucide:clock-fading" class="size-3 sm:size-3.5" />
                           <span>{{ useTimeAgo(t.dueDate ?? '', OPTIONS) }}</span>
                         </div>
                       </div>
-                      <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-1.5 sm:gap-2">
                         <Tooltip>
                           <TooltipTrigger as-child>
-                            <Icon v-if="t.priority" :name="iconPriority(t.priority)" class="size-4" :class="colorPriority(t.priority)" />
+                            <Icon v-if="t.priority" :name="iconPriority(t.priority)" class="size-3.5 sm:size-4" :class="colorPriority(t.priority)" />
                           </TooltipTrigger>
                           <TooltipContent class="capitalize">
                             {{ t.priority }}
@@ -393,9 +393,9 @@ function handleAddComment(colId: string, taskId: string) {
                         </Tooltip>
                         <Tooltip v-if="t.assignee">
                           <TooltipTrigger as-child>
-                            <Avatar class="size-6">
+                            <Avatar class="size-5 sm:size-6">
                               <AvatarImage :src="t.assignee.avatar || ''" :alt="t.assignee.name" />
-                              <AvatarFallback class="text-[10px]">
+                              <AvatarFallback class="text-[9px] sm:text-[10px]">
                                 {{ t.assignee.name?.slice(0, 2).toUpperCase() }}
                               </AvatarFallback>
                             </Avatar>
@@ -419,8 +419,8 @@ function handleAddComment(colId: string, taskId: string) {
               </div>
             </CardContent>
 
-            <CardFooter v-if="canCreate()" class="px-2 mt-auto shrink-0">
-              <Button size="sm" variant="ghost" class="text-muted-foreground w-full justify-start" @click="openNewTask(col.id)">
+            <CardFooter v-if="canCreate()" class="px-1.5 sm:px-2 mt-auto shrink-0">
+              <Button size="sm" variant="ghost" class="text-muted-foreground w-full justify-start text-xs sm:text-sm h-8 sm:h-9" @click="openNewTask(col.id)">
                 <Icon name="lucide:plus" />
                 Add Task
               </Button>
@@ -433,7 +433,7 @@ function handleAddComment(colId: string, taskId: string) {
 
   <!-- New/Edit Task Dialog -->
   <Dialog v-model:open="showModalTask.open">
-    <DialogContent class="sm:max-w-[520px]">
+    <DialogContent class="max-w-[calc(100vw-2rem)] sm:max-w-[520px]">
       <DialogHeader>
         <DialogTitle>{{ showModalTask.type === 'create' ? 'New Task' : 'Edit Task' }}</DialogTitle>
         <DialogDescription class="sr-only">
@@ -441,14 +441,14 @@ function handleAddComment(colId: string, taskId: string) {
         </DialogDescription>
       </DialogHeader>
       <div class="flex flex-col gap-3">
-        <div class="grid items-baseline grid-cols-1 md:grid-cols-4 md:[&>label]:col-span-1 *:col-span-3 gap-3">
+        <div class="grid items-baseline grid-cols-1 md:grid-cols-4 md:[&>label]:col-span-1 *:col-span-3 gap-2 sm:gap-3">
           <Label>Title</Label>
-          <Input v-model="newTask.title" placeholder="Title" />
+          <Input v-model="newTask.title" placeholder="Title" class="h-9 sm:h-10" />
           <Label>Description</Label>
-          <Textarea v-model="newTask.description" placeholder="Description (optional)" rows="4" />
+          <Textarea v-model="newTask.description" placeholder="Description (optional)" rows="3" class="text-sm" />
           <Label>Priority</Label>
           <Select v-model="newTask.priority">
-            <SelectTrigger class="w-full">
+            <SelectTrigger class="w-full h-9 sm:h-10">
               <SelectValue placeholder="Select a priority" />
             </SelectTrigger>
             <SelectContent>
@@ -458,13 +458,13 @@ function handleAddComment(colId: string, taskId: string) {
             </SelectContent>
           </Select>
           <Label>Due Date</Label>
-          <div class="flex items-center gap-1">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-1">
             <Popover>
               <PopoverTrigger as-child>
                 <Button
                   variant="outline"
                   :class="cn(
-                    'flex-1 justify-start text-left font-normal px-3',
+                    'flex-1 justify-start text-left font-normal px-3 h-9 sm:h-10',
                     !dueDate && 'text-muted-foreground',
                   )"
                 >
@@ -482,16 +482,16 @@ function handleAddComment(colId: string, taskId: string) {
               type="time"
               step="60"
               default-value="00:00"
-              class="flex-1 bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+              class="flex-1 bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none h-9 sm:h-10"
             />
           </div>
         </div>
       </div>
-      <DialogFooter>
-        <Button variant="secondary" @click="showModalTask.open = false">
+      <DialogFooter class="flex-col sm:flex-row gap-2 sm:gap-0">
+        <Button variant="secondary" class="w-full sm:w-auto" @click="showModalTask.open = false">
           Cancel
         </Button>
-        <Button @click="showModalTask.type === 'create' ? createTask() : editTask()">
+        <Button class="w-full sm:w-auto" @click="showModalTask.type === 'create' ? createTask() : editTask()">
           {{ showModalTask.type === 'create' ? 'Create' : 'Update' }}
         </Button>
       </DialogFooter>

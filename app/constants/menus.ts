@@ -70,6 +70,16 @@ export const navMenu: NavMenu[] = [
       },
     ],
   },
+  {
+    heading: 'External',
+    items: [
+      {
+        title: 'Stain Sign Off',
+        icon: 'i-lucide-stamp',
+        link: '/external/stain-sign-off',
+      },
+    ],
+  },
 ]
 
 export const navMenuConcepts: NavMenu = {

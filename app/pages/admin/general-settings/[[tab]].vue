@@ -39,6 +39,7 @@ const loading = ref(true)
 const showCreateModal = ref(false)
 const saving = ref(false)
 const editingId = ref<string | null>(null)
+const showMobileSidebar = ref(false)
 
 const SKILL_LEVELS = ['Needs Improvement', 'Proficient', 'Mastered'] as const
 const SUPERVISOR_OPTIONS = ['Any', 'Unique'] as const
@@ -342,10 +343,36 @@ const WpIconsList = [
 <template>
   <div class="flex gap-0 -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden">
 
+    <!-- ══════════════════════ MOBILE SIDEBAR OVERLAY ══════════════════════ -->
+    <Transition
+      enter-active-class="transition-opacity duration-200"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-150"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showMobileSidebar"
+        class="md:hidden fixed inset-0 bg-black/50 z-40"
+        @click="showMobileSidebar = false"
+      />
+    </Transition>
+
     <!-- ══════════════════════ LEFT PANEL: Tabs sidebar ══════════════════════ -->
-    <aside class="w-56 shrink-0 border-r border-border/60 bg-background flex flex-col h-full">
-      <div class="px-4 py-4 border-b border-border/60">
+    <aside
+      class="shrink-0 border-r border-border/60 bg-background flex flex-col h-full transition-transform duration-200 z-50"
+      :class="[
+        'w-56',
+        showMobileSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        'fixed md:relative inset-y-0 left-0 md:inset-auto'
+      ]"
+    >
+      <div class="px-4 py-3.5 sm:py-4 border-b border-border/60 flex items-center justify-between">
         <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Settings</p>
+        <button class="md:hidden size-7 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground" @click="showMobileSidebar = false">
+          <Icon name="i-lucide-x" class="size-4" />
+        </button>
       </div>
       <nav class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
         <button
@@ -355,7 +382,7 @@ const WpIconsList = [
           :class="activeTab === tab.id
             ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
             : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'"
-          @click="navigateTo(`/admin/general-settings/${tab.id}`)"
+          @click="navigateTo(`/admin/general-settings/${tab.id}`); showMobileSidebar = false"
         >
           <Icon :name="tab.icon" class="size-4 shrink-0" />
           <span class="text-sm font-medium">{{ tab.label }}</span>
@@ -367,24 +394,34 @@ const WpIconsList = [
     <main class="flex-1 flex flex-col min-h-0 h-full">
 
       <!-- Top toolbar -->
-      <div class="flex items-center gap-3 px-5 py-4 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
-        <div class="flex items-center gap-2">
-          <Icon :name="tabs.find(t => t.id === activeTab)?.icon ?? 'i-lucide-settings'" class="size-5 text-primary" />
-          <h2 class="text-base font-semibold">{{ tabs.find(t => t.id === activeTab)?.label }}</h2>
+      <div class="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
+        <!-- Mobile sidebar toggle -->
+        <button
+          class="md:hidden size-8 rounded-lg border border-border/50 flex items-center justify-center hover:bg-muted text-muted-foreground shrink-0"
+          @click="showMobileSidebar = true"
+        >
+          <Icon name="i-lucide-panel-left" class="size-4" />
+        </button>
+
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <Icon :name="tabs.find(t => t.id === activeTab)?.icon ?? 'i-lucide-settings'" class="size-4 sm:size-5 text-primary" />
+          <h2 class="text-sm sm:text-base font-semibold">{{ tabs.find(t => t.id === activeTab)?.label }}</h2>
         </div>
         <div class="flex-1" />
-        <Button v-if="activeTab === 'skill-bonus'" size="sm" @click="openCreate">
-          <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
-          Add Rule
+        <Button v-if="activeTab === 'skill-bonus'" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3" @click="openCreate">
+          <Icon name="i-lucide-plus" class="mr-1 sm:mr-1.5 size-3 sm:size-3.5" />
+          <span class="hidden xs:inline">Add Rule</span>
+          <span class="xs:hidden">Add</span>
         </Button>
-        <Button v-if="activeTab === 'workspaces'" size="sm" @click="openWpCreate">
-          <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
-          Add Workspace
+        <Button v-if="activeTab === 'workspaces'" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3" @click="openWpCreate">
+          <Icon name="i-lucide-plus" class="mr-1 sm:mr-1.5 size-3 sm:size-3.5" />
+          <span class="hidden xs:inline">Add Workspace</span>
+          <span class="xs:hidden">Add</span>
         </Button>
       </div>
 
       <!-- Content area -->
-      <div class="flex-1 overflow-y-auto p-5">
+      <div class="flex-1 overflow-y-auto p-3 sm:p-5">
 
         <!-- ═══════ SKILL BONUS TAB ═══════ -->
         <template v-if="activeTab === 'skill-bonus'">
@@ -396,123 +433,124 @@ const WpIconsList = [
           </div>
 
           <!-- Empty state -->
-          <div v-else-if="records.length === 0" class="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div class="size-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center">
-              <Icon name="i-lucide-trophy" class="size-8 text-amber-400" />
+          <div v-else-if="records.length === 0" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
+            <div class="size-14 sm:size-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center">
+              <Icon name="i-lucide-trophy" class="size-6 sm:size-8 text-amber-400" />
             </div>
-            <h3 class="text-lg font-semibold">No Skill Bonus Rules</h3>
-            <p class="text-sm text-muted-foreground max-w-sm">
+            <h3 class="text-base sm:text-lg font-semibold">No Skill Bonus Rules</h3>
+            <p class="text-xs sm:text-sm text-muted-foreground max-w-sm">
               Define bonus rules for skill assessments. Set reviewed times, results, and bonus amounts for each skill level.
             </p>
-            <Button @click="openCreate">
-              <Icon name="i-lucide-plus" class="mr-1.5 size-4" />
+            <Button size="sm" @click="openCreate">
+              <Icon name="i-lucide-plus" class="mr-1.5 size-3.5 sm:size-4" />
               Create First Rule
             </Button>
           </div>
 
           <!-- Data table -->
           <div v-else class="rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-border/50 bg-muted/30">
-                  <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Skill Set</th>
-                  <th class="text-center px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Reviewed Times</th>
-                  <th class="text-center px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Supervisor Check</th>
-                  <th class="text-right px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Bonus Amount</th>
-                  <th class="w-20 px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="r in records"
-                  :key="r._id"
-                  class="group border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
-                >
-                  <!-- Skill Set -->
-                  <td class="px-4 py-3">
-                    <span
-                      class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border"
-                      :class="levelColor(r.skillSet)"
-                    >
-                      {{ r.skillSet }}
-                    </span>
-                  </td>
-
-                  <!-- Reviewed Times -->
-                  <td class="px-4 py-3 text-center">
-                    <span class="inline-flex items-center justify-center size-7 rounded-lg bg-muted/60 text-sm font-bold border border-border/30">
-                      {{ r.reviewedTimes }}
-                    </span>
-                  </td>
-
-
-                  <!-- Supervisor Check -->
-                  <td class="px-4 py-3 text-center">
-                    <span
-                      class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border"
-                      :class="r.supervisorCheck === 'Unique'
-                        ? 'bg-violet-500/15 text-violet-400 border-violet-500/30'
-                        : 'bg-muted/60 text-muted-foreground border-border/40'"
-                    >
-                      <Icon :name="r.supervisorCheck === 'Unique' ? 'i-lucide-fingerprint' : 'i-lucide-users'" class="size-3" />
-                      {{ r.supervisorCheck || '—' }}
-                    </span>
-                  </td>
-
-                  <!-- Bonus Amount -->
-                  <td class="px-4 py-3 text-right">
-                    <span class="text-base font-bold text-emerald-400">${{ r.bonusAmount.toFixed(2) }}</span>
-                  </td>
-
-                  <!-- Actions -->
-                  <td class="px-4 py-3">
-                    <div class="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        class="size-7 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                        @click="openEdit(r)"
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm" style="min-width: 520px">
+                <thead>
+                  <tr class="border-b border-border/50 bg-muted/30">
+                    <th class="text-left px-3 sm:px-4 py-2.5 sm:py-3 font-semibold text-muted-foreground text-[10px] sm:text-xs uppercase tracking-wider">Skill Set</th>
+                    <th class="text-center px-3 sm:px-4 py-2.5 sm:py-3 font-semibold text-muted-foreground text-[10px] sm:text-xs uppercase tracking-wider">Reviewed</th>
+                    <th class="text-center px-3 sm:px-4 py-2.5 sm:py-3 font-semibold text-muted-foreground text-[10px] sm:text-xs uppercase tracking-wider">Supervisor</th>
+                    <th class="text-right px-3 sm:px-4 py-2.5 sm:py-3 font-semibold text-muted-foreground text-[10px] sm:text-xs uppercase tracking-wider">Bonus</th>
+                    <th class="w-16 sm:w-20 px-3 sm:px-4 py-2.5 sm:py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="r in records"
+                    :key="r._id"
+                    class="group border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
+                  >
+                    <!-- Skill Set -->
+                    <td class="px-3 sm:px-4 py-2.5 sm:py-3">
+                      <span
+                        class="inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border"
+                        :class="levelColor(r.skillSet)"
                       >
-                        <Icon name="i-lucide-pencil" class="size-3.5" />
-                      </button>
-                      <button
-                        class="size-7 rounded flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                        @click="deleteRecord(r._id)"
+                        {{ r.skillSet }}
+                      </span>
+                    </td>
+
+                    <!-- Reviewed Times -->
+                    <td class="px-3 sm:px-4 py-2.5 sm:py-3 text-center">
+                      <span class="inline-flex items-center justify-center size-6 sm:size-7 rounded-lg bg-muted/60 text-xs sm:text-sm font-bold border border-border/30">
+                        {{ r.reviewedTimes }}
+                      </span>
+                    </td>
+
+                    <!-- Supervisor Check -->
+                    <td class="px-3 sm:px-4 py-2.5 sm:py-3 text-center">
+                      <span
+                        class="inline-flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-medium px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border"
+                        :class="r.supervisorCheck === 'Unique'
+                          ? 'bg-violet-500/15 text-violet-400 border-violet-500/30'
+                          : 'bg-muted/60 text-muted-foreground border-border/40'"
                       >
-                        <Icon name="i-lucide-trash-2" class="size-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                        <Icon :name="r.supervisorCheck === 'Unique' ? 'i-lucide-fingerprint' : 'i-lucide-users'" class="size-2.5 sm:size-3" />
+                        {{ r.supervisorCheck || '—' }}
+                      </span>
+                    </td>
+
+                    <!-- Bonus Amount -->
+                    <td class="px-3 sm:px-4 py-2.5 sm:py-3 text-right">
+                      <span class="text-sm sm:text-base font-bold text-emerald-400">${{ r.bonusAmount.toFixed(2) }}</span>
+                    </td>
+
+                    <!-- Actions -->
+                    <td class="px-3 sm:px-4 py-2.5 sm:py-3">
+                      <div class="flex items-center gap-0.5 sm:gap-1 justify-end sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <button
+                          class="size-6 sm:size-7 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          @click="openEdit(r)"
+                        >
+                          <Icon name="i-lucide-pencil" class="size-3 sm:size-3.5" />
+                        </button>
+                        <button
+                          class="size-6 sm:size-7 rounded flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          @click="deleteRecord(r._id)"
+                        >
+                          <Icon name="i-lucide-trash-2" class="size-3 sm:size-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Summary cards -->
-          <div v-if="records.length > 0" class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4">
-              <div class="size-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center">
-                <Icon name="i-lucide-trophy" class="size-5 text-emerald-400" />
+          <div v-if="records.length > 0" class="mt-3 sm:mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+            <div class="rounded-xl border border-border/50 bg-card p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+              <div class="size-8 sm:size-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center">
+                <Icon name="i-lucide-trophy" class="size-4 sm:size-5 text-emerald-400" />
               </div>
               <div>
-                <p class="text-xs text-muted-foreground font-medium">Total Rules</p>
-                <p class="text-lg font-bold">{{ records.length }}</p>
+                <p class="text-[10px] sm:text-xs text-muted-foreground font-medium">Total Rules</p>
+                <p class="text-base sm:text-lg font-bold">{{ records.length }}</p>
               </div>
             </div>
-            <div class="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4">
-              <div class="size-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-blue-500/20 flex items-center justify-center">
-                <Icon name="i-lucide-dollar-sign" class="size-5 text-blue-400" />
+            <div class="rounded-xl border border-border/50 bg-card p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+              <div class="size-8 sm:size-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-blue-500/20 flex items-center justify-center">
+                <Icon name="i-lucide-dollar-sign" class="size-4 sm:size-5 text-blue-400" />
               </div>
               <div>
-                <p class="text-xs text-muted-foreground font-medium">Max Bonus</p>
-                <p class="text-lg font-bold text-emerald-400">${{ Math.max(...records.map(r => r.bonusAmount)).toFixed(2) }}</p>
+                <p class="text-[10px] sm:text-xs text-muted-foreground font-medium">Max Bonus</p>
+                <p class="text-base sm:text-lg font-bold text-emerald-400">${{ Math.max(...records.map(r => r.bonusAmount)).toFixed(2) }}</p>
               </div>
             </div>
-            <div class="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4">
-              <div class="size-10 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-500/5 border border-violet-500/20 flex items-center justify-center">
-                <Icon name="i-lucide-layers" class="size-5 text-violet-400" />
+            <div class="rounded-xl border border-border/50 bg-card p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+              <div class="size-8 sm:size-10 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-500/5 border border-violet-500/20 flex items-center justify-center">
+                <Icon name="i-lucide-layers" class="size-4 sm:size-5 text-violet-400" />
               </div>
               <div>
-                <p class="text-xs text-muted-foreground font-medium">Skill Levels</p>
-                <p class="text-lg font-bold">{{ new Set(records.map(r => r.skillSet)).size }}</p>
+                <p class="text-[10px] sm:text-xs text-muted-foreground font-medium">Skill Levels</p>
+                <p class="text-base sm:text-lg font-bold">{{ new Set(records.map(r => r.skillSet)).size }}</p>
               </div>
             </div>
           </div>
@@ -525,45 +563,45 @@ const WpIconsList = [
              <div v-for="i in 3" :key="i" class="h-16 bg-muted/40 rounded-lg animate-pulse" />
           </div>
 
-          <div v-else-if="workspaces.length === 0" class="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-              <Icon name="i-lucide-network" class="size-8 text-primary" />
+          <div v-else-if="workspaces.length === 0" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
+            <div class="size-14 sm:size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+              <Icon name="i-lucide-network" class="size-6 sm:size-8 text-primary" />
             </div>
-            <h3 class="text-lg font-semibold">No Workspaces Found</h3>
-            <p class="text-sm text-muted-foreground max-w-sm">
+            <h3 class="text-base sm:text-lg font-semibold">No Workspaces Found</h3>
+            <p class="text-xs sm:text-sm text-muted-foreground max-w-sm">
               Create different workspaces to limit access to certain dashboard modules for your team.
             </p>
-            <Button @click="openWpCreate">
-              <Icon name="i-lucide-plus" class="mr-1.5 size-4" />
+            <Button size="sm" @click="openWpCreate">
+              <Icon name="i-lucide-plus" class="mr-1.5 size-3.5 sm:size-4" />
               Create Workspace
             </Button>
           </div>
 
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
             <div 
               v-for="wp in workspaces" 
               :key="wp._id"
-              class="relative rounded-xl border border-border/50 bg-card p-5 group flex flex-col min-h-[160px]"
+              class="relative rounded-xl border border-border/50 bg-card p-4 sm:p-5 group flex flex-col min-h-[140px] sm:min-h-[160px]"
             >
-              <div v-if="wp.isLocked" class="absolute top-4 right-4" title="Admin Workspace is locked.">
-                 <Icon name="i-lucide-lock" class="size-4 text-amber-500/70" />
+              <div v-if="wp.isLocked" class="absolute top-3 right-3 sm:top-4 sm:right-4" title="Admin Workspace is locked.">
+                 <Icon name="i-lucide-lock" class="size-3.5 sm:size-4 text-amber-500/70" />
               </div>
               
-              <div class="flex items-center gap-4 mb-4">
-                <div class="size-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                  <Icon :name="wp.logo || 'i-lucide-building'" class="size-6 text-primary" />
+              <div class="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                <div class="size-10 sm:size-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <Icon :name="wp.logo || 'i-lucide-building'" class="size-5 sm:size-6 text-primary" />
                 </div>
                 <div>
-                  <h3 class="font-bold text-base line-clamp-1">{{ wp.name }}</h3>
-                  <p class="text-xs text-muted-foreground">{{ wp.plan || 'Workspace' }}</p>
+                  <h3 class="font-bold text-sm sm:text-base line-clamp-1">{{ wp.name }}</h3>
+                  <p class="text-[10px] sm:text-xs text-muted-foreground">{{ wp.plan || 'Workspace' }}</p>
                 </div>
               </div>
 
               <div class="mt-auto">
                  <!-- Actions -->
-                 <div class="flex items-center gap-2 pt-4 border-t border-border/50">
-                    <Button variant="secondary" size="sm" class="flex-1" @click="openWpEdit(wp)">
-                      <Icon name="i-lucide-settings-2" class="mr-1.5 size-3.5" /> Configure
+                 <div class="flex items-center gap-1.5 sm:gap-2 pt-3 sm:pt-4 border-t border-border/50">
+                    <Button variant="secondary" size="sm" class="flex-1 text-xs sm:text-sm h-8 sm:h-9" @click="openWpEdit(wp)">
+                      <Icon name="i-lucide-settings-2" class="mr-1 sm:mr-1.5 size-3 sm:size-3.5" /> Configure
                     </Button>
                     <Button 
                       v-if="!wp.isLocked"

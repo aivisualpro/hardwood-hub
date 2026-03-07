@@ -288,115 +288,151 @@ const lateCount = computed(() => {
   <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
 
     <!-- ═════════ LIST VIEW ═════════ -->
-    <div v-if="activeTab === 'list'" class="p-6 space-y-6 max-w-7xl mx-auto">
+    <div v-if="activeTab === 'list'" class="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
 
       <!-- Header -->
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-bold tracking-tight">Daily Production Reports</h1>
-          <p class="text-sm text-muted-foreground mt-1">Track employee attendance, work output, and production metrics</p>
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h1 class="text-lg sm:text-2xl font-bold tracking-tight">Daily Production Reports</h1>
+          <p class="text-[10px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 hidden sm:block">Track employee attendance, work output, and production metrics</p>
         </div>
-        <Button v-if="canCreate()" @click="openCreate">
-          <Icon name="i-lucide-plus" class="mr-2 size-4" />
-          New Report
+        <Button v-if="canCreate()" size="sm" class="shrink-0 h-8 sm:h-9 text-xs sm:text-sm" @click="openCreate">
+          <Icon name="i-lucide-plus" class="mr-1 sm:mr-2 size-3.5 sm:size-4" />
+          <span class="hidden sm:inline">New Report</span>
+          <span class="sm:hidden">New</span>
         </Button>
       </div>
 
       <!-- Summary Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4">
-          <div class="size-11 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-blue-500/20 flex items-center justify-center">
-            <Icon name="i-lucide-file-text" class="size-5 text-blue-400" />
+      <div class="grid grid-cols-3 gap-2 sm:gap-4">
+        <div class="rounded-xl border border-border/50 bg-card p-2.5 sm:p-4 flex items-center gap-2 sm:gap-4">
+          <div class="size-8 sm:size-11 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-blue-500/20 flex items-center justify-center shrink-0">
+            <Icon name="i-lucide-file-text" class="size-3.5 sm:size-5 text-blue-400" />
           </div>
-          <div>
-            <p class="text-xs text-muted-foreground font-medium">Today's Reports</p>
-            <p class="text-xl font-bold">{{ todayCount }}</p>
-          </div>
-        </div>
-        <div class="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4">
-          <div class="size-11 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center">
-            <Icon name="i-lucide-timer" class="size-5 text-emerald-400" />
-          </div>
-          <div>
-            <p class="text-xs text-muted-foreground font-medium">Total Hours Today</p>
-            <p class="text-xl font-bold">{{ totalHoursToday.toFixed(1) }}h</p>
+          <div class="min-w-0">
+            <p class="text-[9px] sm:text-xs text-muted-foreground font-medium truncate">Today's Reports</p>
+            <p class="text-lg sm:text-xl font-bold">{{ todayCount }}</p>
           </div>
         </div>
-        <div class="rounded-xl border border-border/50 bg-card p-4 flex items-center gap-4">
-          <div class="size-11 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center">
-            <Icon name="i-lucide-alarm-clock" class="size-5 text-amber-400" />
+        <div class="rounded-xl border border-border/50 bg-card p-2.5 sm:p-4 flex items-center gap-2 sm:gap-4">
+          <div class="size-8 sm:size-11 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center shrink-0">
+            <Icon name="i-lucide-timer" class="size-3.5 sm:size-5 text-emerald-400" />
           </div>
-          <div>
-            <p class="text-xs text-muted-foreground font-medium">Late Arrivals Today</p>
-            <p class="text-xl font-bold">{{ lateCount }}</p>
+          <div class="min-w-0">
+            <p class="text-[9px] sm:text-xs text-muted-foreground font-medium truncate">Total Hours</p>
+            <p class="text-lg sm:text-xl font-bold">{{ totalHoursToday.toFixed(1) }}h</p>
+          </div>
+        </div>
+        <div class="rounded-xl border border-border/50 bg-card p-2.5 sm:p-4 flex items-center gap-2 sm:gap-4">
+          <div class="size-8 sm:size-11 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center shrink-0">
+            <Icon name="i-lucide-alarm-clock" class="size-3.5 sm:size-5 text-amber-400" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-[9px] sm:text-xs text-muted-foreground font-medium truncate">Late Arrivals</p>
+            <p class="text-lg sm:text-xl font-bold">{{ lateCount }}</p>
           </div>
         </div>
       </div>
 
       <!-- Records Table -->
       <div class="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
-        <div v-if="loading" class="p-12 flex justify-center text-muted-foreground gap-3 items-center">
+        <div v-if="loading" class="p-8 sm:p-12 flex justify-center text-muted-foreground gap-3 items-center">
           <Icon name="i-lucide-loader-2" class="size-6 animate-spin text-primary" /> Loading...
         </div>
-        <div v-else-if="records.length === 0" class="p-24 flex flex-col items-center justify-center text-center">
-          <div class="size-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-5">
-            <Icon name="i-lucide-clipboard-list" class="size-10 text-primary" />
+        <div v-else-if="records.length === 0" class="p-12 sm:p-24 flex flex-col items-center justify-center text-center px-4">
+          <div class="size-16 sm:size-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 sm:mb-5">
+            <Icon name="i-lucide-clipboard-list" class="size-7 sm:size-10 text-primary" />
           </div>
-          <h3 class="text-xl font-bold mb-2">No production reports yet</h3>
-          <p class="text-sm text-muted-foreground max-w-sm mb-6">Submit your first daily production report to start tracking work output and attendance.</p>
+          <h3 class="text-lg sm:text-xl font-bold mb-2">No production reports yet</h3>
+          <p class="text-xs sm:text-sm text-muted-foreground max-w-sm mb-4 sm:mb-6">Submit your first daily production report to start tracking work output and attendance.</p>
           <Button @click="openCreate" size="lg">
             <Icon name="i-lucide-plus" class="mr-2 size-4" />
             Create First Report
           </Button>
         </div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm text-left whitespace-nowrap">
-            <thead>
-              <tr class="bg-muted/40 border-b border-border/50 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
-                <th class="px-5 py-3">Date</th>
-                <th class="px-5 py-3">Employee</th>
-                <th class="px-5 py-3">Job / Client</th>
-                <th class="px-5 py-3">On Time</th>
-                <th class="px-5 py-3">Category</th>
-                <th class="px-5 py-3 text-right">Prod. Hours</th>
-                <th class="px-5 py-3 text-right">Sq Ft</th>
-                <th class="px-5 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border/30">
-              <tr v-for="r in records" :key="r._id" class="hover:bg-muted/20 transition-colors cursor-pointer group" @click="openEdit(r)">
-                <td class="px-5 py-3 text-muted-foreground">{{ formatShortDate(r.createdAt) }}</td>
-                <td class="px-5 py-3 font-semibold">{{ r.employeeName || '—' }}</td>
-                <td class="px-5 py-3 text-muted-foreground">{{ r.jobClient || '—' }}</td>
-                <td class="px-5 py-3">
-                  <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold border"
-                    :class="r.wereYouOnTime === 'Yes' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                            r.wereYouOnTime === 'No' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-muted text-muted-foreground border-border'"
-                  >
-                    {{ r.wereYouOnTime || '—' }}
-                  </span>
-                </td>
-                <td class="px-5 py-3">
-                  <span v-if="r.block1Category" class="inline-flex px-2 py-0.5 rounded bg-muted text-[10px] font-semibold">{{ r.block1Category }}</span>
-                  <span v-else class="text-muted-foreground/50">—</span>
-                </td>
-                <td class="px-5 py-3 text-right font-mono font-semibold">
-                  {{ ((r.productionHours || 0) + (r.productionHoursBlock2 || 0) + (r.productionHoursBlock3 || 0)).toFixed(1) }}
-                </td>
-                <td class="px-5 py-3 text-right font-mono">
-                  {{ ((r.squareFeetCompleted || 0) + (r.squareFeetCompletedBlock2 || 0) + (r.squareFeetCompletedBlock3 || 0)) || '—' }}
-                </td>
-                <td class="px-5 py-3 text-right" @click.stop>
-                  <Button v-if="canUpdate()" variant="ghost" size="sm" class="h-8 px-2" @click="openEdit(r)">
-                    <Icon name="i-lucide-pencil" class="size-4" />
+        <div v-else>
+          <!-- Desktop table -->
+          <div class="hidden sm:block overflow-x-auto">
+            <table class="w-full text-sm text-left whitespace-nowrap">
+              <thead>
+                <tr class="bg-muted/40 border-b border-border/50 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
+                  <th class="px-5 py-3">Date</th>
+                  <th class="px-5 py-3">Employee</th>
+                  <th class="px-5 py-3">Job / Client</th>
+                  <th class="px-5 py-3">On Time</th>
+                  <th class="px-5 py-3">Category</th>
+                  <th class="px-5 py-3 text-right">Prod. Hours</th>
+                  <th class="px-5 py-3 text-right">Sq Ft</th>
+                  <th class="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border/30">
+                <tr v-for="r in records" :key="r._id" class="hover:bg-muted/20 transition-colors cursor-pointer group" @click="openEdit(r)">
+                  <td class="px-5 py-3 text-muted-foreground">{{ formatShortDate(r.createdAt) }}</td>
+                  <td class="px-5 py-3 font-semibold">{{ r.employeeName || '—' }}</td>
+                  <td class="px-5 py-3 text-muted-foreground">{{ r.jobClient || '—' }}</td>
+                  <td class="px-5 py-3">
+                    <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold border"
+                      :class="r.wereYouOnTime === 'Yes' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                              r.wereYouOnTime === 'No' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-muted text-muted-foreground border-border'"
+                    >
+                      {{ r.wereYouOnTime || '—' }}
+                    </span>
+                  </td>
+                  <td class="px-5 py-3">
+                    <span v-if="r.block1Category" class="inline-flex px-2 py-0.5 rounded bg-muted text-[10px] font-semibold">{{ r.block1Category }}</span>
+                    <span v-else class="text-muted-foreground/50">—</span>
+                  </td>
+                  <td class="px-5 py-3 text-right font-mono font-semibold">
+                    {{ ((r.productionHours || 0) + (r.productionHoursBlock2 || 0) + (r.productionHoursBlock3 || 0)).toFixed(1) }}
+                  </td>
+                  <td class="px-5 py-3 text-right font-mono">
+                    {{ ((r.squareFeetCompleted || 0) + (r.squareFeetCompletedBlock2 || 0) + (r.squareFeetCompletedBlock3 || 0)) || '—' }}
+                  </td>
+                  <td class="px-5 py-3 text-right" @click.stop>
+                    <Button v-if="canUpdate()" variant="ghost" size="sm" class="h-8 px-2" @click="openEdit(r)">
+                      <Icon name="i-lucide-pencil" class="size-4" />
+                    </Button>
+                    <Button v-if="canDelete()" variant="ghost" size="sm" class="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" @click="deleteRecord(r._id)">
+                      <Icon name="i-lucide-trash-2" class="size-4" />
+                    </Button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Mobile cards -->
+          <div class="sm:hidden divide-y divide-border/30">
+            <div v-for="r in records" :key="r._id" class="px-3 py-3 hover:bg-muted/20 transition-colors cursor-pointer" @click="openEdit(r)">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold truncate">{{ r.employeeName || '—' }}</p>
+                  <p class="text-[10px] text-muted-foreground mt-0.5">{{ formatShortDate(r.createdAt) }} · {{ r.jobClient || 'No client' }}</p>
+                </div>
+                <span class="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0"
+                  :class="r.wereYouOnTime === 'Yes' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                          r.wereYouOnTime === 'No' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-muted text-muted-foreground border-border'"
+                >
+                  {{ r.wereYouOnTime || '—' }}
+                </span>
+              </div>
+              <div class="flex items-center justify-between gap-2 mt-2">
+                <div class="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <span v-if="r.block1Category" class="inline-flex px-1.5 py-0.5 rounded bg-muted text-[9px] font-semibold">{{ r.block1Category }}</span>
+                  <span class="font-mono font-semibold text-foreground">{{ ((r.productionHours || 0) + (r.productionHoursBlock2 || 0) + (r.productionHoursBlock3 || 0)).toFixed(1) }}h</span>
+                  <span class="font-mono">{{ ((r.squareFeetCompleted || 0) + (r.squareFeetCompletedBlock2 || 0) + (r.squareFeetCompletedBlock3 || 0)) || '0' }} sqft</span>
+                </div>
+                <div class="flex items-center gap-0.5" @click.stop>
+                  <Button v-if="canUpdate()" variant="ghost" size="sm" class="size-7 p-0" @click="openEdit(r)">
+                    <Icon name="i-lucide-pencil" class="size-3.5" />
                   </Button>
-                  <Button v-if="canDelete()" variant="ghost" size="sm" class="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" @click="deleteRecord(r._id)">
-                    <Icon name="i-lucide-trash-2" class="size-4" />
+                  <Button v-if="canDelete()" variant="ghost" size="sm" class="size-7 p-0 text-destructive" @click="deleteRecord(r._id)">
+                    <Icon name="i-lucide-trash-2" class="size-3.5" />
                   </Button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -406,10 +442,10 @@ const lateCount = computed(() => {
 
       <!-- Sticky Masthead -->
       <div class="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div class="px-6 py-5 flex items-center gap-5">
+        <div class="px-3 sm:px-6 py-3 sm:py-5 flex items-center gap-3 sm:gap-5">
           <!-- Progress Ring -->
-          <div class="relative size-16 shrink-0">
-            <svg class="size-16 -rotate-90" viewBox="0 0 64 64">
+          <div class="relative size-12 sm:size-16 shrink-0">
+            <svg class="size-12 sm:size-16 -rotate-90" viewBox="0 0 64 64">
               <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4" class="text-muted/30" />
               <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4"
                 class="text-primary transition-all duration-500"
@@ -417,38 +453,39 @@ const lateCount = computed(() => {
                 stroke-linecap="round"
               />
             </svg>
-            <span class="absolute inset-0 flex items-center justify-center text-sm font-bold">{{ progressPercent }}%</span>
+            <span class="absolute inset-0 flex items-center justify-center text-[10px] sm:text-sm font-bold">{{ progressPercent }}%</span>
           </div>
 
           <div class="flex-1 min-w-0">
-            <h1 class="text-xl font-bold tracking-tight truncate">
-              Daily Production Report
-              <span class="text-muted-foreground font-normal text-base">{{ editingId ? '(editing)' : '(new)' }}</span>
+            <h1 class="text-base sm:text-xl font-bold tracking-tight truncate">
+              <span class="hidden sm:inline">Daily Production Report</span>
+              <span class="sm:hidden">Daily Report</span>
+              <span class="text-muted-foreground font-normal text-xs sm:text-base ml-1">{{ editingId ? '(editing)' : '(new)' }}</span>
             </h1>
-            <p class="text-sm text-muted-foreground mt-0.5">
+            <p class="text-[10px] sm:text-sm text-muted-foreground mt-0.5">
               {{ completedSections }}/{{ sections.length }} sections completed
             </p>
           </div>
 
-          <div class="flex items-center gap-2">
-            <Button variant="outline" size="sm" @click="cancelEdit">
-              <Icon name="i-lucide-arrow-left" class="mr-1.5 size-3.5" />
-              Back
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" class="h-8 sm:h-9 px-2 sm:px-3 text-xs" @click="cancelEdit">
+              <Icon name="i-lucide-arrow-left" class="mr-0.5 sm:mr-1.5 size-3.5" />
+              <span class="hidden sm:inline">Back</span>
             </Button>
-            <Button :disabled="saving" size="sm" @click="saveRecord">
-              <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
-              <Icon v-else name="i-lucide-save" class="mr-1.5 size-3.5" />
+            <Button :disabled="saving" size="sm" class="h-8 sm:h-9 px-2.5 sm:px-3 text-xs" @click="saveRecord">
+              <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1 sm:mr-2 size-3.5 sm:size-4 animate-spin" />
+              <Icon v-else name="i-lucide-save" class="mr-0.5 sm:mr-1.5 size-3.5" />
               {{ editingId ? 'Save' : 'Submit' }}
             </Button>
           </div>
         </div>
 
         <!-- Section Nav Pills -->
-        <div class="px-6 pb-4 flex gap-2 overflow-x-auto scrollbar-none">
+        <div class="px-3 sm:px-6 pb-3 sm:pb-4 flex gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none">
           <button
             v-for="(section, idx) in sections"
             :key="section.id"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold whitespace-nowrap transition-all duration-150 shrink-0"
+            class="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-1.5 rounded-full border text-[10px] sm:text-xs font-semibold whitespace-nowrap transition-all duration-150 shrink-0 min-h-[30px] sm:min-h-0"
             :class="activeSectionIdx === idx
               ? 'bg-primary/10 text-primary border-primary/40 shadow-sm shadow-primary/5'
               : isSectionDone(section.id)
@@ -463,8 +500,8 @@ const lateCount = computed(() => {
       </div>
 
       <!-- Sections -->
-      <div class="px-6 pt-6 space-y-5">
-        <TransitionGroup name="section-fade" tag="div" class="space-y-5">
+      <div class="px-3 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-5">
+        <TransitionGroup name="section-fade" tag="div" class="space-y-4 sm:space-y-5">
           <div
             v-for="(section, idx) in sections"
             v-show="activeSectionIdx === idx"
@@ -473,27 +510,27 @@ const lateCount = computed(() => {
             :class="isSectionDone(section.id) ? 'border-emerald-500/30 bg-emerald-500/[0.02]' : 'border-border/50'"
           >
             <!-- Section Header -->
-            <div class="px-5 py-4 flex items-start gap-4">
+            <div class="px-3 sm:px-5 py-3 sm:py-4 flex items-start gap-2.5 sm:gap-4">
               <div
-                class="size-10 rounded-xl bg-gradient-to-br flex items-center justify-center shrink-0 border"
+                class="size-8 sm:size-10 rounded-xl bg-gradient-to-br flex items-center justify-center shrink-0 border"
                 :class="section.color"
               >
-                <Icon :name="section.icon" :class="['size-5', section.iconColor]" />
+                <Icon :name="section.icon" :class="['size-4 sm:size-5', section.iconColor]" />
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="font-bold text-base">{{ section.title }}</h3>
-                <p class="text-xs text-muted-foreground mt-0.5">{{ section.description }}</p>
+                <h3 class="font-bold text-sm sm:text-base">{{ section.title }}</h3>
+                <p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{{ section.description }}</p>
               </div>
               <span
-                class="text-[10px] font-bold uppercase tracking-widest shrink-0 px-2.5 py-1 rounded-full"
+                class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shrink-0 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full"
                 :class="isSectionDone(section.id) ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted/60 text-muted-foreground'"
               >
-                {{ isSectionDone(section.id) ? '✓ Complete' : 'Pending' }}
+                {{ isSectionDone(section.id) ? '✓ Done' : 'Pending' }}
               </span>
             </div>
 
             <!-- Section Content -->
-            <div class="px-5 pb-6 space-y-5">
+            <div class="px-3 sm:px-5 pb-4 sm:pb-6 space-y-4 sm:space-y-5">
 
               <!-- ── Employee & Attendance (combined) ── -->
               <template v-if="section.id === 'employee-attendance'">
@@ -537,12 +574,12 @@ const lateCount = computed(() => {
                     <Icon name="i-lucide-clock" class="size-3.5 text-muted-foreground" />
                     Were you on time? <span class="text-destructive">*</span>
                   </Label>
-                  <p class="text-xs text-muted-foreground -mt-1 ml-5">If you arrived late, this will be referenced to your time card — make sure missed or late punches are corrected ASAP</p>
-                  <div class="flex gap-3">
+                  <p class="text-[10px] sm:text-xs text-muted-foreground -mt-1 ml-5">If you arrived late, this will be referenced to your time card — make sure missed or late punches are corrected ASAP</p>
+                  <div class="flex gap-2 sm:gap-3">
                     <button
                       v-for="opt in ['Yes', 'No']"
                       :key="opt"
-                      class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 min-w-[100px] justify-center"
+                      class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border text-xs sm:text-sm font-medium transition-all duration-150 min-w-[80px] sm:min-w-[100px] justify-center"
                       :class="form.wereYouOnTime === opt
                         ? opt === 'Yes' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/40 shadow-sm' : 'bg-red-500/10 text-red-500 border-red-500/40 shadow-sm'
                         : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
@@ -581,11 +618,11 @@ const lateCount = computed(() => {
                     <Icon name="i-lucide-map-pin-off" class="size-3.5 text-muted-foreground" />
                     Did you leave the job for anything other than lunch? <span class="text-destructive">*</span>
                   </Label>
-                  <div class="flex gap-3">
+                  <div class="flex gap-2 sm:gap-3">
                     <button
                       v-for="opt in ['Yes', 'No']"
                       :key="opt"
-                      class="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 min-w-[100px] justify-center"
+                      class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border text-xs sm:text-sm font-medium transition-all duration-150 min-w-[80px] sm:min-w-[100px] justify-center"
                       :class="form.didYouLeaveTheJobForAnythingOtherThanLunch === opt
                         ? 'bg-primary/10 text-primary border-primary/40 shadow-sm'
                         : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
@@ -635,11 +672,11 @@ const lateCount = computed(() => {
                     <Icon name="i-lucide-hammer" class="size-3.5 text-muted-foreground" />
                     What work did you perform today? (Select all that apply) <span class="text-destructive">*</span>
                   </Label>
-                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 mt-1">
                     <button
                       v-for="type in WORK_TYPES"
                       :key="type"
-                      class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border text-sm font-medium transition-all duration-150 text-left"
+                      class="flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-lg border text-[11px] sm:text-sm font-medium transition-all duration-150 text-left min-h-[36px] sm:min-h-0"
                       :class="form.whatWorkDidYouPerformTodaySelectAllThatApply.includes(type)
                         ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/40 shadow-sm shadow-emerald-500/5'
                         : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
@@ -865,14 +902,15 @@ const lateCount = computed(() => {
             </div>
 
             <!-- Section Nav Buttons -->
-            <div class="px-5 py-3 bg-muted/20 border-t border-border/40 flex items-center justify-between">
+            <div class="px-3 sm:px-5 py-2.5 sm:py-3 bg-muted/20 border-t border-border/40 flex items-center justify-between">
               <Button
                 v-if="idx > 0"
                 variant="ghost"
                 size="sm"
+                class="h-8 sm:h-9 text-xs sm:text-sm"
                 @click="activeSectionIdx = idx - 1"
               >
-                <Icon name="i-lucide-chevron-left" class="mr-1 size-3.5" />
+                <Icon name="i-lucide-chevron-left" class="mr-0.5 sm:mr-1 size-3.5" />
                 Previous
               </Button>
               <div v-else />
@@ -880,48 +918,50 @@ const lateCount = computed(() => {
                 v-if="idx < sections.length - 1"
                 variant="ghost"
                 size="sm"
+                class="h-8 sm:h-9 text-xs sm:text-sm"
                 @click="activeSectionIdx = idx + 1"
               >
                 Next
-                <Icon name="i-lucide-chevron-right" class="ml-1 size-3.5" />
+                <Icon name="i-lucide-chevron-right" class="ml-0.5 sm:ml-1 size-3.5" />
               </Button>
               <Button
                 v-else
                 size="sm"
                 :disabled="saving"
+                class="h-8 sm:h-9 text-xs sm:text-sm"
                 @click="saveRecord"
               >
-                <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
-                <Icon v-else name="i-lucide-send" class="mr-1.5 size-3.5" />
-                {{ editingId ? 'Save Changes' : 'Submit Report' }}
+                <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 sm:mr-2 size-3.5 sm:size-4 animate-spin" />
+                <Icon v-else name="i-lucide-send" class="mr-0.5 sm:mr-1.5 size-3.5" />
+                {{ editingId ? 'Save' : 'Submit' }}
               </Button>
             </div>
           </div>
         </TransitionGroup>
 
         <!-- Bottom Summary Bar -->
-        <div class="rounded-xl border border-border/50 bg-card p-5 flex items-center justify-between mt-6">
-          <div class="flex items-center gap-3">
+        <div class="rounded-xl border border-border/50 bg-card p-3 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mt-4 sm:mt-6">
+          <div class="flex items-center gap-2.5 sm:gap-3">
             <div
-              class="size-10 rounded-full flex items-center justify-center"
+              class="size-8 sm:size-10 rounded-full flex items-center justify-center shrink-0"
               :class="progressPercent === 100 ? 'bg-emerald-500/15 text-emerald-500' : 'bg-muted/60 text-muted-foreground'"
             >
-              <Icon :name="progressPercent === 100 ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'" class="size-5" />
+              <Icon :name="progressPercent === 100 ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'" class="size-4 sm:size-5" />
             </div>
             <div>
-              <p class="text-sm font-semibold">
+              <p class="text-xs sm:text-sm font-semibold">
                 {{ progressPercent === 100 ? 'All sections completed!' : `${completedSections} of ${sections.length} sections filled` }}
               </p>
-              <p class="text-xs text-muted-foreground">
-                {{ progressPercent === 100 ? 'Ready to submit this report.' : 'Fill in remaining sections to complete your report.' }}
+              <p class="text-[10px] sm:text-xs text-muted-foreground">
+                {{ progressPercent === 100 ? 'Ready to submit.' : 'Fill remaining sections.' }}
               </p>
             </div>
           </div>
-          <div class="flex items-center gap-3">
-            <Button variant="outline" @click="cancelEdit">Cancel</Button>
-            <Button :disabled="saving" @click="saveRecord">
-              <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
-              {{ editingId ? 'Save Changes' : 'Submit Report' }}
+          <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <Button variant="outline" class="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm" @click="cancelEdit">Cancel</Button>
+            <Button :disabled="saving" class="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm" @click="saveRecord">
+              <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 sm:mr-2 size-3.5 sm:size-4 animate-spin" />
+              {{ editingId ? 'Save' : 'Submit' }}
             </Button>
           </div>
         </div>

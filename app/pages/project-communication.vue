@@ -300,77 +300,108 @@ function formatDate(d: string) {
   <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
 
     <!-- ═════════ LIST VIEW ═════════ -->
-    <div v-if="activeTab === 'list'" class="p-6 space-y-6 max-w-7xl mx-auto">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold tracking-tight">Project Communications</h1>
-        <Button v-if="canCreate()" @click="openCreate">
-          <Icon name="i-lucide-plus" class="mr-2 size-4" />
-          New Checklist
+    <div v-if="activeTab === 'list'" class="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
+      <div class="flex items-center justify-between gap-3">
+        <h1 class="text-lg sm:text-2xl font-bold tracking-tight">Project Communications</h1>
+        <Button v-if="canCreate()" size="sm" class="shrink-0 h-8 sm:h-9 text-xs sm:text-sm" @click="openCreate">
+          <Icon name="i-lucide-plus" class="mr-1 sm:mr-2 size-3.5 sm:size-4" />
+          <span class="hidden sm:inline">New Checklist</span>
+          <span class="sm:hidden">New</span>
         </Button>
       </div>
 
       <div class="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
-        <div v-if="loading" class="p-12 flex justify-center text-muted-foreground gap-3 items-center">
+        <div v-if="loading" class="p-8 sm:p-12 flex justify-center text-muted-foreground gap-3 items-center">
           <Icon name="i-lucide-loader-2" class="size-6 animate-spin text-primary" /> Loading...
         </div>
-        <div v-else-if="records.length === 0" class="p-24 flex flex-col items-center justify-center text-center">
-          <div class="size-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-5">
-            <Icon name="i-lucide-clipboard-list" class="size-10 text-primary" />
+        <div v-else-if="records.length === 0" class="p-12 sm:p-24 flex flex-col items-center justify-center text-center px-4">
+          <div class="size-16 sm:size-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 sm:mb-5">
+            <Icon name="i-lucide-clipboard-list" class="size-7 sm:size-10 text-primary" />
           </div>
-          <h3 class="text-xl font-bold mb-2">No checklists yet</h3>
-          <p class="text-sm text-muted-foreground max-w-sm mb-6">Create your first project communication checklist to start tracking field data.</p>
+          <h3 class="text-lg sm:text-xl font-bold mb-2">No checklists yet</h3>
+          <p class="text-xs sm:text-sm text-muted-foreground max-w-sm mb-4 sm:mb-6">Create your first project communication checklist to start tracking field data.</p>
           <Button v-if="canCreate()" @click="openCreate" size="lg">
             <Icon name="i-lucide-plus" class="mr-2 size-4" />
             Create First Checklist
           </Button>
         </div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm text-left whitespace-nowrap">
-            <thead>
-              <tr class="bg-muted/40 border-b border-border/50 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
-                <th class="px-5 py-3">Date</th>
-                <th class="px-5 py-3">Lead Technician</th>
-                <th class="px-5 py-3">Status</th>
-                <th class="px-5 py-3">Wood Type</th>
-                <th class="px-5 py-3">Change Order?</th>
-                <th class="px-5 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border/30">
-              <tr v-for="r in records" :key="r._id" class="hover:bg-muted/20 transition-colors cursor-pointer" @click="openEdit(r)">
-                <td class="px-5 py-3 text-muted-foreground">{{ formatDate(r.createdAt) }}</td>
-                <td class="px-5 py-3 font-medium">{{ r.leadTechnicianSupervisorTechnician || '—' }}</td>
-                <td class="px-5 py-3">
-                  <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold border"
+        <div v-else>
+          <!-- Desktop table -->
+          <div class="hidden sm:block overflow-x-auto">
+            <table class="w-full text-sm text-left whitespace-nowrap">
+              <thead>
+                <tr class="bg-muted/40 border-b border-border/50 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
+                  <th class="px-5 py-3">Date</th>
+                  <th class="px-5 py-3">Lead Technician</th>
+                  <th class="px-5 py-3">Status</th>
+                  <th class="px-5 py-3">Wood Type</th>
+                  <th class="px-5 py-3">Change Order?</th>
+                  <th class="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border/30">
+                <tr v-for="r in records" :key="r._id" class="hover:bg-muted/20 transition-colors cursor-pointer" @click="openEdit(r)">
+                  <td class="px-5 py-3 text-muted-foreground">{{ formatDate(r.createdAt) }}</td>
+                  <td class="px-5 py-3 font-medium">{{ r.leadTechnicianSupervisorTechnician || '—' }}</td>
+                  <td class="px-5 py-3">
+                    <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold border"
+                      :class="r.pleaseMarkIfThisProjectIsFullyCompleteOrNot === 'Fully Complete' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                              r.pleaseMarkIfThisProjectIsFullyCompleteOrNot ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-muted text-muted-foreground border-border'"
+                    >
+                      {{ r.pleaseMarkIfThisProjectIsFullyCompleteOrNot || 'Pending' }}
+                    </span>
+                  </td>
+                  <td class="px-5 py-3">
+                    <div class="flex flex-wrap gap-1 max-w-[200px]">
+                      <span v-if="!r.whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply?.length" class="text-muted-foreground/50">—</span>
+                      <span v-for="wood in (r.whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply || []).slice(0, 3)" :key="wood" class="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium">
+                        {{ wood }}
+                      </span>
+                      <span v-if="(r.whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply || []).length > 3" class="text-[10px] text-muted-foreground">
+                        +{{ r.whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply.length - 3 }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="px-5 py-3">{{ r.wasThereAChangeOrderFilledOut || '—' }}</td>
+                  <td class="px-5 py-3 text-right" @click.stop>
+                    <Button v-if="canUpdate()" variant="ghost" size="sm" class="h-8 px-2" @click="openEdit(r)">
+                      <Icon name="i-lucide-pencil" class="size-4" />
+                    </Button>
+                    <Button v-if="canDelete()" variant="ghost" size="sm" class="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" @click="deleteRecord(r._id)">
+                      <Icon name="i-lucide-trash-2" class="size-4" />
+                    </Button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Mobile cards -->
+          <div class="sm:hidden divide-y divide-border/30">
+            <div v-for="r in records" :key="r._id" class="px-3 py-3 hover:bg-muted/20 transition-colors cursor-pointer" @click="openEdit(r)">
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium truncate">{{ r.leadTechnicianSupervisorTechnician || 'No Lead' }}</p>
+                  <p class="text-[10px] text-muted-foreground mt-0.5">{{ formatDate(r.createdAt) }}</p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold border"
                     :class="r.pleaseMarkIfThisProjectIsFullyCompleteOrNot === 'Fully Complete' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                             r.pleaseMarkIfThisProjectIsFullyCompleteOrNot ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-muted text-muted-foreground border-border'"
                   >
                     {{ r.pleaseMarkIfThisProjectIsFullyCompleteOrNot || 'Pending' }}
                   </span>
-                </td>
-                <td class="px-5 py-3">
-                  <div class="flex flex-wrap gap-1 max-w-[200px]">
-                    <span v-if="!r.whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply?.length" class="text-muted-foreground/50">—</span>
-                    <span v-for="wood in (r.whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply || []).slice(0, 3)" :key="wood" class="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium">
-                      {{ wood }}
-                    </span>
-                    <span v-if="(r.whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply || []).length > 3" class="text-[10px] text-muted-foreground">
-                      +{{ r.whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply.length - 3 }}
-                    </span>
+                  <div class="flex items-center gap-0.5" @click.stop>
+                    <Button v-if="canUpdate()" variant="ghost" size="sm" class="size-7 p-0" @click="openEdit(r)">
+                      <Icon name="i-lucide-pencil" class="size-3.5" />
+                    </Button>
+                    <Button v-if="canDelete()" variant="ghost" size="sm" class="size-7 p-0 text-destructive" @click="deleteRecord(r._id)">
+                      <Icon name="i-lucide-trash-2" class="size-3.5" />
+                    </Button>
                   </div>
-                </td>
-                <td class="px-5 py-3">{{ r.wasThereAChangeOrderFilledOut || '—' }}</td>
-                <td class="px-5 py-3 text-right" @click.stop>
-                  <Button v-if="canUpdate()" variant="ghost" size="sm" class="h-8 px-2" @click="openEdit(r)">
-                    <Icon name="i-lucide-pencil" class="size-4" />
-                  </Button>
-                  <Button v-if="canDelete()" variant="ghost" size="sm" class="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10" @click="deleteRecord(r._id)">
-                    <Icon name="i-lucide-trash-2" class="size-4" />
-                  </Button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -380,10 +411,10 @@ function formatDate(d: string) {
 
       <!-- ─── Checklist Masthead ─── -->
       <div class="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div class="px-6 py-5 flex items-center gap-5">
+        <div class="px-3 sm:px-6 py-3 sm:py-5 flex items-center gap-3 sm:gap-5">
           <!-- Progress Ring -->
-          <div class="relative size-16 shrink-0">
-            <svg class="size-16 -rotate-90" viewBox="0 0 64 64">
+          <div class="relative size-12 sm:size-16 shrink-0">
+            <svg class="size-12 sm:size-16 -rotate-90" viewBox="0 0 64 64">
               <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4" class="text-muted/30" />
               <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4"
                 class="text-primary transition-all duration-500"
@@ -391,53 +422,54 @@ function formatDate(d: string) {
                 stroke-linecap="round"
               />
             </svg>
-            <span class="absolute inset-0 flex items-center justify-center text-sm font-bold">{{ progressPercent }}%</span>
+            <span class="absolute inset-0 flex items-center justify-center text-[10px] sm:text-sm font-bold">{{ progressPercent }}%</span>
           </div>
 
           <!-- Title & Meta -->
           <div class="flex-1 min-w-0">
-            <h1 class="text-xl font-bold tracking-tight truncate">
-              Project Communication Form
-              <span class="text-muted-foreground font-normal text-base">({{ records.length + (editingId ? 0 : 1) }})</span>
+            <h1 class="text-base sm:text-xl font-bold tracking-tight truncate">
+              <span class="hidden sm:inline">Project Communication Form</span>
+              <span class="sm:hidden">Comm. Form</span>
+              <span class="text-muted-foreground font-normal text-xs sm:text-base ml-1">({{ records.length + (editingId ? 0 : 1) }})</span>
             </h1>
-            <p class="text-sm text-muted-foreground mt-0.5">
-              {{ completedFields }}/{{ totalFields }} fields completed
-              <span v-if="editingId" class="ml-2 text-xs">· Last updated {{ formatDate((records.find(r => r._id === editingId) as any)?.updatedAt || '') }}</span>
+            <p class="text-[10px] sm:text-sm text-muted-foreground mt-0.5">
+              {{ completedFields }}/{{ totalFields }} completed
+              <span v-if="editingId" class="hidden sm:inline ml-2 text-xs">· Last updated {{ formatDate((records.find(r => r._id === editingId) as any)?.updatedAt || '') }}</span>
             </p>
           </div>
 
           <!-- Header Actions -->
-          <div class="flex items-center gap-2">
-            <Button variant="outline" size="sm" @click="cancelEdit">
-              <Icon name="i-lucide-arrow-left" class="mr-1.5 size-3.5" />
-              Back
+          <div class="flex items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" class="h-8 sm:h-9 px-2 sm:px-3 text-xs" @click="cancelEdit">
+              <Icon name="i-lucide-arrow-left" class="mr-0.5 sm:mr-1.5 size-3.5" />
+              <span class="hidden sm:inline">Back</span>
             </Button>
-            <Button :disabled="saving" size="sm" @click="saveRecord">
-              <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
-              <Icon v-else name="i-lucide-save" class="mr-1.5 size-3.5" />
+            <Button :disabled="saving" size="sm" class="h-8 sm:h-9 px-2.5 sm:px-3 text-xs" @click="saveRecord">
+              <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1 sm:mr-2 size-3.5 sm:size-4 animate-spin" />
+              <Icon v-else name="i-lucide-save" class="mr-0.5 sm:mr-1.5 size-3.5" />
               {{ editingId ? 'Save' : 'Submit' }}
             </Button>
           </div>
         </div>
 
         <!-- Toolbar Row -->
-        <div class="px-6 pb-4 flex items-center gap-4">
+        <div class="px-3 sm:px-6 pb-3 sm:pb-4 flex items-center gap-3 sm:gap-4">
           <button
-            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors"
+            class="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full border text-[10px] sm:text-xs font-medium transition-colors"
             :class="hideCompleted ? 'bg-primary/10 text-primary border-primary/30' : 'bg-muted/40 text-muted-foreground border-border/50 hover:bg-muted'"
             @click="hideCompleted = !hideCompleted"
           >
-            <span class="size-4 rounded-full flex items-center justify-center" :class="hideCompleted ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20'">
-              <Icon :name="hideCompleted ? 'i-lucide-check' : 'i-lucide-x'" class="size-2.5" />
+            <span class="size-3.5 sm:size-4 rounded-full flex items-center justify-center" :class="hideCompleted ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20'">
+              <Icon :name="hideCompleted ? 'i-lucide-check' : 'i-lucide-x'" class="size-2 sm:size-2.5" />
             </span>
-            Hide Completed Fields
+            Hide Completed
           </button>
         </div>
       </div>
 
       <!-- ─── Checklist Sections ─── -->
-      <div class="px-6 pt-6 space-y-5">
-        <TransitionGroup name="checklist" tag="div" class="space-y-5">
+      <div class="px-3 sm:px-6 pt-4 sm:pt-6 space-y-4 sm:space-y-5">
+        <TransitionGroup name="checklist" tag="div" class="space-y-4 sm:space-y-5">
           <div
             v-for="section in visibleSections"
             :key="section.id"
@@ -445,19 +477,19 @@ function formatDate(d: string) {
             :class="isSectionCompleted(section) ? 'border-emerald-500/30 bg-emerald-500/[0.02]' : 'border-border/50'"
           >
             <!-- Section Header -->
-            <div class="px-5 py-4 flex items-start gap-4">
+            <div class="px-3 sm:px-5 py-3 sm:py-4 flex items-start gap-2.5 sm:gap-4">
               <div
-                class="size-10 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-300 mt-0.5"
+                class="size-8 sm:size-10 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-300 mt-0.5"
                 :class="isSectionCompleted(section) ? 'border-emerald-500 bg-emerald-500/10 text-emerald-500' : 'border-border/60 text-muted-foreground/50'"
               >
-                <Icon v-if="isSectionCompleted(section)" name="i-lucide-check" class="size-5" />
-                <Icon v-else :name="section.icon" class="size-4" />
+                <Icon v-if="isSectionCompleted(section)" name="i-lucide-check" class="size-4 sm:size-5" />
+                <Icon v-else :name="section.icon" class="size-3.5 sm:size-4" />
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="font-bold text-base">{{ section.title }}</h3>
-                <p class="text-xs text-muted-foreground mt-0.5">{{ section.description }}</p>
+                <h3 class="font-bold text-sm sm:text-base">{{ section.title }}</h3>
+                <p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{{ section.description }}</p>
               </div>
-              <span class="text-[10px] font-bold uppercase tracking-widest shrink-0 px-2 py-1 rounded-full"
+              <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shrink-0 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full"
                 :class="isSectionCompleted(section) ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted/60 text-muted-foreground'"
               >
                 {{ sectionProgress(section).done }}/{{ sectionProgress(section).total }}
@@ -465,7 +497,7 @@ function formatDate(d: string) {
             </div>
 
             <!-- Section Fields -->
-            <div class="px-5 pb-5 space-y-5">
+            <div class="px-3 sm:px-5 pb-3 sm:pb-5 space-y-4 sm:space-y-5">
               <template v-for="field in section.fields" :key="field.key">
                 <div
                   v-if="!hideCompleted || !isFieldCompleted(field)"
@@ -485,18 +517,18 @@ function formatDate(d: string) {
                   </div>
 
                   <!-- Chips (single select) -->
-                  <div v-if="field.type === 'chips'" class="flex flex-wrap gap-2 ml-7">
+                  <div v-if="field.type === 'chips'" class="flex flex-wrap gap-1.5 sm:gap-2 ml-5 sm:ml-7">
                     <button
                       v-for="opt in field.options"
                       :key="opt"
-                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150"
+                      class="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-1.5 rounded-lg border text-[11px] sm:text-xs font-semibold transition-all duration-150 min-h-[32px] sm:min-h-0"
                       :class="(form as any)[field.key] === opt
                         ? 'bg-primary/10 text-primary border-primary/40 shadow-sm shadow-primary/5'
                         : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
                       @click="selectChip(field.key, opt)"
                     >
                       <span
-                        class="size-3.5 rounded-[3px] border flex items-center justify-center transition-colors"
+                        class="size-3 sm:size-3.5 rounded-[3px] border flex items-center justify-center transition-colors"
                         :class="(form as any)[field.key] === opt ? 'bg-primary border-primary text-primary-foreground' : 'border-border/60'"
                       >
                         <Icon v-if="(form as any)[field.key] === opt" name="i-lucide-check" class="size-2" />
@@ -506,18 +538,18 @@ function formatDate(d: string) {
                   </div>
 
                   <!-- Multi-Chips (multi select) -->
-                  <div v-else-if="field.type === 'multi-chips'" class="flex flex-wrap gap-2 ml-7">
+                  <div v-else-if="field.type === 'multi-chips'" class="flex flex-wrap gap-1.5 sm:gap-2 ml-5 sm:ml-7">
                     <button
                       v-for="opt in field.options"
                       :key="opt"
-                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150"
+                      class="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-1.5 rounded-lg border text-[11px] sm:text-xs font-semibold transition-all duration-150 min-h-[32px] sm:min-h-0"
                       :class="((form as any)[field.key] as string[]).includes(opt)
                         ? 'bg-primary/10 text-primary border-primary/40 shadow-sm shadow-primary/5'
                         : 'bg-card text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-muted/30'"
                       @click="toggleMultiChip(field.key, opt)"
                     >
                       <span
-                        class="size-3.5 rounded-[3px] border flex items-center justify-center transition-colors"
+                        class="size-3 sm:size-3.5 rounded-[3px] border flex items-center justify-center transition-colors"
                         :class="((form as any)[field.key] as string[]).includes(opt) ? 'bg-primary border-primary text-primary-foreground' : 'border-border/60'"
                       >
                         <Icon v-if="((form as any)[field.key] as string[]).includes(opt)" name="i-lucide-check" class="size-2" />
@@ -527,21 +559,21 @@ function formatDate(d: string) {
                   </div>
 
                   <!-- Text Input -->
-                  <div v-else-if="field.type === 'input'" class="ml-7">
+                  <div v-else-if="field.type === 'input'" class="ml-5 sm:ml-7">
                     <Input
                       v-model="(form as any)[field.key]"
                       placeholder="Add Response..."
-                      class="bg-background/50"
+                      class="bg-background/50 h-9 sm:h-10"
                     />
                   </div>
 
                   <!-- Textarea -->
-                  <div v-else-if="field.type === 'textarea'" class="ml-7">
+                  <div v-else-if="field.type === 'textarea'" class="ml-5 sm:ml-7">
                     <Textarea
                       v-model="(form as any)[field.key]"
                       placeholder="Add Response..."
                       rows="3"
-                      class="bg-background/50 resize-none"
+                      class="bg-background/50 resize-none text-sm"
                     />
                   </div>
                 </div>
@@ -551,28 +583,28 @@ function formatDate(d: string) {
         </TransitionGroup>
 
         <!-- ─── Bottom Submit Bar ─── -->
-        <div class="rounded-xl border border-border/50 bg-card p-5 flex items-center justify-between mt-6">
-          <div class="flex items-center gap-3">
+        <div class="rounded-xl border border-border/50 bg-card p-3 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mt-4 sm:mt-6">
+          <div class="flex items-center gap-2.5 sm:gap-3">
             <div
-              class="size-10 rounded-full flex items-center justify-center"
+              class="size-8 sm:size-10 rounded-full flex items-center justify-center shrink-0"
               :class="progressPercent === 100 ? 'bg-emerald-500/15 text-emerald-500' : 'bg-muted/60 text-muted-foreground'"
             >
-              <Icon :name="progressPercent === 100 ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'" class="size-5" />
+              <Icon :name="progressPercent === 100 ? 'i-lucide-check-circle-2' : 'i-lucide-circle-dashed'" class="size-4 sm:size-5" />
             </div>
             <div>
-              <p class="text-sm font-semibold">
+              <p class="text-xs sm:text-sm font-semibold">
                 {{ progressPercent === 100 ? 'All fields completed!' : `${completedFields} of ${totalFields} fields filled` }}
               </p>
-              <p class="text-xs text-muted-foreground">
-                {{ progressPercent === 100 ? 'Ready to submit this checklist.' : 'Fill in remaining fields to complete the checklist.' }}
+              <p class="text-[10px] sm:text-xs text-muted-foreground">
+                {{ progressPercent === 100 ? 'Ready to submit.' : 'Fill remaining fields.' }}
               </p>
             </div>
           </div>
-          <div class="flex items-center gap-3">
-            <Button variant="outline" @click="cancelEdit">Cancel</Button>
-            <Button :disabled="saving" @click="saveRecord">
-              <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
-              {{ editingId ? 'Save Changes' : 'Submit Checklist' }}
+          <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <Button variant="outline" class="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm" @click="cancelEdit">Cancel</Button>
+            <Button :disabled="saving" class="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm" @click="saveRecord">
+              <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 sm:mr-2 size-3.5 sm:size-4 animate-spin" />
+              {{ editingId ? 'Save' : 'Submit' }}
             </Button>
           </div>
         </div>

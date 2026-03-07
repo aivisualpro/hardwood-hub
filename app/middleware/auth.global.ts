@@ -1,7 +1,7 @@
 // Global middleware: redirect unauthenticated users to /login
 export default defineNuxtRouteMiddleware((to) => {
-    // Allow auth-related pages
-    if (to.path === '/login' || to.path === '/login-basic') return
+    // Allow auth-related and public pages
+    if (to.path === '/login' || to.path === '/login-basic' || to.path.startsWith('/public')) return
 
     // Check for user cookie (used for client-side auth state, since session is httpOnly)
     const userCookie = useCookie('hardwood_user')

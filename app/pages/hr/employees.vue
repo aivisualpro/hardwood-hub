@@ -203,48 +203,49 @@ async function toggleStatus(emp: Employee) {
 
 <template>
   <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
-  <div class="w-full flex flex-col gap-6 p-6">
+  <div class="w-full flex flex-col gap-4 sm:gap-6 p-3 sm:p-6">
 
     <!-- Header bar -->
-    <div class="flex items-center justify-between gap-4 flex-wrap">
-      <div class="relative flex-1 max-w-sm">
-        <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-        <Input v-model="searchQuery" placeholder="Search employees…" class="pl-9" />
+    <div class="flex items-center justify-between gap-2 sm:gap-4 flex-wrap">
+      <div class="relative flex-1 min-w-0 basis-full sm:basis-auto sm:max-w-sm">
+        <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5 sm:size-4" />
+        <Input v-model="searchQuery" placeholder="Search employees…" class="pl-8 sm:pl-9 h-8 sm:h-9 text-xs sm:text-sm" />
       </div>
-      <Button v-if="canCreate()" @click="openCreate">
-        <Icon name="i-lucide-plus" class="mr-2 size-4" />
-        Add Employee
+      <Button v-if="canCreate()" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3 shrink-0" @click="openCreate">
+        <Icon name="i-lucide-plus" class="mr-1 sm:mr-2 size-3.5 sm:size-4" />
+        <span class="hidden xs:inline">Add Employee</span>
+        <span class="xs:hidden">Add</span>
       </Button>
     </div>
 
     <!-- Loading skeleton -->
-    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      <div v-for="i in 8" :key="i" class="rounded-xl border bg-card p-4 space-y-3 animate-pulse">
-        <div class="size-16 rounded-full bg-muted mx-auto" />
-        <div class="h-4 bg-muted rounded w-3/4 mx-auto" />
-        <div class="h-3 bg-muted rounded w-1/2 mx-auto" />
+    <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
+      <div v-for="i in 8" :key="i" class="rounded-xl border bg-card p-3 sm:p-4 space-y-2 sm:space-y-3 animate-pulse">
+        <div class="size-12 sm:size-16 rounded-full bg-muted mx-auto" />
+        <div class="h-3 sm:h-4 bg-muted rounded w-3/4 mx-auto" />
+        <div class="h-2.5 sm:h-3 bg-muted rounded w-1/2 mx-auto" />
       </div>
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center py-24 gap-4 text-center">
-      <div class="size-16 rounded-full bg-muted flex items-center justify-center">
-        <Icon name="i-lucide-users" class="size-8 text-muted-foreground" />
+    <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
+      <div class="size-14 sm:size-16 rounded-full bg-muted flex items-center justify-center">
+        <Icon name="i-lucide-users" class="size-6 sm:size-8 text-muted-foreground" />
       </div>
-      <h3 class="text-lg font-semibold">No employees found</h3>
-      <p class="text-sm text-muted-foreground">Add your first team member to get started.</p>
-      <Button v-if="canCreate()" @click="openCreate">
-        <Icon name="i-lucide-plus" class="mr-2 size-4" />
+      <h3 class="text-base sm:text-lg font-semibold">No employees found</h3>
+      <p class="text-xs sm:text-sm text-muted-foreground">Add your first team member to get started.</p>
+      <Button v-if="canCreate()" size="sm" @click="openCreate">
+        <Icon name="i-lucide-plus" class="mr-1.5 size-3.5 sm:size-4" />
         Add Employee
       </Button>
     </div>
 
     <!-- Employee cards grid -->
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div v-else class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
       <div
         v-for="emp in filtered"
         :key="emp._id"
-        class="group relative rounded-xl border bg-card p-5 flex flex-col items-center gap-3 shadow-xs hover:shadow-md transition-shadow"
+        class="group relative rounded-xl border bg-card p-3 sm:p-5 flex flex-col items-center gap-2 sm:gap-3 shadow-xs hover:shadow-md transition-shadow"
       >
         <!-- Avatar -->
         <div class="relative">
@@ -252,11 +253,11 @@ async function toggleStatus(emp: Employee) {
             v-if="emp.profileImage"
             :src="emp.profileImage"
             :alt="emp.employee"
-            class="size-20 rounded-full object-cover ring-2 ring-border"
+            class="size-14 sm:size-20 rounded-full object-cover ring-2 ring-border"
           />
           <div
             v-else
-            class="size-20 rounded-full bg-muted flex items-center justify-center ring-2 ring-border text-2xl font-bold text-muted-foreground"
+            class="size-14 sm:size-20 rounded-full bg-muted flex items-center justify-center ring-2 ring-border text-xl sm:text-2xl font-bold text-muted-foreground"
           >
             {{ emp.employee.charAt(0).toUpperCase() }}
           </div>
@@ -264,56 +265,56 @@ async function toggleStatus(emp: Employee) {
 
         <!-- Info -->
         <div class="text-center flex flex-col gap-0.5 w-full">
-          <p class="font-semibold text-sm truncate">{{ emp.employee }}</p>
-          <Badge variant="secondary" class="mx-auto text-xs">{{ emp.position }}</Badge>
-          <p class="text-xs text-muted-foreground truncate mt-1">{{ emp.email }}</p>
-          <div class="flex items-center justify-center gap-1.5 mt-1.5">
+          <p class="font-semibold text-xs sm:text-sm truncate">{{ emp.employee }}</p>
+          <Badge variant="secondary" class="mx-auto text-[10px] sm:text-xs">{{ emp.position }}</Badge>
+          <p class="text-[10px] sm:text-xs text-muted-foreground truncate mt-0.5 sm:mt-1">{{ emp.email }}</p>
+          <div class="flex items-center justify-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5">
             <span
-              class="size-2 rounded-full"
+              class="size-1.5 sm:size-2 rounded-full"
               :class="emp.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/40'"
             />
             <span
-              class="text-[10px] font-semibold"
+              class="text-[9px] sm:text-[10px] font-semibold"
               :class="emp.status === 'Active' ? 'text-emerald-400' : 'text-muted-foreground'"
             >
               {{ emp.status || 'Active' }}
             </span>
           </div>
-          <div v-if="workspaceName(emp.workspace)" class="flex items-center justify-center gap-1.5 mt-1">
-            <Icon name="i-lucide-building" class="size-3 text-muted-foreground/60" />
-            <span class="text-[10px] text-muted-foreground">{{ workspaceName(emp.workspace) }}</span>
+          <div v-if="workspaceName(emp.workspace)" class="flex items-center justify-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1">
+            <Icon name="i-lucide-building" class="size-2.5 sm:size-3 text-muted-foreground/60" />
+            <span class="text-[9px] sm:text-[10px] text-muted-foreground truncate">{{ workspaceName(emp.workspace) }}</span>
           </div>
         </div>
 
-        <!-- Actions (visible on hover) -->
-        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3">
-          <Button variant="ghost" size="icon" class="size-7" title="View Profile" @click="navigateTo(`/my-profile?employee=${emp._id}`)">
-            <Icon name="i-lucide-eye" class="size-3.5 text-primary" />
+        <!-- Actions (visible on hover / always on mobile) -->
+        <div class="flex gap-0.5 sm:gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity absolute top-2 right-2 sm:top-3 sm:right-3">
+          <Button variant="ghost" size="icon" class="size-6 sm:size-7" title="View Profile" @click="navigateTo(`/my-profile?employee=${emp._id}`)">
+            <Icon name="i-lucide-eye" class="size-3 sm:size-3.5 text-primary" />
           </Button>
           <Button
             v-if="canUpdate()"
-            variant="ghost" size="icon" class="size-7"
+            variant="ghost" size="icon" class="size-6 sm:size-7"
             :title="emp.status === 'Active' ? 'Deactivate' : 'Activate'"
             @click="toggleStatus(emp)"
           >
             <Icon
               :name="emp.status === 'Active' ? 'i-lucide-user-x' : 'i-lucide-user-check'"
-              class="size-3.5"
+              class="size-3 sm:size-3.5"
               :class="emp.status === 'Active' ? 'text-amber-400' : 'text-emerald-400'"
             />
           </Button>
-          <Button v-if="canUpdate()" variant="ghost" size="icon" class="size-7" @click="openEdit(emp)">
-            <Icon name="i-lucide-pencil" class="size-3.5" />
+          <Button v-if="canUpdate()" variant="ghost" size="icon" class="size-6 sm:size-7" @click="openEdit(emp)">
+            <Icon name="i-lucide-pencil" class="size-3 sm:size-3.5" />
           </Button>
-          <Button v-if="canDelete()" variant="ghost" size="icon" class="size-7 text-destructive hover:text-destructive" @click="confirmDelete(emp)">
-            <Icon name="i-lucide-trash-2" class="size-3.5" />
+          <Button v-if="canDelete()" variant="ghost" size="icon" class="size-6 sm:size-7 text-destructive hover:text-destructive" @click="confirmDelete(emp)">
+            <Icon name="i-lucide-trash-2" class="size-3 sm:size-3.5" />
           </Button>
         </div>
       </div>
     </div>
 
     <!-- Count -->
-    <p v-if="!loading && filtered.length > 0" class="text-xs text-muted-foreground">
+    <p v-if="!loading && filtered.length > 0" class="text-[10px] sm:text-xs text-muted-foreground">
       Showing {{ filtered.length }} of {{ employees.length }} employees
     </p>
 
@@ -332,7 +333,7 @@ async function toggleStatus(emp: Employee) {
           <!-- Profile image -->
           <div class="flex flex-col items-center gap-3">
             <div
-              class="size-24 rounded-full overflow-hidden bg-muted flex items-center justify-center ring-2 ring-border cursor-pointer relative group"
+              class="size-20 sm:size-24 rounded-full overflow-hidden bg-muted flex items-center justify-center ring-2 ring-border cursor-pointer relative group"
               @click="($refs.fileInput as HTMLInputElement)?.click()"
             >
               <img
@@ -341,15 +342,15 @@ async function toggleStatus(emp: Employee) {
                 alt="Profile"
                 class="size-full object-cover"
               />
-              <Icon v-else name="i-lucide-user" class="size-10 text-muted-foreground" />
+              <Icon v-else name="i-lucide-user" class="size-8 sm:size-10 text-muted-foreground" />
               <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                <Icon name="i-lucide-camera" class="size-6 text-white" />
+                <Icon name="i-lucide-camera" class="size-5 sm:size-6 text-white" />
               </div>
               <div v-if="uploadingImage" class="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full">
-                <Icon name="i-lucide-loader-circle" class="size-6 text-white animate-spin" />
+                <Icon name="i-lucide-loader-circle" class="size-5 sm:size-6 text-white animate-spin" />
               </div>
             </div>
-            <p class="text-xs text-muted-foreground">Click to upload photo</p>
+            <p class="text-[10px] sm:text-xs text-muted-foreground">Click to upload photo</p>
             <input
               ref="fileInput"
               type="file"

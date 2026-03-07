@@ -237,87 +237,87 @@ function pal(idx: number) { return catPalette[idx % catPalette.length]! }
 
 <template>
   <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
-    <div class="p-6 space-y-6 max-w-[90rem] mx-auto">
+    <div class="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-[90rem] mx-auto">
 
       <!-- ═══════ SUMMARY CARDS ═══════ -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
         <!-- Total Bonus Payout -->
-        <div class="rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-5 relative overflow-hidden group">
-          <div class="absolute top-0 right-0 p-3 opacity-15"><Icon name="i-lucide-trophy" class="size-20 text-amber-500" /></div>
+        <div class="rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-3 sm:p-5 relative overflow-hidden group">
+          <div class="absolute top-0 right-0 p-2 sm:p-3 opacity-15"><Icon name="i-lucide-trophy" class="size-14 sm:size-20 text-amber-500" /></div>
           <div class="relative z-10">
-            <p class="text-xs font-medium uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70">Total Bonus Payout</p>
-            <p class="text-3xl font-black text-amber-600 dark:text-amber-400 mt-2 tabular-nums">{{ fmt(totalBonusAllEmployees) }}</p>
-            <p class="text-[10px] text-amber-600/50 dark:text-amber-400/50 mt-1">All employees combined</p>
+            <p class="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70">Total Payout</p>
+            <p class="text-xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 mt-1 sm:mt-2 tabular-nums">{{ fmt(totalBonusAllEmployees) }}</p>
+            <p class="text-[9px] sm:text-[10px] text-amber-600/50 dark:text-amber-400/50 mt-0.5 sm:mt-1">All employees combined</p>
           </div>
         </div>
 
         <!-- Average Bonus -->
-        <div class="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-5 relative overflow-hidden group">
-          <div class="absolute top-0 right-0 p-3 opacity-15"><Icon name="i-lucide-bar-chart-3" class="size-20 text-blue-500" /></div>
+        <div class="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-3 sm:p-5 relative overflow-hidden group">
+          <div class="absolute top-0 right-0 p-2 sm:p-3 opacity-15"><Icon name="i-lucide-bar-chart-3" class="size-14 sm:size-20 text-blue-500" /></div>
           <div class="relative z-10">
-            <p class="text-xs font-medium uppercase tracking-wider text-blue-600/70 dark:text-blue-400/70">Average per Employee</p>
-            <p class="text-3xl font-black text-blue-600 dark:text-blue-400 mt-2 tabular-nums">{{ fmt(avgBonus) }}</p>
-            <p class="text-[10px] text-blue-600/50 dark:text-blue-400/50 mt-1">{{ employees.length }} active employees</p>
+            <p class="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-blue-600/70 dark:text-blue-400/70">Avg / Employee</p>
+            <p class="text-xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 mt-1 sm:mt-2 tabular-nums">{{ fmt(avgBonus) }}</p>
+            <p class="text-[9px] sm:text-[10px] text-blue-600/50 dark:text-blue-400/50 mt-0.5 sm:mt-1">{{ employees.length }} active</p>
           </div>
         </div>
 
         <!-- Top Earner -->
-        <div class="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 p-5 relative overflow-hidden group">
-          <div class="absolute top-0 right-0 p-3 opacity-15"><Icon name="i-lucide-crown" class="size-20 text-emerald-500" /></div>
+        <div class="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 p-3 sm:p-5 relative overflow-hidden group">
+          <div class="absolute top-0 right-0 p-2 sm:p-3 opacity-15"><Icon name="i-lucide-crown" class="size-14 sm:size-20 text-emerald-500" /></div>
           <div class="relative z-10">
-            <p class="text-xs font-medium uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70">Top Earner</p>
-            <p class="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-2 truncate">{{ topEarner?.employee.employee || '—' }}</p>
-            <p class="text-[10px] text-emerald-600/50 dark:text-emerald-400/50 mt-1">{{ topEarner ? fmt(topEarner.totalBonus) : '$0.00' }} earned</p>
+            <p class="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70">Top Earner</p>
+            <p class="text-sm sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1 sm:mt-2 truncate">{{ topEarner?.employee.employee || '—' }}</p>
+            <p class="text-[9px] sm:text-[10px] text-emerald-600/50 dark:text-emerald-400/50 mt-0.5 sm:mt-1">{{ topEarner ? fmt(topEarner.totalBonus) : '$0.00' }}</p>
           </div>
         </div>
 
         <!-- Total Skills -->
-        <div class="rounded-xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-violet-500/5 p-5 relative overflow-hidden group">
-          <div class="absolute top-0 right-0 p-3 opacity-15"><Icon name="i-lucide-layers" class="size-20 text-violet-500" /></div>
+        <div class="rounded-xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-violet-500/5 p-3 sm:p-5 relative overflow-hidden group">
+          <div class="absolute top-0 right-0 p-2 sm:p-3 opacity-15"><Icon name="i-lucide-layers" class="size-14 sm:size-20 text-violet-500" /></div>
           <div class="relative z-10">
-            <p class="text-xs font-medium uppercase tracking-wider text-violet-600/70 dark:text-violet-400/70">Skill Categories</p>
-            <p class="text-3xl font-black text-violet-600 dark:text-violet-400 mt-2 tabular-nums">{{ tree.length }}</p>
-            <p class="text-[10px] text-violet-600/50 dark:text-violet-400/50 mt-1">{{ totalSystemSkills }} total skills</p>
+            <p class="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-violet-600/70 dark:text-violet-400/70">Categories</p>
+            <p class="text-xl sm:text-3xl font-black text-violet-600 dark:text-violet-400 mt-1 sm:mt-2 tabular-nums">{{ tree.length }}</p>
+            <p class="text-[9px] sm:text-[10px] text-violet-600/50 dark:text-violet-400/50 mt-0.5 sm:mt-1">{{ totalSystemSkills }} skills</p>
           </div>
         </div>
       </div>
 
       <!-- ═══════ TOOLBAR ═══════ -->
-      <div class="flex items-center justify-between gap-4">
-        <div class="relative flex-1 max-w-sm">
-          <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-          <Input v-model="searchQuery" placeholder="Search employees..." class="pl-9 bg-muted/50" />
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+        <div class="relative flex-1 sm:max-w-sm">
+          <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5 sm:size-4" />
+          <Input v-model="searchQuery" placeholder="Search employees..." class="pl-8 sm:pl-9 h-9 bg-muted/50 text-xs sm:text-sm" />
         </div>
-        <div class="flex items-center gap-2 text-xs text-muted-foreground">
-          <span class="font-medium">Sort by:</span>
-          <button 
-            v-for="col in [{ key: 'bonus', label: 'Bonus' }, { key: 'progress', label: 'Progress' }, { key: 'name', label: 'Name' }]" 
+        <div class="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground overflow-x-auto">
+          <span class="font-medium shrink-0">Sort:</span>
+          <button
+            v-for="col in [{ key: 'bonus', label: 'Bonus' }, { key: 'progress', label: 'Progress' }, { key: 'name', label: 'Name' }]"
             :key="col.key"
-            class="px-3 py-1.5 rounded-lg border transition-all"
-            :class="sortBy === col.key 
+            class="px-2.5 sm:px-3 py-1.5 rounded-lg border transition-all shrink-0"
+            :class="sortBy === col.key
               ? 'bg-primary/10 text-primary border-primary/30 font-semibold'
               : 'border-border/40 hover:bg-muted hover:text-foreground'"
             @click="toggleSort(col.key as any)"
           >
             {{ col.label }}
-            <Icon 
-              v-if="sortBy === col.key" 
-              :name="sortDir === 'desc' ? 'i-lucide-arrow-down' : 'i-lucide-arrow-up'" 
-              class="inline-block size-3 ml-0.5" 
+            <Icon
+              v-if="sortBy === col.key"
+              :name="sortDir === 'desc' ? 'i-lucide-arrow-down' : 'i-lucide-arrow-up'"
+              class="inline-block size-3 ml-0.5"
             />
           </button>
         </div>
       </div>
 
       <!-- ═══════ LOADING ═══════ -->
-      <div v-if="loading" class="space-y-4">
-        <div v-for="i in 5" :key="i" class="h-20 rounded-xl bg-muted/50 animate-pulse border border-border/30" />
+      <div v-if="loading" class="space-y-3 sm:space-y-4">
+        <div v-for="i in 5" :key="i" class="h-16 sm:h-20 rounded-xl bg-muted/50 animate-pulse border border-border/30" />
       </div>
 
       <!-- ═══════ MAIN TABLE ═══════ -->
       <div v-else-if="filteredData.length" class="rounded-xl border border-border/50 overflow-hidden shadow-sm bg-card">
-        <!-- Table header -->
-        <div class="grid grid-cols-[1fr_120px_160px_120px_80px] gap-2 px-5 py-3 bg-muted/30 border-b border-border/30 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <!-- Table header (desktop only) -->
+        <div class="hidden sm:grid grid-cols-[1fr_120px_160px_120px_80px] gap-2 px-5 py-3 bg-muted/30 border-b border-border/30 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           <span>Employee</span>
           <span class="text-center">Progress</span>
           <span class="text-center">Skill Breakdown</span>
@@ -327,28 +327,28 @@ function pal(idx: number) { return catPalette[idx % catPalette.length]! }
 
         <!-- Rows -->
         <div v-for="(row, idx) in filteredData" :key="row.employee._id" class="border-b border-border/20 last:border-0">
-          <!-- Main row -->
-          <div 
-            class="grid grid-cols-[1fr_120px_160px_120px_80px] gap-2 px-5 py-4 items-center transition-colors hover:bg-muted/10 cursor-pointer group"
+          <!-- Desktop row -->
+          <div
+            class="hidden sm:grid grid-cols-[1fr_120px_160px_120px_80px] gap-2 px-5 py-4 items-center transition-colors hover:bg-muted/10 cursor-pointer group"
             @click="toggleRow(row.employee._id)"
           >
             <!-- Employee info -->
             <div class="flex items-center gap-3 min-w-0">
               <div class="relative shrink-0">
-                <img 
+                <img
                   v-if="row.employee.profileImage"
-                  :src="row.employee.profileImage" 
+                  :src="row.employee.profileImage"
                   :alt="row.employee.employee"
                   class="size-10 rounded-full object-cover ring-2 ring-background shadow-sm"
                 />
-                <div 
-                  v-else 
+                <div
+                  v-else
                   class="size-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary ring-2 ring-background shadow-sm"
                 >
                   {{ row.employee.employee.charAt(0).toUpperCase() }}
                 </div>
                 <!-- Rank badge for top 3 -->
-                <div 
+                <div
                   v-if="idx < 3 && sortBy === 'bonus' && sortDir === 'desc'"
                   class="absolute -top-1 -right-1 size-5 rounded-full flex items-center justify-center text-[9px] font-black shadow-md ring-1 ring-background"
                   :class="idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-gray-300 text-gray-700' : 'bg-orange-400 text-white'"
@@ -401,12 +401,77 @@ function pal(idx: number) { return catPalette[idx % catPalette.length]! }
             <!-- Expand toggle -->
             <div class="flex items-center justify-center">
               <button class="size-7 rounded-lg flex items-center justify-center hover:bg-muted/60 transition-all">
-                <Icon 
-                  name="i-lucide-chevron-right" 
+                <Icon
+                  name="i-lucide-chevron-right"
                   class="size-4 text-muted-foreground transition-transform duration-200"
                   :class="expandedRows.has(row.employee._id) ? 'rotate-90' : ''"
                 />
               </button>
+            </div>
+          </div>
+
+          <!-- Mobile card row -->
+          <div
+            class="sm:hidden px-3 py-3 transition-colors hover:bg-muted/10 cursor-pointer"
+            @click="toggleRow(row.employee._id)"
+          >
+            <!-- Top: Avatar + Name + Bonus -->
+            <div class="flex items-center gap-2.5">
+              <div class="relative shrink-0">
+                <img
+                  v-if="row.employee.profileImage"
+                  :src="row.employee.profileImage"
+                  :alt="row.employee.employee"
+                  class="size-10 rounded-full object-cover ring-2 ring-background shadow-sm"
+                />
+                <div
+                  v-else
+                  class="size-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary ring-2 ring-background shadow-sm"
+                >
+                  {{ row.employee.employee.charAt(0).toUpperCase() }}
+                </div>
+                <div
+                  v-if="idx < 3 && sortBy === 'bonus' && sortDir === 'desc'"
+                  class="absolute -top-1 -right-1 size-4 rounded-full flex items-center justify-center text-[8px] font-black shadow-md ring-1 ring-background"
+                  :class="idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-gray-300 text-gray-700' : 'bg-orange-400 text-white'"
+                >
+                  {{ idx + 1 }}
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold truncate">{{ row.employee.employee }}</p>
+                <p class="text-[10px] text-muted-foreground">{{ row.employee.position || 'Employee' }}</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <div v-if="row.totalBonus > 0" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 text-xs tabular-nums">
+                  <Icon name="i-lucide-coins" class="size-3" />
+                  {{ fmt(row.totalBonus) }}
+                </div>
+                <span v-else class="text-[10px] text-muted-foreground/40">$0.00</span>
+                <Icon
+                  name="i-lucide-chevron-right"
+                  class="size-4 text-muted-foreground transition-transform duration-200 shrink-0"
+                  :class="expandedRows.has(row.employee._id) ? 'rotate-90' : ''"
+                />
+              </div>
+            </div>
+            <!-- Bottom: Progress bar + skill dots -->
+            <div class="flex items-center gap-2.5 mt-2 pl-[50px]">
+              <div class="flex-1 h-1.5 rounded-full bg-muted overflow-hidden flex">
+                <div class="h-full bg-emerald-500 transition-all duration-700" :style="{ width: `${row.totalSkills ? (row.masteredCount / row.totalSkills) * 100 : 0}%` }" />
+                <div class="h-full bg-blue-500 transition-all duration-700" :style="{ width: `${row.totalSkills ? (row.proficientCount / row.totalSkills) * 100 : 0}%` }" />
+              </div>
+              <span class="text-[9px] text-muted-foreground tabular-nums shrink-0">{{ row.totalAssessed }}/{{ row.totalSkills }}</span>
+              <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-0.5">
+                  <span class="size-1.5 rounded-full bg-emerald-500" />
+                  <span class="text-[9px] font-semibold text-emerald-500 tabular-nums">{{ row.masteredCount }}</span>
+                </div>
+                <div class="flex items-center gap-0.5">
+                  <span class="size-1.5 rounded-full bg-blue-500" />
+                  <span class="text-[9px] font-semibold text-blue-500 tabular-nums">{{ row.proficientCount }}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -420,69 +485,73 @@ function pal(idx: number) { return catPalette[idx % catPalette.length]! }
             leave-to-class="opacity-0 max-h-0"
           >
             <div v-if="expandedRows.has(row.employee._id)" class="overflow-hidden">
-              <div class="px-5 pb-5 pt-0">
+              <div class="px-3 sm:px-5 pb-3 sm:pb-5 pt-0">
                 <div class="rounded-xl border border-border/40 bg-muted/10 overflow-hidden">
                   <!-- Category sections -->
                   <div v-for="(cat, catIdx) in row.categories" :key="cat.id" class="border-b border-border/20 last:border-0">
                     <!-- Category header -->
-                    <div class="flex items-center justify-between px-4 py-3 bg-muted/20">
-                      <div class="flex items-center gap-2.5">
-                        <div class="size-6 rounded-md flex items-center justify-center border" :class="[pal(catIdx).bg, pal(catIdx).border]">
-                          <Icon name="i-lucide-layers" class="size-3" :class="pal(catIdx).text" />
+                    <div class="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-muted/20">
+                      <div class="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                        <div class="size-5 sm:size-6 rounded-md flex items-center justify-center border shrink-0" :class="[pal(catIdx).bg, pal(catIdx).border]">
+                          <Icon name="i-lucide-layers" class="size-2.5 sm:size-3" :class="pal(catIdx).text" />
                         </div>
-                        <span class="text-sm font-semibold" :class="pal(catIdx).text">{{ cat.name }}</span>
-                        <span class="text-[10px] text-muted-foreground">{{ cat.assessed }}/{{ cat.total }} skills</span>
+                        <span class="text-xs sm:text-sm font-semibold truncate" :class="pal(catIdx).text">{{ cat.name }}</span>
+                        <span class="text-[9px] sm:text-[10px] text-muted-foreground shrink-0">{{ cat.assessed }}/{{ cat.total }}</span>
                       </div>
-                      <div v-if="cat.bonus > 0" class="text-xs font-bold text-amber-500 tabular-nums">
+                      <div v-if="cat.bonus > 0" class="text-[10px] sm:text-xs font-bold text-amber-500 tabular-nums shrink-0">
                         +{{ fmt(cat.bonus) }}
                       </div>
                     </div>
 
-                    <!-- Sub-category mini table -->
+                    <!-- Sub-category rows -->
                     <div class="divide-y divide-border/10">
                       <div
                         v-for="sub in cat.subCategories"
                         :key="sub.id"
-                        class="grid grid-cols-[1fr_80px_60px_60px_90px] gap-2 px-4 py-2.5 items-center text-xs hover:bg-muted/10 transition-colors"
+                        class="flex flex-col sm:grid sm:grid-cols-[1fr_80px_60px_60px_90px] gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 sm:items-center text-xs hover:bg-muted/10 transition-colors"
                       >
+                        <!-- Sub name -->
                         <div class="flex items-center gap-2 min-w-0">
                           <span class="size-1.5 rounded-full shrink-0" :class="pal(catIdx).dot" />
-                          <span class="truncate font-medium">{{ sub.name }}</span>
-                          <span v-if="sub.hasOverride" class="inline-flex items-center gap-0.5 text-[8px] font-semibold px-1 py-0.5 rounded bg-violet-500/10 text-violet-500 border border-violet-500/20 shrink-0">
-                            <Icon name="i-lucide-sparkles" class="size-2" />
+                          <span class="truncate font-medium text-[11px] sm:text-xs">{{ sub.name }}</span>
+                          <span v-if="sub.hasOverride" class="inline-flex items-center gap-0.5 text-[7px] sm:text-[8px] font-semibold px-1 py-0.5 rounded bg-violet-500/10 text-violet-500 border border-violet-500/20 shrink-0">
+                            <Icon name="i-lucide-sparkles" class="size-1.5 sm:size-2" />
                             Custom
                           </span>
                         </div>
-                        <div class="text-center text-muted-foreground tabular-nums">
-                          {{ sub.assessed }}/{{ sub.total }}
-                        </div>
-                        <div class="text-center">
-                          <span v-if="sub.proficient" class="font-semibold text-blue-500 tabular-nums">{{ sub.proficient }}</span>
-                          <span v-else class="text-muted-foreground/30">-</span>
-                        </div>
-                        <div class="text-center">
-                          <span v-if="sub.mastered" class="font-semibold text-emerald-500 tabular-nums">{{ sub.mastered }}</span>
-                          <span v-else class="text-muted-foreground/30">-</span>
-                        </div>
-                        <div class="text-right">
-                          <span v-if="sub.bonus > 0" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 tabular-nums">
-                            <Icon name="i-lucide-coins" class="size-2.5" />
-                            {{ fmt(sub.bonus) }}
-                          </span>
-                          <span v-else class="text-muted-foreground/30">—</span>
+                        <!-- Mobile: stats inline -->
+                        <div class="flex items-center gap-3 sm:contents pl-3.5">
+                          <div class="text-[10px] sm:text-xs text-muted-foreground tabular-nums sm:text-center">
+                            {{ sub.assessed }}/{{ sub.total }}
+                          </div>
+                          <div class="sm:text-center">
+                            <span v-if="sub.proficient" class="font-semibold text-blue-500 tabular-nums text-[10px] sm:text-xs">P:{{ sub.proficient }}</span>
+                            <span v-else class="text-muted-foreground/30 text-[10px] sm:text-xs">-</span>
+                          </div>
+                          <div class="sm:text-center">
+                            <span v-if="sub.mastered" class="font-semibold text-emerald-500 tabular-nums text-[10px] sm:text-xs">M:{{ sub.mastered }}</span>
+                            <span v-else class="text-muted-foreground/30 text-[10px] sm:text-xs">-</span>
+                          </div>
+                          <div class="sm:text-right ml-auto sm:ml-0">
+                            <span v-if="sub.bonus > 0" class="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 tabular-nums text-[10px] sm:text-xs">
+                              <Icon name="i-lucide-coins" class="size-2 sm:size-2.5" />
+                              {{ fmt(sub.bonus) }}
+                            </span>
+                            <span v-else class="text-muted-foreground/30 text-[10px]">—</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <!-- Expanded footer -->
-                  <div class="flex items-center justify-between px-4 py-3 bg-muted/30 border-t border-border/30">
-                    <Button variant="ghost" size="sm" class="text-xs gap-1.5" @click="navigateTo(`/my-profile?employee=${row.employee._id}`)">
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-muted/30 border-t border-border/30">
+                    <Button variant="ghost" size="sm" class="text-xs gap-1.5 h-8" @click="navigateTo(`/my-profile?employee=${row.employee._id}`)">
                       <Icon name="i-lucide-eye" class="size-3.5" />
-                      View Full Profile
+                      View Profile
                     </Button>
-                    <div class="flex items-center gap-2 text-xs">
-                      <span class="text-muted-foreground">Total Bonus Earned:</span>
+                    <div class="flex items-center gap-2 text-xs pl-2 sm:pl-0">
+                      <span class="text-muted-foreground">Total:</span>
                       <span class="font-bold text-amber-500 text-sm tabular-nums">{{ fmt(row.totalBonus) }}</span>
                     </div>
                   </div>
@@ -494,36 +563,36 @@ function pal(idx: number) { return catPalette[idx % catPalette.length]! }
       </div>
 
       <!-- ═══════ EMPTY ═══════ -->
-      <div v-else-if="!loading" class="flex flex-col items-center justify-center py-24 text-center">
-        <div class="size-20 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center mb-5">
-          <Icon name="i-lucide-trophy" class="size-10 text-amber-500" />
+      <div v-else-if="!loading" class="flex flex-col items-center justify-center py-16 sm:py-24 text-center px-4">
+        <div class="size-16 sm:size-20 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center mb-4 sm:mb-5">
+          <Icon name="i-lucide-trophy" class="size-7 sm:size-10 text-amber-500" />
         </div>
-        <h3 class="text-xl font-bold mb-2">No bonus data available</h3>
-        <p class="text-sm text-muted-foreground max-w-sm">
+        <h3 class="text-lg sm:text-xl font-bold mb-2">No bonus data available</h3>
+        <p class="text-xs sm:text-sm text-muted-foreground max-w-sm">
           Start assessing employees on the Employee Performance page to see bonus calculations here.
         </p>
       </div>
 
       <!-- ═══════ LEGEND ═══════ -->
-      <div v-if="!loading && filteredData.length" class="flex items-center justify-center gap-6 text-[10px] text-muted-foreground py-2">
+      <div v-if="!loading && filteredData.length" class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-[9px] sm:text-[10px] text-muted-foreground py-2">
         <div class="flex items-center gap-1.5">
-          <span class="size-2.5 rounded-full bg-emerald-500" />
+          <span class="size-2 sm:size-2.5 rounded-full bg-emerald-500" />
           Mastered
         </div>
         <div class="flex items-center gap-1.5">
-          <span class="size-2.5 rounded-full bg-blue-500" />
+          <span class="size-2 sm:size-2.5 rounded-full bg-blue-500" />
           Proficient
         </div>
         <div class="flex items-center gap-1.5">
-          <span class="size-2.5 rounded-full bg-muted-foreground/30" />
-          Needs Improvement
+          <span class="size-2 sm:size-2.5 rounded-full bg-muted-foreground/30" />
+          Needs Imp.
         </div>
         <div class="flex items-center gap-1.5">
-          <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-violet-500/10 text-violet-500 border border-violet-500/20 text-[8px] font-semibold">
-            <Icon name="i-lucide-sparkles" class="size-2" />
+          <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-violet-500/10 text-violet-500 border border-violet-500/20 text-[7px] sm:text-[8px] font-semibold">
+            <Icon name="i-lucide-sparkles" class="size-1.5 sm:size-2" />
             Custom
           </span>
-          Sub-category override rules
+          Override rules
         </div>
       </div>
     </div>
