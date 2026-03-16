@@ -62,6 +62,78 @@ const showSubCatModal = ref(false)
 const savingSubCat = ref(false)
 const subCatForm = ref({ name: '' })
 
+// ─── Inline edit state for sub-category name ──────────────
+const editingSubCatId = ref<string | null>(null)
+const editingSubCatName = ref('')
+
+function startEditSubCat(sub: SubCat) {
+  editingSubCatId.value = sub._id
+  editingSubCatName.value = sub.name
+}
+
+function cancelEditSubCat() {
+  editingSubCatId.value = null
+  editingSubCatName.value = ''
+}
+
+async function saveEditSubCat(subId: string) {
+  const newName = editingSubCatName.value.trim()
+  if (!newName) return toast.error('Sub-category name is required')
+
+  const found = findSub(subId)
+  if (!found) return
+
+  const prev = found.sub.name
+  found.sub.name = newName
+  editingSubCatId.value = null
+
+  try {
+    await $fetch(`/api/subcategories/${subId}`, { method: 'PUT', body: { name: newName } })
+    toast.success('Sub-category renamed', { duration: 2000 })
+  } catch (e: any) {
+    found.sub.name = prev
+    editingSubCatId.value = subId
+    editingSubCatName.value = newName
+    toast.error('Failed to rename sub-category', { description: e?.message })
+  }
+}
+
+// ─── Inline edit state for category name ──────────────────
+const editingCatId = ref<string | null>(null)
+const editingCatName = ref('')
+
+function startEditCat(cat: Cat) {
+  editingCatId.value = cat._id
+  editingCatName.value = cat.name
+}
+
+function cancelEditCat() {
+  editingCatId.value = null
+  editingCatName.value = ''
+}
+
+async function saveEditCat(catId: string) {
+  const newName = editingCatName.value.trim()
+  if (!newName) return toast.error('Category name is required')
+
+  const cat = tree.value.find(c => c._id === catId)
+  if (!cat) return
+
+  const prev = cat.name
+  cat.name = newName
+  editingCatId.value = null
+
+  try {
+    await $fetch(`/api/categories/${catId}`, { method: 'PUT', body: { name: newName } })
+    toast.success('Category renamed', { duration: 2000 })
+  } catch (e: any) {
+    cat.name = prev
+    editingCatId.value = catId
+    editingCatName.value = newName
+    toast.error('Failed to rename category', { description: e?.message })
+  }
+}
+
 function openCreateSubCat() {
   subCatForm.value = { name: '' }
   showSubCatModal.value = true
@@ -471,31 +543,75 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
       <!-- Category list -->
       <nav v-else class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
-        <button
+        <!-- Category: EDIT MODE -->
+        <div
           v-for="(cat, idx) in tree"
           :key="cat._id"
-          class="group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 relative"
-          :class="selectedCatId === cat._id
-            ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
-            : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
-          @click="selectedCatId = cat._id; showMobileSidebar = false"
+          class="group w-full rounded-lg transition-all duration-150 relative"
         >
-          <!-- Color dot -->
-          <span
-            class="size-2 rounded-full shrink-0 transition-transform duration-150 group-hover:scale-110"
-            :class="catDot(idx)"
-          />
-          <span class="flex-1 text-sm font-medium truncate">{{ cat.name }}</span>
-          <!-- Skill count badge -->
-          <span
-            class="text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 transition-all"
+          <!-- Inline edit mode -->
+          <div v-if="editingCatId === cat._id" class="flex flex-col gap-1.5 p-2 rounded-lg ring-1 ring-primary/30 bg-primary/5">
+            <input
+              v-model="editingCatName"
+              class="w-full text-sm font-medium bg-background rounded-md border border-input px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/50"
+              placeholder="Category name…"
+              @keydown.enter="saveEditCat(cat._id)"
+              @keydown.escape="cancelEditCat()"
+              @click.stop
+            />
+            <div class="flex gap-1.5">
+              <button
+                class="flex-1 flex items-center justify-center gap-1 text-xs font-medium py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                @click.stop="saveEditCat(cat._id)"
+              >
+                <Icon name="i-lucide-check" class="size-3" />
+                Save
+              </button>
+              <button
+                class="flex-1 text-xs font-medium py-1 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+                @click.stop="cancelEditCat()"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <!-- Normal view mode -->
+          <button
+            v-else
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150"
             :class="selectedCatId === cat._id
-              ? 'bg-primary/20 text-primary border-primary/30'
-              : 'bg-muted text-muted-foreground border-border/40'"
+              ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
+            @click="selectedCatId = cat._id; showMobileSidebar = false"
           >
-            {{ catSkillCount(cat) }}
-          </span>
-        </button>
+            <!-- Color dot -->
+            <span
+              class="size-2 rounded-full shrink-0 transition-transform duration-150 group-hover:scale-110"
+              :class="catDot(idx)"
+            />
+            <span class="flex-1 text-sm font-medium truncate">{{ cat.name }}</span>
+
+            <!-- Edit button (on hover) -->
+            <button
+              v-if="canUpdate()"
+              class="size-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0"
+              @click.stop="startEditCat(cat)"
+            >
+              <Icon name="i-lucide-pencil" class="size-3" />
+            </button>
+
+            <!-- Skill count badge -->
+            <span
+              class="text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 transition-all"
+              :class="selectedCatId === cat._id
+                ? 'bg-primary/20 text-primary border-primary/30'
+                : 'bg-muted text-muted-foreground border-border/40'"
+            >
+              {{ catSkillCount(cat) }}
+            </span>
+          </button>
+        </div>
 
         <!-- Empty state -->
         <div v-if="!tree.length" class="flex flex-col items-center justify-center py-12 gap-3 px-4 text-center">
@@ -628,12 +744,39 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
               </div>
 
               <div class="flex-1 min-w-0">
-                <p class="text-xs sm:text-sm font-semibold truncate">{{ sub.name }}</p>
-                <!-- Predecessor label (view mode) -->
-                <p v-if="sub.predecessorName && editingPredecessorSubId !== sub._id" class="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                  <Icon name="i-lucide-arrow-right" class="size-2.5 sm:size-3 shrink-0" />
-                  <span class="truncate">{{ sub.predecessorName }}</span>
-                </p>
+                <!-- Sub-category name: EDIT MODE -->
+                <div v-if="editingSubCatId === sub._id" class="flex items-center gap-1.5" @click.stop>
+                  <input
+                    v-model="editingSubCatName"
+                    class="flex-1 min-w-0 text-xs sm:text-sm font-semibold bg-background rounded-md border border-input px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                    placeholder="Sub-category name…"
+                    @keydown.enter="saveEditSubCat(sub._id)"
+                    @keydown.escape="cancelEditSubCat()"
+                    @click.stop
+                  />
+                  <button
+                    class="size-6 rounded flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+                    @click.stop="saveEditSubCat(sub._id)"
+                  >
+                    <Icon name="i-lucide-check" class="size-3" />
+                  </button>
+                  <button
+                    class="size-6 rounded flex items-center justify-center bg-muted text-muted-foreground hover:bg-muted/80 transition-colors shrink-0"
+                    @click.stop="cancelEditSubCat()"
+                  >
+                    <Icon name="i-lucide-x" class="size-3" />
+                  </button>
+                </div>
+
+                <!-- Sub-category name: VIEW MODE -->
+                <template v-else>
+                  <p class="text-xs sm:text-sm font-semibold truncate">{{ sub.name }}</p>
+                  <!-- Predecessor label (view mode) -->
+                  <p v-if="sub.predecessorName && editingPredecessorSubId !== sub._id" class="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                    <Icon name="i-lucide-arrow-right" class="size-2.5 sm:size-3 shrink-0" />
+                    <span class="truncate">{{ sub.predecessorName }}</span>
+                  </p>
+                </template>
               </div>
 
               <!-- Bonus Rule button -->
@@ -744,6 +887,19 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
               <span class="text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
                 {{ sub.skills.length }}<span class="hidden sm:inline"> skill{{ sub.skills.length !== 1 ? 's' : '' }}</span>
               </span>
+
+              <!-- Edit sub-category name (visible on hover) -->
+              <div
+                v-if="canUpdate() && editingSubCatId !== sub._id"
+                role="button"
+                tabindex="0"
+                class="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-muted/60 text-muted-foreground border border-border/40 hover:bg-muted shrink-0 cursor-pointer"
+                @click.stop="startEditSubCat(sub)"
+                @keydown.enter.stop="startEditSubCat(sub)"
+              >
+                <Icon name="i-lucide-pencil" class="size-2.5 sm:size-3" />
+                <span class="hidden sm:inline">Edit</span>
+              </div>
 
               <!-- Delete sub-category (visible on hover, only if no skills) -->
               <div

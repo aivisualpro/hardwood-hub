@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
     if (event.method === 'PUT') {
         const body = await readBody(event)
         const update: any = {}
+        if (body.name !== undefined) update.subCategory = body.name // rename sub-category
         if (body.predecessor !== undefined) update.predecessor = body.predecessor
         if (body.subCategory !== undefined) update.subCategory = body.subCategory
         if (body.description !== undefined) update.description = body.description
