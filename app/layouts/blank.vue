@@ -1,4 +1,8 @@
 <script setup lang="ts">
+useHead({
+  htmlAttrs: { style: 'height: auto !important; overflow: auto !important; min-height: 100vh;' },
+  bodyAttrs: { style: 'height: auto !important; overflow: auto !important; min-height: 100vh;' }
+})
 </script>
 
 <template>
@@ -7,12 +11,12 @@
   </div>
 </template>
 
-<style scoped>
-/* Override global overflow:hidden on html/body so public pages can scroll */
-:global(html),
-:global(body) {
-  overflow: auto !important;
+<style>
+/* Absolute nuclear option to ensure the blank layout ALWAYS permits scrolling even during Nuxt routing transitions */
+html, body, #__nuxt, #app {
   height: auto !important;
-  min-height: 100vh;
+  min-height: 100vh !important;
+  overflow: auto !important;
 }
 </style>
+

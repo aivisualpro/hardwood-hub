@@ -752,6 +752,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                     placeholder="Sub-category name…"
                     @keydown.enter="saveEditSubCat(sub._id)"
                     @keydown.escape="cancelEditSubCat()"
+                    @keydown.space.stop
                     @click.stop
                   />
                   <button

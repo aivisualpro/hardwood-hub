@@ -149,7 +149,12 @@ function scrollPillIntoView(idx: number) {
   const pills = navEl.querySelectorAll('[data-pill]')
   const pill = pills[idx] as HTMLElement
   if (!pill) return
-  pill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  
+  const navRect = navEl.getBoundingClientRect()
+  const pillRect = pill.getBoundingClientRect()
+  
+  const targetScrollLeft = navEl.scrollLeft + (pillRect.left - navRect.left) - (navRect.width / 2) + (pillRect.width / 2)
+  navEl.scrollTo({ left: targetScrollLeft, behavior: 'smooth' })
 }
 
 // IntersectionObserver scroll-spy
@@ -635,9 +640,9 @@ async function saveRecord() {
                         @mousemove="draw"
                         @mouseup="endDraw"
                         @mouseleave="endDraw"
-                        @touchstart.passive="startDraw"
-                        @touchmove="draw"
-                        @touchend="endDraw"
+                        @touchstart.prevent="startDraw"
+                        @touchmove.prevent="draw"
+                        @touchend.prevent="endDraw"
                       />
                       <div v-if="!hasDrawnSignature" class="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
                         <div class="bg-black/5 backdrop-blur-[1px] px-6 py-3 rounded-full border border-black/5 text-gray-400 font-bold tracking-widest uppercase text-sm flex items-center gap-2">

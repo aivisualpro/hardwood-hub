@@ -1,4 +1,8 @@
 <script setup lang="ts">
+useHead({
+  htmlAttrs: { class: 'h-screen overflow-hidden' },
+  bodyAttrs: { class: 'h-screen overflow-hidden' }
+})
 </script>
 
 <template>

@@ -67,9 +67,9 @@ defineShortcuts({
 </script>
 
 <template>
-  <Body class="overscroll-none antialiased bg-background text-foreground">
+  <Body class="antialiased bg-background text-foreground">
     <ConfigProvider :dir="dir">
-      <div id="app" vaul-drawer-wrapper class="relative h-screen overflow-hidden">
+      <div id="app" vaul-drawer-wrapper class="relative">
         <NuxtLayout>
           <NuxtPage />
         </NuxtLayout>
