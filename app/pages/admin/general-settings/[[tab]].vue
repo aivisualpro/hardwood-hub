@@ -240,6 +240,7 @@ const ROUTE_CAPS: Record<string, { ops: string[], icon: string }> = {
   '/reports/sales': { ops: ['read'], icon: 'i-lucide-trending-up' },
   '/reports/financial': { ops: ['read'], icon: 'i-lucide-pie-chart' },
   '/admin/general-settings': { ops: ['read', 'update'], icon: 'i-lucide-settings' },
+  '/external/stain-sign-off': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-stamp' },
 }
 
 const OP_META: Record<string, { label: string, color: string, icon: string }> = {
