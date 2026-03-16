@@ -7,7 +7,8 @@ setHeader({ title: 'Employee Performance', icon: 'i-lucide-bar-chart-3', descrip
 // ─── Types ───────────────────────────────────────────────
 interface Employee { _id: string; employee: string; profileImage: string }
 interface SkillNode { _id: string; name: string; isRequired: boolean; category: string; subCategory: string }
-interface SubCatNode { _id: string; name: string; category: string; predecessor: string; predecessorName: string; skills: SkillNode[] }
+interface BonusRule { skillSet: string; reviewedTimes: number; supervisorCheck: string; bonusAmount: number }
+interface SubCatNode { _id: string; name: string; category: string; predecessor: string; predecessorName: string; bonusRules: BonusRule[]; skills: SkillNode[] }
 interface CatNode { _id: string; name: string; color: string; subCategories: SubCatNode[] }
 interface PerfRecord {
   _id: string; employee: string; employeeName: string; employeeImage: string
@@ -243,6 +244,25 @@ function levelBarColor(lvl: string) {
   if (lvl === 'Proficient') return 'bg-blue-500'
   if (lvl === 'Needs Improvement') return 'bg-amber-500'
   return 'bg-muted-foreground'
+}
+
+// ─── Dynamic level buttons per sub-category ──────────────
+// If a sub-cat has exactly 1 bonus rule override, only show
+// "Needs Improvement" + that rule's level (hide the other).
+function getVisibleLevels(sub: SubCatNode): readonly string[] {
+  const rules = sub.bonusRules || []
+  if (rules.length === 0) return LEVEL_STEPS // no override → show all 3
+
+  const uniqueSkillSets = new Set(rules.map(r => r.skillSet))
+
+  // If override covers only one tier (e.g. just Proficient or just Mastered)
+  if (uniqueSkillSets.size === 1) {
+    const tier = [...uniqueSkillSets][0]!
+    return ['Needs Improvement', tier]
+  }
+
+  // Multiple tiers in override → show all 3
+  return LEVEL_STEPS
 }
 
 function formatDate(d: string) {
@@ -863,19 +883,12 @@ async function deleteSelected() {
                           <!-- Skill info -->
                           <div class="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2">
                             <p class="text-[13px] sm:text-sm leading-snug">{{ sk.name }}</p>
-                            <span
-                              v-if="sk.isRequired"
-                              class="inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] font-semibold px-1 sm:px-1.5 py-0.5 rounded-full border bg-rose-500/15 text-rose-400 border-rose-500/30 shrink-0"
-                            >
-                              <Icon name="i-lucide-star" class="size-1.5 sm:size-2" />
-                              Req
-                            </span>
                           </div>
 
-                          <!-- Level buttons (always visible) -->
+                          <!-- Level buttons — dynamically filtered per sub-category bonus rules -->
                           <div class="flex items-center gap-1.5 sm:gap-1 w-full sm:w-auto sm:shrink-0 self-stretch sm:self-auto">
                             <button
-                              v-for="level in LEVEL_STEPS"
+                              v-for="level in getVisibleLevels(sub)"
                               :key="level"
                               class="flex-1 sm:flex-none text-[11px] sm:text-[10px] font-semibold px-2 sm:px-2.5 py-2 sm:py-1 rounded-xl sm:rounded-md border transition-all duration-150 min-h-[40px] sm:min-h-0 text-center"
                               :class="myPerfMap.get(sk._id)?.currentSkillLevel === level
