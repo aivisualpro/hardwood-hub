@@ -364,7 +364,7 @@ const selectedCatIndex = computed(() => tree.value.findIndex(c => c._id === sele
 
 // ─── CREATE skill ─────────────────────────────────────────
 function openCreateSkill(catId: string, subCatId: string) {
-  skillForm.value = { skill: '', isRequired: false, category: catId, subCategory: subCatId }
+  skillForm.value = { skill: '', isRequired: true, category: catId, subCategory: subCatId }
   showSkillModal.value = true
 }
 
@@ -980,14 +980,6 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
                         <!-- Skill text -->
                         <p class="text-xs sm:text-sm leading-relaxed pr-10 sm:pr-12">{{ sk.name }}</p>
-
-                        <!-- Required badge -->
-                        <div v-if="sk.isRequired" class="mt-auto">
-                          <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-rose-500/15 text-rose-400 border-rose-500/30">
-                            <Icon name="i-lucide-star" class="size-2.5" />
-                            Required
-                          </span>
-                        </div>
                       </template>
 
                       <!-- ── EDIT MODE (inline) ── -->
@@ -999,24 +991,6 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                           class="w-full resize-none rounded-md border border-input bg-muted/40 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
                           placeholder="Skill description…"
                         />
-
-                        <!-- Required toggle -->
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs text-muted-foreground font-medium">Required</span>
-                          <button
-                            type="button"
-                            role="switch"
-                            :aria-checked="editingForm.isRequired"
-                            class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200"
-                            :class="editingForm.isRequired ? 'bg-primary' : 'bg-muted'"
-                            @click="editingForm.isRequired = !editingForm.isRequired"
-                          >
-                            <span
-                              class="pointer-events-none inline-block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200"
-                              :class="editingForm.isRequired ? 'translate-x-4' : 'translate-x-0'"
-                            />
-                          </button>
-                        </div>
 
                         <!-- Save / Cancel -->
                         <div class="flex gap-2 pt-0.5">
@@ -1049,34 +1023,17 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Skill</DialogTitle>
-          <DialogDescription>Create a new skill in this sub-category.</DialogDescription>
         </DialogHeader>
 
         <div class="flex flex-col gap-4 py-2">
           <div class="flex flex-col gap-1.5">
-            <Label for="skill-name">Skill Name</Label>
-            <Input id="skill-name" v-model="skillForm.skill" placeholder="e.g. Hardwood Flooring Installation" />
-          </div>
-
-          <!-- isRequired toggle -->
-          <div class="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-4 py-3">
-            <div>
-              <p class="text-sm font-medium">Required Skill</p>
-              <p class="text-xs text-muted-foreground">Mark this as a mandatory competency</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              :aria-checked="skillForm.isRequired"
-              class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none"
-              :class="skillForm.isRequired ? 'bg-primary' : 'bg-muted'"
-              @click="skillForm.isRequired = !skillForm.isRequired"
-            >
-              <span
-                class="pointer-events-none inline-block size-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200"
-                :class="skillForm.isRequired ? 'translate-x-5' : 'translate-x-0'"
-              />
-            </button>
+            <textarea
+              id="skill-name"
+              v-model="skillForm.skill"
+              rows="4"
+              class="w-full resize-none rounded-md border border-input bg-muted/40 px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
+              placeholder="e.g. Hardwood Flooring Installation"
+            />
           </div>
         </div>
 
