@@ -111,17 +111,78 @@ const highestPerfMap = computed(() => {
   return map
 })
 
-// Current user's perf records for button state highlighting
+// Current user's perf records per skill per level — supports progression timeline
+// Key: `${skillId}::${level}`, Value: PerfRecord
+const myPerfLevelMap = computed(() => {
+  const map = new Map<string, PerfRecord>()
+  const myId = currentUserId.value
+  for (const r of perfRecords.value) {
+    if (r.employee === selectedEmployeeId.value && r.createdBy === myId) {
+      const key = `${r.skill}::${r.currentSkillLevel}`
+      // Keep the latest record per skill+level
+      const existing = map.get(key)
+      if (!existing || new Date(r.createdAt) > new Date(existing.createdAt)) {
+        map.set(key, r)
+      }
+    }
+  }
+  return map
+})
+
+// For backward compat: keep a myPerfMap that returns the highest level per skill for this reviewer
 const myPerfMap = computed(() => {
   const map = new Map<string, PerfRecord>()
   const myId = currentUserId.value
   for (const r of perfRecords.value) {
     if (r.employee === selectedEmployeeId.value && r.createdBy === myId) {
-      map.set(r.skill, r)
+      const existing = map.get(r.skill)
+      if (!existing || levelIndex(r.currentSkillLevel) > levelIndex(existing.currentSkillLevel)) {
+        map.set(r.skill, r)
+      }
     }
   }
   return map
 })
+
+// All records for a given skill for the selected employee from all reviewers, grouped by level
+const allRecordsForSkill = computed(() => {
+  const map = new Map<string, PerfRecord[]>()
+  for (const r of perfRecords.value) {
+    if (r.employee === selectedEmployeeId.value) {
+      if (!map.has(r.skill)) map.set(r.skill, [])
+      map.get(r.skill)!.push(r)
+    }
+  }
+  return map
+})
+
+// Helper: check if a specific level was marked by the current user for a skill
+function hasMyLevel(skillId: string, level: string): boolean {
+  return myPerfLevelMap.value.has(`${skillId}::${level}`)
+}
+
+// Helper: get the date when the current user marked a specific level
+function getMyLevelDate(skillId: string, level: string): string | null {
+  const rec = myPerfLevelMap.value.get(`${skillId}::${level}`)
+  return rec ? rec.createdAt : null
+}
+
+// Helper: check if the current user's Proficient was on a prior date (enabling Mastered)
+function canMarkMastered(skillId: string): boolean {
+  const proficientDate = getMyLevelDate(skillId, 'Proficient')
+  if (!proficientDate) return false
+  // Compare dates (not times)
+  const profDateStr = new Date(proficientDate).toISOString().slice(0, 10)
+  const todayStr = new Date().toISOString().slice(0, 10)
+  return profDateStr < todayStr
+}
+
+// Helper: get the reason why Mastered is disabled
+function getMasteredDisabledReason(skillId: string): string {
+  if (!hasMyLevel(skillId, 'Proficient')) return 'Must be marked as Proficient first'
+  if (!canMarkMastered(skillId)) return 'Can mark Mastered starting tomorrow'
+  return ''
+}
 
 // Count of uniquely assessed skills for an employee
 const empAssessedCount = computed(() => {
@@ -226,9 +287,9 @@ function levelIndex(lvl: string) {
 }
 
 function levelColor(lvl: string) {
-  if (lvl === 'Mastered') return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-  if (lvl === 'Proficient') return 'bg-blue-500/15 text-blue-400 border-blue-500/30'
-  if (lvl === 'Needs Improvement') return 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+  if (lvl === 'Mastered') return 'bg-emerald-600 text-white border-emerald-700'
+  if (lvl === 'Proficient') return 'bg-blue-600 text-white border-blue-700'
+  if (lvl === 'Needs Improvement') return 'bg-amber-600 text-white border-amber-700'
   return 'bg-muted/60 text-muted-foreground border-border/40'
 }
 
@@ -281,7 +342,7 @@ const catPalette = [
 ]
 function pal(idx: number) { return catPalette[idx % catPalette.length]! }
 
-// ─── Mark skill level (optimistic upsert) ────────────────
+// ─── Mark skill level (progression-aware optimistic upsert) ────────────────
 async function markSkill(skill: SkillNode, level: string, catId: string) {
   if (!selectedEmployeeId.value) return
   if (!currentUserId.value) {
@@ -291,17 +352,40 @@ async function markSkill(skill: SkillNode, level: string, catId: string) {
   const empId = selectedEmployeeId.value
   const myId = currentUserId.value
 
-  // Optimistic: update local state immediately
-  const existingRecordIndex = perfRecords.value.findIndex(r => r.employee === empId && r.skill === skill._id && r.createdBy === myId)
-  const existing = existingRecordIndex !== -1 ? perfRecords.value[existingRecordIndex] : null
-  let prevLevel = ''
-  
-  if (existing) {
-    prevLevel = existing.currentSkillLevel
-    existing.currentSkillLevel = level
+  // ─── Client-side progression guards ─────────────────────
+  if (level === 'Mastered') {
+    if (!hasMyLevel(skill._id, 'Proficient')) {
+      toast.error('Cannot mark as Mastered', { description: 'Must be marked as Proficient first.' })
+      return
+    }
+    if (!canMarkMastered(skill._id)) {
+      toast.error('Cannot mark as Mastered today', { description: 'Proficient was marked today. Mastered can be selected starting tomorrow.' })
+      return
+    }
   }
-  else {
-    // Add a temp record
+
+  // If this level is already marked, this is a toggle-off (remove it)
+  const existingLevelKey = `${skill._id}::${level}`
+  const existingLevelRec = myPerfLevelMap.value.get(existingLevelKey)
+  if (existingLevelRec) {
+    // Don't allow removing a level if a higher level depends on it
+    if (level === 'Proficient' && hasMyLevel(skill._id, 'Mastered')) {
+      toast.error('Cannot remove Proficient', { description: 'Mastered depends on it. Remove Mastered first.' })
+      return
+    }
+    // Delete this specific record
+    await deleteRecord(existingLevelRec._id)
+    return
+  }
+
+  // Optimistic: find existing record for same employee+skill+createdBy+level
+  const existingRecordIndex = perfRecords.value.findIndex(
+    r => r.employee === empId && r.skill === skill._id && r.createdBy === myId && r.currentSkillLevel === level
+  )
+  const existing = existingRecordIndex !== -1 ? perfRecords.value[existingRecordIndex] : null
+
+  if (!existing) {
+    // Add a temp record (new level entry)
     const tempRecord: PerfRecord = {
       _id: `temp-${Date.now()}`,
       employee: empId,
@@ -335,19 +419,24 @@ async function markSkill(skill: SkillNode, level: string, catId: string) {
     })
     // Replace temp _id with real one
     if (!existing && res.data?._id) {
-      const temp = perfRecords.value.find(r => r.skill === skill._id && r.employee === empId && r.createdBy === myId && r._id.startsWith('temp-'))
+      const temp = perfRecords.value.find(
+        r => r.skill === skill._id && r.employee === empId && r.createdBy === myId
+          && r.currentSkillLevel === level && r._id.startsWith('temp-')
+      )
       if (temp) temp._id = String(res.data._id)
     }
     toast.success(`Marked as ${level}`, { description: skill.name, duration: 2000 })
   }
   catch (e: any) {
-    // Revert
-    if (existing) existing.currentSkillLevel = prevLevel
-    else {
-      const idx = perfRecords.value.findIndex(r => r.skill === skill._id && r.employee === empId && r.createdBy === myId && r._id.startsWith('temp-'))
+    // Revert: remove the temp record we added
+    if (!existing) {
+      const idx = perfRecords.value.findIndex(
+        r => r.skill === skill._id && r.employee === empId && r.createdBy === myId
+          && r.currentSkillLevel === level && r._id.startsWith('temp-')
+      )
       if (idx !== -1) perfRecords.value.splice(idx, 1)
     }
-    toast.error('Failed to save', { description: e?.message })
+    toast.error('Failed to save', { description: e?.data?.message || e?.message })
   }
 }
 
@@ -878,26 +967,71 @@ async function deleteSelected() {
                         <div
                           v-for="sk in sub.skills"
                           :key="sk._id"
-                          class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 pl-10 sm:pl-[4.5rem] pr-3 sm:pr-4 py-3 sm:py-2.5 border-b border-border/10 last:border-0 group/skill hover:bg-muted/20 transition-colors"
+                          class="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-3 pl-10 sm:pl-[4.5rem] pr-3 sm:pr-4 py-3.5 sm:py-3 border-b border-border/10 last:border-0 group/skill hover:bg-muted/20 transition-colors"
                         >
                           <!-- Skill info -->
                           <div class="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2">
                             <p class="text-[13px] sm:text-sm leading-snug">{{ sk.name }}</p>
                           </div>
 
-                          <!-- Level buttons — dynamically filtered per sub-category bonus rules -->
-                          <div class="flex items-center gap-1.5 sm:gap-1 w-full sm:w-auto sm:shrink-0 self-stretch sm:self-auto">
-                            <button
-                              v-for="level in getVisibleLevels(sub)"
-                              :key="level"
-                              class="flex-1 sm:flex-none text-[11px] sm:text-[10px] font-semibold px-2 sm:px-2.5 py-2 sm:py-1 rounded-xl sm:rounded-md border transition-all duration-150 min-h-[40px] sm:min-h-0 text-center"
-                              :class="myPerfMap.get(sk._id)?.currentSkillLevel === level
-                                ? `${levelColor(level)} ring-1 ring-offset-1 ring-offset-background ${level === 'Mastered' ? 'ring-emerald-500/40' : level === 'Proficient' ? 'ring-blue-500/40' : 'ring-amber-500/40'}`
-                                : 'border-border/40 bg-muted/40 text-muted-foreground/70 hover:bg-muted hover:text-foreground hover:border-border'"
-                              @click.stop="markSkill(sk, level, cat._id)"
-                            >
-                              {{ level === 'Needs Improvement' ? 'Needs Imp.' : level }}
-                            </button>
+                          <!-- Progression level buttons with timeline -->
+                          <div class="flex items-stretch gap-0 w-full sm:w-auto sm:shrink-0 self-stretch sm:self-auto">
+                            <template v-for="(level, lvlIdx) in getVisibleLevels(sub)" :key="level">
+                              <!-- Connector line between buttons -->
+                              <div
+                                v-if="lvlIdx > 0"
+                                class="flex items-center self-center"
+                              >
+                                <div
+                                  class="w-3 sm:w-4 h-[2px] transition-colors duration-300"
+                                  :class="hasMyLevel(sk._id, level) ? (level === 'Mastered' ? 'bg-emerald-500' : level === 'Proficient' ? 'bg-blue-500' : 'bg-amber-500') : 'bg-border/40'"
+                                />
+                              </div>
+
+                              <!-- Level button -->
+                              <button
+                                class="group/btn relative flex-1 sm:flex-none flex flex-col items-center gap-0.5 px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl sm:rounded-lg border transition-all duration-200 min-h-[48px] sm:min-h-[36px] min-w-[90px] sm:min-w-[100px]"
+                                :class="[
+                                  hasMyLevel(sk._id, level)
+                                    ? `${levelColor(level)} ring-2 ring-offset-1 ring-offset-background shadow-md ${level === 'Mastered' ? 'ring-emerald-500/50 shadow-emerald-500/20' : level === 'Proficient' ? 'ring-blue-500/50 shadow-blue-500/20' : 'ring-amber-500/50 shadow-amber-500/20'}`
+                                    : level === 'Mastered' && !canMarkMastered(sk._id)
+                                      ? 'border-border/30 bg-zinc-800/60 text-zinc-500 cursor-not-allowed'
+                                      : 'border-border/50 bg-zinc-800/40 text-zinc-300 hover:bg-zinc-700/60 hover:text-white hover:border-zinc-600 hover:shadow-sm',
+                                ]"
+                                :title="level === 'Mastered' && !hasMyLevel(sk._id, level) ? getMasteredDisabledReason(sk._id) : hasMyLevel(sk._id, level) ? `Click to remove ${level}` : `Mark as ${level}`"
+                                @click.stop="markSkill(sk, level, cat._id)"
+                              >
+                                <!-- Lock icon for disabled Mastered -->
+                                <div v-if="level === 'Mastered' && !hasMyLevel(sk._id, level) && !canMarkMastered(sk._id)" class="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-muted border border-border flex items-center justify-center">
+                                  <Icon name="i-lucide-lock" class="size-2.5 text-muted-foreground/60" />
+                                </div>
+
+                                <!-- Check icon for completed levels -->
+                                <div v-if="hasMyLevel(sk._id, level)" class="absolute -top-1.5 -right-1.5 size-4 rounded-full flex items-center justify-center" :class="level === 'Mastered' ? 'bg-emerald-500' : level === 'Proficient' ? 'bg-blue-500' : 'bg-amber-500'">
+                                  <Icon name="i-lucide-check" class="size-2.5 text-white" />
+                                </div>
+
+                                <!-- Level name -->
+                                <span class="text-[11px] sm:text-[10px] font-bold leading-none">
+                                  {{ level === 'Needs Improvement' ? 'Needs Imp.' : level }}
+                                </span>
+
+                                <!-- Date indicator (when level was logged) -->
+                                <span
+                                  v-if="hasMyLevel(sk._id, level)"
+                                  class="text-[9px] font-medium leading-none opacity-70"
+                                >
+                                  {{ formatDate(getMyLevelDate(sk._id, level)!) }}
+                                </span>
+                                <span
+                                  v-else-if="level === 'Mastered' && !canMarkMastered(sk._id) && hasMyLevel(sk._id, 'Proficient')"
+                                  class="text-[8px] leading-none opacity-50 flex items-center gap-0.5"
+                                >
+                                  <Icon name="i-lucide-clock" class="size-2" />
+                                  Tomorrow
+                                </span>
+                              </button>
+                            </template>
                           </div>
                         </div>
                       </div>

@@ -12,6 +12,11 @@ export const navMenu: NavMenu[] = [
         link: '/admin/dashboard',
       },
       {
+        title: 'Category Tree',
+        icon: 'i-lucide-git-merge',
+        link: '/admin/category-tree',
+      },
+      {
         title: 'Skills',
         icon: 'i-lucide-graduation-cap',
         link: '/admin/skills',

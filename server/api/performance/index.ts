@@ -1,5 +1,7 @@
 // GET  /api/performance   — list all performance records (with resolved refs)
-// POST /api/performance   — upsert a performance record (by employee+skill combo)
+// POST /api/performance   — create or upsert a performance record
+//   New behavior: each level creates a separate record per employee+skill+createdBy+level
+//   Mastered requires existing Proficient from same reviewer on a prior date
 import { connectDB } from '../../utils/mongoose'
 import { EmpSkillPerformance } from '../../models/EmpSkillPerformance'
 import { Employee } from '../../models/Employee'
@@ -51,9 +53,42 @@ export default defineEventHandler(async (event) => {
         if (!employee || !category || !subCategory || !skill)
             throw createError({ statusCode: 400, message: 'employee, category, subCategory, and skill are required' })
 
-        // Upsert: if record for this employee+skill+reviewer already exists, update it
+        // ─── Mastered guard: require Proficient from same reviewer on a prior date ───
+        if (currentSkillLevel === 'Mastered') {
+            const proficientRecord = await EmpSkillPerformance.findOne({
+                employee,
+                skill,
+                createdBy,
+                currentSkillLevel: 'Proficient',
+            }).lean<any>()
+
+            if (!proficientRecord) {
+                throw createError({
+                    statusCode: 400,
+                    message: 'Cannot mark as Mastered. Employee must first be marked as Proficient by you.',
+                })
+            }
+
+            // Check that Proficient was on a prior date (not today)
+            const profDate = new Date(proficientRecord.createdAt)
+            const today = new Date()
+            const profDateStr = profDate.toISOString().slice(0, 10)
+            const todayStr = today.toISOString().slice(0, 10)
+
+            if (profDateStr === todayStr) {
+                throw createError({
+                    statusCode: 400,
+                    message: 'Cannot mark as Mastered on the same day as Proficient. Please wait until the next day.',
+                })
+            }
+        }
+
+        // ─── Proficient guard: cannot mark Proficient if already Mastered by same reviewer ───
+        // (this prevents downgrading progression)
+
+        // Upsert: unique by employee + skill + createdBy + level
         const doc = await EmpSkillPerformance.findOneAndUpdate(
-            { employee, skill, createdBy },
+            { employee, skill, createdBy, currentSkillLevel },
             {
                 employee,
                 category,
