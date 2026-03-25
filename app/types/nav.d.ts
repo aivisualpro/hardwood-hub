@@ -4,6 +4,7 @@ export interface NavLink {
   link: string
   icon?: string
   new?: boolean
+  badge?: number | string
 }
 
 export interface NavSectionTitle {

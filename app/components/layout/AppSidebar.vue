@@ -37,10 +37,29 @@ function isAllowed(link?: string) {
   return allowed.includes(link)
 }
 
+// Unread Activities Count
+const { data: unreadCountRes, refresh: refreshUnread } = await useFetch<any>('/api/activities/unread-count')
+const unreadCount = computed(() => unreadCountRes.value?.count || 0)
+
+// Poll for updates every 60 seconds
+let pollInterval: any
+onMounted(() => {
+  pollInterval = setInterval(refreshUnread, 60000)
+})
+onUnmounted(() => {
+  clearInterval(pollInterval)
+})
+
 const filteredNavMenu = computed(() => {
   return navMenu.map(group => ({
     ...group,
-    items: group.items.filter((item: any) => isAllowed(item.link))
+    items: group.items.map((item: any) => {
+      const newItem = { ...item }
+      if (newItem.link === '/admin/activities' && unreadCount.value > 0) {
+        newItem.badge = unreadCount.value
+      }
+      return newItem
+    }).filter((item: any) => isAllowed(item.link))
   })).filter(group => group.items.length > 0)
 })
 
@@ -73,10 +92,17 @@ const userTeams = computed(() => {
 
 const user = computed(() => {
   const u = userCookie.value
+  let avatar = u?.profileImage || ''
+  
+  // Wipe legacy BigQuery image routes if they still exist in login cookie
+  if (avatar.includes('api/bigquery')) {
+    avatar = ''
+  }
+
   return {
     name: u?.employee || 'Unknown User',
     email: u?.email || '',
-    avatar: u?.profileImage || '',
+    avatar,
     position: u?.position || ''
   }
 })

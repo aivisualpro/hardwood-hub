@@ -79,6 +79,7 @@
     "@nuxtjs/color-mode": "^3.5.2",
     "@pinia/nuxt": "^0.5.5",
     "@types/dagre": "^0.7.54",
+    "@types/node": "^25.5.0",
     "@vee-validate/zod": "^4.15.1",
     "@vueuse/core": "^12.8.2",
     "@vueuse/math": "^12.8.2",

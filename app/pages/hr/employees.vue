@@ -64,7 +64,13 @@ async function fetchEmployees() {
   loading.value = true
   try {
     const res = await $fetch<{ success: boolean, data: Employee[] }>('/api/employees')
-    employees.value = res.data
+    employees.value = res.data.map(emp => {
+      // Clean legacy BigQuery image routes if they still exist in MongoDB records
+      if (emp.profileImage && emp.profileImage.includes('api/bigquery')) {
+        emp.profileImage = ''
+      }
+      return emp
+    })
   }
   catch (e: any) {
     notify('Error', e?.message || 'Failed to load employees', 'destructive')

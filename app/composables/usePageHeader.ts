@@ -16,29 +16,29 @@ interface SetHeaderOpts {
   icon?: string
 }
 
-const headerState = reactive<PageHeaderState>({
-  title: '',
-  titleKey: undefined,
-  description: '',
-  descriptionKey: undefined,
-  icon: '',
-})
-
 export function usePageHeader() {
+  const headerState = useState<PageHeaderState>('page-header', () => ({
+    title: '',
+    titleKey: undefined,
+    description: '',
+    descriptionKey: undefined,
+    icon: '',
+  }))
+
   function setHeader(opts: SetHeaderOpts) {
-    headerState.title = opts.title || ''
-    headerState.titleKey = opts.titleKey
-    headerState.description = opts.description || ''
-    headerState.descriptionKey = opts.descriptionKey
-    headerState.icon = opts.icon || ''
+    headerState.value.title = opts.title || ''
+    headerState.value.titleKey = opts.titleKey
+    headerState.value.description = opts.description || ''
+    headerState.value.descriptionKey = opts.descriptionKey
+    headerState.value.icon = opts.icon || ''
   }
 
   function clearHeader() {
-    headerState.title = ''
-    headerState.titleKey = undefined
-    headerState.description = ''
-    headerState.descriptionKey = undefined
-    headerState.icon = ''
+    headerState.value.title = ''
+    headerState.value.titleKey = undefined
+    headerState.value.description = ''
+    headerState.value.descriptionKey = undefined
+    headerState.value.icon = ''
   }
 
   return {

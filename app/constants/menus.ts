@@ -76,6 +76,41 @@ export const navMenu: NavMenu[] = [
     ],
   },
   {
+    heading: 'CRM',
+    items: [
+      {
+        title: 'Customers',
+        icon: 'i-lucide-contact',
+        link: '/crm/customers',
+      },
+      {
+        title: 'Appointments',
+        icon: 'i-lucide-calendar-check',
+        link: '/crm/appointments',
+      },
+      {
+        title: 'Fast Quotes',
+        icon: 'i-lucide-zap',
+        link: '/crm/fast-quotes',
+      },
+      {
+        title: 'Flooring Estimates',
+        icon: 'i-lucide-ruler',
+        link: '/crm/flooring-estimate',
+      },
+      {
+        title: 'Subscribers',
+        icon: 'i-lucide-mail-check',
+        link: '/crm/subscribers',
+      },
+      {
+        title: 'Conditional Logic',
+        icon: 'i-lucide-split',
+        link: '/crm/conditional-logic',
+      },
+    ],
+  },
+  {
     heading: 'External',
     items: [
       {

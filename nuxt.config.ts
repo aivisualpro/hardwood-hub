@@ -82,6 +82,11 @@ export default defineNuxtConfig({
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
     googleClientId: process.env.GOOGLE_CLIENT_ID,
     sessionSecret: process.env.SESSION_SECRET || 'hardwood-hub-default-secret-change-in-production',
+    gfSiteUrl: process.env.GF_SITE_URL,
+    gfConsumerKey: process.env.GF_CONSUMER_KEY,
+    gfConsumerSecret: process.env.GF_CONSUMER_SECRET,
+    gfPublicApiKey: process.env.GF_PUBLIC_API_KEY,
+    gfPrivateApiKey: process.env.GF_PRIVATE_API_KEY,
     public: {
       googleClientId: process.env.GOOGLE_CLIENT_ID,
     },

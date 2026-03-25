@@ -11,6 +11,7 @@ export interface IActivityLog extends Document {
     ip?: string
     userAgent?: string
     userImage?: string
+    isRead: boolean
     createdAt: Date
 }
 
@@ -26,6 +27,7 @@ const ActivityLogSchema = new Schema(
         ip: { type: String, default: '' },
         userAgent: { type: String, default: '' },
         userImage: { type: String, default: '' },
+        isRead: { type: Boolean, default: false, index: true },
     },
     { timestamps: true, collection: 'hardwoodDB_activitylogs' }
 )

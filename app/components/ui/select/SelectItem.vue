@@ -4,10 +4,10 @@ import type { HTMLAttributes } from 'vue'
 import { reactiveOmit } from '@vueuse/core'
 import { Check } from 'lucide-vue-next'
 import {
-  SelectItem,
-  SelectItemIndicator,
+  SelectItem as SelectItemRoot,
+  SelectItemIndicator as SelectItemIndicatorRoot,
 
-  SelectItemText,
+  SelectItemText as SelectItemTextRoot,
   useForwardProps,
 } from 'reka-ui'
 import { cn } from '@/lib/utils'
@@ -20,7 +20,7 @@ const forwardedProps = useForwardProps(delegatedProps)
 </script>
 
 <template>
-  <SelectItem
+  <SelectItemRoot
     data-slot="select-item"
     v-bind="forwardedProps"
     :class="
@@ -31,13 +31,13 @@ const forwardedProps = useForwardProps(delegatedProps)
     "
   >
     <span class="absolute right-2 flex size-3.5 items-center justify-center">
-      <SelectItemIndicator>
+      <SelectItemIndicatorRoot>
         <Check class="size-4" />
-      </SelectItemIndicator>
+      </SelectItemIndicatorRoot>
     </span>
 
-    <SelectItemText>
+    <SelectItemTextRoot>
       <slot />
-    </SelectItemText>
-  </SelectItem>
+    </SelectItemTextRoot>
+  </SelectItemRoot>
 </template>

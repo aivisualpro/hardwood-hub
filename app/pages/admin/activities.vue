@@ -44,7 +44,13 @@ async function fetchActivities(page = 1) {
   }
 }
 
-onMounted(() => fetchActivities())
+onMounted(async () => {
+  await fetchActivities()
+  // Mark all as read when page is visited
+  try {
+    await $fetch('/api/activities/mark-as-read', { method: 'POST' })
+  } catch {}
+})
 
 watch([selectedUser, selectedModule, selectedAction], () => fetchActivities(1))
 

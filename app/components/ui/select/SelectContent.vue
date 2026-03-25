@@ -3,14 +3,15 @@ import type { SelectContentEmits, SelectContentProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 import { reactiveOmit } from '@vueuse/core'
 import {
-  SelectContent,
+  SelectContent as SelectContentRoot,
 
   SelectPortal,
   SelectViewport,
   useForwardPropsEmits,
 } from 'reka-ui'
 import { cn } from '@/lib/utils'
-import { SelectScrollDownButton, SelectScrollUpButton } from '.'
+import SelectScrollDownButton from './SelectScrollDownButton.vue'
+import SelectScrollUpButton from './SelectScrollUpButton.vue'
 
 defineOptions({
   inheritAttrs: false,
@@ -27,11 +28,16 @@ const emits = defineEmits<SelectContentEmits>()
 const delegatedProps = reactiveOmit(props, 'class')
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+const isClient = ref(false)
+onMounted(() => {
+  isClient.value = true
+})
 </script>
 
 <template>
-  <SelectPortal>
-    <SelectContent
+  <SelectPortal v-if="isClient">
+    <SelectContentRoot
       data-slot="select-content"
       v-bind="{ ...forwarded, ...$attrs }"
       :class="cn(
@@ -47,6 +53,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         <slot />
       </SelectViewport>
       <SelectScrollDownButton />
-    </SelectContent>
+    </SelectContentRoot>
   </SelectPortal>
 </template>
+
