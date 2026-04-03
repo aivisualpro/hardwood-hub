@@ -81,6 +81,7 @@ interface CompanyProfile {
   email: string
   licenseNumber: string
   logo: string
+  signature: string
 }
 
 const companyProfile = ref<CompanyProfile>({
@@ -95,10 +96,12 @@ const companyProfile = ref<CompanyProfile>({
   email: 'quote@annarborhardwoods.com',
   licenseNumber: '242600350',
   logo: '',
+  signature: '',
 })
 const loadingCompany = ref(true)
 const savingCompany = ref(false)
 const uploadingLogo = ref(false)
+const uploadingSignature = ref(false)
 
 async function fetchCompanyProfile() {
   loadingCompany.value = true
@@ -161,6 +164,43 @@ async function handleLogoUpload(event: Event) {
   } finally {
     uploadingLogo.value = false
     input.value = '' // reset file input
+  }
+}
+
+async function handleSignatureUpload(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    toast.error('Please select an image file')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('Image must be under 5MB')
+    return
+  }
+
+  uploadingSignature.value = true
+  try {
+    const reader = new FileReader()
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+
+    const res = await $fetch<{ success: boolean, url: string }>('/api/upload/company-logo', { // reusing logo logic since we just need it in cloudinary
+      method: 'POST',
+      body: { file: dataUrl },
+    })
+    companyProfile.value.signature = res.url
+    toast.success('Signature uploaded')
+  } catch (e: any) {
+    toast.error('Upload failed', { description: e?.message })
+  } finally {
+    uploadingSignature.value = false
+    input.value = ''
   }
 }
 
@@ -331,10 +371,7 @@ const ROUTE_CAPS: Record<string, { ops: string[], icon: string }> = {
   '/project-communication': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-message-square' },
   '/daily-production': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-clipboard-list' },
   '/email': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-mail' },
-  '/sales/quotes': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-file-text' },
   '/sales/invoices': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-receipt' },
-  '/sales/orders': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-shopping-cart' },
-  '/sales/customers': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-users' },
   '/reports/sales': { ops: ['read'], icon: 'i-lucide-trending-up' },
   '/reports/financial': { ops: ['read'], icon: 'i-lucide-pie-chart' },
   '/admin/general-settings': { ops: ['read', 'update'], icon: 'i-lucide-settings' },
@@ -745,7 +782,7 @@ const WpIconsList = [
               </div>
               <div class="p-5 flex items-center gap-6">
                 <div class="relative group">
-                  <div class="size-24 rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center bg-muted/20 overflow-hidden transition-all group-hover:border-primary/40">
+                  <div class="w-48 h-24 rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center bg-muted/20 overflow-hidden transition-all group-hover:border-primary/40">
                     <img v-if="companyProfile.logo" :src="companyProfile.logo" alt="Company Logo" class="size-full object-contain p-2" />
                     <Icon v-else name="i-lucide-building-2" class="size-10 text-muted-foreground/30" />
                   </div>
@@ -764,6 +801,47 @@ const WpIconsList = [
                     Remove
                   </button>
                   <p class="text-[10px] text-muted-foreground">PNG, JPG or SVG. Max 5MB.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Signature Section -->
+            <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
+              <div class="px-5 py-4 border-b border-border/50 bg-muted/20">
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                  <Icon name="i-lucide-pen-tool" class="size-4 text-primary" />
+                  Company Signature
+                </h3>
+                <p class="text-xs text-muted-foreground mt-0.5">Upload a default signature to apply to documents</p>
+              </div>
+              <div class="p-5">
+                <div class="flex items-start gap-6">
+                  <!-- Draw Signature -->
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Draw Signature</p>
+                    <SignaturePad v-model="companyProfile.signature" class="w-full bg-background" />
+                  </div>
+
+                  <!-- Divider -->
+                  <div class="flex flex-col items-center gap-2 pt-6 shrink-0">
+                    <div class="h-16 w-px bg-border/60" />
+                    <span class="text-[10px] font-bold text-muted-foreground uppercase">or</span>
+                    <div class="h-16 w-px bg-border/60" />
+                  </div>
+
+                  <!-- Upload File -->
+                  <div class="flex flex-col items-center justify-center gap-3 pt-6 shrink-0 w-52">
+                    <div class="size-12 rounded-xl bg-muted/40 border border-dashed border-border/60 flex items-center justify-center">
+                      <Icon name="i-lucide-image-up" class="size-5 text-muted-foreground/50" />
+                    </div>
+                    <label class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold cursor-pointer hover:bg-primary/90 transition-all shadow-lg shadow-primary/20" :class="{ 'opacity-50 cursor-not-allowed': uploadingSignature }">
+                      <Icon v-if="uploadingSignature" name="i-lucide-loader-circle" class="size-3.5 animate-spin" />
+                      <Icon v-else name="i-lucide-upload" class="size-3.5" />
+                      Upload File
+                      <input type="file" accept="image/*" class="sr-only" :disabled="uploadingSignature" @change="handleSignatureUpload" />
+                    </label>
+                    <p class="text-[10px] text-muted-foreground text-center leading-tight">Transparent PNG recommended</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -867,10 +945,10 @@ const WpIconsList = [
               </div>
               <div class="p-6 bg-white dark:bg-zinc-900">
                 <div class="flex items-start gap-6">
-                  <div v-if="companyProfile.logo" class="size-20 shrink-0">
-                    <img :src="companyProfile.logo" alt="Logo" class="size-full object-contain" />
+                  <div v-if="companyProfile.logo" class="w-[200px] h-20 shrink-0">
+                    <img :src="companyProfile.logo" alt="Logo" class="size-full object-contain object-left" />
                   </div>
-                  <div v-else class="size-20 shrink-0 rounded-xl bg-muted/40 border border-dashed border-border flex items-center justify-center">
+                  <div v-else class="w-[200px] h-20 shrink-0 rounded-xl bg-muted/40 border border-dashed border-border flex items-center justify-center">
                     <Icon name="i-lucide-image" class="size-8 text-muted-foreground/30" />
                   </div>
                   <div class="text-right flex-1">

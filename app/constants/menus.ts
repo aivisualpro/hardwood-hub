@@ -113,28 +113,10 @@ export const navMenuConcepts: NavMenu = {
       link: '/email',
     },
     {
-      title: 'Quotes',
-      titleKey: 'nav.quotes',
-      icon: 'i-lucide-file-text',
-      link: '/sales/quotes',
-    },
-    {
       title: 'Invoices',
       titleKey: 'nav.invoices',
       icon: 'i-lucide-receipt',
       link: '/sales/invoices',
-    },
-    {
-      title: 'Orders',
-      titleKey: 'nav.orders',
-      icon: 'i-lucide-shopping-cart',
-      link: '/sales/orders',
-    },
-    {
-      title: 'Customers',
-      titleKey: 'nav.customers',
-      icon: 'i-lucide-users',
-      link: '/sales/customers',
     },
     {
       title: 'Sales Reports',

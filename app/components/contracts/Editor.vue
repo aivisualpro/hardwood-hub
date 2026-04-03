@@ -72,9 +72,7 @@ watch(() => props.modelValue, (val) => {
 function onInsertVariable(e: Event) {
   const key = (e as CustomEvent).detail?.key
   if (!key || !editor.value) return
-  editor.value.chain().focus().insertContent(
-    `<span class="template-variable" data-var="${key}">{{${key}}}</span>&nbsp;`
-  ).run()
+  editor.value.chain().focus().insertContent(`{{${key}}} `).run()
 }
 
 onMounted(() => {
