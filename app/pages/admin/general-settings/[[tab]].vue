@@ -92,8 +92,8 @@ const companyProfile = ref<CompanyProfile>({
   zip: '48104',
   phone1: '(734) 604-3786',
   phone2: '(734) 709-1023',
-  website: 'www.annarborhardwoods.com',
-  email: 'quote@annarborhardwoods.com',
+  website: 'www.a2hardwood.com',
+  email: 'quote@a2hardwood.com',
   licenseNumber: '242600350',
   logo: '',
   signature: '',
@@ -911,14 +911,14 @@ const WpIconsList = [
                       <Icon name="i-lucide-globe" class="size-3 inline mr-1" />
                       Website
                     </Label>
-                    <Input id="co-website" v-model="companyProfile.website" placeholder="www.annarborhardwoods.com" class="h-10 text-sm" />
+                    <Input id="co-website" v-model="companyProfile.website" placeholder="www.a2hardwood.com" class="h-10 text-sm" />
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <Label for="co-email" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       <Icon name="i-lucide-mail" class="size-3 inline mr-1" />
                       Email
                     </Label>
-                    <Input id="co-email" v-model="companyProfile.email" placeholder="quote@annarborhardwoods.com" class="h-10 text-sm" />
+                    <Input id="co-email" v-model="companyProfile.email" placeholder="quote@a2hardwood.com" class="h-10 text-sm" />
                   </div>
                 </div>
 

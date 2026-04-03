@@ -94,7 +94,7 @@ function workspaceName(id: string) {
   return workspacesList.value.find(w => w._id === id)?.name || ''
 }
 
-// ─── Image Upload (→ Cloudinary via server) ───────────────
+// ─── Image Upload (→ Cloudinary via server with client-side resize) ───────────────
 async function onFileChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -104,26 +104,53 @@ async function onFileChange(e: Event) {
   uploadingImage.value = true
 
   try {
-    // Convert to base64 just for transport, server uploads to Cloudinary
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onload = async () => {
-      const base64 = reader.result as string
-      const res = await $fetch<{ success: boolean, url: string }>('/api/upload/cloudinary', {
-        method: 'POST',
-        body: { file: base64 },
-      })
-      form.value.profileImage = res.url // store only the Cloudinary URL
-      uploadingImage.value = false
+    // 1. Create an off-screen image to read the file
+    const img = new Image()
+    img.src = previewUrl.value
+    await new Promise((resolve, reject) => {
+      img.onload = resolve
+      img.onerror = reject
+    })
+
+    // 2. Calculate dimensions (max 500x500 for profile pics)
+    const MAX_SIZE = 500
+    let width = img.width
+    let height = img.height
+
+    if (width > height) {
+      if (width > MAX_SIZE) {
+        height *= MAX_SIZE / width
+        width = MAX_SIZE
+      }
+    } else {
+      if (height > MAX_SIZE) {
+        width *= MAX_SIZE / height
+        height = MAX_SIZE
+      }
     }
-    reader.onerror = () => {
-      uploadingImage.value = false
-      notify('Error', 'Failed to read file', 'destructive')
-    }
-  }
-  catch (e: any) {
+
+    // 3. Draw to canvas & get optimized base64
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Could not get canvas context')
+
+    ctx.drawImage(img, 0, 0, width, height)
+    
+    // Use WebP or JPEG for much smaller payload size (~70% compression)
+    const base64 = canvas.toDataURL('image/jpeg', 0.8)
+
+    // 4. Send the much-smaller optimized string to the server
+    const res = await $fetch<{ success: boolean, url: string }>('/api/upload/cloudinary', {
+      method: 'POST',
+      body: { file: base64 },
+    })
+    form.value.profileImage = res.url // store only the Cloudinary URL
     uploadingImage.value = false
-    notify('Upload failed', e?.message, 'destructive')
+  } catch (e: any) {
+    uploadingImage.value = false
+    notify('Upload failed', e?.message || 'Failed to process image', 'destructive')
   }
 }
 

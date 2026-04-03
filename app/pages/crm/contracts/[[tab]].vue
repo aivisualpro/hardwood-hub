@@ -987,8 +987,8 @@ watch(customerSearch, () => {
                       <p class="text-xs font-semibold text-foreground/80">{{ companyProfile.city || 'Ann Arbor' }}, {{ companyProfile.state || 'MI' }}. {{ companyProfile.zip || '48104' }}</p>
                       <p class="text-xs font-bold text-foreground/80">{{ companyProfile.phone1 || '(734) 604-3786' }}</p>
                       <p v-if="companyProfile.phone2" class="text-xs font-bold text-foreground/80">{{ companyProfile.phone2 }}</p>
-                      <p class="text-xs font-bold text-foreground/80">{{ companyProfile.website || 'www.annarborhardwoods.com' }}</p>
-                      <p class="text-xs font-bold text-foreground/80">{{ companyProfile.email || 'quote@annarborhardwoods.com' }}</p>
+                      <p class="text-xs font-bold text-foreground/80">{{ companyProfile.website || 'www.a2hardwood.com' }}</p>
+                      <p class="text-xs font-bold text-foreground/80">{{ companyProfile.email || 'quote@a2hardwood.com' }}</p>
                       <p class="text-xs font-bold text-foreground/80">Builder's License Number: {{ companyProfile.licenseNumber || '242600350' }}</p>
                     </div>
                   </div>
