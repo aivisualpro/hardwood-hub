@@ -87,6 +87,8 @@ export default defineNuxtConfig({
     gfConsumerSecret: process.env.GF_CONSUMER_SECRET,
     gfPublicApiKey: process.env.GF_PUBLIC_API_KEY,
     gfPrivateApiKey: process.env.GF_PRIVATE_API_KEY,
+    gmailUser: process.env.GMAIL_USER,
+    gmailAppPassword: process.env.GMAIL_APP_PASSWORD,
     public: {
       googleClientId: process.env.GOOGLE_CLIENT_ID,
     },

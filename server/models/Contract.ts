@@ -23,6 +23,10 @@ const ContractSchema = new mongoose.Schema(
         customerSignature: { type: String, default: '' },
         customerSignatureDate: { type: Date, default: null },
 
+        // Signing flow
+        signingToken: { type: String, default: '', index: true },
+        sentAt: { type: Date, default: null },
+
         // Rendered content (template + variable values merged)
         content: { type: String, default: '' },
 

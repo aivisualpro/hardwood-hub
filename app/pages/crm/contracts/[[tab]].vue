@@ -68,10 +68,13 @@ interface ContractRecord {
   customerName: string
   customerEmail: string
   customerPhone: string
+  templateId: string
   templateName: string
   variableValues: Record<string, string>
+  content: string
   customerSignature?: string
   customerSignatureDate?: string
+  sentAt?: string
   status: string
   createdAt: string
   updatedAt: string
@@ -227,6 +230,40 @@ async function deleteContract(id: string) {
     await fetchContracts()
   } catch (e: any) {
     toast.error('Delete failed', { description: e?.message })
+  }
+}
+
+const sendingEmailId = ref<string | null>(null)
+const showSendEmailModal = ref(false)
+const sendEmailContract = ref<ContractRecord | null>(null)
+const sendEmailAddress = ref('')
+
+function openSendEmailModal(ct: ContractRecord) {
+  sendEmailContract.value = ct
+  sendEmailAddress.value = ct.customerEmail || ''
+  showSendEmailModal.value = true
+}
+
+async function confirmSendEmail() {
+  const ct = sendEmailContract.value
+  if (!ct) return
+  if (!sendEmailAddress.value?.trim()) {
+    toast.error('Please enter an email address')
+    return
+  }
+  sendingEmailId.value = ct._id
+  try {
+    const res = await $fetch<{ success: boolean, message: string }>('/api/contracts/send-email', {
+      method: 'POST',
+      body: { contractId: ct._id, overrideEmail: sendEmailAddress.value.trim() },
+    })
+    toast.success('Email Sent!', { description: res.message })
+    showSendEmailModal.value = false
+    await fetchContracts()
+  } catch (e: any) {
+    toast.error('Failed to send email', { description: e?.data?.message || e?.message })
+  } finally {
+    sendingEmailId.value = null
   }
 }
 
@@ -877,8 +914,19 @@ watch(customerSearch, () => {
                       <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Download PDF" @click.stop="downloadPDF(ct)">
                         <Icon name="i-lucide-download" class="size-3.5" />
                       </button>
-                      <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Send Email" @click.stop="toast.info('Email feature coming soon')">
-                        <Icon name="i-lucide-mail" class="size-3.5" />
+                      <button
+                        class="size-7 rounded-md flex items-center justify-center transition-colors"
+                        :class="ct.status === 'sent' || ct.status === 'signed'
+                          ? 'text-emerald-500 hover:bg-emerald-500/10'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
+                        :title="ct.status === 'signed' ? 'Already signed' : ct.status === 'sent' ? 'Resend email' : 'Send to client for signing'"
+                        :disabled="sendingEmailId === ct._id"
+                        @click.stop="openSendEmailModal(ct)"
+                      >
+                        <Icon v-if="sendingEmailId === ct._id" name="i-lucide-loader-circle" class="size-3.5 animate-spin" />
+                        <Icon v-else-if="ct.status === 'signed'" name="i-lucide-mail-check" class="size-3.5" />
+                        <Icon v-else-if="ct.status === 'sent'" name="i-lucide-mail-check" class="size-3.5" />
+                        <Icon v-else name="i-lucide-send" class="size-3.5" />
                       </button>
                       <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Edit" @click.stop="openEditContract(ct)">
                         <Icon name="i-lucide-pencil" class="size-3.5" />
@@ -1422,6 +1470,52 @@ watch(customerSearch, () => {
               {{ editingContractId ? 'Save Changes' : 'Create Contract' }}
             </Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Send Email Modal -->
+    <Dialog v-model:open="showSendEmailModal">
+      <DialogContent class="max-w-md p-0 border-0 rounded-2xl overflow-hidden bg-background shadow-2xl">
+        <div class="px-6 py-5 border-b border-border/50 bg-muted/20">
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <Icon name="i-lucide-mail" class="size-5 text-emerald-500" />
+            Send Contract via Email
+          </h2>
+          <p class="text-sm text-muted-foreground mt-1">
+            Send <strong>{{ sendEmailContract?.title }}</strong> to client for electronic signature.
+          </p>
+        </div>
+
+        <div class="p-6">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-semibold mb-1.5">Recipient Email Address</label>
+              <Input
+                v-model="sendEmailAddress"
+                type="email"
+                placeholder="client@example.com"
+                class="h-10"
+                @keyup.enter="confirmSendEmail"
+              />
+              <p class="text-xs text-muted-foreground mt-1.5">
+                They will receive a secure link to review and electronically sign this document.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-border/50 bg-muted/20 flex justify-end gap-2">
+          <Button variant="outline" @click="showSendEmailModal = false">Cancel</Button>
+          <Button
+            :disabled="!sendEmailAddress.trim() || sendingEmailId === sendEmailContract?._id"
+            @click="confirmSendEmail"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[120px]"
+          >
+            <Icon v-if="sendingEmailId === sendEmailContract?._id" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+            <Icon v-else name="i-lucide-send" class="mr-2 size-4" />
+            {{ sendingEmailId === sendEmailContract?._id ? 'Sending...' : 'Send Contract' }}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
