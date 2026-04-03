@@ -68,9 +68,106 @@ const emptyWpForm = () => ({
 })
 const wpForm = ref(emptyWpForm())
 
+// ─── Company Profile State ───────────────────────────────
+interface CompanyProfile {
+  name: string
+  address: string
+  city: string
+  state: string
+  zip: string
+  phone1: string
+  phone2: string
+  website: string
+  email: string
+  licenseNumber: string
+  logo: string
+}
+
+const companyProfile = ref<CompanyProfile>({
+  name: 'Ann Arbor Hardwoods LLC',
+  address: '2232 South Main Street',
+  city: 'Ann Arbor',
+  state: 'MI',
+  zip: '48104',
+  phone1: '(734) 604-3786',
+  phone2: '(734) 709-1023',
+  website: 'www.annarborhardwoods.com',
+  email: 'quote@annarborhardwoods.com',
+  licenseNumber: '242600350',
+  logo: '',
+})
+const loadingCompany = ref(true)
+const savingCompany = ref(false)
+const uploadingLogo = ref(false)
+
+async function fetchCompanyProfile() {
+  loadingCompany.value = true
+  try {
+    const res = await $fetch<{ success: boolean, data: Record<string, any> }>('/api/app-settings')
+    if (res.data?.companyProfile) {
+      companyProfile.value = { ...companyProfile.value, ...res.data.companyProfile }
+    }
+  } catch (e: any) {
+    toast.error('Failed to load company profile', { description: e?.message })
+  } finally { loadingCompany.value = false }
+}
+
+async function saveCompanyProfile() {
+  savingCompany.value = true
+  try {
+    await $fetch('/api/app-settings', {
+      method: 'POST',
+      body: { key: 'companyProfile', value: companyProfile.value, description: 'Company profile information' },
+    })
+    toast.success('Company profile saved')
+  } catch (e: any) {
+    toast.error('Save failed', { description: e?.message })
+  } finally { savingCompany.value = false }
+}
+
+async function handleLogoUpload(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  // Validate
+  if (!file.type.startsWith('image/')) {
+    toast.error('Please select an image file')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('Image must be under 5MB')
+    return
+  }
+
+  uploadingLogo.value = true
+  try {
+    // Convert to base64 data URL
+    const reader = new FileReader()
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+
+    const res = await $fetch<{ success: boolean, url: string }>('/api/upload/company-logo', {
+      method: 'POST',
+      body: { file: dataUrl },
+    })
+    companyProfile.value.logo = res.url
+    toast.success('Logo uploaded')
+  } catch (e: any) {
+    toast.error('Upload failed', { description: e?.message })
+  } finally {
+    uploadingLogo.value = false
+    input.value = '' // reset file input
+  }
+}
+
 const tabs = [
   { id: 'skill-bonus', label: 'Skill Bonus', icon: 'i-lucide-trophy' },
   { id: 'workspaces', label: 'Workspaces', icon: 'i-lucide-network' },
+  { id: 'company', label: 'Company', icon: 'i-lucide-building-2' },
 ]
 
 // ─── Fetch ───────────────────────────────────────────────
@@ -101,6 +198,7 @@ async function fetchWorkspaces() {
 onMounted(() => {
   fetchRecords()
   fetchWorkspaces()
+  fetchCompanyProfile()
 })
 
 // ─── Open modals ─────────────────────────────────────────
@@ -240,6 +338,13 @@ const ROUTE_CAPS: Record<string, { ops: string[], icon: string }> = {
   '/reports/sales': { ops: ['read'], icon: 'i-lucide-trending-up' },
   '/reports/financial': { ops: ['read'], icon: 'i-lucide-pie-chart' },
   '/admin/general-settings': { ops: ['read', 'update'], icon: 'i-lucide-settings' },
+  '/crm/customers': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-contact' },
+  '/crm/appointments': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-calendar-check' },
+  '/crm/fast-quotes': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-zap' },
+  '/crm/flooring-estimate': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-ruler' },
+  '/crm/subscribers': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-mail-check' },
+  '/crm/conditional-logic': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-split' },
+  '/crm/contracts': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-file-signature' },
   '/external/stain-sign-off': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-stamp' },
 }
 
@@ -615,6 +720,180 @@ const WpIconsList = [
                     </Button>
                  </div>
               </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ═══════ COMPANY TAB ═══════ -->
+        <template v-else-if="activeTab === 'company'">
+          <div v-if="loadingCompany" class="space-y-4">
+            <div class="h-32 bg-muted/60 rounded-xl animate-pulse" />
+            <div class="grid grid-cols-2 gap-4">
+              <div v-for="i in 6" :key="i" class="h-16 bg-muted/40 rounded-lg animate-pulse" />
+            </div>
+          </div>
+
+          <div v-else class="space-y-6">
+            <!-- Logo Section -->
+            <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
+              <div class="px-5 py-4 border-b border-border/50 bg-muted/20">
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                  <Icon name="i-lucide-image" class="size-4 text-primary" />
+                  Company Logo
+                </h3>
+                <p class="text-xs text-muted-foreground mt-0.5">Upload your company logo for documents and letterheads</p>
+              </div>
+              <div class="p-5 flex items-center gap-6">
+                <div class="relative group">
+                  <div class="size-24 rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center bg-muted/20 overflow-hidden transition-all group-hover:border-primary/40">
+                    <img v-if="companyProfile.logo" :src="companyProfile.logo" alt="Company Logo" class="size-full object-contain p-2" />
+                    <Icon v-else name="i-lucide-building-2" class="size-10 text-muted-foreground/30" />
+                  </div>
+                  <div v-if="uploadingLogo" class="absolute inset-0 rounded-xl bg-background/80 flex items-center justify-center">
+                    <Icon name="i-lucide-loader-circle" class="size-6 text-primary animate-spin" />
+                  </div>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <label class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold cursor-pointer hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+                    <Icon name="i-lucide-upload" class="size-3.5" />
+                    Upload Logo
+                    <input type="file" accept="image/*" class="sr-only" @change="handleLogoUpload" />
+                  </label>
+                  <button v-if="companyProfile.logo" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors" @click="companyProfile.logo = ''">
+                    <Icon name="i-lucide-trash-2" class="size-3" />
+                    Remove
+                  </button>
+                  <p class="text-[10px] text-muted-foreground">PNG, JPG or SVG. Max 5MB.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Company Info -->
+            <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
+              <div class="px-5 py-4 border-b border-border/50 bg-muted/20">
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                  <Icon name="i-lucide-building-2" class="size-4 text-primary" />
+                  Company Information
+                </h3>
+                <p class="text-xs text-muted-foreground mt-0.5">This information appears on contracts, invoices, and estimates</p>
+              </div>
+              <div class="p-5 space-y-5">
+                <!-- Company Name -->
+                <div class="flex flex-col gap-1.5">
+                  <Label for="co-name" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company Name</Label>
+                  <Input id="co-name" v-model="companyProfile.name" placeholder="Ann Arbor Hardwoods LLC" class="h-10 text-sm font-medium" />
+                </div>
+
+                <!-- Address Row -->
+                <div class="flex flex-col gap-1.5">
+                  <Label for="co-address" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Street Address</Label>
+                  <Input id="co-address" v-model="companyProfile.address" placeholder="2232 South Main Street" class="h-10 text-sm" />
+                </div>
+
+                <!-- City / State / Zip -->
+                <div class="grid grid-cols-5 gap-3">
+                  <div class="col-span-3 flex flex-col gap-1.5">
+                    <Label for="co-city" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">City</Label>
+                    <Input id="co-city" v-model="companyProfile.city" placeholder="Ann Arbor" class="h-10 text-sm" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <Label for="co-state" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">State</Label>
+                    <Input id="co-state" v-model="companyProfile.state" placeholder="MI" class="h-10 text-sm" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <Label for="co-zip" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Zip</Label>
+                    <Input id="co-zip" v-model="companyProfile.zip" placeholder="48104" class="h-10 text-sm" />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <!-- Phone Numbers -->
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="flex flex-col gap-1.5">
+                    <Label for="co-phone1" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      <Icon name="i-lucide-phone" class="size-3 inline mr-1" />
+                      Primary Phone
+                    </Label>
+                    <Input id="co-phone1" v-model="companyProfile.phone1" placeholder="(734) 604-3786" class="h-10 text-sm tabular-nums" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <Label for="co-phone2" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      <Icon name="i-lucide-phone" class="size-3 inline mr-1" />
+                      Secondary Phone
+                    </Label>
+                    <Input id="co-phone2" v-model="companyProfile.phone2" placeholder="(734) 709-1023" class="h-10 text-sm tabular-nums" />
+                  </div>
+                </div>
+
+                <!-- Website & Email -->
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="flex flex-col gap-1.5">
+                    <Label for="co-website" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      <Icon name="i-lucide-globe" class="size-3 inline mr-1" />
+                      Website
+                    </Label>
+                    <Input id="co-website" v-model="companyProfile.website" placeholder="www.annarborhardwoods.com" class="h-10 text-sm" />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    <Label for="co-email" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      <Icon name="i-lucide-mail" class="size-3 inline mr-1" />
+                      Email
+                    </Label>
+                    <Input id="co-email" v-model="companyProfile.email" placeholder="quote@annarborhardwoods.com" class="h-10 text-sm" />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <!-- License -->
+                <div class="flex flex-col gap-1.5">
+                  <Label for="co-license" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <Icon name="i-lucide-shield-check" class="size-3 inline mr-1" />
+                    Builder's License Number
+                  </Label>
+                  <Input id="co-license" v-model="companyProfile.licenseNumber" placeholder="242600350" class="h-10 text-sm font-mono" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview Card -->
+            <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
+              <div class="px-5 py-4 border-b border-border/50 bg-muted/20">
+                <h3 class="text-sm font-bold flex items-center gap-2">
+                  <Icon name="i-lucide-eye" class="size-4 text-primary" />
+                  Letterhead Preview
+                </h3>
+              </div>
+              <div class="p-6 bg-white dark:bg-zinc-900">
+                <div class="flex items-start gap-6">
+                  <div v-if="companyProfile.logo" class="size-20 shrink-0">
+                    <img :src="companyProfile.logo" alt="Logo" class="size-full object-contain" />
+                  </div>
+                  <div v-else class="size-20 shrink-0 rounded-xl bg-muted/40 border border-dashed border-border flex items-center justify-center">
+                    <Icon name="i-lucide-image" class="size-8 text-muted-foreground/30" />
+                  </div>
+                  <div class="text-right flex-1">
+                    <p class="text-base font-bold text-emerald-700 dark:text-emerald-400">{{ companyProfile.name || 'Company Name' }}</p>
+                    <p class="text-xs font-semibold text-foreground/80">{{ companyProfile.address }}</p>
+                    <p class="text-xs font-semibold text-foreground/80">{{ companyProfile.city }}, {{ companyProfile.state }}. {{ companyProfile.zip }}</p>
+                    <p class="text-xs font-bold text-foreground/80">{{ companyProfile.phone1 }}</p>
+                    <p v-if="companyProfile.phone2" class="text-xs font-bold text-foreground/80">{{ companyProfile.phone2 }}</p>
+                    <p class="text-xs font-bold text-foreground/80">{{ companyProfile.website }}</p>
+                    <p class="text-xs font-bold text-foreground/80">{{ companyProfile.email }}</p>
+                    <p v-if="companyProfile.licenseNumber" class="text-xs font-bold text-foreground/80">Builder's License Number: {{ companyProfile.licenseNumber }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Save -->
+            <div class="flex justify-end">
+              <Button :disabled="savingCompany" class="h-10 px-6 shadow-lg shadow-primary/20" @click="saveCompanyProfile">
+                <Icon v-if="savingCompany" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+                <Icon v-else name="i-lucide-save" class="mr-2 size-4" />
+                Save Company Profile
+              </Button>
             </div>
           </div>
         </template>

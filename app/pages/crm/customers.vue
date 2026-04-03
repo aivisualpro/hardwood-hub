@@ -68,6 +68,7 @@ const tabs = [
   { id: 'fast-quote', label: 'Fast Quotes', icon: 'i-lucide-zap' },
   { id: 'flooring-estimate', label: 'Estimates', icon: 'i-lucide-ruler' },
   { id: 'subscriber', label: 'Subscribers', icon: 'i-lucide-mail-check' },
+  { id: 'conditional-logic', label: 'Conditional Logic', icon: 'i-lucide-split' },
 ]
 
 function getCount(id: string) {
