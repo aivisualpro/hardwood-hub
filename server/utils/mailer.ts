@@ -26,6 +26,7 @@ export async function sendMail(opts: {
   subject: string
   html: string
   from?: string
+  attachments?: any[]
 }) {
   const config = useRuntimeConfig()
   const mailer = getMailer()
@@ -35,5 +36,6 @@ export async function sendMail(opts: {
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
+    attachments: opts.attachments,
   })
 }

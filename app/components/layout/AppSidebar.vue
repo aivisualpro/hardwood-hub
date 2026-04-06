@@ -37,14 +37,14 @@ function isAllowed(link?: string) {
   return allowed.includes(link)
 }
 
-// Unread Activities Count
-const { data: unreadCountRes, refresh: refreshUnread } = await useFetch<any>('/api/activities/unread-count')
-const unreadCount = computed(() => unreadCountRes.value?.count || 0)
+// Nav Counts
+const { data: navCountsRes, refresh: refreshNavCounts } = await useFetch<any>('/api/nav/counts')
+const navCounts = computed<Record<string, number>>(() => navCountsRes.value?.data || {})
 
 // Poll for updates every 60 seconds
 let pollInterval: any
 onMounted(() => {
-  pollInterval = setInterval(refreshUnread, 60000)
+  pollInterval = setInterval(refreshNavCounts, 60000)
 })
 onUnmounted(() => {
   clearInterval(pollInterval)
@@ -55,8 +55,9 @@ const filteredNavMenu = computed(() => {
     ...group,
     items: group.items.map((item: any) => {
       const newItem = { ...item }
-      if (newItem.link === '/admin/activities' && unreadCount.value > 0) {
-        newItem.badge = unreadCount.value
+      const count = navCounts.value[newItem.link]
+      if (count && count > 0) {
+        newItem.badge = count
       }
       return newItem
     }).filter((item: any) => isAllowed(item.link))
@@ -70,12 +71,26 @@ const flattenedNavItems = computed(() => {
 const filteredNavMenuConcepts = computed(() => {
   return {
     ...navMenuConcepts,
-    items: navMenuConcepts.items.filter((item: any) => isAllowed(item.link))
+    items: navMenuConcepts.items.map((item: any) => {
+      const newItem = { ...item }
+      const count = navCounts.value[newItem.link]
+      if (count && count > 0) {
+        newItem.badge = count
+      }
+      return newItem
+    }).filter((item: any) => isAllowed(item.link))
   }
 })
 
 const filteredNavMenuBottom = computed(() => {
-  return navMenuBottom.filter((item: any) => isAllowed(item.link))
+  return navMenuBottom.map((item: any) => {
+    const newItem = { ...item }
+    const count = navCounts.value[newItem.link]
+    if (count && count > 0) {
+      newItem.badge = count
+    }
+    return newItem
+  }).filter((item: any) => isAllowed(item.link))
 })
 
 const userCookie = useCookie<{ employee: string, email: string, position: string, profileImage: string, workspace?: string } | null>('hardwood_user')

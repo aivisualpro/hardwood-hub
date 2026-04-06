@@ -31,6 +31,9 @@ export default defineEventHandler(async (event) => {
   contract.signingToken = signingToken
   contract.status = 'sent'
   contract.sentAt = new Date()
+  if (overrideEmail?.trim()) {
+    contract.customerEmail = overrideEmail.trim()
+  }
   await contract.save()
 
   // Build the signing URL

@@ -84,6 +84,7 @@
     "dagre": "^0.8.5",
     "embla-carousel": "^8.6.0",
     "embla-carousel-vue": "^8.6.0",
+    "html-pdf-node": "^1.0.8",
     "mongoose": "^8.2.1",
     "nanoid": "^5.1.6",
     "nodemailer": "^8.0.4",

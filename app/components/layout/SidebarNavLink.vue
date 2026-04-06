@@ -29,7 +29,7 @@ const displayTitle = computed(() =>
           <span v-if="item.new" class="rounded-md bg-[#adfa1d] px-1.5 py-0.5 text-xs text-black leading-none no-underline group-hover:no-underline">
             New
           </span>
-          <span v-if="item.badge" class="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white leading-none font-bold">
+          <span v-if="item.badge" class="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground leading-none font-bold">
             {{ item.badge }}
           </span>
         </NuxtLink>

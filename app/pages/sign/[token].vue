@@ -49,12 +49,29 @@ onMounted(fetchContract)
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center justify-center min-h-screen">
-      <div class="flex flex-col items-center gap-4">
-        <div class="size-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center animate-pulse">
-          <svg class="size-6 text-emerald-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+    <div v-if="loading" class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div class="mb-8 flex items-start justify-between gap-4 animate-pulse">
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <div class="size-8 rounded-lg bg-slate-200"></div>
+            <div class="h-3 w-32 bg-slate-200 rounded"></div>
+          </div>
+          <div class="h-6 sm:h-8 w-64 sm:w-96 bg-slate-200 rounded mb-3"></div>
+          <div class="h-4 w-48 bg-slate-200 rounded"></div>
         </div>
-        <p class="text-sm text-slate-500 font-medium">Loading contract...</p>
+        <div class="h-16 sm:h-20 w-32 sm:w-48 bg-slate-200 rounded"></div>
+      </div>
+      <div class="bg-white/50 rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8 p-6 sm:p-8 animate-pulse">
+        <div class="space-y-4">
+          <div class="h-4 w-full bg-slate-100 rounded"></div>
+          <div class="h-4 w-[90%] bg-slate-100 rounded"></div>
+          <div class="h-4 w-[95%] bg-slate-100 rounded"></div>
+          <div class="h-4 w-[80%] bg-slate-100 rounded"></div>
+          <div class="w-full h-px bg-slate-100 my-6"></div>
+          <div class="h-4 w-full bg-slate-100 rounded"></div>
+          <div class="h-4 w-[85%] bg-slate-100 rounded"></div>
+          <div class="h-4 w-[75%] bg-slate-100 rounded"></div>
+        </div>
       </div>
     </div>
 
@@ -102,7 +119,7 @@ onMounted(fetchContract)
           </p>
         </div>
         <div v-if="contractData.company?.logo" class="shrink-0">
-          <img :src="contractData.company.logo" alt="Company Logo" class="h-12 object-contain" />
+          <img :src="contractData.company.logo" alt="Company Logo" class="h-16 sm:h-20 max-w-[200px] object-contain" />
         </div>
       </div>
 
