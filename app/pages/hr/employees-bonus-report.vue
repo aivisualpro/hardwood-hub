@@ -9,7 +9,7 @@ interface Employee { _id: string; employee: string; profileImage: string; positi
 interface SkillNode { _id: string; name: string; isRequired: boolean }
 interface SubCatNode { _id: string; name: string; skills: SkillNode[]; bonusRules: any[] }
 interface CatNode { _id: string; name: string; color: string; subCategories: SubCatNode[] }
-interface PerfRecord { _id: string; employee: string; skill: string; currentSkillLevel: string; createdBy: string }
+interface PerfRecord { _id: string; employee: string; skill: string; currentSkillLevel: string; createdBy: string; createdByName?: string; createdAt?: string }
 
 // ─── State ───────────────────────────────────────────────
 const employees = ref<Employee[]>([])
@@ -74,10 +74,17 @@ function evaluateRules(rulesToCheck: any[], skillsInSub: any[], skillReviewsMap:
 // ─── Per-Employee Bonus Report ───────────────────────────
 type SkillStatus = 'mastered' | 'proficient' | 'needs' | 'unreviewed'
 
+interface SkillReviewInfo {
+  reviewer: string
+  level: string
+  date: string
+}
+
 interface SkillStatusItem {
   id: string
   name: string
   status: SkillStatus
+  reviews: SkillReviewInfo[]
 }
 
 interface EmpBonusData {
@@ -155,7 +162,14 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
             else if (h.currentSkillLevel === 'Proficient') status = 'proficient'
             else status = 'needs'
           }
-          return { id: sk._id, name: sk.name, status }
+          // Gather all reviews for this skill
+          const rawReviews = skillReviewsMap.get(sk._id) || []
+          const reviews: SkillReviewInfo[] = rawReviews.map(r => ({
+            reviewer: r.createdByName || 'Unknown',
+            level: r.currentSkillLevel || '',
+            date: r.createdAt || '',
+          }))
+          return { id: sk._id, name: sk.name, status, reviews }
         })
 
         for (const sk of skillStatuses) {
@@ -286,6 +300,11 @@ function toggleSort(col: 'name' | 'bonus' | 'progress') {
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
+}
+
+function fmtDate(d: string) {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ─── Expanded category accordion per employee ────────────
@@ -705,9 +724,28 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
                                 :class="skillBarColor[sk.status]"
                               >
                                 <!-- Tooltip on hover -->
-                                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 rounded-md bg-popover border border-border shadow-lg text-[10px] font-medium whitespace-nowrap opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none z-20">
-                                  <span>{{ sk.name }}</span>
-                                  <span class="ml-1.5 capitalize opacity-60">{{ sk.status === 'needs' ? 'needs imp.' : sk.status }}</span>
+                                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 rounded-lg bg-popover border border-border shadow-xl opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none z-20 min-w-[180px] max-w-[260px]">
+                                  <!-- Skill name header -->
+                                  <div class="px-3 py-1.5 border-b border-border/50">
+                                    <p class="text-[11px] font-semibold truncate">{{ sk.name }}</p>
+                                    <p class="text-[9px] capitalize" :class="sk.status === 'mastered' ? 'text-emerald-500' : sk.status === 'proficient' ? 'text-blue-500' : sk.status === 'needs' ? 'text-amber-500' : 'text-muted-foreground'">{{ sk.status === 'needs' ? 'Needs Improvement' : sk.status }}</p>
+                                  </div>
+                                  <!-- Reviewer list -->
+                                  <div v-if="sk.reviews.length" class="px-3 py-1.5 space-y-1">
+                                    <div v-for="(rev, ri) in sk.reviews" :key="ri" class="flex items-center gap-2 text-[10px]">
+                                      <div
+                                        class="size-4 rounded-full flex items-center justify-center text-[7px] font-bold shrink-0"
+                                        :class="rev.level === 'Mastered' ? 'bg-emerald-500/20 text-emerald-500' : rev.level === 'Proficient' ? 'bg-blue-500/20 text-blue-500' : 'bg-amber-500/20 text-amber-500'"
+                                      >
+                                        {{ rev.reviewer.charAt(0).toUpperCase() }}
+                                      </div>
+                                      <span class="flex-1 truncate font-medium">{{ rev.reviewer }}</span>
+                                      <span class="text-muted-foreground/60 shrink-0 tabular-nums">{{ fmtDate(rev.date) }}</span>
+                                    </div>
+                                  </div>
+                                  <div v-else class="px-3 py-2 text-[10px] text-muted-foreground/50 italic">
+                                    No reviews yet
+                                  </div>
                                 </div>
                               </div>
                             </div>
