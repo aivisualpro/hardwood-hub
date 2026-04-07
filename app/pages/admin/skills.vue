@@ -787,13 +787,13 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border transition-all cursor-pointer shrink-0"
                 :class="sub.bonusRules?.length
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                  : 'sm:opacity-0 sm:group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted hidden sm:flex'"
+                  : 'sm:opacity-0 sm:group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted'"
                 @click.stop="openBonusRules(sub)"
                 @keydown.enter.stop="openBonusRules(sub)"
               >
                 <Icon name="i-lucide-trophy" class="size-2.5 sm:size-3" />
                 <span v-if="sub.bonusRules?.length">{{ sub.bonusRules.length }} rule{{ sub.bonusRules.length !== 1 ? 's' : '' }}</span>
-                <span v-else class="hidden sm:inline">Bonus</span>
+                <span v-else>Bonus</span>
               </div>
 
               <!-- Predecessor picker trigger -->
@@ -809,7 +809,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                   class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border transition-all cursor-pointer"
                   :class="sub.predecessor
                     ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
-                    : 'sm:opacity-0 sm:group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted hidden sm:flex'"
+                    : 'sm:opacity-0 sm:group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted'"
                   @click.stop="editingPredecessorSubId = editingPredecessorSubId === sub._id ? null : sub._id; predecessorSearch = ''"
                 >
                   <Icon name="i-lucide-git-branch" class="size-2.5 sm:size-3" />
@@ -829,7 +829,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 >
                   <div
                     v-if="editingPredecessorSubId === sub._id"
-                    class="absolute right-0 top-full mt-1.5 z-50 w-72 rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
+                    class="absolute right-0 sm:right-0 left-0 sm:left-auto top-full mt-1.5 z-50 w-[calc(100vw-2rem)] sm:w-72 rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
                   >
                     <!-- Search -->
                     <div class="p-2 border-b border-border/50">
@@ -838,7 +838,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                         <input
                           v-model="predecessorSearch"
                           placeholder="Search sub-categories…"
-                          class="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-muted/50 border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                          class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-sm sm:text-xs rounded-md bg-muted/50 border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/50"
                           @click.stop
                         />
                       </div>
@@ -849,7 +849,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                       <!-- Clear predecessor -->
                       <div
                         v-if="sub.predecessor"
-                        class="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 cursor-pointer transition-colors"
+                        class="flex items-center gap-2 px-3 py-2.5 sm:py-2 text-xs text-muted-foreground hover:bg-muted/50 cursor-pointer transition-colors"
                         @click.stop="savePredecessor(sub._id, null)"
                       >
                         <Icon name="i-lucide-x" class="size-3.5 text-destructive/70" />
@@ -860,7 +860,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                       <div
                         v-for="opt in filteredPredecessors.filter(s => s._id !== sub._id)"
                         :key="opt._id"
-                        class="flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors hover:bg-muted/50"
+                        class="flex items-center gap-2 px-3 py-2.5 sm:py-2 cursor-pointer transition-colors hover:bg-muted/50"
                         :class="sub.predecessor === opt._id ? 'bg-primary/10' : ''"
                         @click.stop="savePredecessor(sub._id, opt._id)"
                       >

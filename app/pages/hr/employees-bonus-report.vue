@@ -72,6 +72,14 @@ function evaluateRules(rulesToCheck: any[], skillsInSub: any[], skillReviewsMap:
 }
 
 // ─── Per-Employee Bonus Report ───────────────────────────
+type SkillStatus = 'mastered' | 'proficient' | 'needs' | 'unreviewed'
+
+interface SkillStatusItem {
+  id: string
+  name: string
+  status: SkillStatus
+}
+
 interface EmpBonusData {
   employee: Employee
   totalBonus: number
@@ -79,11 +87,13 @@ interface EmpBonusData {
   totalSkills: number
   proficientCount: number
   masteredCount: number
+  needsCount: number
   categories: {
     id: string; name: string; bonus: number; assessed: number; total: number
     subCategories: {
       id: string; name: string; bonus: number; assessed: number; total: number
-      hasOverride: boolean; proficient: number; mastered: number
+      hasOverride: boolean; proficient: number; mastered: number; needs: number
+      skills: SkillStatusItem[]
     }[]
   }[]
 }
@@ -117,6 +127,7 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
     let totalAssessed = 0
     let proficientCount = 0
     let masteredCount = 0
+    let needsCount = 0
 
     const categories = tree.value.map(cat => {
       let catBonus = 0
@@ -129,14 +140,25 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
         let subProficient = 0
         let subMastered = 0
         let subAssessed = 0
+        let subNeeds = 0
 
-        for (const sk of sub.skills) {
+        // Build per-skill status for uptime bar
+        const skillStatuses: SkillStatusItem[] = sub.skills.map(sk => {
           const h = highestMap.get(sk._id)
+          let status: SkillStatus = 'unreviewed'
           if (h) {
-            subAssessed++
-            if (h.currentSkillLevel === 'Mastered') subMastered++
-            else if (h.currentSkillLevel === 'Proficient') subProficient++
+            if (h.currentSkillLevel === 'Mastered') status = 'mastered'
+            else if (h.currentSkillLevel === 'Proficient') status = 'proficient'
+            else status = 'needs'
           }
+          return { id: sk._id, name: sk.name, status }
+        })
+
+        for (const sk of skillStatuses) {
+          if (sk.status !== 'unreviewed') subAssessed++
+          if (sk.status === 'mastered') subMastered++
+          else if (sk.status === 'proficient') subProficient++
+          else if (sk.status === 'needs') subNeeds++
         }
 
         // Calculate bonus
@@ -151,6 +173,7 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
         catAssessed += subAssessed
         proficientCount += subProficient
         masteredCount += subMastered
+        needsCount += subNeeds
 
         return {
           id: sub._id,
@@ -161,6 +184,8 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
           hasOverride: (sub.bonusRules || []).length > 0,
           proficient: subProficient,
           mastered: subMastered,
+          needs: subNeeds,
+          skills: skillStatuses,
         }
       })
 
@@ -177,6 +202,7 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
       totalSkills: totalSystemSkills,
       proficientCount,
       masteredCount,
+      needsCount,
       categories,
     }
   })
@@ -223,6 +249,14 @@ function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
 }
 
+// ─── Expanded category accordion per employee ────────────
+const expandedCats = ref<Set<string>>(new Set())
+function toggleCat(empId: string, catId: string) {
+  const key = `${empId}::${catId}`
+  if (expandedCats.value.has(key)) expandedCats.value.delete(key)
+  else expandedCats.value.add(key)
+}
+
 // Category color palette
 const catPalette = [
   { bg: 'bg-violet-500/10', text: 'text-violet-500', border: 'border-violet-500/20', dot: 'bg-violet-500', bar: 'bg-violet-500' },
@@ -233,6 +267,22 @@ const catPalette = [
   { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/20', dot: 'bg-blue-500', bar: 'bg-blue-500' },
 ]
 function pal(idx: number) { return catPalette[idx % catPalette.length]! }
+
+// Uptime bar color per skill status
+const skillBarColor: Record<SkillStatus, string> = {
+  mastered: 'bg-emerald-500',
+  proficient: 'bg-blue-500',
+  needs: 'bg-amber-500',
+  unreviewed: 'bg-zinc-700',
+}
+
+// Sub-category overall status indicator
+function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all-mastered' | 'has-progress' | 'none' {
+  if (sub.total === 0) return 'none'
+  if (sub.mastered === sub.total) return 'all-mastered'
+  if (sub.assessed > 0) return 'has-progress'
+  return 'none'
+}
 </script>
 
 <template>
@@ -475,77 +525,163 @@ function pal(idx: number) { return catPalette[idx % catPalette.length]! }
             </div>
           </div>
 
-          <!-- ═══════ EXPANDED DETAIL ═══════ -->
+          <!-- ═══════ EXPANDED DETAIL — Signal-style ═══════ -->
           <Transition
             enter-active-class="transition-all duration-300 ease-out"
             enter-from-class="opacity-0 max-h-0"
-            enter-to-class="opacity-100 max-h-[2000px]"
+            enter-to-class="opacity-100 max-h-[4000px]"
             leave-active-class="transition-all duration-200 ease-in"
-            leave-from-class="opacity-100 max-h-[2000px]"
+            leave-from-class="opacity-100 max-h-[4000px]"
             leave-to-class="opacity-0 max-h-0"
           >
             <div v-if="expandedRows.has(row.employee._id)" class="overflow-hidden">
               <div class="px-3 sm:px-5 pb-3 sm:pb-5 pt-0">
-                <div class="rounded-xl border border-border/40 bg-muted/10 overflow-hidden">
-                  <!-- Category sections -->
-                  <div v-for="(cat, catIdx) in row.categories" :key="cat.id" class="border-b border-border/20 last:border-0">
-                    <!-- Category header -->
-                    <div class="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-muted/20">
-                      <div class="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                        <div class="size-5 sm:size-6 rounded-md flex items-center justify-center border shrink-0" :class="[pal(catIdx).bg, pal(catIdx).border]">
-                          <Icon name="i-lucide-layers" class="size-2.5 sm:size-3" :class="pal(catIdx).text" />
-                        </div>
-                        <span class="text-xs sm:text-sm font-semibold truncate" :class="pal(catIdx).text">{{ cat.name }}</span>
-                        <span class="text-[9px] sm:text-[10px] text-muted-foreground shrink-0">{{ cat.assessed }}/{{ cat.total }}</span>
+                <div class="space-y-3">
+
+                  <!-- ── Category accordion cards ── -->
+                  <div
+                    v-for="(cat, catIdx) in row.categories"
+                    :key="cat.id"
+                    class="rounded-xl border overflow-hidden transition-all hover:shadow-sm"
+                    :class="pal(catIdx).border"
+                  >
+                    <!-- Category header (clickable accordion) -->
+                    <div
+                      role="button"
+                      tabindex="0"
+                      class="flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer select-none hover:bg-muted/20 transition-colors"
+                      @click.stop="toggleCat(row.employee._id, cat.id)"
+                    >
+                      <Icon
+                        name="i-lucide-chevron-right"
+                        class="size-3.5 text-muted-foreground transition-transform duration-200 shrink-0"
+                        :class="expandedCats.has(`${row.employee._id}::${cat.id}`) ? 'rotate-90' : ''"
+                      />
+                      <div class="size-6 rounded-lg flex items-center justify-center shrink-0" :class="pal(catIdx).bg">
+                        <Icon name="i-lucide-layers" class="size-3" :class="pal(catIdx).text" />
                       </div>
-                      <div v-if="cat.bonus > 0" class="text-[10px] sm:text-xs font-bold text-amber-500 tabular-nums shrink-0">
-                        +{{ fmt(cat.bonus) }}
+                      <div class="flex-1 min-w-0">
+                        <span class="text-xs sm:text-sm font-semibold" :class="pal(catIdx).text">{{ cat.name }}</span>
+                        <span class="text-[9px] sm:text-[10px] text-muted-foreground ml-2">{{ cat.subCategories.length }} sub-categories</span>
+                      </div>
+                      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                        <!-- Mini progress bar -->
+                        <div class="hidden sm:flex items-center gap-1.5">
+                          <div class="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                              class="h-full rounded-full transition-all duration-700"
+                              :class="pal(catIdx).bar"
+                              :style="{ width: `${cat.total ? (cat.assessed / cat.total) * 100 : 0}%` }"
+                            />
+                          </div>
+                          <span class="text-[9px] font-mono text-muted-foreground tabular-nums">{{ cat.assessed }}/{{ cat.total }}</span>
+                        </div>
+                        <div v-if="cat.bonus > 0" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 text-[10px] sm:text-xs tabular-nums">
+                          <Icon name="i-lucide-coins" class="size-2.5" />
+                          {{ fmt(cat.bonus) }}
+                        </div>
+                        <span v-else class="text-[10px] text-muted-foreground/30">$0.00</span>
                       </div>
                     </div>
 
-                    <!-- Sub-category rows -->
-                    <div class="divide-y divide-border/10">
-                      <div
-                        v-for="sub in cat.subCategories"
-                        :key="sub.id"
-                        class="flex flex-col sm:grid sm:grid-cols-[1fr_80px_60px_60px_90px] gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 sm:items-center text-xs hover:bg-muted/10 transition-colors"
-                      >
-                        <!-- Sub name -->
-                        <div class="flex items-center gap-2 min-w-0">
-                          <span class="size-1.5 rounded-full shrink-0" :class="pal(catIdx).dot" />
-                          <span class="truncate font-medium text-[11px] sm:text-xs">{{ sub.name }}</span>
-                          <span v-if="sub.hasOverride" class="inline-flex items-center gap-0.5 text-[7px] sm:text-[8px] font-semibold px-1 py-0.5 rounded bg-violet-500/10 text-violet-500 border border-violet-500/20 shrink-0">
-                            <Icon name="i-lucide-sparkles" class="size-1.5 sm:size-2" />
-                            Custom
-                          </span>
-                        </div>
-                        <!-- Mobile: stats inline -->
-                        <div class="flex items-center gap-3 sm:contents pl-3.5">
-                          <div class="text-[10px] sm:text-xs text-muted-foreground tabular-nums sm:text-center">
-                            {{ sub.assessed }}/{{ sub.total }}
-                          </div>
-                          <div class="sm:text-center">
-                            <span v-if="sub.proficient" class="font-semibold text-blue-500 tabular-nums text-[10px] sm:text-xs">P:{{ sub.proficient }}</span>
-                            <span v-else class="text-muted-foreground/30 text-[10px] sm:text-xs">-</span>
-                          </div>
-                          <div class="sm:text-center">
-                            <span v-if="sub.mastered" class="font-semibold text-emerald-500 tabular-nums text-[10px] sm:text-xs">M:{{ sub.mastered }}</span>
-                            <span v-else class="text-muted-foreground/30 text-[10px] sm:text-xs">-</span>
-                          </div>
-                          <div class="sm:text-right ml-auto sm:ml-0">
-                            <span v-if="sub.bonus > 0" class="inline-flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 tabular-nums text-[10px] sm:text-xs">
-                              <Icon name="i-lucide-coins" class="size-2 sm:size-2.5" />
-                              {{ fmt(sub.bonus) }}
-                            </span>
-                            <span v-else class="text-muted-foreground/30 text-[10px]">—</span>
+                    <!-- Category expanded content — Signal uptime-style service cards -->
+                    <Transition
+                      enter-active-class="transition-all duration-200 ease-out"
+                      enter-from-class="opacity-0 -translate-y-1"
+                      enter-to-class="opacity-100 translate-y-0"
+                      leave-active-class="transition-all duration-150 ease-in"
+                      leave-from-class="opacity-100 translate-y-0"
+                      leave-to-class="opacity-0 -translate-y-1"
+                    >
+                      <div v-if="expandedCats.has(`${row.employee._id}::${cat.id}`)" class="border-t border-border/20">
+                        <div class="divide-y divide-border/15">
+                          <div
+                            v-for="sub in cat.subCategories"
+                            :key="sub.id"
+                            class="px-3 sm:px-5 py-3 sm:py-4 space-y-2.5 hover:bg-muted/5 transition-colors"
+                          >
+                            <!-- Service header row -->
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <div class="flex items-center gap-2.5">
+                                <span
+                                  class="size-2.5 rounded-full shrink-0"
+                                  :class="subStatus(sub) === 'all-mastered'
+                                    ? 'bg-emerald-500 ring-2 ring-emerald-500/30'
+                                    : subStatus(sub) === 'has-progress'
+                                      ? 'bg-blue-500 ring-2 ring-blue-500/30'
+                                      : 'bg-zinc-600'"
+                                />
+                                <div>
+                                  <h4 class="text-[13px] font-semibold">{{ sub.name }}</h4>
+                                  <p class="text-[10px] font-mono text-muted-foreground/70">{{ sub.assessed }}/{{ sub.total }} skills assessed</p>
+                                </div>
+                              </div>
+                              <!-- Stats columns like Signal uptime cards -->
+                              <div class="flex items-center gap-4 sm:gap-5 text-xs">
+                                <div v-if="sub.mastered" class="text-center">
+                                  <p class="font-semibold text-emerald-500 tabular-nums">{{ sub.mastered }}</p>
+                                  <p class="text-[9px] text-muted-foreground">Mastered</p>
+                                </div>
+                                <div v-if="sub.proficient" class="text-center">
+                                  <p class="font-semibold text-blue-500 tabular-nums">{{ sub.proficient }}</p>
+                                  <p class="text-[9px] text-muted-foreground">Proficient</p>
+                                </div>
+                                <div v-if="sub.needs" class="text-center">
+                                  <p class="font-semibold text-amber-500 tabular-nums">{{ sub.needs }}</p>
+                                  <p class="text-[9px] text-muted-foreground">Needs Imp.</p>
+                                </div>
+                                <div class="text-center">
+                                  <p
+                                    class="font-semibold tabular-nums"
+                                    :class="sub.total ? (sub.assessed === sub.total ? 'text-emerald-500' : 'text-foreground') : 'text-muted-foreground'"
+                                  >
+                                    {{ sub.total ? Math.round((sub.assessed / sub.total) * 100) : 0 }}%
+                                  </p>
+                                  <p class="text-[9px] text-muted-foreground">Complete</p>
+                                </div>
+                                <div v-if="sub.bonus > 0" class="text-center">
+                                  <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 tabular-nums text-[11px]">
+                                    <Icon name="i-lucide-coins" class="size-2.5" />
+                                    {{ fmt(sub.bonus) }}
+                                  </span>
+                                </div>
+                                <div v-if="sub.hasOverride" class="shrink-0">
+                                  <span class="inline-flex items-center gap-0.5 text-[8px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-500 border border-violet-500/20">
+                                    <Icon name="i-lucide-sparkles" class="size-2" />
+                                    Custom
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- Uptime bar — each skill is a segment -->
+                            <div v-if="sub.skills.length" class="flex gap-[2px]">
+                              <div
+                                v-for="sk in sub.skills"
+                                :key="sk.id"
+                                class="h-7 flex-1 rounded-[3px] transition-all duration-500 relative group/bar cursor-default"
+                                :class="skillBarColor[sk.status]"
+                              >
+                                <!-- Tooltip on hover -->
+                                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 rounded-md bg-popover border border-border shadow-lg text-[10px] font-medium whitespace-nowrap opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none z-20">
+                                  <span>{{ sk.name }}</span>
+                                  <span class="ml-1.5 capitalize opacity-60">{{ sk.status === 'needs' ? 'needs imp.' : sk.status }}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <!-- Timeline labels under bar -->
+                            <div v-if="sub.skills.length" class="flex justify-between text-[9px] text-muted-foreground/40">
+                              <span>{{ sub.skills[0]?.name }}</span>
+                              <span>{{ sub.skills[sub.skills.length - 1]?.name }}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </Transition>
                   </div>
 
                   <!-- Expanded footer -->
-                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-muted/30 border-t border-border/30">
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-1">
                     <Button variant="ghost" size="sm" class="text-xs gap-1.5 h-8" @click="navigateTo(`/my-profile?employee=${row.employee._id}`)">
                       <Icon name="i-lucide-eye" class="size-3.5" />
                       View Profile
@@ -576,16 +712,20 @@ function pal(idx: number) { return catPalette[idx % catPalette.length]! }
       <!-- ═══════ LEGEND ═══════ -->
       <div v-if="!loading && filteredData.length" class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-[9px] sm:text-[10px] text-muted-foreground py-2">
         <div class="flex items-center gap-1.5">
-          <span class="size-2 sm:size-2.5 rounded-full bg-emerald-500" />
+          <span class="size-2 sm:size-2.5 rounded-sm bg-emerald-500" />
           Mastered
         </div>
         <div class="flex items-center gap-1.5">
-          <span class="size-2 sm:size-2.5 rounded-full bg-blue-500" />
+          <span class="size-2 sm:size-2.5 rounded-sm bg-blue-500" />
           Proficient
         </div>
         <div class="flex items-center gap-1.5">
-          <span class="size-2 sm:size-2.5 rounded-full bg-muted-foreground/30" />
+          <span class="size-2 sm:size-2.5 rounded-sm bg-amber-500" />
           Needs Imp.
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="size-2 sm:size-2.5 rounded-sm bg-zinc-700" />
+          Unreviewed
         </div>
         <div class="flex items-center gap-1.5">
           <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-violet-500/10 text-violet-500 border border-violet-500/20 text-[7px] sm:text-[8px] font-semibold">
