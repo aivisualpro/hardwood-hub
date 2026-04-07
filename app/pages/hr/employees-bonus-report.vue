@@ -84,15 +84,17 @@ interface EmpBonusData {
   employee: Employee
   totalBonus: number
   totalAssessed: number
+  totalRuleCompliant: number
   totalSkills: number
   proficientCount: number
   masteredCount: number
   needsCount: number
   categories: {
-    id: string; name: string; bonus: number; assessed: number; total: number
+    id: string; name: string; bonus: number; assessed: number; ruleCompliant: number; total: number
     subCategories: {
-      id: string; name: string; bonus: number; assessed: number; total: number
+      id: string; name: string; bonus: number; assessed: number; ruleCompliant: number; total: number
       hasOverride: boolean; proficient: number; mastered: number; needs: number
+      ruleLevel: string // e.g. 'Proficient', 'Mastered', or '' if no rules
       skills: SkillStatusItem[]
     }[]
   }[]
@@ -125,6 +127,7 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
 
     let totalBonus = 0
     let totalAssessed = 0
+    let totalRuleCompliant = 0
     let proficientCount = 0
     let masteredCount = 0
     let needsCount = 0
@@ -132,6 +135,7 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
     const categories = tree.value.map(cat => {
       let catBonus = 0
       let catAssessed = 0
+      let catRuleCompliant = 0
       let catTotal = 0
 
       const subCategories = cat.subCategories.map(sub => {
@@ -161,16 +165,47 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
           else if (sk.status === 'needs') subNeeds++
         }
 
+        // Determine applicable rules and target level
+        const overrideRules = sub.bonusRules || []
+        const rulesToUse = overrideRules.length > 0 ? overrideRules : generalRules.value
+
         // Calculate bonus
         let subBonus = 0
         if (totalSub > 0) {
-          const overrideRules = sub.bonusRules || []
-          const rulesToUse = overrideRules.length > 0 ? overrideRules : generalRules.value
           subBonus = evaluateRules(rulesToUse, sub.skills, skillReviewsMap)
+        }
+
+        // Determine rule-based completion: find the primary rule (highest bonus)
+        // and count how many skills meet its minimum level requirement
+        let ruleLevel = ''
+        let subRuleCompliant = subAssessed // fallback: any assessed = compliant
+        if (rulesToUse.length > 0) {
+          // Use the rule with the highest bonus as the target
+          const primaryRule = [...rulesToUse].sort((a, b) => (b.bonusAmount || 0) - (a.bonusAmount || 0))[0]!
+          const requiredLevelIdx = levelIndex(primaryRule.skillSet)
+          const requiredTimes = primaryRule.reviewedTimes || 1
+          const isUnique = primaryRule.supervisorCheck === 'Unique'
+          ruleLevel = primaryRule.skillSet || ''
+
+          // Count skills that meet the rule's requirements
+          subRuleCompliant = 0
+          for (const sk of sub.skills) {
+            const reviews = skillReviewsMap.get(sk._id) || []
+            const qualifying = reviews.filter(r => levelIndex(r.currentSkillLevel) >= requiredLevelIdx)
+            if (qualifying.length >= requiredTimes) {
+              if (isUnique) {
+                const uniqueReviewers = new Set(qualifying.map(r => r.createdBy))
+                if (uniqueReviewers.size >= requiredTimes) subRuleCompliant++
+              } else {
+                subRuleCompliant++
+              }
+            }
+          }
         }
 
         catBonus += subBonus
         catAssessed += subAssessed
+        catRuleCompliant += subRuleCompliant
         proficientCount += subProficient
         masteredCount += subMastered
         needsCount += subNeeds
@@ -180,25 +215,29 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
           name: sub.name,
           bonus: subBonus,
           assessed: subAssessed,
+          ruleCompliant: subRuleCompliant,
           total: totalSub,
-          hasOverride: (sub.bonusRules || []).length > 0,
+          hasOverride: overrideRules.length > 0,
           proficient: subProficient,
           mastered: subMastered,
           needs: subNeeds,
+          ruleLevel,
           skills: skillStatuses,
         }
       })
 
       totalBonus += catBonus
       totalAssessed += catAssessed
+      totalRuleCompliant += catRuleCompliant
 
-      return { id: cat._id, name: cat.name, bonus: catBonus, assessed: catAssessed, total: catTotal, subCategories }
+      return { id: cat._id, name: cat.name, bonus: catBonus, assessed: catAssessed, ruleCompliant: catRuleCompliant, total: catTotal, subCategories }
     })
 
     return {
       employee: emp,
       totalBonus,
       totalAssessed,
+      totalRuleCompliant,
       totalSkills: totalSystemSkills,
       proficientCount,
       masteredCount,
@@ -276,10 +315,10 @@ const skillBarColor: Record<SkillStatus, string> = {
   unreviewed: 'bg-zinc-700',
 }
 
-// Sub-category overall status indicator
-function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all-mastered' | 'has-progress' | 'none' {
+// Sub-category overall status indicator (rule-aware)
+function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all-complete' | 'has-progress' | 'none' {
   if (sub.total === 0) return 'none'
-  if (sub.mastered === sub.total) return 'all-mastered'
+  if (sub.ruleCompliant === sub.total) return 'all-complete'
   if (sub.assessed > 0) return 'has-progress'
   return 'none'
 }
@@ -571,7 +610,7 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
                             <div
                               class="h-full rounded-full transition-all duration-700"
                               :class="pal(catIdx).bar"
-                              :style="{ width: `${cat.total ? (cat.assessed / cat.total) * 100 : 0}%` }"
+                              :style="{ width: `${cat.total ? (cat.ruleCompliant / cat.total) * 100 : 0}%` }"
                             />
                           </div>
                           <span class="text-[9px] font-mono text-muted-foreground tabular-nums">{{ cat.assessed }}/{{ cat.total }}</span>
@@ -605,7 +644,7 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
                               <div class="flex items-center gap-2.5">
                                 <span
                                   class="size-2.5 rounded-full shrink-0"
-                                  :class="subStatus(sub) === 'all-mastered'
+                                  :class="subStatus(sub) === 'all-complete'
                                     ? 'bg-emerald-500 ring-2 ring-emerald-500/30'
                                     : subStatus(sub) === 'has-progress'
                                       ? 'bg-blue-500 ring-2 ring-blue-500/30'
@@ -613,7 +652,10 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
                                 />
                                 <div>
                                   <h4 class="text-[13px] font-semibold">{{ sub.name }}</h4>
-                                  <p class="text-[10px] font-mono text-muted-foreground/70">{{ sub.assessed }}/{{ sub.total }} skills assessed</p>
+                                  <p class="text-[10px] font-mono text-muted-foreground/70">
+                                    {{ sub.ruleCompliant }}/{{ sub.total }} skills
+                                    <span v-if="sub.ruleLevel"> at {{ sub.ruleLevel }}+</span>
+                                  </p>
                                 </div>
                               </div>
                               <!-- Stats columns like Signal uptime cards -->
@@ -633,9 +675,9 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
                                 <div class="text-center">
                                   <p
                                     class="font-semibold tabular-nums"
-                                    :class="sub.total ? (sub.assessed === sub.total ? 'text-emerald-500' : 'text-foreground') : 'text-muted-foreground'"
+                                    :class="sub.total ? (sub.ruleCompliant === sub.total ? 'text-emerald-500' : 'text-foreground') : 'text-muted-foreground'"
                                   >
-                                    {{ sub.total ? Math.round((sub.assessed / sub.total) * 100) : 0 }}%
+                                    {{ sub.total ? Math.round((sub.ruleCompliant / sub.total) * 100) : 0 }}%
                                   </p>
                                   <p class="text-[9px] text-muted-foreground">Complete</p>
                                 </div>
