@@ -242,6 +242,7 @@ function toggleCategory(catName: string) {
 const tabs = computed(() => {
   const base = [
     { id: 'summary', label: 'Progress Summary', icon: 'i-lucide-pie-chart' },
+    { id: 'skills', label: isViewingOther.value ? 'Skill Review' : 'My Skill Review', icon: 'i-lucide-clipboard-check' },
     { id: 'growth', label: isViewingOther.value ? 'Growth Rate' : 'My Growth Rate', icon: 'i-lucide-trending-up' },
     { id: 'bonus', label: 'Bonus Report', icon: 'i-lucide-award' },
   ]
@@ -567,7 +568,17 @@ const tabs = computed(() => {
             </div>
           </div>
 
-          <!-- 4. Theme Tab -->
+          <!-- 4. Skill Review Tab -->
+          <div v-else-if="activeTab === 'skills'" class="animate-in slide-in-from-right-4 fade-in duration-300">
+            <ProfileSkillReview
+              :profile-user-id="profileUserId!"
+              :is-viewing-other="isViewingOther"
+              :tree-data="treeData || []"
+              :records-data="recordsData || []"
+            />
+          </div>
+
+          <!-- 5. Theme Tab -->
           <div v-else-if="activeTab === 'theme'" class="space-y-4 sm:space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
             <h2 class="text-xl sm:text-2xl font-bold flex items-center gap-2">
               <Icon name="i-lucide-paintbrush" class="text-primary" />

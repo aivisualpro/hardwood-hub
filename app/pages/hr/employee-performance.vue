@@ -204,6 +204,44 @@ const totalSkills = computed(() =>
     sum + cat.subCategories.reduce((s2, sub) => s2 + sub.skills.length, 0), 0),
 )
 
+// ─── Signal-style overview stats ─────────────────────────
+const overallStats = computed(() => {
+  const c = { mastered: 0, proficient: 0, needs: 0, unreviewed: 0 }
+  for (const cat of tree.value) {
+    for (const sub of cat.subCategories) {
+      for (const sk of sub.skills) {
+        const rec = highestPerfMap.value.get(sk._id)
+        if (!rec) c.unreviewed++
+        else if (rec.currentSkillLevel === 'Mastered') c.mastered++
+        else if (rec.currentSkillLevel === 'Proficient') c.proficient++
+        else c.needs++
+      }
+    }
+  }
+  return c
+})
+const overallPct = computed(() =>
+  totalSkills.value ? Math.round(((overallStats.value.mastered + overallStats.value.proficient) / totalSkills.value) * 100) : 0,
+)
+function getSkillStatus(skillId: string) {
+  const rec = highestPerfMap.value.get(skillId)
+  if (!rec) return 'unreviewed'
+  if (rec.currentSkillLevel === 'Mastered') return 'mastered'
+  if (rec.currentSkillLevel === 'Proficient') return 'proficient'
+  return 'needs'
+}
+const statusBarColors: Record<string, string> = {
+  mastered: 'bg-emerald-500', proficient: 'bg-blue-500', needs: 'bg-amber-500', unreviewed: 'bg-zinc-700',
+}
+function subCatStatsCalc(sub: any) {
+  let m = 0, p = 0, n = 0
+  for (const sk of sub.skills) {
+    const s = getSkillStatus(sk._id)
+    if (s === 'mastered') m++; else if (s === 'proficient') p++; else if (s === 'needs') n++
+  }
+  return { total: sub.skills.length, mastered: m, proficient: p, needs: n, reviewed: m + p + n }
+}
+
 // ─── Predecessor / locking logic ─────────────────────────
 function levelMeetsThreshold(level: string): boolean {
   const stepIdx = LEVEL_STEPS.indexOf(level as any)
@@ -829,8 +867,33 @@ async function deleteSelected() {
             <Button variant="ghost" size="sm" @click="searchQuery = ''">Clear search</Button>
           </div>
 
+          <!-- Signal-style Overall Stats Hero Card -->
+          <div v-if="filteredTree.length > 0 && !searchQuery" class="rounded-2xl border border-border/50 bg-card shadow-sm overflow-hidden relative mb-2">
+            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 pointer-events-none" />
+            <div class="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 relative z-10">
+              <div class="flex items-center gap-3 flex-1">
+                <div class="size-12 sm:size-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                  <Icon name="i-lucide-activity" class="size-6 sm:size-7 text-emerald-500" />
+                </div>
+                <div>
+                  <p class="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider">Overall Skill Completion</p>
+                  <p class="text-2xl sm:text-3xl font-black leading-none mt-0.5" :class="overallPct >= 80 ? 'text-emerald-500' : overallPct >= 50 ? 'text-blue-500' : 'text-amber-500'">
+                    {{ overallPct }}%
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
+                <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-emerald-500" /> Mastered ({{ overallStats.mastered }})</div>
+                <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-blue-500" /> Proficient ({{ overallStats.proficient }})</div>
+                <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-amber-500" /> Needs Imp. ({{ overallStats.needs }})</div>
+                <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-zinc-700" /> Unreviewed ({{ overallStats.unreviewed }})</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Category accordion list -->
-          <div v-else class="flex flex-col gap-3 sm:gap-4">
+          <div v-else-if="filteredTree.length === 0" />
+          <div class="flex flex-col gap-3 sm:gap-4">
             <div
               v-for="(cat, catIdx) in filteredTree"
               :key="cat._id"
@@ -870,13 +933,13 @@ async function deleteSelected() {
                       :style="{
                         width: `${cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) === 0
                           ? 0
-                          : (cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => highestPerfMap.get(sk._id)).length, 0)
+                          : (cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => myPerfMap.get(sk._id)).length, 0)
                             / cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) * 100)}%`,
                       }"
                     />
                   </div>
                   <span class="text-[10px] font-bold text-muted-foreground min-w-[2.5rem] text-right" :class="pal(catIdx).text">
-                    {{ cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) === 0 ? '0' : Math.round(cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => highestPerfMap.get(sk._id)).length, 0) / cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) * 100) }}%
+                    {{ cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) === 0 ? '0' : Math.round(cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => myPerfMap.get(sk._id)).length, 0) / cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) * 100) }}%
                   </span>
                 </div>
               </div>
@@ -943,7 +1006,7 @@ async function deleteSelected() {
 
                       <!-- Sub progress -->
                       <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
-                        {{ sub.skills.filter(sk => highestPerfMap.get(sk._id)).length }}/{{ sub.skills.length }}
+                        {{ sub.skills.filter(sk => myPerfMap.get(sk._id)).length }}/{{ sub.skills.length }}
                       </span>
                     </div>
 
@@ -957,6 +1020,7 @@ async function deleteSelected() {
                       leave-to-class="opacity-0 -translate-y-1"
                     >
                       <div v-if="expandedSubs.has(sub._id) && !isSubCatLocked(sub)" class="bg-muted/10 border-t border-border/20">
+
                         <!-- Empty sub -->
                         <div v-if="sub.skills.length === 0" class="flex items-center justify-center py-6 gap-2">
                           <Icon name="i-lucide-sparkles" class="size-4 text-muted-foreground/50" />
@@ -970,8 +1034,27 @@ async function deleteSelected() {
                           class="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 sm:gap-3 pl-10 sm:pl-[4.5rem] pr-3 sm:pr-4 py-3.5 sm:py-3 border-b border-border/10 last:border-0 group/skill hover:bg-muted/20 transition-colors"
                         >
                           <!-- Skill info -->
-                          <div class="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2">
-                            <p class="text-[13px] sm:text-sm leading-snug">{{ sk.name }}</p>
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-1.5 sm:gap-2">
+                              <p class="text-[13px] sm:text-sm leading-snug">{{ sk.name }}</p>
+                            </div>
+                            <!-- Reviewer chips -->
+                            <div v-if="allRecordsForSkill.get(sk._id)?.length" class="flex flex-wrap items-center gap-1 mt-1">
+                              <span
+                                v-for="rev in allRecordsForSkill.get(sk._id)"
+                                :key="rev._id"
+                                class="inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] font-medium px-1.5 py-0.5 rounded-full border"
+                                :class="rev.currentSkillLevel === 'Mastered'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                  : rev.currentSkillLevel === 'Proficient'
+                                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20'"
+                              >
+                                <Icon name="i-lucide-user" class="size-2" />
+                                {{ rev.createdByName || 'Unknown' }}
+                                <span class="opacity-60">· {{ formatDate(rev.createdAt) }}</span>
+                              </span>
+                            </div>
                           </div>
 
                           <!-- Progression level buttons with timeline -->
