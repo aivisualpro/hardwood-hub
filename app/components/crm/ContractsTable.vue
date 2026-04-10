@@ -30,14 +30,25 @@ function formatDate(d: string) {
 // ─── Actions ─────────────────────────────────────────────
 
 async function deleteContract(id: string) {
-  if (!confirm('Are you sure you want to delete this contract?')) return
-  try {
-    await $fetch(`/api/contracts/detail/${id}`, { method: 'DELETE' })
-    toast.success('Contract deleted')
-    emit('refresh')
-  } catch (e: any) {
-    toast.error('Delete failed', { description: e?.message })
-  }
+  toast.warning('Delete Contract?', {
+    description: 'Are you sure you want to delete this contract? This action cannot be undone.',
+    action: {
+      label: 'Delete',
+      onClick: async () => {
+        try {
+          await $fetch(`/api/contracts/detail/${id}`, { method: 'DELETE' })
+          toast.success('Contract deleted')
+          emit('refresh')
+        } catch (e: any) {
+          toast.error('Delete failed', { description: e?.message })
+        }
+      }
+    },
+    cancel: {
+      label: 'Cancel',
+      onClick: () => {}
+    }
+  })
 }
 
 const sendingEmailId = ref<string | null>(null)
@@ -420,7 +431,7 @@ async function downloadPDF(ct: any) {
                   <button
                     class="size-7 rounded-md flex items-center justify-center transition-colors"
                     :class="ct.status === 'sent' || ct.status === 'signed'
-                      ? 'text-emerald-500 hover:bg-emerald-500/10'
+                      ? 'text-primary hover:bg-primary/10'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
                     :title="ct.status === 'signed' ? 'Already signed' : ct.status === 'sent' ? 'Resend email' : 'Send to client for signing'"
                     :disabled="sendingEmailId === ct._id"
@@ -450,7 +461,7 @@ async function downloadPDF(ct: any) {
       <DialogContent class="max-w-md p-0 border-0 rounded-2xl overflow-hidden bg-background shadow-2xl">
         <div class="px-6 py-5 border-b border-border/50 bg-muted/20">
           <h2 class="text-lg font-bold flex items-center gap-2">
-            <Icon name="i-lucide-mail" class="size-5 text-emerald-500" />
+            <Icon name="i-lucide-mail" class="size-5 text-primary" />
             Send Contract via Email
           </h2>
           <p class="text-sm text-muted-foreground mt-1">

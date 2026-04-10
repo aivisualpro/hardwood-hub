@@ -336,27 +336,7 @@ const TYPE_ICONS: Record<string, string> = {
       <div class="pt-4">
         <!-- ═══════ LIST TAB ═══════ -->
         <div v-if="activeTab === 'list'">
-          <!-- Loading -->
-          <div v-if="loadingContracts" class="space-y-3">
-            <div v-for="i in 4" :key="i" class="h-20 bg-muted/40 rounded-xl animate-pulse" />
-          </div>
 
-          <!-- Empty State -->
-          <div v-else-if="contracts.length === 0" class="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed border-border/60 rounded-2xl bg-muted/5">
-            <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4 border border-primary/20">
-              <Icon name="i-lucide-file-signature" class="size-8 text-primary" />
-            </div>
-            <h3 class="text-xl font-bold mb-1">No Contracts Yet</h3>
-            <p class="text-muted-foreground max-w-sm px-4 text-sm mb-5">
-              Create your first contract by selecting a customer and a template.
-            </p>
-            <Button class="shadow-lg shadow-primary/20" @click="openCreateModal">
-              <Icon name="i-lucide-plus" class="mr-2 size-4" />
-              Create Contract
-            </Button>
-          </div>
-
-          <!-- Contracts Table -->
           <CrmContractsTable 
             :contracts="contracts" 
             :templates="templates" 
