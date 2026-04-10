@@ -17,12 +17,9 @@ const activeTab = computed(() => (route.params.tab as string) || 'details')
 
 const tabs = [
   { id: 'details', label: 'Details', icon: 'i-lucide-info', typeFilter: 'details' },
-  { id: 'appointments', label: 'Appointments', icon: 'i-lucide-calendar-check', typeFilter: 'appointment' },
-  { id: 'fast-quotes', label: 'Fast Quotes', icon: 'i-lucide-zap', typeFilter: 'fast-quote' },
   { id: 'estimates', label: 'Estimates', icon: 'i-lucide-ruler', typeFilter: 'flooring-estimate' },
   { id: 'contracts', label: 'Contracts', icon: 'i-lucide-file-signature', typeFilter: 'contract' },
-  { id: 'subscribers', label: 'Subscribers', icon: 'i-lucide-mail-check', typeFilter: 'subscriber' },
-  { id: 'conditional-logic', label: 'Conditional Logic', icon: 'i-lucide-split', typeFilter: 'conditional-logic' },
+  { id: 'emails', label: 'Emails', icon: 'i-lucide-mail', typeFilter: 'email' },
 ]
 
 async function fetchCustomer() {
@@ -71,6 +68,12 @@ watch(customer, (newCust) => {
 }, { immediate: true })
 
 async function fetchAllData(email: string, phone: string) {
+  if (!email && !phone) {
+    allSubmissions.value = []
+    loadingAllSubmissions.value = false
+    return
+  }
+
   loadingAllSubmissions.value = true
   try {
     const query = new URLSearchParams()
@@ -322,6 +325,7 @@ async function deleteCustomer() {
             :is-loading="loadingSubmissionsForTab"
             :show-type-column="false"
             class="sticky-header"
+            :is-embedded="true"
             :empty-icon="tabs.find(t => t.id === activeTab)?.icon"
             :empty-title="`No ${tabs.find(t => t.id === activeTab)?.label} found`"
             empty-description="This customer hasn't submitted this type of form yet."

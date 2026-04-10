@@ -10,6 +10,7 @@ const props = defineProps<{
   emptyIcon?: string
   emptyTitle?: string
   emptyDescription?: string
+  isEmbedded?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -98,18 +99,18 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
 <template>
   <div>
     <!-- Desktop Table (Hidden on mobile) -->
-    <div class="hidden md:block border rounded-2xl bg-card">
+    <div class="hidden md:block border rounded-2xl bg-card overflow-hidden">
       <table class="w-full text-sm border-collapse">
-        <thead class="sticky top-[105px] z-30 bg-muted/95 backdrop-blur-sm shadow-sm ring-1 ring-border/5">
-          <tr class="border-b">
-            <th class="text-left py-3 px-4 font-medium text-muted-foreground w-8" />
-            <th class="text-left py-3 px-4 font-medium text-muted-foreground">Contact</th>
-            <th class="text-left py-3 px-4 font-medium text-muted-foreground hidden lg:table-cell">Email</th>
-            <th v-if="showTypeColumn" class="text-left py-3 px-4 font-medium text-muted-foreground">Type</th>
-            <th class="text-left py-3 px-4 font-medium text-muted-foreground hidden xl:table-cell">Phone</th>
-            <th class="text-left py-3 px-4 font-medium text-muted-foreground hidden md:table-cell">Date</th>
-            <th class="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
-            <th class="text-right py-3 px-4 font-medium text-muted-foreground w-12" />
+        <thead>
+          <tr class="border-b bg-muted/30">
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-8" />
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contact</th>
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Email</th>
+            <th v-if="showTypeColumn" class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Type</th>
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Phone</th>
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Date</th>
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+            <th class="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-12" />
           </tr>
         </thead>
         <tbody v-if="isLoading">

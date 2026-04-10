@@ -61,9 +61,9 @@ export default defineEventHandler(async (event) => {
               
               <!-- Header -->
               <tr>
-                <td style="background: linear-gradient(135deg, #047857 0%, #065f46 100%); padding: 32px 40px; text-align: center;">
-                  ${company.logo ? `<img src="${company.logo}" alt="${company.name}" style="max-height: 48px; margin-bottom: 12px;" />` : ''}
-                  <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">
+                <td style="background: #ffffff; padding: 32px 40px 24px; text-align: center; border-bottom: 1px solid #e5e7eb;">
+                  ${company.logo ? `<img src="${company.logo}" alt="${company.name}" style="max-height: 80px; max-width: 220px; object-fit: contain; margin-bottom: 16px; display: block; margin-left: auto; margin-right: auto;" />` : ''}
+                  <h1 style="color: #111827; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">
                     Contract for Your Review
                   </h1>
                 </td>

@@ -111,7 +111,7 @@ export default defineEventHandler(async (event) => {
 
     let mergedHTML = contract.content || ''
     
-    // Replace custom variables
+    // Replace custom variables — plain inline text, no decorative boxes
     if (contract.variableValues) {
       for (const [key, val] of Object.entries<string>(contract.variableValues)) {
         const vDef = template?.variables?.find((v: any) => v.key === key)
@@ -120,12 +120,13 @@ export default defineEventHandler(async (event) => {
         if (isSig && val) {
           mergedVal = `<img src="${val}" alt="Signature" style="max-height: 80px; object-fit: contain; vertical-align: middle;" />`
         }
+        // Non-signature: just inject the plain value — no boxes
         const re = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g')
         mergedHTML = mergedHTML.replace(re, mergedVal)
       }
     }
 
-    // Replace system variables
+    // Replace system variables — plain text
     const sysPrintDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     mergedHTML = mergedHTML.replace(/\{\{\s*printDate\s*\}\}/g, sysPrintDate)
     mergedHTML = mergedHTML.replace(/\{\{\s*company_name\s*\}\}/g, company?.name || '')
@@ -140,14 +141,72 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignature\s*\}\}/g, '')
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignatureDate\s*\}\}/g, '')
 
-    // Append signature section to bottom of email
-    mergedHTML += `
-      <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb;">
-        <h3>Signed By: ${contract.customerName || 'Customer'}</h3>
-        <p>Date: ${sysPrintDate}</p>
-        <img src="${signature}" alt="Valid Electronic Signature" style="max-height: 100px; object-fit: contain; border: 1px dashed #ccc; padding: 10px;" />
+    const companyColor = company?.brandColor || '#84CC16'
+    const companyLogo = company?.logo ? `<img src="${company.logo}" style="max-height: 90px; max-width: 250px;" alt="Logo" />` : `<h1 style="color: ${companyColor}; margin: 0;">${company?.name || 'Company Name'}</h1>`
+
+    const companyDetails = `
+      <div style="text-align: right; font-size: 12px; line-height: 1.5; color: #8A4F2A; font-family: Helvetica, Arial, sans-serif; font-weight: bold;">
+        <div style="color: ${companyColor}; font-size: 16px;">${company?.name || 'Ann Arbor Hardwoods LLC'}</div>
+        <div>${company?.address || '2232 South Main Street'}</div>
+        <div>${company?.city || 'Ann Arbor'}, ${company?.state || 'MI'}. ${company?.zip || '48104'}</div>
+        <div>${company?.phone || '(734) 604-3786'}</div>
+        ${company?.phone2 ? `<div>${company.phone2}</div>` : ''}
+        <div>${company?.website?.replace(new RegExp('^https?://'), '') || 'www.annarborhardwoods.com'}</div>
+        <div>${company?.email || 'quote@annarborhardwoods.com'}</div>
+        ${company?.licenseNumber ? `<div>Builder's License Number: ${company.licenseNumber}</div>` : ''}
       </div>
     `
+
+    const letterHead = `
+      <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+        <tr>
+          <td valign="top" width="50%">
+            ${companyLogo}
+          </td>
+          <td valign="top" width="50%">
+            ${companyDetails}
+          </td>
+        </tr>
+      </table>
+      <hr style="border: 0; border-bottom: 2px solid #1e3a8a; margin-bottom: 20px;" />
+    `
+
+    const companySigBox = `
+      <div style="float: left; width: 45%;">
+        ${company?.signature ? `<img src="${company.signature}" style="max-height: 56px; object-fit: contain; display: block; margin-bottom: 4px;" />` : `<div style="height: 56px;"></div>`}
+        <div style="border-top: 1.5px solid #111; margin-top: 4px; padding-top: 4px; font-size: 11px; color: #374151; font-family: Helvetica, Arial, sans-serif;">Contractor's Signature</div>
+      </div>
+      <div style="float: right; width: 45%; text-align: left;">
+        <div style="height: 56px; display: flex; align-items: flex-end; padding-bottom: 4px; font-size: 13px; color: #1a1a1a;">${company?.signature ? sysPrintDate : ''}</div>
+        <div style="border-top: 1.5px solid #111; margin-top: 4px; padding-top: 4px; font-size: 11px; color: #374151; font-family: Helvetica, Arial, sans-serif;">Date</div>
+      </div>
+      <div style="clear: both;"></div>
+    `
+
+    const customerSigBox = `
+      <div style="float: left; width: 45%;">
+        <img src="${signature}" style="max-height: 56px; object-fit: contain; display: block; margin-bottom: 4px;" />
+        <div style="border-top: 1.5px solid #111; margin-top: 4px; padding-top: 4px; font-size: 11px; color: #374151; font-family: Helvetica, Arial, sans-serif;">Client's Signature</div>
+      </div>
+      <div style="float: right; width: 45%; text-align: left;">
+        <div style="height: 56px; display: flex; align-items: flex-end; padding-bottom: 4px; font-size: 13px; color: #1a1a1a;">${sysPrintDate}</div>
+        <div style="border-top: 1.5px solid #111; margin-top: 4px; padding-top: 4px; font-size: 11px; color: #374151; font-family: Helvetica, Arial, sans-serif;">Date</div>
+      </div>
+      <div style="clear: both;"></div>
+    `
+
+    const signatureSection = `
+      <div style="margin-top: 60px;">
+        <div style="margin-bottom: 40px;">
+           ${customerSigBox}
+        </div>
+        <div>
+           ${companySigBox}
+        </div>
+      </div>
+    `
+
+    mergedHTML += signatureSection
 
     if (contract.customerEmail) {
       const emailHTML = `
@@ -184,8 +243,9 @@ export default defineEventHandler(async (event) => {
           <!DOCTYPE html>
           <html>
           <head><meta charset="utf-8"></head>
-          <body style="font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; padding: 0; margin: 0; font-size: 14px; color: #111;">
-            <h2 style="color: #111; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-top: 0;">
+          <body style="font-family: Helvetica, Arial, sans-serif; padding: 0; margin: 0; font-size: 13px; color: #111;">
+            ${letterHead}
+            <h2 style="color: #000; text-align: left; margin-top: 20px; margin-bottom: 20px; font-size: 18px;">
               ${contract.title}
             </h2>
             <div>

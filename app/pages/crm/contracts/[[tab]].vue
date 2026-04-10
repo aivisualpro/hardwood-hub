@@ -645,36 +645,32 @@ const TYPE_ICONS: Record<string, string> = {
 
     <!-- Tabs Container -->
     <div class="flex flex-col gap-0">
-      <div class="sticky top-0 z-30 bg-background/95 backdrop-blur-sm -mx-4 lg:-mx-6 px-4 lg:px-6 border-b">
-        <div class="flex items-center justify-between pb-1 overflow-x-auto no-scrollbar">
+      <div class="sticky top-(--header-height) z-30 bg-background/95 backdrop-blur-sm -mx-4 lg:-mx-6 px-4 lg:px-6 pt-2 border-b">
+        <div class="flex items-center justify-start pb-1 overflow-x-auto no-scrollbar">
           <div class="flex items-center gap-0.5 min-w-max">
             <button
               v-for="tab in tabs"
               :key="tab.id"
-              class="relative flex items-center gap-2 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-bold transition-all whitespace-nowrap"
-              :class="activeTab === tab.id ? 'text-primary' : 'text-muted-foreground hover:text-foreground'"
+              class="relative flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap rounded-lg"
+              :class="activeTab === tab.id ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30' : 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground'"
               @click="navigateTo(`/crm/contracts/${tab.id}`); showEditor = false"
             >
               <Icon :name="tab.icon" class="size-3.5 sm:size-4" />
               {{ tab.label }}
-              <span
+              <div
                 v-if="tab.id === 'list' && contracts.length > 0"
-                class="ml-1 px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold tabular-nums"
-                :class="activeTab === tab.id ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'"
+                class="ml-1 px-1.5 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold tabular-nums"
+                :class="activeTab === tab.id ? 'bg-background/25 text-primary-foreground' : 'bg-primary/10 text-primary group-hover:bg-primary/20'"
               >
                 {{ contracts.length }}
-              </span>
-              <span
+              </div>
+              <div
                 v-if="tab.id === 'templates' && templates.length > 0"
-                class="ml-1 px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold tabular-nums"
-                :class="activeTab === tab.id ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'"
+                class="ml-1 px-1.5 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold tabular-nums"
+                :class="activeTab === tab.id ? 'bg-background/25 text-primary-foreground' : 'bg-primary/10 text-primary group-hover:bg-primary/20'"
               >
                 {{ templates.length }}
-              </span>
-              <div
-                v-if="activeTab === tab.id"
-                class="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-primary rounded-t-full"
-              />
+              </div>
             </button>
           </div>
         </div>

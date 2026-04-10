@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: false, auth: false })
+definePageMeta({ layout: false, auth: false, colorMode: 'light' })
 
 const route = useRoute()
 const token = route.params.token as string
@@ -125,7 +125,7 @@ onMounted(fetchContract)
 
       <!-- Contract Content -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-        <div class="p-6 sm:p-8 prose prose-sm prose-slate max-w-none" v-html="contractData.content" />
+        <div class="p-6 sm:p-8 prose prose-slate max-w-none text-slate-800 prose-p:text-slate-700 prose-headings:text-slate-900 prose-strong:text-slate-900 prose-li:text-slate-700 prose-a:text-emerald-600 font-medium" v-html="contractData.content" />
       </div>
 
       <!-- Signature Section -->

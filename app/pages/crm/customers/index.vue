@@ -14,6 +14,60 @@ const showCreateModal = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const isImporting = ref(false)
 
+const isQuickEditMode = ref(false)
+const activeDropdown = ref<string | null>(null)
+
+function toggleAssignee(customer: any, field: string, email: string) {
+  let arr = getAssignedToArray(customer[field])
+  if (arr.includes(email)) {
+    arr = arr.filter(e => e !== email)
+  } else {
+    arr.push(email)
+  }
+  const val = arr.join(',')
+  customer[field] = val
+  
+  $fetch(`/api/customers/${customer._id}`, {
+    method: 'PUT',
+    body: { [field]: val }
+  }).catch(() => toast.error('Failed to save assignment'))
+}
+
+function removeAssignee(customer: any, field: string, email: string) {
+  let arr = getAssignedToArray(customer[field])
+  arr = arr.filter(e => e !== email)
+  const val = arr.join(',')
+  customer[field] = val
+  
+  $fetch(`/api/customers/${customer._id}`, {
+    method: 'PUT',
+    body: { [field]: val }
+  }).catch(() => toast.error('Failed to remove assignment'))
+}
+
+async function handleQuickUpdate(customer: any, field: string, event: Event) {
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement
+  let val: any = target.value
+  
+  if (target.type === 'number') {
+    val = val === '' ? null : Number(val)
+  }
+  if (target.type === 'date' && !val) val = null
+
+  // Update optimistic local state immediately (spreadsheet feel)
+  customer[field] = val
+
+  try {
+    const res = await $fetch<any>(`/api/customers/${customer._id}`, {
+      method: 'PUT',
+      body: { [field]: val }
+    })
+    if (!res.success) throw new Error('API failed')
+  } catch (err) {
+    toast.error(`Failed to save ${field}`)
+  }
+}
+
 async function handleFileUpload(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -346,6 +400,14 @@ function selectFilter(id: string) {
           <Icon name="i-lucide-plus" class="size-3.5" />
           <span class="hidden sm:inline">New</span>
         </button>
+        <button
+          class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-bold transition-all shrink-0 border border-border"
+          :class="isQuickEditMode ? 'bg-primary/20 text-primary border-primary/30' : 'bg-background hover:bg-muted text-muted-foreground'"
+          @click="isQuickEditMode = !isQuickEditMode"
+        >
+          <Icon :name="isQuickEditMode ? 'i-lucide-check' : 'i-lucide-edit-3'" class="size-3.5" />
+          <span class="hidden sm:inline">{{ isQuickEditMode ? 'Done' : 'Quick Edit' }}</span>
+        </button>
       </div>
     </Teleport>
 
@@ -398,29 +460,28 @@ function selectFilter(id: string) {
     </div>
 
     <!-- Table Details -->
-    <div class="flex-1 min-h-0 overflow-auto bg-card border border-border/50 text-sm shadow-sm relative">
+    <div class="flex-1 min-h-0 overflow-auto bg-card border border-border/50 rounded-xl text-sm shadow-sm relative overflow-hidden">
       <table class="w-full text-left border-collapse whitespace-nowrap">
-        <thead class="bg-muted/95 backdrop-blur text-muted-foreground text-[10px] font-bold uppercase tracking-wider ring-1 ring-border/5 sticky top-0 z-20">
-          <tr>
+        <thead>
+          <tr class="border-b bg-muted/30 text-muted-foreground text-[10px] font-bold uppercase tracking-wider sticky top-0 z-20">
             <th class="p-2.5 w-10 text-center"><input type="checkbox" class="rounded border-border text-primary cursor-pointer" /></th>
             <th class="p-2.5 min-w-[200px]">Name</th>
-            <th class="p-2.5 min-w-[140px]">Stage</th>
-            <th class="p-2.5 min-w-[160px]">Estimated project duration</th>
-            <th class="p-2.5 min-w-[120px]">Total estimate</th>
+            <th class="p-2.5 min-w-[100px]">Est. Duration</th>
+            <th class="p-2.5 min-w-[120px]">Total Estimate</th>
             <th class="p-2.5 min-w-[140px]">Assigned To</th>
-            <th class="p-2.5 min-w-[140px] text-center">Total Tracked Views</th>
-            <th class="p-2.5 min-w-[140px]">Estimate sent on</th>
+            <th class="p-2.5 min-w-[80px] text-center">Views</th>
+            <th class="p-2.5 min-w-[120px]">Estimate Sent On</th>
             <th class="p-2.5 min-w-[250px]">Notes</th>
-            <th class="p-2.5 min-w-[140px]">inital contact date</th>
-            <th class="p-2.5 min-w-[160px]">last Follow up sent on</th>
-            <th class="p-2.5 min-w-[140px]">date approved</th>
-            <th class="p-2.5 min-w-[160px]">Project assigned to:</th>
-            <th class="p-2.5 min-w-[140px]">wood order date</th>
+            <th class="p-2.5 min-w-[100px]">Contact Date</th>
+            <th class="p-2.5 min-w-[100px]">Follow-Up On</th>
+            <th class="p-2.5 min-w-[100px]">Date Approved</th>
+            <th class="p-2.5 min-w-[140px]">Project Assigned To</th>
+            <th class="p-2.5 min-w-[100px]">Wood Ordered</th>
           </tr>
         </thead>
         <tbody v-if="isLoading">
           <tr v-for="i in 5" :key="i">
-            <td colspan="14" class="p-4">
+            <td colspan="13" class="p-4">
               <div class="h-6 bg-muted/40 rounded animate-pulse"></div>
             </td>
           </tr>
@@ -428,16 +489,16 @@ function selectFilter(id: string) {
         <tbody v-else v-for="g in tableGroupedCustomers" :key="g.stage.id" class="border-b-4 border-border/20 last:border-0 group/tbody">
           
           <!-- Stage Group Header -->
-          <tr class="bg-muted/40 cursor-pointer hover:bg-muted/60 transition-colors" @click="expandedStages[g.stage.id] = !expandedStages[g.stage.id]">
-            <td colspan="14" class="p-1 border-l-[6px]" :class="g.stage.border">
-              <div class="flex items-center gap-2 px-2 py-1.5">
-                <button type="button" class="flex items-center justify-center size-5 rounded hover:bg-background/80 transition-colors">
+          <tr class="cursor-pointer group/header" @click="expandedStages[g.stage.id] = !expandedStages[g.stage.id]">
+            <td colspan="13" class="p-0 sticky top-[34px] z-10 shadow-sm outline outline-1 outline-border/20">
+              <div class="flex items-center gap-2 px-3 py-2 bg-card/95 backdrop-blur-md hover:bg-muted/60 transition-colors border-l-[6px]" :class="g.stage.border">
+                <button type="button" class="flex items-center justify-center size-5 rounded hover:bg-background/80 transition-colors bg-background/40">
                   <Icon :name="expandedStages[g.stage.id] ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-4 text-muted-foreground" />
                 </button>
                 <div class="px-2 py-[3px] rounded text-[10px] uppercase font-bold tracking-wider inline-flex shadow-xs" :class="[g.stage.bg, g.stage.text]">
                   {{ g.stage.label }}
                 </div>
-                <button type="button" class="ml-1 flex items-center justify-center size-5 rounded-full hover:bg-background/80 transition-colors text-muted-foreground opacity-50 group-hover/tbody:opacity-100" title="Add Customer">
+                <button type="button" class="ml-1 flex items-center justify-center size-5 rounded-full hover:bg-background/80 transition-colors text-muted-foreground opacity-50 group-hover/header:opacity-100" title="Add Customer">
                   <Icon name="i-lucide-plus" class="size-3.5" />
                 </button>
               </div>
@@ -446,59 +507,175 @@ function selectFilter(id: string) {
 
           <!-- Stage Group Items -->
           <template v-if="expandedStages[g.stage.id]">
-            <tr v-for="c in g.items" :key="c._id" class="hover:bg-muted/10 border-b border-border/30 last:border-0 text-[13px] transition-colors group/row">
-              <td class="p-2.5 text-center px-4">
+            <tr v-for="c in g.items" :key="c._id" class="border-b border-border/30 last:border-0 text-[13px] transition-colors group/row" :class="!isQuickEditMode ? 'hover:bg-muted/20 cursor-pointer' : ''" @click="!isQuickEditMode && navigateTo(`/crm/customers/${c._id}`)">
+              <td class="p-2.5 text-center px-4" @click.stop>
                 <input type="checkbox" class="rounded border-border text-primary cursor-pointer" />
               </td>
-              <td class="p-2.5 font-semibold text-foreground/90 max-w-[200px] truncate cursor-pointer hover:text-primary transition-colors" @click="navigateTo(`/crm/customers/${c._id}`)">
-                {{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}
+              <td class="p-2.5 font-semibold text-foreground/90 max-w-[200px]" :class="isQuickEditMode ? 'whitespace-normal' : 'truncate'">
+                <input v-if="isQuickEditMode" v-model="c.name" @change="handleQuickUpdate(c, 'name', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                <template v-else>
+                  {{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}
+                </template>
               </td>
+
+              <td class="p-2.5 text-muted-foreground" :class="{'whitespace-normal': isQuickEditMode}">
+                <input v-if="isQuickEditMode" v-model="c.estimatedProjectDuration" @change="handleQuickUpdate(c, 'estimatedProjectDuration', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
+                <template v-else>{{ c.estimatedProjectDuration || '' }}</template>
+              </td>
+              
+              <td class="p-2.5 tabular-nums font-medium text-foreground/80">
+                <input v-if="isQuickEditMode" type="number" step="0.01" v-model="c.totalEstimate" @change="handleQuickUpdate(c, 'totalEstimate', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
+                <template v-else>{{ formatCurrency(c.totalEstimate) }}</template>
+              </td>
+              
               <td class="p-2.5">
-                <div class="px-2 py-1 rounded-sm text-[10px] uppercase font-bold tracking-wider inline-flex items-center justify-center text-center shadow-xs" :class="[g.stage.bg, g.stage.text, g.stage.border, 'border-[0.5px]']">
-                  {{ c.stage || g.stage.label }}
+                <div v-if="isQuickEditMode" :class="['relative w-full transition-all', activeDropdown === c._id + 'assignedTo' ? 'z-[100]' : 'z-10']">
+                  <div v-if="activeDropdown === c._id + 'assignedTo'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+                  
+                  <div @click.stop="activeDropdown = activeDropdown === c._id + 'assignedTo' ? null : c._id + 'assignedTo'"
+                       class="relative z-50 w-full bg-background border border-border/50 rounded px-2 py-1.5 flex flex-wrap gap-1 items-center min-h-[30px] cursor-pointer hover:border-primary/50 transition-colors">
+                    <div v-for="assignee in getAssignedToArray(c.assignedTo)" :key="assignee" 
+                         class="text-[10px] bg-primary/10 text-primary pl-1.5 pr-1 py-0.5 rounded-full flex items-center gap-1 font-bold border border-primary/20 max-w-[120px]">
+                      <img v-if="resolveAssignedTo(assignee)?.image" :src="resolveAssignedTo(assignee)!.image" class="size-3.5 rounded-full object-cover shrink-0" />
+                      <span class="truncate">{{ resolveAssignedTo(assignee)?.name }}</span>
+                      <div class="hover:bg-primary/20 rounded-full p-0.5 ml-0.5 shrink-0" @click.stop="removeAssignee(c, 'assignedTo', assignee)">
+                        <Icon name="i-lucide-x" class="size-3 text-primary/70 hover:text-red-500 transition-colors" />
+                      </div>
+                    </div>
+                    <div v-if="!getAssignedToArray(c.assignedTo).length" class="text-[11px] text-muted-foreground w-full">Select employees...</div>
+                  </div>
+                  
+                  <div v-if="activeDropdown === c._id + 'assignedTo'"
+                       class="absolute left-0 top-full mt-1 w-[220px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 max-h-[220px] overflow-y-auto flex flex-col py-1.5 ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div v-for="emp in employeesList" :key="emp.email"
+                         class="px-3 py-2 text-xs cursor-pointer font-medium flex items-center gap-2.5 transition-colors"
+                         :class="getAssignedToArray(c.assignedTo).includes(emp.email) ? 'bg-primary/10 text-primary' : 'hover:bg-muted/60 text-foreground/80 hover:text-foreground'"
+                         @click.stop="toggleAssignee(c, 'assignedTo', emp.email)">
+                      <img v-if="emp.profileImage" :src="emp.profileImage" class="size-6 rounded-full object-cover border border-border/50" />
+                      <div v-else class="size-6 rounded-full bg-muted flex items-center justify-center text-[10px] uppercase font-bold text-muted-foreground border border-border/50 shadow-sm">{{ emp.employee?.substring(0, 2) }}</div>
+                      
+                      <div class="flex flex-col min-w-0">
+                        <span class="truncate text-[13px] leading-tight font-bold">{{ emp.employee }}</span>
+                        <span class="text-[9px] opacity-70 truncate">{{ emp.email }}</span>
+                      </div>
+                      <Icon v-if="getAssignedToArray(c.assignedTo).includes(emp.email)" name="i-lucide-check-circle-2" class="ml-auto size-4 shrink-0" />
+                    </div>
+                    <div v-if="!employeesList.length" class="px-3 py-4 text-xs text-muted-foreground text-center flex flex-col items-center gap-2">
+                       <Icon name="i-lucide-users" class="size-5 opacity-40" />
+                       No employees found
+                    </div>
+                  </div>
                 </div>
+
+                <template v-else>
+                  <div class="flex items-center" :class="{ '-space-x-1.5': getAssignedToArray(c.assignedTo).length > 1, 'gap-2': getAssignedToArray(c.assignedTo).length === 1 }" v-if="getAssignedToArray(c.assignedTo).length">
+                    <div v-for="assignee in getAssignedToArray(c.assignedTo).slice(0, 3)" :key="assignee" 
+                         class="relative flex-shrink-0 size-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold uppercase text-primary border-2 border-card shadow-sm hover:z-10 transition-transform hover:scale-110 cursor-help"
+                         :title="resolveAssignedTo(assignee)?.name">
+                      <img v-if="resolveAssignedTo(assignee)?.image" :src="resolveAssignedTo(assignee)!.image" class="w-full h-full rounded-full object-cover" />
+                      <span v-else>{{ resolveAssignedTo(assignee)?.name.substring(0, 1) }}</span>
+                    </div>
+                    <div v-if="getAssignedToArray(c.assignedTo).length > 3" class="relative flex-shrink-0 size-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground border-2 border-card shadow-sm z-0">
+                      +{{ getAssignedToArray(c.assignedTo).length - 3 }}
+                    </div>
+                    <span class="text-xs truncate max-w-[150px] ml-1" :title="getAssignedToNames(c.assignedTo)">
+                      {{ getAssignedToNames(c.assignedTo) }}
+                    </span>
+                  </div>
+                </template>
               </td>
-              <td class="p-2.5 text-muted-foreground">{{ c.estimatedProjectDuration || '' }}</td>
-              <td class="p-2.5 tabular-nums font-medium text-foreground/80">{{ formatCurrency(c.totalEstimate) }}</td>
+              
+              <td class="p-2.5 tabular-nums text-center text-muted-foreground">
+                <input v-if="isQuickEditMode" type="number" v-model="c.totalTrackedViews" @change="handleQuickUpdate(c, 'totalTrackedViews', $event)" class="w-full text-center bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
+                <template v-else>{{ c.totalTrackedViews || 0 }}</template>
+              </td>
+              
+              <td class="p-2.5 tabular-nums text-muted-foreground">
+                <input v-if="isQuickEditMode" type="date" :value="c.estimateSentOn ? new Date(c.estimateSentOn).toISOString().split('T')[0] : ''" @change="handleQuickUpdate(c, 'estimateSentOn', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
+                <template v-else>{{ formatShortDate(c.estimateSentOn) }}</template>
+              </td>
+              
+              <td class="p-2.5 text-xs text-muted-foreground" :class="isQuickEditMode ? 'whitespace-normal align-top' : 'max-w-[250px] truncate'" :title="c.notes">
+                <textarea v-if="isQuickEditMode" v-model="c.notes" @change="handleQuickUpdate(c, 'notes', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary resize-y min-h-[60px]" placeholder="Notes..."></textarea>
+                <template v-else>{{ c.notes || '' }}</template>
+              </td>
+              
+              <td class="p-2.5 tabular-nums text-muted-foreground">
+                <input v-if="isQuickEditMode" type="date" :value="c.initialContactDate ? new Date(c.initialContactDate).toISOString().split('T')[0] : ''" @change="handleQuickUpdate(c, 'initialContactDate', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
+                <template v-else>{{ formatShortDate(c.initialContactDate) }}</template>
+              </td>
+              
+              <td class="p-2.5 tabular-nums text-muted-foreground">
+                <input v-if="isQuickEditMode" type="date" :value="c.lastFollowUpSentOn ? new Date(c.lastFollowUpSentOn).toISOString().split('T')[0] : ''" @change="handleQuickUpdate(c, 'lastFollowUpSentOn', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
+                <template v-else>{{ formatShortDate(c.lastFollowUpSentOn) }}</template>
+              </td>
+              
+              <td class="p-2.5 tabular-nums text-muted-foreground">
+                <input v-if="isQuickEditMode" type="date" :value="c.dateApproved ? new Date(c.dateApproved).toISOString().split('T')[0] : ''" @change="handleQuickUpdate(c, 'dateApproved', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
+                <template v-else>{{ formatShortDate(c.dateApproved) }}</template>
+              </td>
+              
               <td class="p-2.5">
-                <div class="flex items-center" :class="{ '-space-x-1.5': getAssignedToArray(c.assignedTo).length > 1, 'gap-2': getAssignedToArray(c.assignedTo).length === 1 }" v-if="getAssignedToArray(c.assignedTo).length">
-                  <div v-for="assignee in getAssignedToArray(c.assignedTo).slice(0, 3)" :key="assignee" 
-                       class="relative flex-shrink-0 size-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold uppercase text-primary border-2 border-card shadow-sm hover:z-10 transition-transform hover:scale-110 cursor-help"
-                       :title="resolveAssignedTo(assignee)?.name">
-                    <img v-if="resolveAssignedTo(assignee)?.image" :src="resolveAssignedTo(assignee)!.image" class="w-full h-full rounded-full object-cover" />
-                    <span v-else>{{ resolveAssignedTo(assignee)?.name.substring(0, 1) }}</span>
+                <div v-if="isQuickEditMode" :class="['relative w-full transition-all', activeDropdown === c._id + 'projectAssignedTo' ? 'z-[100]' : 'z-10']">
+                  <div v-if="activeDropdown === c._id + 'projectAssignedTo'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+                  
+                  <div @click.stop="activeDropdown = activeDropdown === c._id + 'projectAssignedTo' ? null : c._id + 'projectAssignedTo'"
+                       class="relative z-50 w-full bg-background border border-border/50 rounded px-2 py-1.5 flex flex-wrap gap-1 items-center min-h-[30px] cursor-pointer hover:border-primary/50 transition-colors">
+                    <div v-for="assignee in getAssignedToArray(c.projectAssignedTo)" :key="assignee" 
+                         class="text-[10px] bg-primary/10 text-primary pl-1.5 pr-1 py-0.5 rounded-full flex items-center gap-1 font-bold border border-primary/20 max-w-[120px]">
+                      <img v-if="resolveAssignedTo(assignee)?.image" :src="resolveAssignedTo(assignee)!.image" class="size-3.5 rounded-full object-cover shrink-0" />
+                      <span class="truncate">{{ resolveAssignedTo(assignee)?.name }}</span>
+                      <div class="hover:bg-primary/20 rounded-full p-0.5 ml-0.5 shrink-0" @click.stop="removeAssignee(c, 'projectAssignedTo', assignee)">
+                        <Icon name="i-lucide-x" class="size-3 text-primary/70 hover:text-red-500 transition-colors" />
+                      </div>
+                    </div>
+                    <div v-if="!getAssignedToArray(c.projectAssignedTo).length" class="text-[11px] text-muted-foreground w-full">Select employees...</div>
                   </div>
-                  <div v-if="getAssignedToArray(c.assignedTo).length > 3" class="relative flex-shrink-0 size-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground border-2 border-card shadow-sm z-0">
-                    +{{ getAssignedToArray(c.assignedTo).length - 3 }}
+                  
+                  <div v-if="activeDropdown === c._id + 'projectAssignedTo'"
+                       class="absolute left-0 top-full mt-1 w-[220px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 max-h-[220px] overflow-y-auto flex flex-col py-1.5 ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div v-for="emp in employeesList" :key="emp.email"
+                         class="px-3 py-2 text-xs cursor-pointer font-medium flex items-center gap-2.5 transition-colors"
+                         :class="getAssignedToArray(c.projectAssignedTo).includes(emp.email) ? 'bg-primary/10 text-primary' : 'hover:bg-muted/60 text-foreground/80 hover:text-foreground'"
+                         @click.stop="toggleAssignee(c, 'projectAssignedTo', emp.email)">
+                      <img v-if="emp.profileImage" :src="emp.profileImage" class="size-6 rounded-full object-cover border border-border/50" />
+                      <div v-else class="size-6 rounded-full bg-muted flex items-center justify-center text-[10px] uppercase font-bold text-muted-foreground border border-border/50 shadow-sm">{{ emp.employee?.substring(0, 2) }}</div>
+                      
+                      <div class="flex flex-col min-w-0">
+                        <span class="truncate text-[13px] leading-tight font-bold">{{ emp.employee }}</span>
+                        <span class="text-[9px] opacity-70 truncate">{{ emp.email }}</span>
+                      </div>
+                      <Icon v-if="getAssignedToArray(c.projectAssignedTo).includes(emp.email)" name="i-lucide-check-circle-2" class="ml-auto size-4 shrink-0" />
+                    </div>
+                    <div v-if="!employeesList.length" class="px-3 py-4 text-xs text-muted-foreground text-center flex flex-col items-center gap-2">
+                       <Icon name="i-lucide-users" class="size-5 opacity-40" />
+                       No employees found
+                    </div>
                   </div>
-                  <span class="text-xs truncate max-w-[150px] ml-1" :title="getAssignedToNames(c.assignedTo)">
-                    {{ getAssignedToNames(c.assignedTo) }}
-                  </span>
                 </div>
-              </td>
-              <td class="p-2.5 tabular-nums text-center text-muted-foreground">{{ c.totalTrackedViews || 0 }}</td>
-              <td class="p-2.5 tabular-nums text-muted-foreground">{{ formatShortDate(c.estimateSentOn) }}</td>
-              <td class="p-2.5 max-w-[250px] truncate text-muted-foreground text-xs" :title="c.notes">{{ c.notes || '' }}</td>
-              <td class="p-2.5 tabular-nums text-muted-foreground">{{ formatShortDate(c.initialContactDate) }}</td>
-              <td class="p-2.5 tabular-nums text-muted-foreground">{{ formatShortDate(c.lastFollowUpSentOn) }}</td>
-              <td class="p-2.5 tabular-nums text-muted-foreground">{{ formatShortDate(c.dateApproved) }}</td>
-              <td class="p-2.5">
-                <div class="flex items-center" :class="{ '-space-x-1.5': getAssignedToArray(c.projectAssignedTo).length > 1, 'gap-2': getAssignedToArray(c.projectAssignedTo).length === 1 }" v-if="getAssignedToArray(c.projectAssignedTo).length">
-                  <div v-for="assignee in getAssignedToArray(c.projectAssignedTo).slice(0, 3)" :key="assignee" 
-                       class="relative flex-shrink-0 size-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold uppercase text-primary border-2 border-card shadow-sm hover:z-10 transition-transform hover:scale-110 cursor-help"
-                       :title="resolveAssignedTo(assignee)?.name">
-                    <img v-if="resolveAssignedTo(assignee)?.image" :src="resolveAssignedTo(assignee)!.image" class="w-full h-full rounded-full object-cover" />
-                    <span v-else>{{ resolveAssignedTo(assignee)?.name.substring(0, 1) }}</span>
+
+                <template v-else>
+                  <div class="flex items-center" :class="{ '-space-x-1.5': getAssignedToArray(c.projectAssignedTo).length > 1, 'gap-2': getAssignedToArray(c.projectAssignedTo).length === 1 }" v-if="getAssignedToArray(c.projectAssignedTo).length">
+                    <div v-for="assignee in getAssignedToArray(c.projectAssignedTo).slice(0, 3)" :key="assignee" 
+                         class="relative flex-shrink-0 size-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold uppercase text-primary border-2 border-card shadow-sm hover:z-10 transition-transform hover:scale-110 cursor-help"
+                         :title="resolveAssignedTo(assignee)?.name">
+                      <img v-if="resolveAssignedTo(assignee)?.image" :src="resolveAssignedTo(assignee)!.image" class="w-full h-full rounded-full object-cover" />
+                      <span v-else>{{ resolveAssignedTo(assignee)?.name.substring(0, 1) }}</span>
+                    </div>
+                    <div v-if="getAssignedToArray(c.projectAssignedTo).length > 3" class="relative flex-shrink-0 size-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground border-2 border-card shadow-sm z-0">
+                      +{{ getAssignedToArray(c.projectAssignedTo).length - 3 }}
+                    </div>
+                    <span class="text-xs truncate max-w-[150px] ml-1" :title="getAssignedToNames(c.projectAssignedTo)">
+                      {{ getAssignedToNames(c.projectAssignedTo) }}
+                    </span>
                   </div>
-                  <div v-if="getAssignedToArray(c.projectAssignedTo).length > 3" class="relative flex-shrink-0 size-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground border-2 border-card shadow-sm z-0">
-                    +{{ getAssignedToArray(c.projectAssignedTo).length - 3 }}
-                  </div>
-                  <span class="text-xs truncate max-w-[150px] ml-1" :title="getAssignedToNames(c.projectAssignedTo)">
-                    {{ getAssignedToNames(c.projectAssignedTo) }}
-                  </span>
-                </div>
+                </template>
               </td>
-              <td class="p-2.5 tabular-nums text-muted-foreground">{{ formatShortDate(c.woodOrderDate) }}</td>
+              
+              <td class="p-2.5 tabular-nums text-muted-foreground">
+                <input v-if="isQuickEditMode" type="date" :value="c.woodOrderDate ? new Date(c.woodOrderDate).toISOString().split('T')[0] : ''" @change="handleQuickUpdate(c, 'woodOrderDate', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
+                <template v-else>{{ formatShortDate(c.woodOrderDate) }}</template>
+              </td>
             </tr>
           </template>
         </tbody>

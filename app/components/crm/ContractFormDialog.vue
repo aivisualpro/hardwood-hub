@@ -42,8 +42,8 @@ async function fetchTemplates() {
 const companyProfile = ref<any>({})
 async function fetchCompanyProfile() {
   try {
-    const res = await $fetch<any>('/api/settings/company')
-    if (res.success) companyProfile.value = res.data
+    const res = await $fetch<any>('/api/app-settings')
+    if (res.success && res.data?.companyProfile) companyProfile.value = res.data.companyProfile
   } catch {}
 }
 

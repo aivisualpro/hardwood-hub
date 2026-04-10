@@ -182,6 +182,12 @@
     @apply scroll-smooth;
   }
 
+  ::selection {
+    background-color: var(--primary);
+    color: var(--background);
+    text-shadow: none;
+  }
+
   @supports (font: -apple-system-body) and (-webkit-appearance: none) {
     [data-wrapper] {
       @apply min-[1800px]:border-t;
