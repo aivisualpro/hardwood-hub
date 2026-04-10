@@ -141,6 +141,11 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignature\s*\}\}/g, '')
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignatureDate\s*\}\}/g, '')
 
+    // Strip spans from template variable injections to prevent inherited styling borders
+    mergedHTML = mergedHTML.replace(/<span[^>]*class="[^"]*template-variable[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, '$1')
+    // Remove injected <hr> lines
+    mergedHTML = mergedHTML.replace(/<hr\s*\/?>/gi, '')
+
     const companyColor = company?.brandColor || '#84CC16'
     const companyLogo = company?.logo ? `<img src="${company.logo}" style="max-height: 90px; max-width: 250px;" alt="Logo" />` : `<h1 style="color: ${companyColor}; margin: 0;">${company?.name || 'Company Name'}</h1>`
 
@@ -174,7 +179,7 @@ export default defineEventHandler(async (event) => {
     const companySigBox = `
       <div style="width: 100%; max-width: 480px;">
         <div style="height: 64px;">
-          ${company?.signature ? `<img src="${company.signature}" style="max-height: 64px; object-fit: contain; display: block;" />` : ``}
+          ${company?.signature ? `<img src="${company.signature}" style="max-height: 64px; max-width: 100%; object-fit: contain; object-position: left bottom; margin: 0; display: block;" />` : ``}
         </div>
         <div style="border-top: 1.5px solid #111827; margin-top: 4px; padding-top: 8px;">
           <div style="float: left; font-size: 15px; font-weight: 700; color: #111827; font-family: Helvetica, Arial, sans-serif; letter-spacing: -0.01em;">
@@ -191,7 +196,7 @@ export default defineEventHandler(async (event) => {
     const customerSigBox = `
       <div style="width: 100%; max-width: 480px;">
         <div style="height: 64px;">
-          <img src="${signature}" style="max-height: 64px; object-fit: contain; display: block;" />
+          <img src="${signature}" style="max-height: 64px; max-width: 100%; object-fit: contain; object-position: left bottom; margin: 0; display: block;" />
         </div>
         <div style="border-top: 1.5px solid #111827; margin-top: 4px; padding-top: 8px;">
           <div style="float: left; font-size: 15px; font-weight: 700; color: #111827; font-family: Helvetica, Arial, sans-serif; letter-spacing: -0.01em;">

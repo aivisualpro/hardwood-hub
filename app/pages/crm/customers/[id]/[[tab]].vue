@@ -109,20 +109,30 @@ async function fetchCustomerContracts() {
   }
 }
 
-async function deleteContract(id: string) {
-  if (!confirm('Are you sure you want to delete this contract?')) return
+const templates = ref<any[]>([])
+const companyProfile = ref<any>({})
+
+async function fetchTemplates() {
   try {
-    await $fetch(`/api/contracts/detail/${id}`, { method: 'DELETE' })
-    toast.success('Contract deleted')
-    fetchCustomerContracts()
-  } catch (e: any) {
-    toast.error('Delete failed')
-  }
+    const res = await $fetch<{ success: boolean, data: any[] }>('/api/contracts/templates')
+    templates.value = res.data || []
+  } catch { /* ignore */ }
 }
+
+async function fetchCompanyProfile() {
+  try {
+    const res = await $fetch<{ success: boolean, data: Record<string, any> }>('/api/app-settings')
+    if (res.data?.companyProfile) companyProfile.value = res.data.companyProfile
+  } catch { /* ignore */ }
+}
+
+// `deleteContract` has been moved to CrmContractsTable
 
 
 onMounted(() => {
   fetchCustomer()
+  fetchTemplates()
+  fetchCompanyProfile()
 })
 
 async function handleStatusUpdate(id: string, status: string) {
@@ -273,49 +283,15 @@ async function deleteCustomer() {
             <h3 class="font-bold text-lg mb-1">No contracts found</h3>
             <p class="text-sm text-muted-foreground mb-4">This customer has no active contracts on file.</p>
           </div>
-          <div v-else class="rounded-xl border border-border/50 bg-card overflow-hidden">
-            <table class="w-full text-left">
-              <thead>
-                <tr class="border-b bg-muted/30">
-                  <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contract #</th>
-                  <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</th>
-                  <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Template</th>
-                  <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
-                  <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Created</th>
-                  <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-16 text-right" />
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-border/30">
-                <tr
-                  v-for="ct in customerContracts"
-                  :key="ct._id"
-                  class="group hover:bg-muted/10 transition-colors cursor-pointer"
-                  @click="navigateTo('/crm/contracts')"
-                >
-                  <td class="px-4 py-3">
-                    <span class="text-xs font-mono font-bold text-primary">{{ ct.contractNumber }}</span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <span class="text-sm font-semibold">{{ ct.title }}</span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <span class="text-xs text-muted-foreground">{{ ct.templateName || '—' }}</span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize border bg-muted/50">{{ ct.status }}</span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <span class="text-xs text-muted-foreground tabular-nums">{{ new Date(ct.createdAt).toLocaleDateString() }}</span>
-                  </td>
-                  <td class="px-4 py-3 text-right">
-                    <button class="size-7 rounded-md inline-flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete" @click.stop="deleteContract(ct._id)">
-                      <Icon name="i-lucide-trash-2" class="size-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <CrmContractsTable 
+            v-else
+            :contracts="customerContracts" 
+            :templates="templates" 
+            :companyProfile="companyProfile"
+            :isLoading="loadingContracts"
+            @refresh="fetchCustomerContracts"
+            @edit="ct => contractFormDialog?.openEditContract(ct)"
+          />
         </div>
 
         <!-- Table view of submissions for the active tab -->
