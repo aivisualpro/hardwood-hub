@@ -320,7 +320,8 @@ async function downloadPDF(ct: any) {
 
     <!-- Contracts Table -->
     <div v-else class="rounded-xl border border-border/50 bg-card overflow-hidden w-full">
-      <div class="overflow-x-auto">
+      <!-- Desktop Table -->
+      <div class="hidden lg:block overflow-x-auto">
         <table class="w-full text-left min-w-max">
           <thead>
             <tr class="border-b bg-muted/30">
@@ -453,6 +454,111 @@ async function downloadPDF(ct: any) {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile/Tablet Card View -->
+      <div class="block lg:hidden p-3 space-y-3 bg-muted/20">
+        <div v-for="ct in contracts" :key="ct._id" class="border border-border/60 rounded-xl p-3.5 bg-card shadow-sm flex flex-col gap-3 relative">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex flex-col min-w-0 flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-[11px] font-mono font-bold text-primary">{{ ct.contractNumber }}</span>
+                <HoverCard :open-delay="100" :close-delay="100">
+                  <HoverCardTrigger as-child>
+                    <span
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold capitalize border cursor-help"
+                      :class="STATUS_COLORS[ct.status] || STATUS_COLORS.draft"
+                    >
+                      {{ ct.status }}
+                    </span>
+                  </HoverCardTrigger>
+                  <HoverCardContent class="w-64 p-4 z-[100] bg-background border border-primary/50 shadow-xl rounded-xl" :side="'bottom'" :align="'start'">
+                    <div class="mb-4">
+                      <h4 class="text-sm font-bold leading-none">Contract Timeline</h4>
+                    </div>
+                    <div class="space-y-4 relative">
+                      <div class="absolute left-[11px] top-2 bottom-3 w-px bg-border/80"></div>
+                      <div class="flex items-start gap-4 relative z-10 w-full">
+                        <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background bg-zinc-200 text-zinc-500 shadow-sm">
+                          <Icon name="i-lucide-file-plus" class="size-3" />
+                        </div>
+                        <div class="flex-1 min-w-0 pt-0.5">
+                          <p class="text-xs font-bold leading-none">Draft Created</p>
+                          <p class="text-[10px] text-muted-foreground mt-1.5">{{ formatDate(ct.createdAt) }}</p>
+                        </div>
+                      </div>
+                      <div class="flex items-start gap-4 relative z-10 w-full">
+                        <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background shadow-sm"
+                          :class="ct.sentAt ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'">
+                          <Icon :name="ct.sentAt ? 'i-lucide-send' : 'i-lucide-clock'" class="size-3" />
+                        </div>
+                        <div class="flex-1 min-w-0 pt-0.5">
+                          <p class="text-xs font-bold leading-none" :class="{ 'text-muted-foreground': !ct.sentAt }">Sent for Signature</p>
+                          <p class="text-[10px] text-muted-foreground mt-1.5">{{ ct.sentAt ? formatDate(ct.sentAt) : 'Pending' }}</p>
+                        </div>
+                      </div>
+                      <div class="flex items-start gap-4 relative z-10 w-full">
+                        <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background shadow-sm"
+                          :class="ct.customerSignatureDate ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'">
+                          <Icon :name="ct.customerSignatureDate ? 'i-lucide-check-check' : 'i-lucide-pen-line'" class="size-3" />
+                        </div>
+                        <div class="flex-1 min-w-0 pt-0.5">
+                          <p class="text-xs font-bold leading-none" :class="{ 'text-muted-foreground': !ct.customerSignatureDate }">Client Signed</p>
+                          <p class="text-[10px] text-muted-foreground mt-1.5">{{ ct.customerSignatureDate ? formatDate(ct.customerSignatureDate) : 'Awaiting Signature' }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+              <span class="text-sm font-bold text-foreground leading-tight truncate">{{ ct.title }}</span>
+            </div>
+            <div class="text-right flex flex-col items-end shrink-0 pt-0.5">
+              <span class="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">Created</span>
+              <span class="text-xs font-medium">{{ formatDate(ct.createdAt) }}</span>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3 bg-muted/30 p-2.5 rounded-lg border border-border/40">
+            <div class="flex flex-col min-w-0">
+              <span class="text-[10px] text-muted-foreground uppercase font-bold mb-0.5 flex items-center gap-1"><Icon name="i-lucide-user" class="size-3 pl-0.5 text-primary" /> Customer</span>
+              <span class="text-xs font-bold truncate">{{ ct.customerName || '—' }}</span>
+              <span class="text-[11px] text-muted-foreground truncate">{{ ct.customerEmail || ct.customerPhone || '—' }}</span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-[10px] text-muted-foreground uppercase font-bold mb-0.5">Template</span>
+              <span class="text-xs font-medium truncate pt-px">{{ ct.templateName || '—' }}</span>
+            </div>
+          </div>
+
+          <div class="pt-2 flex justify-between gap-2 mt-0.5">
+            <div class="flex gap-2 flex-1">
+              <button class="flex-1 h-8 rounded-lg border bg-background font-medium focus:ring-1 hover:bg-muted text-foreground text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs" @click.stop="downloadPDF(ct)">
+                <Icon name="i-lucide-file-text" class="size-3.5 text-muted-foreground" /> PDF
+              </button>
+              <button 
+                class="flex-1 h-8 rounded-lg border font-medium text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                :class="ct.status === 'sent' || ct.status === 'signed' ? 'bg-primary text-primary-foreground border-primary/20' : 'bg-background hover:bg-muted text-foreground'"
+                :disabled="sendingEmailId === ct._id"
+                @click.stop="openSendEmailModal(ct)"
+              >
+                <Icon v-if="sendingEmailId === ct._id" name="i-lucide-loader-circle" class="size-3.5 animate-spin" />
+                <Icon v-else-if="ct.status === 'signed'" name="i-lucide-check-circle-2" class="size-3.5" />
+                <Icon v-else-if="ct.status === 'sent'" name="i-lucide-mail-check" class="size-3.5" />
+                <Icon v-else name="i-lucide-send" class="size-3.5" />
+                Email
+              </button>
+            </div>
+            <div class="flex gap-1.5 shrink-0">
+              <button class="size-8 rounded-lg border bg-background flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shadow-xs" @click.stop="emit('edit', ct)">
+                <Icon name="i-lucide-pencil" class="size-3.5" />
+              </button>
+              <button class="size-8 rounded-lg border border-red-500/20 bg-red-500/5 flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-colors shadow-xs" @click.stop="deleteContract(ct._id)">
+                <Icon name="i-lucide-trash-2" class="size-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -228,38 +228,127 @@ async function deleteCustomer() {
         </div>
         
         <!-- Details View -->
-        <div v-if="activeTab === 'details'" class="relative">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-card p-6 rounded-xl border border-border/50">
+        <div v-if="activeTab === 'details'" class="relative space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-card p-6 rounded-xl border border-border/50">
+            <!-- Basic Info -->
             <div class="space-y-4">
               <div>
                 <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Name / Company</h4>
                 <p class="font-medium text-foreground">{{ customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || '—' }}</p>
               </div>
               <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Type</h4>
-                <span class="px-2.5 py-1 rounded-full text-xs font-bold capitalize bg-primary/10 text-primary">{{ customer.type || 'lead' }}</span>
-              </div>
-              <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Status</h4>
-                <span class="px-2.5 py-1 rounded-full text-xs font-bold capitalize border bg-muted/50 text-muted-foreground">{{ customer.status || 'new' }}</span>
-              </div>
-            </div>
-            <div class="space-y-4">
-              <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Full Address</h4>
-                <p class="font-medium text-foreground">
-                  {{ [customer.address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ') || '—' }}
-                </p>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Contact</h4>
+                <p class="font-medium text-sm text-foreground" v-if="customer.email">{{ customer.email }}</p>
+                <p class="font-medium text-sm text-foreground" v-if="customer.phone">{{ customer.phone }}</p>
+                <p class="text-sm text-muted-foreground" v-if="!customer.email && !customer.phone">—</p>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Added On</h4>
-                  <p class="text-sm text-foreground">{{ customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : '—' }}</p>
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Type</h4>
+                  <span class="px-2.5 py-1 rounded-full text-xs font-bold capitalize bg-primary/10 text-primary">{{ customer.type || 'lead' }}</span>
                 </div>
                 <div>
-                  <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Last Updated</h4>
-                  <p class="text-sm text-foreground">{{ customer.updatedAt ? new Date(customer.updatedAt).toLocaleDateString() : '—' }}</p>
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Status</h4>
+                  <span class="px-2.5 py-1 rounded-full text-xs font-bold capitalize border bg-muted/50 text-muted-foreground">{{ customer.status || 'new' }}</span>
                 </div>
+              </div>
+              <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Tags</h4>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="tag in customer.tags" :key="tag" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-foreground border">{{ tag }}</span>
+                  <span v-if="!customer.tags?.length" class="text-sm text-muted-foreground">—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Project & Sales Details -->
+            <div class="space-y-4">
+              <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Sales Info</h4>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-xs text-muted-foreground">Stage</p>
+                    <p class="font-medium text-sm">{{ customer.stage || '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Assigned To</p>
+                    <p class="font-medium text-sm">{{ customer.assignedTo || '—' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="pt-2 border-t border-border/40">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Project Info</h4>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-xs text-muted-foreground">Project Manager</p>
+                    <p class="font-medium text-sm">{{ customer.projectAssignedTo || '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Duration</p>
+                    <p class="font-medium text-sm">{{ customer.estimatedProjectDuration || '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Total Estimate</p>
+                    <p class="font-medium text-sm">
+                      {{ customer.totalEstimate ? '$' + customer.totalEstimate.toLocaleString() : '—' }}
+                    </p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Views</p>
+                    <p class="font-medium text-sm">{{ customer.totalTrackedViews || '0' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="pt-2 border-t border-border/40">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Full Address</h4>
+                <p class="font-medium text-sm text-foreground">
+                  {{ [customer.address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ') || '—' }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Timeline & Dates -->
+            <div class="space-y-4">
+              <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Key Dates</h4>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-xs text-muted-foreground">Initial Contact</p>
+                    <p class="text-sm font-medium">{{ customer.initialContactDate ? new Date(customer.initialContactDate).toLocaleDateString() : '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Estimate Sent</p>
+                    <p class="text-sm font-medium">{{ customer.estimateSentOn ? new Date(customer.estimateSentOn).toLocaleDateString() : '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Last Follow-up</p>
+                    <p class="text-sm font-medium">{{ customer.lastFollowUpSentOn ? new Date(customer.lastFollowUpSentOn).toLocaleDateString() : '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Approved On</p>
+                    <p class="text-sm font-medium">{{ customer.dateApproved ? new Date(customer.dateApproved).toLocaleDateString() : '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Wood Ordered</p>
+                    <p class="text-sm font-medium">{{ customer.woodOrderDate ? new Date(customer.woodOrderDate).toLocaleDateString() : '—' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="pt-2 border-t border-border/40">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">System Added</h4>
+                    <p class="text-sm text-muted-foreground">{{ customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : '—' }}</p>
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Last Updated</h4>
+                    <p class="text-sm text-muted-foreground">{{ customer.updatedAt ? new Date(customer.updatedAt).toLocaleDateString() : '—' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="pt-2 border-t border-border/40">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Notes</h4>
+                <p class="text-sm text-foreground whitespace-pre-wrap">{{ customer.notes || '—' }}</p>
               </div>
             </div>
           </div>

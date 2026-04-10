@@ -459,8 +459,8 @@ function selectFilter(id: string) {
       </div>
     </div>
 
-    <!-- Table Details -->
-    <div class="flex-1 min-h-0 overflow-auto bg-card border border-border/50 rounded-xl text-sm shadow-sm relative">
+    <!-- Table Details Desktop -->
+    <div class="hidden lg:block flex-1 min-h-0 overflow-auto bg-card border border-border/50 rounded-xl text-sm shadow-sm relative">
       <table class="w-full text-left border-collapse whitespace-nowrap">
         <thead>
           <tr class="border-b bg-card text-muted-foreground text-[10px] font-bold uppercase tracking-wider sticky top-0 z-20">
@@ -680,6 +680,96 @@ function selectFilter(id: string) {
           </template>
         </tbody>
       </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="block lg:hidden flex-1 min-h-0 overflow-auto bg-muted/10 pb-16">
+      <div v-if="isLoading" class="p-4 space-y-4">
+        <div v-for="i in 5" :key="i" class="h-24 bg-muted/40 rounded-xl animate-pulse" />
+      </div>
+      
+      <div v-else class="space-y-4 p-3">
+        <div v-for="g in tableGroupedCustomers" :key="g.stage.id" class="space-y-2">
+          <!-- Group Header -->
+          <button 
+            type="button"
+            class="flex items-center gap-2 w-full px-3 py-2 bg-card hover:bg-muted/60 transition-colors border-l-[4px] rounded-lg border border-border/50 shadow-sm"
+            :class="g.stage.border"
+            @click="expandedStages[g.stage.id] = !expandedStages[g.stage.id]"
+          >
+            <Icon :name="expandedStages[g.stage.id] ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-4 text-muted-foreground mr-1 shrink-0" />
+            <div class="px-2 py-[3px] rounded text-[10px] uppercase font-bold tracking-wider inline-flex shadow-xs shrink-0" :class="[g.stage.bg, g.stage.text]">
+              {{ g.stage.label }}
+            </div>
+            <span class="text-xs font-bold text-muted-foreground ml-auto">{{ g.items.length }}</span>
+          </button>
+
+          <!-- Group Items -->
+          <div v-if="expandedStages[g.stage.id]" class="flex flex-col gap-3 pl-2 border-l-2 border-border/30 ml-2">
+            <div 
+              v-for="c in g.items" 
+              :key="c._id" 
+              class="bg-card border border-border/60 rounded-xl p-3 shadow-sm flex flex-col gap-2 relative"
+              @click="!isQuickEditMode && navigateTo(`/crm/customers/${c._id}`)"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex flex-col min-w-0 flex-1">
+                  <span class="text-sm font-bold text-foreground truncate block w-full">{{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}</span>
+                  <span class="text-[11px] text-muted-foreground truncate block w-full">{{ c.email || c.phone || '—' }}</span>
+                </div>
+                <div class="text-right flex flex-col items-end shrink-0 pt-0.5">
+                  <span class="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">Est. Total</span>
+                  <span class="text-xs font-medium tabular-nums">{{ formatCurrency(c.totalEstimate) || '—' }}</span>
+                </div>
+              </div>
+
+              <!-- Content details block -->
+              <div class="grid grid-cols-2 gap-2 text-xs bg-muted/30 p-2 rounded-lg border border-border/40 mt-1">
+                <div class="flex flex-col justify-center min-w-0 gap-1.5">
+                  <div class="flex items-center text-[11px]">
+                    <span class="text-muted-foreground font-bold pr-1.5">Contact:</span>
+                    <span class="font-medium truncate">{{ formatShortDate(c.initialContactDate) || '—' }}</span>
+                  </div>
+                  <div class="flex items-center text-[11px]">
+                    <span class="text-muted-foreground font-bold pr-1.5">Views:</span>
+                    <span class="font-medium tabular-nums">{{ c.totalTrackedViews || 0 }}</span>
+                  </div>
+                </div>
+                <div class="flex flex-col min-w-0 gap-1 pl-2 border-l border-border/40">
+                  <div class="flex flex-col justify-center h-full">
+                    <span class="text-[9px] text-muted-foreground uppercase font-bold mb-1">Assigned To</span>
+                    <div class="flex items-center" :class="{ '-space-x-1.5': getAssignedToArray(c.assignedTo).length > 1, 'gap-1.5': getAssignedToArray(c.assignedTo).length === 1 }" v-if="getAssignedToArray(c.assignedTo).length">
+                      <div v-for="assignee in getAssignedToArray(c.assignedTo).slice(0, 3)" :key="assignee" 
+                           class="relative flex-shrink-0 size-5 rounded-full bg-primary/10 flex items-center justify-center text-[8px] font-bold uppercase text-primary border border-card shadow-sm z-10"
+                           :title="resolveAssignedTo(assignee)?.name">
+                        <img v-if="resolveAssignedTo(assignee)?.image" :src="resolveAssignedTo(assignee)!.image" class="w-full h-full rounded-full object-cover" />
+                        <span v-else>{{ resolveAssignedTo(assignee)?.name.substring(0, 1) }}</span>
+                      </div>
+                      <div v-if="getAssignedToArray(c.assignedTo).length > 3" class="relative flex-shrink-0 size-5 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground border border-card shadow-sm z-0">
+                        +{{ getAssignedToArray(c.assignedTo).length - 3 }}
+                      </div>
+                      <span class="text-[10px] font-medium truncate max-w-[80px] ml-1.5" :title="getAssignedToNames(c.assignedTo)">
+                        {{ getAssignedToNames(c.assignedTo) }}
+                      </span>
+                    </div>
+                    <span v-else class="text-[10px] text-muted-foreground mt-0.5 font-medium">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer/Actions -->
+              <div class="pt-2.5 flex items-center justify-between gap-2 border-t border-border/40 mt-1.5">
+                <div class="text-[10px] text-muted-foreground font-medium flex gap-2">
+                  <span>Sent: {{ formatShortDate(c.estimateSentOn) || '—' }}</span>
+                </div>
+                <button class="h-6 px-2.5 rounded border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider transition-colors" @click.stop="navigateTo(`/crm/customers/${c._id}`)">
+                  View Full
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
