@@ -14,6 +14,18 @@ const CustomerSchema = new mongoose.Schema(
     type: { type: String, default: 'lead' }, // 'lead', 'client', etc.
     status: { type: String, default: 'new' }, // 'new', 'contacted', 'converted', etc.
     notes: { type: String, default: '' },
+    stage: { type: String, default: '' },
+    estimatedProjectDuration: { type: String, default: '' },
+    totalEstimate: { type: Number, default: null },
+    assignedTo: { type: String, default: '' },
+    totalTrackedViews: { type: Number, default: 0 },
+    estimateSentOn: { type: Date, default: null },
+    initialContactDate: { type: Date, default: null },
+    lastFollowUpSentOn: { type: Date, default: null },
+    dateApproved: { type: Date, default: null },
+    projectAssignedTo: { type: String, default: '' },
+    woodOrderDate: { type: Date, default: null },
+    tags: [{ type: String }],
   },
   {
     timestamps: true,
@@ -38,6 +50,18 @@ export interface ICustomer {
   type: string
   status: string
   notes: string
+  stage?: string
+  estimatedProjectDuration?: string
+  totalEstimate?: number
+  assignedTo?: string
+  totalTrackedViews?: number
+  estimateSentOn?: Date
+  initialContactDate?: Date
+  lastFollowUpSentOn?: Date
+  dateApproved?: Date
+  projectAssignedTo?: string
+  woodOrderDate?: Date
+  tags?: string[]
   createdAt?: Date
   updatedAt?: Date
 }

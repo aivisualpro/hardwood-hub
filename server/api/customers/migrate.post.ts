@@ -31,6 +31,8 @@ export default defineEventHandler(async () => {
         zip: sub.zip,
         type: 'lead',
         status: 'new',
+        stage: 'subscribers',
+        tags: ['subscribers'],
         createdAt: sub.createdAt,
       })
       count++
@@ -45,6 +47,17 @@ export default defineEventHandler(async () => {
       if (!existing.city && sub.city) { existing.city = sub.city; modified = true }
       if (!existing.state && sub.state) { existing.state = sub.state; modified = true }
       if (!existing.zip && sub.zip) { existing.zip = sub.zip; modified = true }
+      
+      if (!existing.tags || !existing.tags.includes('subscribers')) {
+        if (!existing.tags) existing.tags = []
+        existing.tags.push('subscribers')
+        modified = true
+      }
+      
+      if (!existing.stage || existing.stage !== 'subscribers') {
+        existing.stage = 'subscribers'
+        modified = true
+      }
       
       if (modified) await existing.save()
     }

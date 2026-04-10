@@ -345,7 +345,7 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
 
 <template>
   <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
-    <div class="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-[90rem] mx-auto">
+    <div class="space-y-4 sm:space-y-6">
 
       <!-- ═══════ SUMMARY CARDS ═══════ -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
