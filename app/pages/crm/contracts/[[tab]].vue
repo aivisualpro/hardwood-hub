@@ -745,12 +745,60 @@ const TYPE_ICONS: Record<string, string> = {
                     <span class="text-xs text-muted-foreground">{{ ct.templateName || '—' }}</span>
                   </td>
                   <td class="px-4 py-3">
-                    <span
-                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize border"
-                      :class="STATUS_COLORS[ct.status] || STATUS_COLORS.draft"
-                    >
-                      {{ ct.status }}
-                    </span>
+                    <HoverCard :open-delay="100" :close-delay="100">
+                      <HoverCardTrigger as-child>
+                        <span
+                          class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize border cursor-help transition-transform hover:scale-105"
+                          :class="STATUS_COLORS[ct.status] || STATUS_COLORS.draft"
+                        >
+                          {{ ct.status }}
+                        </span>
+                      </HoverCardTrigger>
+                      <HoverCardContent class="w-64 p-4 z-[100] bg-background border border-primary/50 shadow-xl shadow-primary/5 rounded-xl" :side="'bottom'" :align="'start'">
+                        <div class="mb-4">
+                          <h4 class="text-sm font-bold leading-none">Contract Timeline</h4>
+                        </div>
+                        <div class="space-y-4 relative">
+                          <!-- Timeline vertical line -->
+                          <div class="absolute left-[11px] top-2 bottom-3 w-px bg-border/80"></div>
+
+                          <!-- Created Node -->
+                          <div class="flex items-start gap-4 relative z-10 w-full">
+                            <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background bg-zinc-200 dark:bg-zinc-800 text-zinc-500 shadow-sm">
+                              <Icon name="i-lucide-file-plus" class="size-3" />
+                            </div>
+                            <div class="flex-1 min-w-0 pt-0.5">
+                              <p class="text-xs font-bold leading-none">Draft Created</p>
+                              <p class="text-[10px] text-muted-foreground mt-1.5">{{ formatDate(ct.createdAt) }}</p>
+                            </div>
+                          </div>
+
+                          <!-- Sent Node -->
+                          <div class="flex items-start gap-4 relative z-10 w-full">
+                            <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background transition-colors shadow-sm"
+                              :class="ct.sentAt ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'">
+                              <Icon :name="ct.sentAt ? 'i-lucide-send' : 'i-lucide-clock'" class="size-3" />
+                            </div>
+                            <div class="flex-1 min-w-0 pt-0.5">
+                              <p class="text-xs font-bold leading-none" :class="{ 'text-muted-foreground': !ct.sentAt }">Sent for Signature</p>
+                              <p class="text-[10px] text-muted-foreground mt-1.5">{{ ct.sentAt ? formatDate(ct.sentAt) : 'Pending' }}</p>
+                            </div>
+                          </div>
+
+                          <!-- Signed Node -->
+                          <div class="flex items-start gap-4 relative z-10 w-full">
+                            <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background transition-colors shadow-sm"
+                              :class="ct.customerSignatureDate ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'">
+                              <Icon :name="ct.customerSignatureDate ? 'i-lucide-check-check' : 'i-lucide-pen-line'" class="size-3" />
+                            </div>
+                            <div class="flex-1 min-w-0 pt-0.5">
+                              <p class="text-xs font-bold leading-none" :class="{ 'text-muted-foreground': !ct.customerSignatureDate }">Client Signed</p>
+                              <p class="text-[10px] text-muted-foreground mt-1.5">{{ ct.customerSignatureDate ? formatDate(ct.customerSignatureDate) : 'Awaiting Signature' }}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
                   </td>
                   <td class="px-4 py-3">
                     <span class="text-xs text-muted-foreground tabular-nums">{{ formatDate(ct.createdAt) }}</span>
@@ -856,39 +904,27 @@ const TYPE_ICONS: Record<string, string> = {
               <div class="space-y-4">
                 <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
                   <div class="px-4 py-3 border-b border-border/50 bg-muted/20 flex items-center justify-between">
-                    <div>
-                      <h3 class="text-xs font-bold flex items-center gap-1.5">
-                        <Icon name="i-lucide-braces" class="size-3.5 text-amber-500" />
-                        Template Variables
-                      </h3>
-                      <p class="text-[10px] text-muted-foreground mt-0.5">Click to insert into document</p>
-                    </div>
+                    <h3 class="text-xs font-bold flex items-center gap-1.5">
+                      <Icon name="i-lucide-braces" class="size-3.5 text-amber-500" />
+                      Template Variables
+                    </h3>
                     <button class="size-7 rounded-md bg-primary/10 hover:bg-primary/20 flex items-center justify-center text-primary transition-colors" @click="addVariable">
                       <Icon name="i-lucide-plus" class="size-3.5" />
                     </button>
                   </div>
                   <div class="divide-y divide-border/30 max-h-[50vh] overflow-y-auto">
-                    <div v-for="(v, idx) in templateForm.variables" :key="idx" class="p-3 hover:bg-muted/20 transition-colors group">
-                      <div class="flex items-center gap-2 mb-2">
-                        <input v-model="v.label" placeholder="Label" class="flex-1 text-xs font-semibold bg-transparent border-none outline-none placeholder:text-muted-foreground/30">
-                        <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100" @click="removeVariable(idx)">
-                          <Icon name="i-lucide-x" class="size-3" />
-                        </button>
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <input v-model="v.key" placeholder="variable_key" class="flex-1 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1 outline-none">
-                        <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1 bg-background text-foreground outline-none">
-                          <option value="text">Text</option>
-                          <option value="date">Date</option>
-                          <option value="number">Number</option>
-                          <option value="currency">Currency</option>
-                          <option value="textarea">Textarea</option>
-                          <option value="signature">Signature</option>
-                        </select>
-                      </div>
-                      <button class="mt-2 inline-flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary font-semibold transition-colors" @click="insertVariable(v.key)">
-                        <Icon name="i-lucide-plus-circle" class="size-3" />
-                        Insert into document
+                    <div v-for="(v, idx) in templateForm.variables" :key="idx" class="p-3 hover:bg-muted/20 transition-colors group flex items-center gap-2">
+                      <input v-model="v.key" placeholder="variable_key" class="flex-1 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5 outline-none">
+                      <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none">
+                        <option value="text">Text</option>
+                        <option value="date">Date</option>
+                        <option value="number">Number</option>
+                        <option value="currency">Currency</option>
+                        <option value="textarea">Textarea</option>
+                        <option value="signature">Signature</option>
+                      </select>
+                      <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
+                        <Icon name="i-lucide-x" class="size-3" />
                       </button>
                     </div>
                     <div v-if="templateForm.variables.length === 0" class="p-6 text-center">
@@ -917,23 +953,6 @@ const TYPE_ICONS: Record<string, string> = {
                         </p>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                <div class="rounded-xl border border-border/50 bg-card p-4">
-                  <h4 class="text-xs font-bold flex items-center gap-1.5 mb-3">
-                    <Icon name="i-lucide-lightbulb" class="size-3.5 text-amber-400" />
-                    Quick Tips
-                  </h4>
-                  <div class="space-y-2">
-                    <p class="text-[10px] text-muted-foreground flex items-start gap-2">
-                      <span class="text-primary font-bold shrink-0">•</span>
-                      Use <code class="px-1 py-0.5 bg-muted rounded text-[9px] font-mono text-amber-600 dark:text-amber-400">{<!-- -->{variable_key}}</code> syntax for dynamic fields
-                    </p>
-                    <p class="text-[10px] text-muted-foreground flex items-start gap-2">
-                      <span class="text-primary font-bold shrink-0">•</span>
-                      The company letterhead is from <strong class="text-foreground">Settings → Company</strong>
-                    </p>
                   </div>
                 </div>
               </div>
@@ -1049,7 +1068,7 @@ const TYPE_ICONS: Record<string, string> = {
           <Button
             :disabled="!sendEmailAddress.trim() || sendingEmailId === sendEmailContract?._id"
             @click="confirmSendEmail"
-            class="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[120px]"
+            class="min-w-[120px]"
           >
             <Icon v-if="sendingEmailId === sendEmailContract?._id" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
             <Icon v-else name="i-lucide-send" class="mr-2 size-4" />

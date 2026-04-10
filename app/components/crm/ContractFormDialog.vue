@@ -391,7 +391,7 @@ async function seedChangeOrder() {}
               </Button>
             </div>
 
-            <div v-else class="max-w-md mx-auto py-8 space-y-6">
+            <div v-else class="max-w-md mx-auto py-8 pb-64 space-y-6">
               <div class="space-y-2">
                 <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider block ml-1">Contract Template</Label>
                 <div class="relative">

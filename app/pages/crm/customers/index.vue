@@ -417,7 +417,7 @@ function selectFilter(id: string) {
     />
 
     <!-- Pipeline Headers as Filters -->
-    <div class="flex overflow-x-auto w-full pt-1.5 pb-2 -mt-1.5 -mx-2 px-2 scrollbar-hide text-xs whitespace-nowrap select-none">
+    <div class="flex overflow-x-auto w-full scrollbar-hide text-xs whitespace-nowrap select-none bg-card rounded-xl overflow-hidden border border-border/50 shadow-sm mb-1">
       <div v-for="(g, idx) in pipelineGroups" :key="g.stage.id"
            class="relative -ml-3 first:ml-0 first:pl-2 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer origin-center"
            :class="selectedStageFilter === g.stage.id ? 'z-50 scale-[1.12]' : 'opacity-70 hover:opacity-100 hover:brightness-110 hover:scale-[1.03]'"
@@ -460,10 +460,10 @@ function selectFilter(id: string) {
     </div>
 
     <!-- Table Details -->
-    <div class="flex-1 min-h-0 overflow-auto bg-card border border-border/50 rounded-xl text-sm shadow-sm relative overflow-hidden">
+    <div class="flex-1 min-h-0 overflow-auto bg-card border border-border/50 rounded-xl text-sm shadow-sm relative">
       <table class="w-full text-left border-collapse whitespace-nowrap">
         <thead>
-          <tr class="border-b bg-muted/30 text-muted-foreground text-[10px] font-bold uppercase tracking-wider sticky top-0 z-20">
+          <tr class="border-b bg-card text-muted-foreground text-[10px] font-bold uppercase tracking-wider sticky top-0 z-20">
             <th class="p-2.5 w-10 text-center"><input type="checkbox" class="rounded border-border text-primary cursor-pointer" /></th>
             <th class="p-2.5 min-w-[200px]">Name</th>
             <th class="p-2.5 min-w-[100px]">Est. Duration</th>

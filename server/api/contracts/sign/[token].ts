@@ -172,27 +172,37 @@ export default defineEventHandler(async (event) => {
     `
 
     const companySigBox = `
-      <div style="float: left; width: 45%;">
-        ${company?.signature ? `<img src="${company.signature}" style="max-height: 56px; object-fit: contain; display: block; margin-bottom: 4px;" />` : `<div style="height: 56px;"></div>`}
-        <div style="border-top: 1.5px solid #111; margin-top: 4px; padding-top: 4px; font-size: 11px; color: #374151; font-family: Helvetica, Arial, sans-serif;">Contractor's Signature</div>
+      <div style="width: 100%; max-width: 480px;">
+        <div style="height: 64px;">
+          ${company?.signature ? `<img src="${company.signature}" style="max-height: 64px; object-fit: contain; display: block;" />` : ``}
+        </div>
+        <div style="border-top: 1.5px solid #111827; margin-top: 4px; padding-top: 8px;">
+          <div style="float: left; font-size: 15px; font-weight: 700; color: #111827; font-family: Helvetica, Arial, sans-serif; letter-spacing: -0.01em;">
+            Contractor's Signature
+          </div>
+          <div style="float: right; font-size: 14px; font-weight: 400; color: #111827; font-family: Helvetica, Arial, sans-serif;">
+            Date: ${sysPrintDate}
+          </div>
+          <div style="clear: both;"></div>
+        </div>
       </div>
-      <div style="float: right; width: 45%; text-align: left;">
-        <div style="height: 56px; display: flex; align-items: flex-end; padding-bottom: 4px; font-size: 13px; color: #1a1a1a;">${company?.signature ? sysPrintDate : ''}</div>
-        <div style="border-top: 1.5px solid #111; margin-top: 4px; padding-top: 4px; font-size: 11px; color: #374151; font-family: Helvetica, Arial, sans-serif;">Date</div>
-      </div>
-      <div style="clear: both;"></div>
     `
 
     const customerSigBox = `
-      <div style="float: left; width: 45%;">
-        <img src="${signature}" style="max-height: 56px; object-fit: contain; display: block; margin-bottom: 4px;" />
-        <div style="border-top: 1.5px solid #111; margin-top: 4px; padding-top: 4px; font-size: 11px; color: #374151; font-family: Helvetica, Arial, sans-serif;">Client's Signature</div>
+      <div style="width: 100%; max-width: 480px;">
+        <div style="height: 64px;">
+          <img src="${signature}" style="max-height: 64px; object-fit: contain; display: block;" />
+        </div>
+        <div style="border-top: 1.5px solid #111827; margin-top: 4px; padding-top: 8px;">
+          <div style="float: left; font-size: 15px; font-weight: 700; color: #111827; font-family: Helvetica, Arial, sans-serif; letter-spacing: -0.01em;">
+            Client's Signature
+          </div>
+          <div style="float: right; font-size: 14px; font-weight: 400; color: #111827; font-family: Helvetica, Arial, sans-serif;">
+            Date: ${sysPrintDate}
+          </div>
+          <div style="clear: both;"></div>
+        </div>
       </div>
-      <div style="float: right; width: 45%; text-align: left;">
-        <div style="height: 56px; display: flex; align-items: flex-end; padding-bottom: 4px; font-size: 13px; color: #1a1a1a;">${sysPrintDate}</div>
-        <div style="border-top: 1.5px solid #111; margin-top: 4px; padding-top: 4px; font-size: 11px; color: #374151; font-family: Helvetica, Arial, sans-serif;">Date</div>
-      </div>
-      <div style="clear: both;"></div>
     `
 
     const signatureSection = `

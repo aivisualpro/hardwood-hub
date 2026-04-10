@@ -104,28 +104,69 @@ onMounted(fetchContract)
     <!-- Contract View + Signing -->
     <div v-else-if="contractData" class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
 
-      <!-- Header -->
-      <div class="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-2 mb-2">
-            <div class="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <svg class="size-4 text-emerald-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-            </div>
-            <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Contract for Signature</span>
-          </div>
-          <h1 class="text-xl sm:text-2xl font-bold text-slate-900">{{ contractData.title }}</h1>
-          <p class="text-sm text-slate-500 mt-1">
-            {{ contractData.contractNumber }} · {{ new Date(contractData.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) }}
-          </p>
-        </div>
-        <div v-if="contractData.company?.logo" class="shrink-0">
-          <img :src="contractData.company.logo" alt="Company Logo" class="h-16 sm:h-20 max-w-[200px] object-contain" />
-        </div>
-      </div>
-
-      <!-- Contract Content -->
+      <!-- Document View -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-        <div class="p-6 sm:p-8 prose prose-slate max-w-none text-slate-800 prose-p:text-slate-700 prose-headings:text-slate-900 prose-strong:text-slate-900 prose-li:text-slate-700 prose-a:text-emerald-600 font-medium" v-html="contractData.content" />
+        
+        <!-- Letterhead Header -->
+        <div class="p-6 sm:p-10 border-b-2 border-emerald-900 flex flex-col sm:flex-row justify-between items-start gap-8 bg-white">
+          <div class="shrink-0 flex items-center self-stretch h-28">
+            <template v-if="contractData.company?.logo">
+              <img :src="contractData.company.logo" alt="Company Logo" class="max-h-28 max-w-[320px] object-contain object-left" />
+            </template>
+            <template v-else>
+              <h1 class="text-3xl font-black text-slate-900" :style="{ color: contractData.company?.brandColor || '#065f46' }">{{ contractData.company?.name || 'Company Name' }}</h1>
+            </template>
+          </div>
+          
+          <div class="text-right text-[13px] text-amber-900/80 leading-relaxed font-bold font-sans self-center">
+            <div class="text-lg font-black mb-1" :style="{ color: contractData.company?.brandColor || '#84cc16' }">
+              {{ contractData.company?.name || 'Company Name' }}
+            </div>
+            <div>{{ contractData.company?.address || 'Address' }}</div>
+            <div>{{ contractData.company?.city || 'City' }}, {{ contractData.company?.state || 'State' }} {{ contractData.company?.zip || 'Zip' }}</div>
+            <div>{{ contractData.company?.phone || 'Phone' }}</div>
+            <div v-if="contractData.company?.phone2">{{ contractData.company?.phone2 }}</div>
+            <div class="text-amber-900/90">{{ contractData.company?.website?.replace(/^https?:\/\//, '') || 'Website' }}</div>
+            <div class="text-amber-900/90">{{ contractData.company?.email || 'Email' }}</div>
+            <div v-if="contractData.company?.licenseNumber">Builder's License Number: {{ contractData.company?.licenseNumber }}</div>
+          </div>
+        </div>
+
+        <!-- Contract Title Separator -->
+        <div class="px-6 sm:px-10 pt-8 pb-4 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+          <div>
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ contractData.title }}</h2>
+          </div>
+          <div class="text-right shrink-0">
+             <div class="inline-flex px-3 py-1 bg-emerald-100 text-emerald-800 rounded font-bold uppercase tracking-wider text-[10px] mb-2">Contract For Signature</div>
+             <p class="text-sm font-bold text-slate-500">Document #{{ contractData.contractNumber }}</p>
+          </div>
+        </div>
+
+        <!-- Contract Content -->
+        <div class="px-6 sm:px-10 pb-8 prose prose-slate max-w-none text-slate-800 prose-p:text-slate-700 prose-headings:text-slate-900 prose-strong:text-slate-900 prose-li:text-slate-700 prose-a:text-emerald-600 font-medium" v-html="contractData.content" />
+
+        <!-- Existing Signatures Display (Company Side) -->
+        <div class="px-6 sm:px-10 pb-12 pt-4 flex flex-col sm:flex-row justify-between gap-12 sm:gap-24">
+           <!-- Customer Placeholder (Left) -->
+           <div class="w-full sm:w-1/2 flex flex-col items-start opacity-30">
+              <div class="h-14 w-full"></div>
+              <div class="border-t-[1.5px] border-slate-900 w-full pt-2">
+                 <p class="text-xs font-bold text-slate-900 font-sans">Client's Signature</p>
+              </div>
+           </div>
+           
+           <!-- Contractor Signature (Right) -->
+           <div class="w-full sm:w-1/2 flex flex-col items-start relative">
+              <div class="h-14 w-full flex items-end relative -mb-1">
+                 <img v-if="contractData.company?.signature" :src="contractData.company.signature" class="max-h-16 object-contain z-10 block" />
+              </div>
+              <div class="border-t-[1.5px] border-slate-900 w-full pt-2 flex justify-between">
+                 <p class="text-xs font-bold text-slate-900 font-sans">Contractor's Signature</p>
+                 <div class="text-xs font-medium text-slate-800 tabular-nums">Date: {{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) }}</div>
+              </div>
+           </div>
+        </div>
       </div>
 
       <!-- Signature Section -->
