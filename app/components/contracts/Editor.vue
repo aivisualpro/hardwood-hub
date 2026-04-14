@@ -15,6 +15,8 @@ import Underline from '@tiptap/extension-underline'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
+import '@tiptap/extension-text-style'
+import FontSize from '@tiptap/extension-font-size'
 
 const props = defineProps<{
   modelValue: string
@@ -29,7 +31,34 @@ function calculatePages() {
   if (!editor.value) return 1
   const dom = editor.value.view.dom
   if (!dom) return 1
-  return Math.max(1, Math.ceil(dom.clientHeight / 1056))
+  return Math.max(1, Math.ceil(dom.clientHeight / 992))
+}
+
+const currentFontSize = ref('14')
+
+function changeFontSize(delta: number) {
+  if (!editor.value) return
+  let current = parseInt(currentFontSize.value) || 14
+  current += delta
+  if (current < 8) current = 8
+  if (current > 72) current = 72
+  setFontSize(current.toString())
+}
+
+function setFontSize(size: string | Event) {
+  if (!editor.value) return
+  const rawValue = typeof size === 'object' ? (size.target as HTMLInputElement).value : size
+  const val = parseInt(rawValue)
+  if (val && !isNaN(val)) {
+    // @ts-ignore
+    editor.value.commands.setFontSize(`${val}px`)
+    currentFontSize.value = val.toString()
+    editor.value.commands.focus()
+  } else {
+    // @ts-ignore
+    editor.value.commands.unsetFontSize()
+    currentFontSize.value = '14'
+  }
 }
 
 const editor = useEditor({
@@ -40,12 +69,7 @@ const editor = useEditor({
       horizontalRule: false,
     }),
     Placeholder.configure({
-      placeholder: ({ node }) => {
-        if (node.type.name === 'heading') {
-          return `Heading ${node.attrs.level}`
-        }
-        return 'Type here or use the toolbar to format...'
-      },
+      placeholder: 'Start typing your contract...',
     }),
     Underline,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
@@ -58,11 +82,12 @@ const editor = useEditor({
     Link.configure({ openOnClick: false, HTMLAttributes: { class: 'editor-link' } }),
     TextStyle,
     Color,
+    FontSize,
     HorizontalRule,
   ],
   editorProps: {
     attributes: {
-      class: 'contract-editor-content',
+      class: 'contract-editor-content focus:outline-none max-w-full',
     },
   },
   onCreate() {
@@ -73,6 +98,14 @@ const editor = useEditor({
   onUpdate({ editor: ed }) {
     emit('update:modelValue', ed.getHTML())
     emit('update:pages', calculatePages())
+  },
+  onSelectionUpdate: ({ editor: ed }) => {
+    const attrs = ed.getAttributes('textStyle')
+    if (attrs && attrs.fontSize) {
+      currentFontSize.value = attrs.fontSize.replace('px', '')
+    } else {
+      currentFontSize.value = '14'
+    }
   },
 })
 
@@ -138,11 +171,11 @@ function insertImage() {
 </script>
 
 <template>
-  <div class="relative contract-canvas">
+  <div class="relative contract-canvas flex flex-col h-full bg-muted/5 dark:bg-muted/10 rounded-xl overflow-hidden">
     <!-- ═══════ TOOLBAR ═══════ -->
-    <div class="relative z-10 bg-card/95 backdrop-blur-xl border-b shadow-sm">
+    <div class="shrink-0 bg-card/95 backdrop-blur-xl border-b shadow-sm">
       <div v-if="editor" class="flex items-center gap-0.5 px-3 py-1.5 overflow-x-auto">
-        <!-- Undo/Redo -->
+        <!-- Undo/Redo & Font Size -->
         <div class="flex items-center gap-0.5 pr-2 border-r mr-2">
           <button class="contract-toolbar-btn" :disabled="!editor.can().undo()" title="Undo" @click="editor.chain().focus().undo().run()">
             <Icon name="i-lucide-undo-2" class="size-3.5" />
@@ -150,6 +183,23 @@ function insertImage() {
           <button class="contract-toolbar-btn" :disabled="!editor.can().redo()" title="Redo" @click="editor.chain().focus().redo().run()">
             <Icon name="i-lucide-redo-2" class="size-3.5" />
           </button>
+          <div class="w-px h-4 bg-border/50 mx-1" />
+          
+          <div class="flex items-center bg-muted/30 rounded border border-border/50 px-0.5 h-7">
+            <button class="size-6 flex items-center justify-center rounded hover:bg-muted/80 hover:text-primary transition-colors text-muted-foreground" title="Decrease Font Size" @click="changeFontSize(-1)">
+              <Icon name="i-lucide-minus" class="size-3" />
+            </button>
+            <input 
+              type="text" 
+              v-model="currentFontSize" 
+              @change="setFontSize($event)"
+              @keydown.enter="setFontSize($event)"
+              class="w-8 text-center text-xs bg-transparent border-none outline-none font-semibold h-full focus:bg-muted" 
+            />
+            <button class="size-6 flex items-center justify-center rounded hover:bg-muted/80 hover:text-primary transition-colors text-muted-foreground" title="Increase Font Size" @click="changeFontSize(1)">
+              <Icon name="i-lucide-plus" class="size-3" />
+            </button>
+          </div>
         </div>
 
         <!-- Headings -->
@@ -280,24 +330,30 @@ function insertImage() {
     </BubbleMenu>
 
     <!-- ═══════ EDITOR CONTENT ═══════ -->
-    <EditorContent :editor="editor" class="min-h-[500px]" />
+    <div class="flex-1 overflow-y-auto w-full flex justify-center py-8 custom-scrollbar relative z-0">
+      <EditorContent :editor="editor" class="shadow-2xl shadow-black/5 dark:shadow-black/20" />
+    </div>
   </div>
 </template>
 
 <style>
 /* ─── Editor Content Styles ─── */
 .contract-editor-content {
-  padding: 2rem 2.5rem;
+  position: relative;
+  padding: 175px 40px 32px 40px; /* ~173px letterhead offset (logo/info + padding + border + margin), 40px L/R, 32px bottom */
   outline: none;
-  font-family: 'Inter', 'Georgia', serif;
-  line-height: 1.75;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.15;
   color: var(--foreground);
-  min-height: 1056px;
+  min-height: 992px;
+  width: 816px;
+  min-width: 816px;
   max-width: 816px;
   margin: 0 auto;
   
-  /* US Letter Page break simulation (11 inches = 1056px at 96 DPI) */
-  --page-height: 1056px;
+  /* US Letter Printable Area (11 inches = 1056px - 64px for top+bottom margins = 992px per page) */
+  --page-height: 992px;
   background-image: repeating-linear-gradient(
     to bottom,
     transparent,
@@ -305,53 +361,81 @@ function insertImage() {
     rgba(220, 38, 38, 0.4) calc(var(--page-height) - 2px),
     rgba(220, 38, 38, 0.4) var(--page-height)
   );
+  background-position: top center;
+}
+
+.contract-editor-content::before {
+  content: "Letterhead Area";
+  white-space: pre-wrap;
+  position: absolute;
+  top: 10px;
+  left: 40px;
+  right: 40px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 2px dashed rgba(161, 161, 170, 0.3);
+  border-radius: 8px;
+  color: rgba(161, 161, 170, 0.5);
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
 }
 
 .contract-editor-content:focus { outline: none; }
 
 .contract-editor-content h1 {
-  font-size: 1.875rem;
+  font-size: 24pt;
   font-weight: 900;
   letter-spacing: -0.025em;
-  margin-bottom: 1rem;
-  margin-top: 2rem;
+  line-height: 1.15;
+  margin-bottom: 6pt;
+  margin-top: 12pt;
 }
 
 .contract-editor-content h2 {
-  font-size: 1.5rem;
+  font-size: 18pt;
   font-weight: 700;
   letter-spacing: -0.025em;
-  margin-bottom: 0.75rem;
-  margin-top: 1.5rem;
+  line-height: 1.15;
+  margin-bottom: 4pt;
+  margin-top: 10pt;
 }
 
 .contract-editor-content h3 {
-  font-size: 1.25rem;
+  font-size: 14pt;
   font-weight: 600;
-  margin-bottom: 0.5rem;
-  margin-top: 1.25rem;
+  line-height: 1.15;
+  margin-bottom: 3pt;
+  margin-top: 8pt;
 }
 
 .contract-editor-content p {
-  font-size: 0.875rem;
-  line-height: 1.625;
-  margin-bottom: 0.75rem;
+  font-size: 11pt;
+  line-height: 1.15;
+  margin-bottom: 0;
+  margin-top: 0;
 }
 
 .contract-editor-content ul {
   list-style-type: disc;
   padding-left: 1.5rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
+  margin-top: 0;
 }
 
 .contract-editor-content ol {
   list-style-type: decimal;
   padding-left: 1.5rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
+  margin-top: 0;
 }
 
 .contract-editor-content li {
-  font-size: 0.875rem;
+  font-size: 11pt;
+  line-height: 1.15;
 }
 
 .contract-editor-content blockquote {
@@ -424,8 +508,8 @@ function insertImage() {
   font-weight: 600;
 }
 
-/* Placeholder */
-.contract-editor-content .is-empty::before {
+/* Placeholder: only show when the entire editor is blank */
+.contract-editor-content .tiptap.is-editor-empty .is-empty::before {
   content: attr(data-placeholder);
   color: hsl(var(--muted-foreground) / 0.4);
   pointer-events: none;

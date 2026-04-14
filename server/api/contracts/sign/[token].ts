@@ -267,8 +267,28 @@ export default defineEventHandler(async (event) => {
         const pdfHTML = `
           <!DOCTYPE html>
           <html>
-          <head><meta charset="utf-8"></head>
-          <body style="font-family: Helvetica, Arial, sans-serif; padding: 0; margin: 0; font-size: 13px; color: #111;">
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.75; font-size: 14px; color: #111; }
+              h1 { font-size: 1.875rem; font-weight: 900; letter-spacing: -0.025em; margin-bottom: 1rem; margin-top: 2rem; }
+              h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 0.75rem; margin-top: 1.5rem; }
+              h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; margin-top: 1.25rem; }
+              p { font-size: 0.875rem; line-height: 1.625; margin-bottom: 0.75rem; margin-top: 1em; }
+              ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; margin-top: 1em; }
+              ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; margin-top: 1em; }
+              li { font-size: 0.875rem; }
+              blockquote { border-left: 4px solid rgba(0,0,0,0.2); padding-left: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; margin: 1rem 0; font-style: italic; color: #666; background: rgba(0,0,0,0.02); }
+              hr { border-top: 2px solid #ccc; margin: 1.5rem 0; }
+              img { max-width: 100%; border-radius: 0.5rem; margin: 1rem 0; }
+              a { color: #2563eb; text-decoration: underline; }
+              mark { background: #fef08a; padding: 0 0.125rem; border-radius: 0.125rem; }
+              table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
+              th, td { border: 1px solid #ccc; padding: 0.5rem 0.75rem; text-align: left; }
+              th { background: #f3f4f6; font-weight: 600; }
+            </style>
+          </head>
+          <body style="padding: 0; margin: 0;">
             ${letterHead}
             <h2 style="color: #000; text-align: left; margin-top: 20px; margin-bottom: 20px; font-size: 18px;">
               ${contract.title}
@@ -279,7 +299,7 @@ export default defineEventHandler(async (event) => {
           </body>
           </html>
         `
-        const pdfBuffer = await htmlPdf.default.generatePdf({ content: pdfHTML }, { format: 'A4', margin: { top: '30px', right: '30px', bottom: '30px', left: '30px' } })
+        const pdfBuffer = await htmlPdf.default.generatePdf({ content: pdfHTML }, { format: 'Letter', margin: { top: '32px', right: '40px', bottom: '32px', left: '40px' } })
         
         let finalPdfBuffer = pdfBuffer;
         if (contract.attachedPdf) {

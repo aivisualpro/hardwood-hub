@@ -118,7 +118,7 @@ defineExpose({ clear })
   <div class="relative group bg-muted/10 border border-dashed rounded-xl overflow-hidden touch-none" style="min-height: 120px;">
     <canvas
       ref="canvas"
-      class="absolute inset-0 w-full h-full z-10 cursor-crosshair touch-none"
+      class="absolute inset-0 w-full h-full z-10 cursor-crosshair touch-none dark:invert dark:opacity-90"
       @mousedown="startDrawing"
       @mousemove="draw"
       @mouseup="stopDrawing"
@@ -128,7 +128,7 @@ defineExpose({ clear })
       @touchend="stopDrawing"
     />
 
-    <img v-if="modelValue && modelValue.startsWith('http')" :src="modelValue" class="absolute inset-0 w-full h-full object-contain pointer-events-none z-0 opacity-80" />
+    <img v-if="modelValue && modelValue.startsWith('http')" :src="modelValue" class="absolute inset-0 w-full h-full object-contain pointer-events-none z-0 opacity-80 dark:invert dark:opacity-70" />
     
     <div v-if="!modelValue" class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center opacity-40 z-0">
       <Icon name="i-lucide-pencil-line" class="size-5 mb-1" />

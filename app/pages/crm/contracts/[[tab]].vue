@@ -2,11 +2,15 @@
 import { toast } from 'vue-sonner'
 
 const { setHeader } = usePageHeader()
+
+// Initial header state
 setHeader({
   title: 'Contracts',
   icon: 'i-lucide-file-signature',
   description: 'Manage legal contracts and templates',
 })
+
+
 
 const route = useRoute()
 const activeTab = computed(() => {
@@ -86,8 +90,39 @@ const templates = ref<ContractTemplate[]>([])
 const loadingTemplates = ref(true)
 const selectedTemplate = ref<ContractTemplate | null>(null)
 const showEditor = ref(false)
+
+watch(() => showEditor.value, (isEditing) => {
+  if (isEditing) {
+    setHeader({
+      title: 'Editing Template',
+      icon: 'i-lucide-pen-tool',
+      description: 'Customize contract layout and variables'
+    })
+  } else {
+    setHeader({
+      title: 'Contracts',
+      icon: 'i-lucide-file-signature',
+      description: 'Manage legal contracts and templates',
+    })
+  }
+})
 const saving = ref(false)
 const seeding = ref(false)
+
+const systemVariables = [
+  { key: 'printDate', label: 'Print Date' },
+  { key: 'company_name', label: 'Company Name' },
+  { key: 'company_address', label: 'Street Address' },
+  { key: 'company_city', label: 'City' },
+  { key: 'company_state', label: 'State' },
+  { key: 'company_zip', label: 'Zip' },
+  { key: 'company_phone1', label: 'Primary Phone' },
+  { key: 'company_phone2', label: 'Secondary Phone' },
+  { key: 'company_website', label: 'Website' },
+  { key: 'company_email', label: 'Email' },
+  { key: 'company_license', label: "Builder's License Number" },
+  { key: 'company_logo', label: 'Logo' },
+]
 
 const templatePages = ref(1)
 
@@ -277,10 +312,10 @@ const TYPE_ICONS: Record<string, string> = {
 </script>
 
 <template>
-  <div class="space-y-0">
+  <div class="space-y-0 -mt-4 lg:-mt-6">
     <!-- Header Teleport -->
     <Teleport to="#header-toolbar">
-      <div class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">
+      <div v-if="!showEditor" class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">
         <div class="relative flex-1">
           <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground" />
           <input
@@ -308,11 +343,37 @@ const TYPE_ICONS: Record<string, string> = {
           <span class="hidden sm:inline">New Template</span>
         </button>
       </div>
+
+      <!-- ══ EDITOR MODE ACTIONS ══ -->
+      <div v-else class="flex items-center gap-3">
+        <button class="size-8 rounded-lg border bg-card hover:bg-muted flex items-center justify-center transition-colors shrink-0" @click="showEditor = false">
+          <Icon name="i-lucide-arrow-left" class="size-4" />
+        </button>
+        <div class="h-4 w-px bg-border/50 mx-1" />
+        <div class="flex items-center gap-2 bg-muted/30 rounded-lg p-1 border border-border/50">
+           <input v-model="templateForm.name" type="text" placeholder="Template Name" class="text-sm font-bold bg-transparent border-none outline-none w-[180px] px-2 placeholder:text-muted-foreground/40 transition-colors focus:bg-background focus:ring-1 focus:ring-primary rounded">
+           <div class="h-3 w-px bg-border/50 mx-1" />
+           <Select v-model="templateForm.category">
+             <SelectTrigger class="w-28 h-7 text-xs border-none bg-transparent shadow-none focus:ring-0"><SelectValue placeholder="Category" /></SelectTrigger>
+             <SelectContent>
+               <SelectItem v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</SelectItem>
+             </SelectContent>
+           </Select>
+        </div>
+        <div class="h-4 w-px bg-border/50 mx-1" />
+        <Button variant="ghost" size="sm" class="h-8" @click="showEditor = false">Cancel</Button>
+        <Button size="sm" class="h-8 shadow-lg shadow-primary/20" :disabled="saving" @click="saveTemplate">
+          <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
+          <Icon v-else name="i-lucide-save" class="mr-1.5 size-3.5" />
+          Save
+        </Button>
+      </div>
     </Teleport>
 
     <!-- Tabs Container -->
-    <div class="flex flex-col gap-0">
-      <div class="sticky top-(--header-height) z-30 bg-background/95 backdrop-blur-sm -mx-4 lg:-mx-6 px-4 lg:px-6 h-12 flex items-center border-b">
+    <div class="flex flex-col h-[calc(100dvh-90px)]">
+      <!-- Tab bar: fixed, never scrolls -->
+      <div class="shrink-0 bg-background/95 backdrop-blur-sm -mx-4 lg:-mx-6 px-4 lg:px-6 h-12 flex items-center border-b">
         <div class="flex items-center justify-start overflow-x-auto no-scrollbar w-full">
           <div class="flex items-center gap-0.5 min-w-max">
             <button
@@ -343,9 +404,10 @@ const TYPE_ICONS: Record<string, string> = {
         </div>
       </div>
 
-      <div class="pt-4">
+      <!-- Tab content: fills remaining height, no overflow on body -->
+      <div class="flex-1 overflow-hidden">  
         <!-- ═══════ LIST TAB ═══════ -->
-        <div v-if="activeTab === 'list'">
+        <div v-if="activeTab === 'list'" class="h-full overflow-y-auto p-4 lg:p-6">
 
           <CrmContractsTable 
             :contracts="contracts" 
@@ -359,54 +421,25 @@ const TYPE_ICONS: Record<string, string> = {
 
         <!-- ═══════ TEMPLATES TAB ═══════ -->
         <template v-if="activeTab === 'templates'">
-          <div v-if="showEditor" class="space-y-4">
-            <div class="flex items-center justify-between gap-4 pb-4 border-b border-border/50">
-              <div class="flex items-center gap-3 min-w-0">
-                <button class="size-9 rounded-lg border bg-card hover:bg-muted flex items-center justify-center transition-colors shrink-0" @click="showEditor = false">
-                  <Icon name="i-lucide-arrow-left" class="size-4" />
-                </button>
-                <div class="min-w-0 flex flex-col">
-                  <div class="flex items-center gap-2">
-                    <input v-model="templateForm.name" type="text" placeholder="Template Name" class="text-lg font-bold bg-transparent border-none outline-none w-full max-w-[300px] placeholder:text-muted-foreground/40">
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted text-[10px] font-bold text-muted-foreground whitespace-nowrap">
-                      <Icon name="i-lucide-file-text" class="size-3" />
-                      {{ templatePages }} {{ templatePages === 1 ? 'Page' : 'Pages' }}
-                    </div>
-                  </div>
-                  <input v-model="templateForm.description" type="text" placeholder="Add a description..." class="text-xs text-muted-foreground bg-transparent border-none outline-none w-full placeholder:text-muted-foreground/30 mt-0.5">
-                </div>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <Select v-model="templateForm.category">
-                  <SelectTrigger class="w-36 h-8 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="sm" class="h-8" @click="showEditor = false">Cancel</Button>
-                <Button size="sm" class="h-8 shadow-lg shadow-primary/20" :disabled="saving" @click="saveTemplate">
-                  <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
-                  <Icon v-else name="i-lucide-save" class="mr-1.5 size-3.5" />
-                  Save
-                </Button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5">
-              <div class="rounded-xl border border-border/50 bg-card overflow-hidden shadow-sm">
+          <!-- ═══ EDITOR VIEW: fills remaining height ═══ -->
+          <div v-if="showEditor" class="h-full">
+            <!-- Two-column grid -->
+            <div class="h-full overflow-hidden grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-0 border border-border/50 rounded-xl bg-card shadow-sm">
+              <!-- LEFT: Editor — scrolls inside -->
+              <div class="overflow-hidden flex flex-col border-r border-border/50">
                 <ClientOnly>
                   <ContractsEditor v-model="templateForm.content" @update:pages="templatePages = $event" />
                   <template #fallback>
-                    <div class="h-96 flex items-center justify-center">
+                    <div class="h-full flex items-center justify-center">
                       <Icon name="i-lucide-loader-circle" class="size-6 animate-spin text-muted-foreground" />
                     </div>
                   </template>
                 </ClientOnly>
               </div>
 
-              <div class="space-y-4 relative z-0">
-                <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
-                  <div class="p-0 max-h-[70vh] overflow-y-auto">
+              <!-- RIGHT: Variables — scrolls inside -->
+              <div class="flex flex-col overflow-hidden">
+                <div class="flex-1 overflow-y-auto">
                     <!-- Template Variables -->
                     <div class="px-4 py-3 border-b border-border/50 bg-muted/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
                       <h3 class="text-xs font-bold flex items-center gap-1.5">
@@ -475,23 +508,18 @@ const TYPE_ICONS: Record<string, string> = {
                     </div>
 
                     <!-- System Variables -->
-                    <div class="bg-muted/10 border-t border-border/50 p-3 flex flex-col gap-3">
+                    <div class="bg-muted/10 border-t border-border/50 p-3 flex flex-col gap-2">
                       <div class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">System Variables</div>
                       
-                      <div class="flex items-center justify-between group">
+                      <div
+                        v-for="sv in systemVariables"
+                        :key="sv.key"
+                        class="flex items-center justify-between group"
+                      >
                         <div class="flex items-center gap-2">
-                           <span class="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">printDate</span>
+                           <span class="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">{{ sv.key }}</span>
                         </div>
-                        <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100" title="Insert into document" @click="insertVariable('printDate')">
-                          <Icon name="i-lucide-plus" class="size-3.5" />
-                        </button>
-                      </div>
-
-                      <div class="flex items-center justify-between group">
-                        <div class="flex items-center gap-2">
-                           <span class="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">company_name</span>
-                        </div>
-                        <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100" title="Insert into document" @click="insertVariable('company_name')">
+                        <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100" title="Insert into document" @click="insertVariable(sv.key)">
                           <Icon name="i-lucide-plus" class="size-3.5" />
                         </button>
                       </div>
@@ -506,10 +534,9 @@ const TYPE_ICONS: Record<string, string> = {
                   </div>
                 </div>
               </div>
-            </div>
           </div>
 
-          <div v-else>
+          <div v-else class="h-full overflow-y-auto p-4 lg:p-6">
             <div v-if="loadingTemplates" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div v-for="i in 3" :key="i" class="h-48 bg-muted/40 rounded-xl animate-pulse" />
             </div>

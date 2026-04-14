@@ -484,87 +484,43 @@ const WpIconsList = [
 ]
 </script>
 <template>
-  <div class="flex gap-0 -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden">
+  <div class="flex flex-col -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden bg-background">
 
-    <!-- ══════════════════════ MOBILE SIDEBAR OVERLAY ══════════════════════ -->
-    <Transition
-      enter-active-class="transition-opacity duration-200"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-150"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="showMobileSidebar"
-        class="md:hidden fixed inset-0 bg-black/50 z-40"
-        @click="showMobileSidebar = false"
-      />
-    </Transition>
-
-    <!-- ══════════════════════ LEFT PANEL: Tabs sidebar ══════════════════════ -->
-    <aside
-      class="shrink-0 border-r border-border/60 bg-background flex flex-col h-full transition-transform duration-200 z-50"
-      :class="[
-        'w-56',
-        showMobileSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-        'fixed md:relative inset-y-0 left-0 md:inset-auto'
-      ]"
-    >
-      <div class="px-4 py-3.5 sm:py-4 border-b border-border/60 flex items-center justify-between">
-        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Settings</p>
-        <button class="md:hidden size-7 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground" @click="showMobileSidebar = false">
-          <Icon name="i-lucide-x" class="size-4" />
-        </button>
-      </div>
-      <nav class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150"
-          :class="activeTab === tab.id
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-            : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'"
-          @click="navigateTo(`/admin/general-settings/${tab.id}`); showMobileSidebar = false"
-        >
-          <Icon :name="tab.icon" class="size-4 shrink-0" />
-          <span class="text-sm font-medium">{{ tab.label }}</span>
-        </button>
-      </nav>
-    </aside>
-
-    <!-- ══════════════════════ RIGHT PANEL ══════════════════════ -->
-    <main class="flex-1 flex flex-col min-h-0 h-full">
-
-      <!-- Top toolbar -->
-      <div class="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
-        <!-- Mobile sidebar toggle -->
-        <button
-          class="md:hidden size-8 rounded-lg border border-border/50 flex items-center justify-center hover:bg-muted text-muted-foreground shrink-0"
-          @click="showMobileSidebar = true"
-        >
-          <Icon name="i-lucide-panel-left" class="size-4" />
-        </button>
-
-        <div class="flex items-center gap-1.5 sm:gap-2">
-          <Icon :name="tabs.find(t => t.id === activeTab)?.icon ?? 'i-lucide-settings'" class="size-4 sm:size-5 text-primary" />
-          <h2 class="text-sm sm:text-base font-semibold">{{ tabs.find(t => t.id === activeTab)?.label }}</h2>
+    <!-- Top Navigation Header -->
+    <div class="shrink-0 border-b border-border/60 bg-muted/10 px-4 sm:px-6 flex flex-col justify-end pt-4 h-20">
+      <div class="flex items-center justify-between mb-0 h-full pb-0">
+        <!-- Tabs -->
+        <div class="flex items-center gap-6 overflow-x-auto h-full">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            class="flex items-center gap-2 h-full pb-4 border-b-2 text-sm font-semibold transition-colors whitespace-nowrap outline-none"
+            :class="activeTab === tab.id
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border/60'"
+            @click="navigateTo(`/admin/general-settings/${tab.id}`)"
+          >
+            <Icon :name="tab.icon" class="size-4" />
+            {{ tab.label }}
+          </button>
         </div>
-        <div class="flex-1" />
-        <Button v-if="activeTab === 'skill-bonus'" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3" @click="openCreate">
-          <Icon name="i-lucide-plus" class="mr-1 sm:mr-1.5 size-3 sm:size-3.5" />
-          <span class="hidden xs:inline">Add Rule</span>
-          <span class="xs:hidden">Add</span>
-        </Button>
-        <Button v-if="activeTab === 'workspaces'" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3" @click="openWpCreate">
-          <Icon name="i-lucide-plus" class="mr-1 sm:mr-1.5 size-3 sm:size-3.5" />
-          <span class="hidden xs:inline">Add Workspace</span>
-          <span class="xs:hidden">Add</span>
-        </Button>
-      </div>
 
-      <!-- Content area -->
-      <div class="flex-1 overflow-y-auto p-3 sm:p-5">
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-3 pb-3">
+          <Button v-if="activeTab === 'skill-bonus'" size="sm" class="h-9 px-3" @click="openCreate">
+            <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
+            Add Rule
+          </Button>
+          <Button v-if="activeTab === 'workspaces'" size="sm" class="h-9 px-3" @click="openWpCreate">
+            <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
+            Add Workspace
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content area -->
+    <main class="flex-1 flex flex-col min-h-0 h-full overflow-y-auto p-4 sm:p-6 bg-muted/5">
 
         <!-- ═══════ SKILL BONUS TAB ═══════ -->
         <template v-if="activeTab === 'skill-bonus'">
@@ -771,79 +727,64 @@ const WpIconsList = [
           </div>
 
           <div v-else class="space-y-6">
-            <!-- Logo Section -->
-            <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
-              <div class="px-5 py-4 border-b border-border/50 bg-muted/20">
-                <h3 class="text-sm font-bold flex items-center gap-2">
-                  <Icon name="i-lucide-image" class="size-4 text-primary" />
-                  Company Logo
-                </h3>
-                <p class="text-xs text-muted-foreground mt-0.5">Upload your company logo for documents and letterheads</p>
-              </div>
-              <div class="p-5 flex items-center gap-6">
-                <div class="relative group">
-                  <div class="w-48 h-24 rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center bg-muted/20 overflow-hidden transition-all group-hover:border-primary/40">
-                    <img v-if="companyProfile.logo" :src="companyProfile.logo" alt="Company Logo" class="size-full object-contain p-2" />
-                    <Icon v-else name="i-lucide-building-2" class="size-10 text-muted-foreground/30" />
-                  </div>
-                  <div v-if="uploadingLogo" class="absolute inset-0 rounded-xl bg-background/80 flex items-center justify-center">
-                    <Icon name="i-lucide-loader-circle" class="size-6 text-primary animate-spin" />
+            
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <!-- Logo Section -->
+              <div class="rounded-xl border border-border/50 bg-card overflow-hidden flex flex-col">
+                <div class="px-5 py-4 border-b border-border/50 bg-muted/20">
+                  <h3 class="text-sm font-bold flex items-center gap-2">
+                    <Icon name="i-lucide-image" class="size-4 text-primary" />
+                    Company Logo
+                  </h3>
+                </div>
+                <div class="p-5 flex-1 flex items-center justify-center">
+                 <div class="relative group w-full max-w-sm h-48 rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center bg-muted/20 overflow-hidden transition-all hover:border-primary/40">
+                    <img v-if="companyProfile.logo" :src="companyProfile.logo" alt="Company Logo" class="size-full object-contain p-4 bg-white/50 dark:bg-black/20" />
+                    <Icon v-else name="i-lucide-building-2" class="size-16 text-muted-foreground/30" />
+                    
+                    <div v-if="uploadingLogo" class="absolute inset-0 bg-background/80 flex items-center justify-center backdrop-blur-sm z-20">
+                      <Icon name="i-lucide-loader-circle" class="size-8 text-primary animate-spin" />
+                    </div>
+
+                    <!-- Overlay Actions -->
+                    <label v-if="!companyProfile.logo" class="absolute inset-0 cursor-pointer z-10">
+                      <input type="file" accept="image/*" class="sr-only" @change="handleLogoUpload" />
+                      <!-- Center hover hint -->
+                      <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-muted/50 backdrop-blur-[2px]">
+                        <div class="size-10 rounded-full bg-background border flex items-center justify-center shadow-sm">
+                          <Icon name="i-lucide-upload" class="size-4 text-primary" />
+                        </div>
+                        <span class="text-xs font-semibold text-muted-foreground">Upload Logo</span>
+                      </div>
+                    </label>
+
+                    <div v-if="companyProfile.logo" class="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20">
+                      <label class="flex items-center justify-center size-8 rounded-lg bg-background/95 backdrop-blur shadow-sm border cursor-pointer hover:bg-muted text-muted-foreground hover:text-primary transition-colors">
+                        <Icon name="i-lucide-upload" class="size-4" />
+                        <input type="file" accept="image/*" class="sr-only" @change="handleLogoUpload" />
+                      </label>
+                      <button class="flex items-center justify-center size-8 rounded-lg bg-background/95 backdrop-blur shadow-sm border cursor-pointer hover:bg-destructive hover:border-destructive hover:text-destructive-foreground text-muted-foreground transition-colors" @click.stop="companyProfile.logo = ''">
+                        <Icon name="i-lucide-trash-2" class="size-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div class="flex flex-col gap-2">
-                  <label class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold cursor-pointer hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
-                    <Icon name="i-lucide-upload" class="size-3.5" />
-                    Upload Logo
-                    <input type="file" accept="image/*" class="sr-only" @change="handleLogoUpload" />
-                  </label>
-                  <button v-if="companyProfile.logo" class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors" @click="companyProfile.logo = ''">
-                    <Icon name="i-lucide-trash-2" class="size-3" />
-                    Remove
-                  </button>
-                  <p class="text-[10px] text-muted-foreground">PNG, JPG or SVG. Max 5MB.</p>
-                </div>
-              </div>
             </div>
 
-            <!-- Signature Section -->
-            <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
-              <div class="px-5 py-4 border-b border-border/50 bg-muted/20">
-                <h3 class="text-sm font-bold flex items-center gap-2">
-                  <Icon name="i-lucide-pen-tool" class="size-4 text-primary" />
-                  Company Signature
-                </h3>
-                <p class="text-xs text-muted-foreground mt-0.5">Upload a default signature to apply to documents</p>
-              </div>
-              <div class="p-5">
-                <div class="flex items-start gap-6">
-                  <!-- Draw Signature -->
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Draw Signature</p>
-                    <SignaturePad v-model="companyProfile.signature" class="w-full bg-background" />
-                  </div>
-
-                  <!-- Divider -->
-                  <div class="flex flex-col items-center gap-2 pt-6 shrink-0">
-                    <div class="h-16 w-px bg-border/60" />
-                    <span class="text-[10px] font-bold text-muted-foreground uppercase">or</span>
-                    <div class="h-16 w-px bg-border/60" />
-                  </div>
-
-                  <!-- Upload File -->
-                  <div class="flex flex-col items-center justify-center gap-3 pt-6 shrink-0 w-52">
-                    <div class="size-12 rounded-xl bg-muted/40 border border-dashed border-border/60 flex items-center justify-center">
-                      <Icon name="i-lucide-image-up" class="size-5 text-muted-foreground/50" />
-                    </div>
-                    <label class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold cursor-pointer hover:bg-primary/90 transition-all shadow-lg shadow-primary/20" :class="{ 'opacity-50 cursor-not-allowed': uploadingSignature }">
-                      <Icon v-if="uploadingSignature" name="i-lucide-loader-circle" class="size-3.5 animate-spin" />
-                      <Icon v-else name="i-lucide-upload" class="size-3.5" />
-                      Upload File
-                      <input type="file" accept="image/*" class="sr-only" :disabled="uploadingSignature" @change="handleSignatureUpload" />
-                    </label>
-                    <p class="text-[10px] text-muted-foreground text-center leading-tight">Transparent PNG recommended</p>
+              <!-- Signature Section -->
+              <div class="rounded-xl border border-border/50 bg-card overflow-hidden flex flex-col">
+                <div class="px-5 py-4 border-b border-border/50 bg-muted/20">
+                  <h3 class="text-sm font-bold flex items-center gap-2">
+                    <Icon name="i-lucide-pen-tool" class="size-4 text-primary" />
+                    Company Signature
+                  </h3>
+                </div>
+                <div class="p-5 flex-1 flex flex-col justify-center">
+                  <div class="flex-1 min-w-0 flex flex-col">
+                    <SignaturePad v-model="companyProfile.signature" class="w-full flex-1 bg-background mt-1 min-h-[220px]" />
                   </div>
                 </div>
-              </div>
+            </div>
             </div>
 
             <!-- Company Info -->
@@ -853,7 +794,6 @@ const WpIconsList = [
                   <Icon name="i-lucide-building-2" class="size-4 text-primary" />
                   Company Information
                 </h3>
-                <p class="text-xs text-muted-foreground mt-0.5">This information appears on contracts, invoices, and estimates</p>
               </div>
               <div class="p-5 space-y-5">
                 <!-- Company Name -->
@@ -862,23 +802,21 @@ const WpIconsList = [
                   <Input id="co-name" v-model="companyProfile.name" placeholder="Ann Arbor Hardwoods LLC" class="h-10 text-sm font-medium" />
                 </div>
 
-                <!-- Address Row -->
-                <div class="flex flex-col gap-1.5">
-                  <Label for="co-address" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Street Address</Label>
-                  <Input id="co-address" v-model="companyProfile.address" placeholder="2232 South Main Street" class="h-10 text-sm" />
-                </div>
-
-                <!-- City / State / Zip -->
-                <div class="grid grid-cols-5 gap-3">
-                  <div class="col-span-3 flex flex-col gap-1.5">
+                <!-- Address & Location Row (Inline on Desktop) -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                  <div class="md:col-span-5 flex flex-col gap-1.5">
+                    <Label for="co-address" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Street Address</Label>
+                    <Input id="co-address" v-model="companyProfile.address" placeholder="2232 South Main Street" class="h-10 text-sm" />
+                  </div>
+                  <div class="md:col-span-3 flex flex-col gap-1.5">
                     <Label for="co-city" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">City</Label>
                     <Input id="co-city" v-model="companyProfile.city" placeholder="Ann Arbor" class="h-10 text-sm" />
                   </div>
-                  <div class="flex flex-col gap-1.5">
+                  <div class="md:col-span-2 flex flex-col gap-1.5">
                     <Label for="co-state" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">State</Label>
                     <Input id="co-state" v-model="companyProfile.state" placeholder="MI" class="h-10 text-sm" />
                   </div>
-                  <div class="flex flex-col gap-1.5">
+                  <div class="md:col-span-2 flex flex-col gap-1.5">
                     <Label for="co-zip" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Zip</Label>
                     <Input id="co-zip" v-model="companyProfile.zip" placeholder="48104" class="h-10 text-sm" />
                   </div>
@@ -904,8 +842,8 @@ const WpIconsList = [
                   </div>
                 </div>
 
-                <!-- Website & Email -->
-                <div class="grid grid-cols-2 gap-4">
+                <!-- Website, Email & License -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div class="flex flex-col gap-1.5">
                     <Label for="co-website" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       <Icon name="i-lucide-globe" class="size-3 inline mr-1" />
@@ -920,17 +858,13 @@ const WpIconsList = [
                     </Label>
                     <Input id="co-email" v-model="companyProfile.email" placeholder="quote@a2hardwood.com" class="h-10 text-sm" />
                   </div>
-                </div>
-
-                <Separator />
-
-                <!-- License -->
-                <div class="flex flex-col gap-1.5">
-                  <Label for="co-license" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    <Icon name="i-lucide-shield-check" class="size-3 inline mr-1" />
-                    Builder's License Number
-                  </Label>
-                  <Input id="co-license" v-model="companyProfile.licenseNumber" placeholder="242600350" class="h-10 text-sm font-mono" />
+                  <div class="flex flex-col gap-1.5">
+                    <Label for="co-license" class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      <Icon name="i-lucide-shield-check" class="size-3 inline mr-1" />
+                      Builder's License Number
+                    </Label>
+                    <Input id="co-license" v-model="companyProfile.licenseNumber" placeholder="242600350" class="h-10 text-sm font-mono" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -976,9 +910,7 @@ const WpIconsList = [
           </div>
         </template>
 
-      </div>
     </main>
-
     <!-- ═══════ CREATE / EDIT MODAL ═══════ -->
     <Dialog v-model:open="showCreateModal">
       <DialogContent class="sm:max-w-lg">

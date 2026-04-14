@@ -170,15 +170,15 @@ async function downloadPDF(ct: any) {
         <meta charset="utf-8">
         <title>Contract - ${ct.contractNumber}</title>
         <style>
-          @page { margin: 20mm; size: letter; }
+          @page { margin: 32px 40px; size: letter; }
           body { 
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            color: #111827; 
-            line-height: 1.6;
+            color: #111; 
+            line-height: 1.75;
             padding: 0;
             margin: 0;
-            max-width: 800px;
-            margin: 0 auto;
+            max-width: 100%;
+            font-size: 14px;
           }
           
           /* ── Letterhead ── */
@@ -214,23 +214,23 @@ async function downloadPDF(ct: any) {
 
           /* ── Main Content ── */
           .content {
-            font-size: 13px;
+            font-size: 14px;
           }
-          .content h1, .content h2, .content h3 {
-            color: #111827;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-            font-weight: 700;
-            letter-spacing: -0.01em;
-          }
-          .content p {
-            margin-bottom: 1em;
-          }
-          
-          /* ── Tables ── */
-          table { width: 100%; border-collapse: collapse; margin: 1.5em 0; }
-          th, td { border: 1px solid #d1d5db; padding: 10px 12px; text-align: left; font-size: 12px; }
-          th { background: #f9fafb; font-weight: 600; color: #374151; }
+          .content h1 { font-size: 1.875rem; font-weight: 900; letter-spacing: -0.025em; margin-bottom: 1rem; margin-top: 2rem; color: #111; }
+          .content h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 0.75rem; margin-top: 1.5rem; color: #111; }
+          .content h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; margin-top: 1.25rem; color: #111; }
+          .content p { font-size: 0.875rem; line-height: 1.625; margin-bottom: 0.75rem; margin-top: 1em; }
+          .content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; margin-top: 1em; }
+          .content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; margin-top: 1em; }
+          .content li { font-size: 0.875rem; }
+          .content blockquote { border-left: 4px solid rgba(0,0,0,0.2); padding-left: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; margin: 1rem 0; font-style: italic; color: #666; background: rgba(0,0,0,0.02); }
+          .content hr { border-top: 2px solid #ccc; margin: 1.5rem 0; text-align: center; }
+          .content img { max-width: 100%; border-radius: 0.5rem; margin: 1rem 0; }
+          .content a { color: #2563eb; text-decoration: underline; }
+          .content mark { background: #fef08a; padding: 0 0.125rem; border-radius: 0.125rem; }
+          .content table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
+          .content th, .content td { border: 1px solid #ccc; padding: 0.5rem 0.75rem; text-align: left; }
+          .content th { background: #f3f4f6; font-weight: 600; color: #374151; }
 
           /* ── Footer ── */
           .doc-footer {
@@ -240,11 +240,11 @@ async function downloadPDF(ct: any) {
             font-size: 10px;
             color: #9ca3af;
             text-align: center;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
           }
 
           @media print {
-            body { padding: 24px 36px; }
+            body { padding: 0; }
           }
         </style>
       </head>
