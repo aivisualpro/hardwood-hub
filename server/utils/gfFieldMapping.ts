@@ -17,7 +17,7 @@ export const GF_FORM_MAP: Record<number, { type: string; formName: string }> = {
   5: { type: 'conditional-logic', formName: 'Get in Touch with Conditional Logic' },
 }
 
-export const SYNCED_FORM_IDS = Object.keys(GF_FORM_MAP).map(Number)
+export const SYNCED_FORM_IDS = Object.keys(GF_FORM_MAP).map(Number).filter(id => id !== 3)
 
 /**
  * Takes a raw GF entry and the form field definitions, and returns a canonical CRM object.

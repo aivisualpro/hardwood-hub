@@ -20,8 +20,18 @@ export default defineEventHandler(async (event) => {
   await connectDB()
 
   const entry = await readBody(event)
+
+  // 1. Calendly Webhook Integration
+  if (entry?.event && entry.event.startsWith('invitee.')) {
+    console.log('[CRM Webhook] Received Calendly webhook, triggering background sync...')
+    // Execute a full sync background fetch to update the DB cleanly
+    $fetch('/api/crm/sync', { method: 'POST' }).catch(e => console.error('Calendly webhook sync failed:', e))
+    return { success: true, message: 'Calendly sync background task triggered' }
+  }
+
+  // 2. Gravity Forms Validation
   if (!entry || !entry.id || !entry.form_id) {
-    throw createError({ statusCode: 400, message: 'Invalid Gravity Forms entry payload' })
+    throw createError({ statusCode: 400, message: 'Invalid payload: Not recognized as Gravity Forms or Calendly webhook' })
   }
 
   const formId = Number(entry.form_id)

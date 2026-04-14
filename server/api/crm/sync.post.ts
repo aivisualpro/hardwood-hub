@@ -9,6 +9,7 @@ import { gfGetAllEntries, gfGetForm } from '../../utils/gravityForms'
 import { SYNCED_FORM_IDS, parseGFEntry } from '../../utils/gfFieldMapping'
 import { CrmSubmission } from '../../models/CrmSubmission'
 import { Customer } from '../../models/Customer'
+import { fetchCalendlyAppointments } from '../../utils/calendly'
 
 export default defineEventHandler(async () => {
   await connectDB()
@@ -79,6 +80,62 @@ export default defineEventHandler(async () => {
         errors.push(`Form ${formId}: ${msg}`)
       }
     }
+  }
+
+  // Sync Calendly Appointments
+  try {
+    const config = useRuntimeConfig()
+    if (config.calendlyAccessToken) {
+      console.log('[CRM Sync] Starting Calendly sync...')
+      const calendlyApps = await fetchCalendlyAppointments()
+      console.log(`[CRM Sync] Calendly returned ${calendlyApps.length} appointments`)
+      
+      for (const parsed of calendlyApps) {
+        // Upsert: insert new, update existing
+        const result = await CrmSubmission.updateOne(
+          { gfEntryId: parsed.gfEntryId },
+          { $set: parsed },
+          { upsert: true },
+        )
+
+        if (result.upsertedCount > 0) {
+          totalNew++
+
+          // Migrate unique new CRM submissions directly into the main Customer collection
+          if (parsed.email || parsed.phone) {
+             const query: any[] = []
+             if (parsed.email) query.push({ email: parsed.email })
+             if (parsed.phone) query.push({ phone: parsed.phone })
+             
+             const exists = await Customer.exists({ $or: query })
+             if (!exists) {
+                await Customer.create({
+                   name: parsed.name,
+                   firstName: parsed.firstName,
+                   lastName: parsed.lastName,
+                   email: parsed.email,
+                   phone: parsed.phone,
+                   address: parsed.address,
+                   city: parsed.city,
+                   state: parsed.state,
+                   zip: parsed.zip,
+                   notes: `Synced from Calendly: ${parsed.formName}. Message: ${parsed.message}`,
+                   stage: 'SUBSCRIBERS',
+                   initialContactDate: parsed.dateSubmitted
+                })
+             }
+          }
+        } else {
+          totalExisting++
+        }
+      }
+      console.log(`[CRM Sync] Calendly done. New: ${totalNew}, Existing: ${totalExisting}`)
+    } else {
+      console.warn('[CRM Sync] No CALENDLY_ACCESS_TOKEN found, skipping Calendly sync')
+    }
+  } catch (err: any) {
+    console.error('[CRM Sync] Calendly Error:', err.message || err)
+    errors.push(`Calendly Sync Error: ${err.message || String(err)}`)
   }
 
   return {

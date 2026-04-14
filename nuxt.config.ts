@@ -82,6 +82,15 @@ export default defineNuxtConfig({
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
     googleClientId: process.env.GOOGLE_CLIENT_ID,
     sessionSecret: process.env.SESSION_SECRET || 'hardwood-hub-default-secret-change-in-production',
+    calendlyAccessToken: process.env.CALENDLY_ACCESS_TOKEN,
+    calendlyUrl: process.env.CALENDLY_URL,
+    
+    // Vertex AI / Google Cloud
+    googleCloudProjectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    googleCloudLocation: process.env.GOOGLE_CLOUD_LOCATION,
+    googleClientEmail: process.env.GOOGLE_CLIENT_EMAIL,
+    googlePrivateKey: process.env.GOOGLE_PRIVATE_KEY,
+
     gfSiteUrl: process.env.GF_SITE_URL,
     gfConsumerKey: process.env.GF_CONSUMER_KEY,
     gfConsumerSecret: process.env.GF_CONSUMER_SECRET,
