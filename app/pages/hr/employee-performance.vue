@@ -655,7 +655,7 @@ async function deleteSelected() {
     <main class="flex-1 flex flex-col min-h-0 h-full">
 
       <!-- Top toolbar -->
-      <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-5 py-3 sm:py-3 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-5 py-2 sm:py-1.5 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
 
         <!-- Mobile: Employee banner with big avatar -->
         <div class="flex items-center gap-3 sm:hidden">

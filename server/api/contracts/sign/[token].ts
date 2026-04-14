@@ -63,6 +63,8 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignature\s*\}\}/g, '')
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignatureDate\s*\}\}/g, '')
 
+    const clientVariables = template?.variables?.filter((v: any) => v.scope === 'client') || []
+
     return {
       success: true,
       data: {
@@ -72,6 +74,7 @@ export default defineEventHandler(async (event) => {
         customerName: contract.customerName,
         content: mergedHTML,
         variableValues: contract.variableValues,
+        clientVariables,
         templateId: contract.templateId,
         status: contract.status,
         createdAt: contract.createdAt,
@@ -88,10 +91,17 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await readBody(event)
-    const { signature } = body
+    const { signature, clientValues } = body
 
     if (!signature) {
       throw createError({ statusCode: 400, message: 'Signature is required' })
+    }
+
+    if (clientValues) {
+      contract.variableValues = {
+        ...contract.variableValues,
+        ...clientValues,
+      }
     }
 
     contract.customerSignature = signature
@@ -154,8 +164,8 @@ export default defineEventHandler(async (event) => {
         <div style="color: ${companyColor}; font-size: 16px;">${company?.name || 'Ann Arbor Hardwoods LLC'}</div>
         <div>${company?.address || '2232 South Main Street'}</div>
         <div>${company?.city || 'Ann Arbor'}, ${company?.state || 'MI'}. ${company?.zip || '48104'}</div>
-        <div>${company?.phone || '(734) 604-3786'}</div>
-        ${company?.phone2 ? `<div>${company.phone2}</div>` : ''}
+        <div>Phone: ${company?.phone1 || company?.phone || '(734) 604-3786'}</div>
+        ${company?.phone2 ? `<div>Phone: ${company.phone2}</div>` : ''}
         <div>${company?.website?.replace(new RegExp('^https?://'), '') || 'www.annarborhardwoods.com'}</div>
         <div>${company?.email || 'quote@annarborhardwoods.com'}</div>
         ${company?.licenseNumber ? `<div>Builder's License Number: ${company.licenseNumber}</div>` : ''}
@@ -271,9 +281,28 @@ export default defineEventHandler(async (event) => {
         `
         const pdfBuffer = await htmlPdf.default.generatePdf({ content: pdfHTML }, { format: 'A4', margin: { top: '30px', right: '30px', bottom: '30px', left: '30px' } })
         
+        let finalPdfBuffer = pdfBuffer;
+        if (contract.attachedPdf) {
+          try {
+            const { PDFDocument } = await import('pdf-lib');
+            const mainPdf = await PDFDocument.load(pdfBuffer);
+            const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '');
+            const attachedPdfDoc = await PDFDocument.load(Buffer.from(attachedBase64, 'base64'));
+            
+            const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices());
+            copiedPages.forEach((page) => {
+              mainPdf.addPage(page);
+            });
+            
+            finalPdfBuffer = Buffer.from(await mainPdf.save());
+          } catch (mergeErr) {
+            console.error('Failed to merge PDFs:', mergeErr);
+          }
+        }
+
         attachments = [{
           filename: `${contract.contractNumber || 'Contract'}_Signed.pdf`,
-          content: pdfBuffer,
+          content: finalPdfBuffer,
           contentType: 'application/pdf'
         }]
       } catch (e) {

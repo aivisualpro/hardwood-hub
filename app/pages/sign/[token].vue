@@ -10,6 +10,7 @@ const contractData = ref<any>(null)
 const error = ref('')
 const signed = ref(false)
 const signature = ref('')
+const clientValues = ref<Record<string, string>>({})
 
 async function fetchContract() {
   loading.value = true
@@ -17,6 +18,14 @@ async function fetchContract() {
   try {
     const res = await $fetch<{ success: boolean, data: any }>(`/api/contracts/sign/${token}`)
     contractData.value = res.data
+    
+    // Initialize client values if variables exist
+    if (res.data.clientVariables) {
+      for (const v of res.data.clientVariables) {
+        clientValues.value[v.key] = res.data.variableValues?.[v.key] || v.defaultValue || ''
+      }
+    }
+
     if (res.data.alreadySigned) {
       signed.value = true
     }
@@ -29,11 +38,25 @@ async function fetchContract() {
 
 async function submitSignature() {
   if (!signature.value) return
+  
+  // Validate required client variables
+  if (contractData.value?.clientVariables) {
+    for (const v of contractData.value.clientVariables) {
+      if (v.required && !clientValues.value[v.key]) {
+        alert(`Please fill out the required field: ${v.label || v.key}`)
+        return
+      }
+    }
+  }
+
   submitting.value = true
   try {
     await $fetch(`/api/contracts/sign/${token}`, {
       method: 'POST',
-      body: { signature: signature.value },
+      body: { 
+        signature: signature.value,
+        clientValues: clientValues.value
+      },
     })
     signed.value = true
   } catch (e: any) {
@@ -124,8 +147,8 @@ onMounted(fetchContract)
             </div>
             <div>{{ contractData.company?.address || 'Address' }}</div>
             <div>{{ contractData.company?.city || 'City' }}, {{ contractData.company?.state || 'State' }} {{ contractData.company?.zip || 'Zip' }}</div>
-            <div>{{ contractData.company?.phone || 'Phone' }}</div>
-            <div v-if="contractData.company?.phone2">{{ contractData.company?.phone2 }}</div>
+            <div v-if="contractData.company?.phone1 || contractData.company?.phone">Phone: {{ contractData.company?.phone1 || contractData.company?.phone }}</div>
+            <div v-if="contractData.company?.phone2">Phone: {{ contractData.company?.phone2 }}</div>
             <div class="text-amber-900/90">{{ contractData.company?.website?.replace(/^https?:\/\//, '') || 'Website' }}</div>
             <div class="text-amber-900/90">{{ contractData.company?.email || 'Email' }}</div>
             <div v-if="contractData.company?.licenseNumber">Builder's License Number: {{ contractData.company?.licenseNumber }}</div>
@@ -144,7 +167,7 @@ onMounted(fetchContract)
         </div>
 
         <!-- Contract Content -->
-        <div class="px-6 sm:px-10 pb-8 prose prose-slate max-w-none text-slate-800 prose-p:text-slate-700 prose-headings:text-slate-900 prose-strong:text-slate-900 prose-li:text-slate-700 prose-a:text-emerald-600 font-medium" v-html="contractData.content" />
+        <div class="contract-content px-6 sm:px-10 pb-8 text-slate-800 font-medium" v-html="contractData.content" />
 
         <!-- Existing Signatures Display (Company Side) -->
         <div class="px-6 sm:px-10 pb-12 pt-4 flex flex-col sm:flex-row justify-between gap-12 sm:gap-24">
@@ -179,6 +202,72 @@ onMounted(fetchContract)
           <p class="text-xs text-slate-500 mt-1">Draw your signature in the box below to sign this contract.</p>
         </div>
         <div class="p-6 sm:p-8">
+          
+          <!-- Client Variables Form -->
+          <div v-if="contractData.clientVariables?.length" class="mb-8 space-y-4 bg-muted/10 p-5 rounded-xl border border-border">
+            <h3 class="text-sm font-bold text-slate-900 mb-4">Please provide the following information:</h3>
+            <div class="grid grid-cols-1 gap-4">
+              <div v-for="v in contractData.clientVariables" :key="v.key">
+                <label :for="`var-${v.key}`" class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                  {{ v.label || v.key }}
+                  <span v-if="v.required" class="text-red-500">*</span>
+                </label>
+                
+                <textarea
+                  v-if="v.type === 'textarea'"
+                  :id="`var-${v.key}`"
+                  v-model="clientValues[v.key]"
+                  rows="3"
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all resize-none"
+                  :required="v.required"
+                ></textarea>
+                
+                <input
+                  v-else-if="v.type === 'date'"
+                  :id="`var-${v.key}`"
+                  v-model="clientValues[v.key]"
+                  type="date"
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                  :required="v.required"
+                />
+                
+                <input
+                  v-else-if="v.type === 'number'"
+                  :id="`var-${v.key}`"
+                  v-model="clientValues[v.key]"
+                  type="number"
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all tabular-nums"
+                  :required="v.required"
+                />
+                
+                <div v-else-if="v.type === 'currency'" class="relative flex items-center">
+                  <span class="absolute left-3 text-sm text-slate-500 font-semibold">$</span>
+                  <input
+                    :id="`var-${v.key}`"
+                    v-model="clientValues[v.key]"
+                    type="text"
+                    class="w-full pl-7 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all tabular-nums"
+                    :required="v.required"
+                  />
+                </div>
+                
+                <div v-else-if="v.type === 'signature'" class="space-y-2">
+                  <SignaturePad v-model="clientValues[v.key]" class="w-full h-24 bg-white border border-slate-200 rounded-lg" />
+                </div>
+                
+                <input
+                  v-else
+                  :id="`var-${v.key}`"
+                  v-model="clientValues[v.key]"
+                  type="text"
+                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
+                  :required="v.required"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <!-- Signature Component -->
           <SignaturePad v-model="signature" class="w-full bg-white border-2 border-dashed border-slate-200 rounded-xl" style="min-height: 160px;" />
 
           <div class="flex items-center justify-between mt-6 pt-6 border-t border-slate-100">
@@ -208,3 +297,87 @@ onMounted(fetchContract)
     </div>
   </div>
 </template>
+
+<style scoped>
+.contract-content :deep(p) {
+  font-size: 0.9rem;
+  line-height: 1.75;
+  margin-bottom: 0.85rem;
+  color: #1e293b;
+}
+
+.contract-content :deep(h1),
+.contract-content :deep(h2),
+.contract-content :deep(h3),
+.contract-content :deep(h4) {
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.contract-content :deep(h1) { font-size: 1.4rem; }
+.contract-content :deep(h2) { font-size: 1.2rem; }
+.contract-content :deep(h3) { font-size: 1rem; }
+
+.contract-content :deep(strong) {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.contract-content :deep(ul),
+.contract-content :deep(ol) {
+  padding-left: 1.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.contract-content :deep(ul) { list-style-type: disc; }
+.contract-content :deep(ol) { list-style-type: decimal; }
+
+.contract-content :deep(li) {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.contract-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.contract-content :deep(th),
+.contract-content :deep(td) {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.contract-content :deep(th) {
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.contract-content :deep(a) {
+  color: #059669;
+  text-decoration: underline;
+}
+
+.contract-content :deep(blockquote) {
+  border-left: 4px solid #10b981;
+  padding: 0.5rem 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  color: #475569;
+  background: #f0fdf4;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.contract-content :deep(hr) {
+  border-top: 1.5px solid #e2e8f0;
+  margin: 1.25rem 0;
+}
+</style>

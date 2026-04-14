@@ -9,10 +9,11 @@ const ContractTemplateSchema = new mongoose.Schema(
         variables: [{ 
             key: { type: String, required: true },
             label: { type: String, required: true },
-            type: { type: String, enum: ['text', 'date', 'number', 'currency', 'textarea', 'select'], default: 'text' },
+            type: { type: String, enum: ['text', 'date', 'number', 'currency', 'textarea', 'select', 'signature'], default: 'text' },
             defaultValue: { type: String, default: '' },
             options: [String], // for select type
             required: { type: Boolean, default: false },
+            scope: { type: String, enum: ['template', 'client'], default: 'template' },
         }],
         category: { type: String, default: 'General' },
         isActive: { type: Boolean, default: true },

@@ -49,7 +49,7 @@ async function fetchCompanyProfile() {
 
 watch(showCreateModal, (val) => {
   if (val) {
-    if (!templates.value.length) fetchTemplates()
+    fetchTemplates()
     if (!companyProfile.value.name) fetchCompanyProfile()
   }
 })
@@ -116,6 +116,27 @@ const variableValues = ref<Record<string, string>>({})
 const contractTitle = ref('')
 const customerSignature = ref('')
 const customerSignatureDate = ref('')
+const attachedPdf = ref('')
+const attachedPdfName = ref('')
+const pdfFileInput = ref<HTMLInputElement | null>(null)
+
+function handlePdfUpload(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+  if (file.type !== 'application/pdf') {
+    toast.error('Only PDF files are allowed');
+    return;
+  }
+  
+  attachedPdfName.value = file.name;
+  
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    attachedPdf.value = ev.target?.result as string;
+  };
+  reader.readAsDataURL(file);
+}
 
 function selectCustomer(c: any) {
   selectedCustomer.value = c
@@ -159,6 +180,8 @@ function openCreateModal() {
   customerSearch.value = ''
   customerSignature.value = ''
   customerSignatureDate.value = ''
+  attachedPdf.value = ''
+  attachedPdfName.value = ''
   fetchCustomers()
 }
 
@@ -169,6 +192,8 @@ function openEditContract(ct: any) {
   variableValues.value = { ...ct.variableValues }
   customerSignature.value = ct.customerSignature || ''
   customerSignatureDate.value = ct.customerSignatureDate ? new Date(ct.customerSignatureDate).toISOString().split('T')[0]! : ''
+  attachedPdf.value = ct.attachedPdf || ''
+  attachedPdfName.value = ct.attachedPdf ? 'Attached PDF' : ''
   
   const foundTemplate = templates.value.find(t => t._id === ct.templateId)
   selectedModalTemplate.value = foundTemplate || { 
@@ -208,6 +233,7 @@ async function saveContract() {
       customerSignature: customerSignature.value,
       customerSignatureDate: customerSignatureDate.value ? new Date(customerSignatureDate.value).toISOString() : null,
       content: selectedModalTemplate.value.content,
+      attachedPdf: attachedPdf.value,
       status: 'draft',
     }
 
@@ -240,7 +266,9 @@ function openForCustomer(customer: any) {
   contractTitle.value = ''
   customerSignature.value = ''
   customerSignatureDate.value = ''
-  if (!templates.value.length) fetchTemplates()
+  attachedPdf.value = ''
+  attachedPdfName.value = ''
+  fetchTemplates()
   if (!companyProfile.value.name) fetchCompanyProfile()
 }
 
@@ -515,7 +543,7 @@ async function seedChangeOrder() {}
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div
-                  v-for="v in selectedModalTemplate.variables.filter((v: any) => !['company_name', 'companyName', 'client_name', 'clientName'].includes(v.key))"
+                  v-for="v in selectedModalTemplate.variables.filter((v: any) => v.scope !== 'client' && !['company_name', 'companyName', 'client_name', 'clientName'].includes(v.key))"
                   :key="v.key"
                   :class="v.type === 'textarea' ? 'sm:col-span-2' : ''"
                 >
@@ -582,6 +610,26 @@ async function seedChangeOrder() {}
               <Icon name="i-lucide-check-circle" class="size-8 mx-auto mb-2 text-emerald-500" />
               <p class="text-sm font-semibold">No variables needed</p>
               <p class="text-xs mt-0.5">This template has no dynamic fields.</p>
+            </div>
+
+            <!-- PDF Attachment -->
+            <div class="mt-6 p-4 rounded-xl border border-border bg-card relative overflow-hidden">
+              <Label class="text-xs font-bold text-foreground uppercase tracking-wider mb-2 block">
+                Attach Additional PDF Document (Optional)
+              </Label>
+              <div class="flex items-center gap-3">
+                <Button variant="outline" size="sm" @click="pdfFileInput?.click()">
+                  <Icon name="i-lucide-upload" class="mr-2 size-4" />
+                  {{ attachedPdfName || 'Upload PDF' }}
+                </Button>
+                <Button v-if="attachedPdfName" variant="ghost" size="sm" class="text-destructive hover:bg-destructive/10" @click="attachedPdf = ''; attachedPdfName = '';">
+                  Remove
+                </Button>
+                <input ref="pdfFileInput" type="file" accept="application/pdf" class="hidden" @change="handlePdfUpload" />
+              </div>
+              <p class="text-[10px] text-muted-foreground mt-2">
+                This PDF will be appended to the final contract document.
+              </p>
             </div>
           </div>
         </div>

@@ -29,6 +29,9 @@ const ContractSchema = new mongoose.Schema(
 
         // Rendered content (template + variable values merged)
         content: { type: String, default: '' },
+        
+        // Attached PDF string (base64 or URL)
+        attachedPdf: { type: String, default: '' },
 
         // Status
         status: {

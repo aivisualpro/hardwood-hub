@@ -22,7 +22,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [content: string]
+  'update:pages': [pages: number]
 }>()
+
+function calculatePages() {
+  if (!editor.value) return 1
+  const dom = editor.value.view.dom
+  if (!dom) return 1
+  return Math.max(1, Math.ceil(dom.clientHeight / 1056))
+}
 
 const editor = useEditor({
   content: props.modelValue || '',
@@ -57,8 +65,14 @@ const editor = useEditor({
       class: 'contract-editor-content',
     },
   },
+  onCreate() {
+    setTimeout(() => {
+      emit('update:pages', calculatePages())
+    }, 100)
+  },
   onUpdate({ editor: ed }) {
     emit('update:modelValue', ed.getHTML())
+    emit('update:pages', calculatePages())
   },
 })
 
@@ -126,7 +140,7 @@ function insertImage() {
 <template>
   <div class="relative contract-canvas">
     <!-- ═══════ TOOLBAR ═══════ -->
-    <div class="sticky top-0 z-20 bg-card/95 backdrop-blur-xl border-b shadow-sm">
+    <div class="relative z-10 bg-card/95 backdrop-blur-xl border-b shadow-sm">
       <div v-if="editor" class="flex items-center gap-0.5 px-3 py-1.5 overflow-x-auto">
         <!-- Undo/Redo -->
         <div class="flex items-center gap-0.5 pr-2 border-r mr-2">
@@ -273,12 +287,24 @@ function insertImage() {
 <style>
 /* ─── Editor Content Styles ─── */
 .contract-editor-content {
-  padding: 1.5rem 2rem;
+  padding: 2rem 2.5rem;
   outline: none;
   font-family: 'Inter', 'Georgia', serif;
   line-height: 1.75;
   color: var(--foreground);
-  min-height: 500px;
+  min-height: 1056px;
+  max-width: 816px;
+  margin: 0 auto;
+  
+  /* US Letter Page break simulation (11 inches = 1056px at 96 DPI) */
+  --page-height: 1056px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent calc(var(--page-height) - 2px),
+    rgba(220, 38, 38, 0.4) calc(var(--page-height) - 2px),
+    rgba(220, 38, 38, 0.4) var(--page-height)
+  );
 }
 
 .contract-editor-content:focus { outline: none; }

@@ -31,6 +31,7 @@ interface TemplateVariable {
   defaultValue: string
   options?: string[]
   required: boolean
+  scope?: 'template' | 'client'
 }
 
 interface ContractTemplate {
@@ -87,6 +88,8 @@ const selectedTemplate = ref<ContractTemplate | null>(null)
 const showEditor = ref(false)
 const saving = ref(false)
 const seeding = ref(false)
+
+const templatePages = ref(1)
 
 const templateForm = ref({
   name: '',
@@ -152,11 +155,18 @@ async function saveTemplate() {
   }
 
   // Validate variables
-  const invalidVars = templateForm.value.variables.filter(v => !v.key.trim() || !v.label.trim())
+  const invalidVars = templateForm.value.variables.filter(v => !v.key.trim())
   if (invalidVars.length > 0) {
-    toast.error('All variables must have a key and a label')
+    toast.error('All variables must have a key')
     return
   }
+
+  // Auto-fill missing labels using the key
+  templateForm.value.variables.forEach(v => {
+    if (!v.label?.trim()) {
+      v.label = v.key.trim()
+    }
+  })
 
   saving.value = true
   try {
@@ -192,8 +202,8 @@ async function deleteTemplate(id: string) {
   }
 }
 
-function addVariable() {
-  templateForm.value.variables.push({ key: '', label: '', type: 'text', defaultValue: '', required: false })
+function addVariable(scope: 'template' | 'client' = 'template') {
+  templateForm.value.variables.push({ key: '', label: '', type: 'text', defaultValue: '', required: false, scope })
 }
 
 function removeVariable(idx: number) {
@@ -302,8 +312,8 @@ const TYPE_ICONS: Record<string, string> = {
 
     <!-- Tabs Container -->
     <div class="flex flex-col gap-0">
-      <div class="sticky top-(--header-height) z-30 bg-background/95 backdrop-blur-sm -mx-4 lg:-mx-6 px-4 lg:px-6 pt-2 border-b">
-        <div class="flex items-center justify-start pb-1 overflow-x-auto no-scrollbar">
+      <div class="sticky top-(--header-height) z-30 bg-background/95 backdrop-blur-sm -mx-4 lg:-mx-6 px-4 lg:px-6 h-12 flex items-center border-b">
+        <div class="flex items-center justify-start overflow-x-auto no-scrollbar w-full">
           <div class="flex items-center gap-0.5 min-w-max">
             <button
               v-for="tab in tabs"
@@ -355,8 +365,14 @@ const TYPE_ICONS: Record<string, string> = {
                 <button class="size-9 rounded-lg border bg-card hover:bg-muted flex items-center justify-center transition-colors shrink-0" @click="showEditor = false">
                   <Icon name="i-lucide-arrow-left" class="size-4" />
                 </button>
-                <div class="min-w-0">
-                  <input v-model="templateForm.name" type="text" placeholder="Template Name" class="text-lg font-bold bg-transparent border-none outline-none w-full placeholder:text-muted-foreground/40">
+                <div class="min-w-0 flex flex-col">
+                  <div class="flex items-center gap-2">
+                    <input v-model="templateForm.name" type="text" placeholder="Template Name" class="text-lg font-bold bg-transparent border-none outline-none w-full max-w-[300px] placeholder:text-muted-foreground/40">
+                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted text-[10px] font-bold text-muted-foreground whitespace-nowrap">
+                      <Icon name="i-lucide-file-text" class="size-3" />
+                      {{ templatePages }} {{ templatePages === 1 ? 'Page' : 'Pages' }}
+                    </div>
+                  </div>
                   <input v-model="templateForm.description" type="text" placeholder="Add a description..." class="text-xs text-muted-foreground bg-transparent border-none outline-none w-full placeholder:text-muted-foreground/30 mt-0.5">
                 </div>
               </div>
@@ -378,32 +394,8 @@ const TYPE_ICONS: Record<string, string> = {
 
             <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-5">
               <div class="rounded-xl border border-border/50 bg-card overflow-hidden shadow-sm">
-                <div class="border-b border-border/40 bg-white dark:bg-zinc-900 px-8 py-6">
-                  <div class="flex items-start justify-between gap-4">
-                    <div v-if="companyProfile.logo" class="w-[200px] h-20 shrink-0">
-                      <img :src="companyProfile.logo" alt="Logo" class="size-full object-contain object-left" />
-                    </div>
-                    <div v-else class="w-[200px] h-20 shrink-0 rounded-lg bg-muted/30 border flex items-center justify-center">
-                      <Icon name="i-lucide-building-2" class="size-8 text-muted-foreground/30" />
-                    </div>
-                    <div class="text-right">
-                      <p class="text-sm font-bold text-emerald-700 dark:text-emerald-400">{{ companyProfile.name || 'Company Name' }}</p>
-                      <p class="text-xs font-semibold text-foreground/80">{{ companyProfile.address || '2232 South Main Street' }}</p>
-                      <p class="text-xs font-semibold text-foreground/80">{{ companyProfile.city || 'Ann Arbor' }}, {{ companyProfile.state || 'MI' }}. {{ companyProfile.zip || '48104' }}</p>
-                      <p class="text-xs font-bold text-foreground/80">{{ companyProfile.phone1 || '(734) 604-3786' }}</p>
-                      <p v-if="companyProfile.phone2" class="text-xs font-bold text-foreground/80">{{ companyProfile.phone2 }}</p>
-                      <p class="text-xs font-bold text-foreground/80">{{ companyProfile.website || 'www.a2hardwood.com' }}</p>
-                      <p class="text-xs font-bold text-foreground/80">{{ companyProfile.email || 'quote@a2hardwood.com' }}</p>
-                      <p class="text-xs font-bold text-foreground/80">Builder's License Number: {{ companyProfile.licenseNumber || '242600350' }}</p>
-                    </div>
-                  </div>
-                  <div class="mt-5 mb-1">
-                    <h2 class="text-lg font-black text-foreground/90">{{ templateForm.name || 'Template Name' }}</h2>
-                    <div class="h-[3px] bg-gradient-to-r from-blue-700 via-blue-600 to-blue-700 rounded-full mt-2" />
-                  </div>
-                </div>
                 <ClientOnly>
-                  <ContractsEditor v-model="templateForm.content" />
+                  <ContractsEditor v-model="templateForm.content" @update:pages="templatePages = $event" />
                   <template #fallback>
                     <div class="h-96 flex items-center justify-center">
                       <Icon name="i-lucide-loader-circle" class="size-6 animate-spin text-muted-foreground" />
@@ -412,36 +404,74 @@ const TYPE_ICONS: Record<string, string> = {
                 </ClientOnly>
               </div>
 
-              <div class="space-y-4">
+              <div class="space-y-4 relative z-0">
                 <div class="rounded-xl border border-border/50 bg-card overflow-hidden">
-                  <div class="px-4 py-3 border-b border-border/50 bg-muted/20 flex items-center justify-between">
-                    <h3 class="text-xs font-bold flex items-center gap-1.5">
-                      <Icon name="i-lucide-braces" class="size-3.5 text-amber-500" />
-                      Template Variables
-                    </h3>
-                    <button class="size-7 rounded-md bg-primary/10 hover:bg-primary/20 flex items-center justify-center text-primary transition-colors" @click="addVariable">
-                      <Icon name="i-lucide-plus" class="size-3.5" />
-                    </button>
-                  </div>
-                  <div class="divide-y divide-border/30 max-h-[50vh] overflow-y-auto">
-                    <div v-for="(v, idx) in templateForm.variables" :key="idx" class="p-3 hover:bg-muted/20 transition-colors group flex items-center gap-2">
-                      <input v-model="v.key" placeholder="variable_key" class="flex-1 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5 outline-none">
-                      <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none">
-                        <option value="text">Text</option>
-                        <option value="date">Date</option>
-                        <option value="number">Number</option>
-                        <option value="currency">Currency</option>
-                        <option value="textarea">Textarea</option>
-                        <option value="signature">Signature</option>
-                      </select>
-                      <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
-                        <Icon name="i-lucide-x" class="size-3" />
+                  <div class="p-0 max-h-[70vh] overflow-y-auto">
+                    <!-- Template Variables -->
+                    <div class="px-4 py-3 border-b border-border/50 bg-muted/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                      <h3 class="text-xs font-bold flex items-center gap-1.5">
+                        <Icon name="i-lucide-braces" class="size-3.5 text-amber-500" />
+                        Template Variables
+                      </h3>
+                      <button class="size-7 rounded-md bg-primary/10 hover:bg-primary/20 flex items-center justify-center text-primary transition-colors" @click="addVariable('template')">
+                        <Icon name="i-lucide-plus" class="size-3.5" />
                       </button>
                     </div>
-                    <div v-if="templateForm.variables.length === 0" class="p-6 text-center">
-                      <Icon name="i-lucide-braces" class="size-8 text-muted-foreground/20 mx-auto mb-2" />
-                      <p class="text-xs text-muted-foreground">No custom variables</p>
-                      <button class="text-xs text-primary font-semibold mt-2 hover:underline" @click="addVariable">Add your first variable</button>
+                    <div class="divide-y divide-border/30">
+                      <div v-for="(v, idx) in templateForm.variables" :key="idx">
+                        <div v-if="!v.scope || v.scope === 'template'" class="p-3 hover:bg-muted/20 transition-colors group flex flex-col gap-2">
+                          <div class="flex items-center gap-2">
+                            <input v-model="v.key" placeholder="variable_key" class="flex-1 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5 outline-none w-full">
+                            <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[80px]">
+                              <option value="text">Text</option>
+                              <option value="date">Date</option>
+                              <option value="number">Number</option>
+                              <option value="currency">Currency</option>
+                              <option value="textarea">Textarea</option>
+                            </select>
+                            <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
+                              <Icon name="i-lucide-x" class="size-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div v-if="!templateForm.variables.some(v => !v.scope || v.scope === 'template')" class="p-4 text-center">
+                        <p class="text-xs text-muted-foreground">Filled by you during creation</p>
+                      </div>
+                    </div>
+
+                    <!-- Client Variables -->
+                    <div class="px-4 py-3 border-y border-border/50 bg-muted/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                      <h3 class="text-xs font-bold flex items-center gap-1.5">
+                        <Icon name="i-lucide-user" class="size-3.5 text-blue-500" />
+                        Client Variables
+                      </h3>
+                      <button class="size-7 rounded-md bg-blue-500/10 hover:bg-blue-500/20 flex items-center justify-center text-blue-600 transition-colors" @click="addVariable('client')">
+                        <Icon name="i-lucide-plus" class="size-3.5" />
+                      </button>
+                    </div>
+                    <div class="divide-y divide-border/30">
+                      <div v-for="(v, idx) in templateForm.variables" :key="idx">
+                        <div v-if="v.scope === 'client'" class="p-3 hover:bg-muted/20 transition-colors group flex flex-col gap-2">
+                          <div class="flex items-center gap-2">
+                            <input v-model="v.key" placeholder="variable_key" class="flex-1 text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded px-2 py-1.5 outline-none w-full">
+                            <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[80px]">
+                              <option value="text">Text</option>
+                              <option value="date">Date</option>
+                              <option value="number">Number</option>
+                              <option value="currency">Currency</option>
+                              <option value="textarea">Textarea</option>
+                              <option value="signature">Signature</option>
+                            </select>
+                            <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
+                              <Icon name="i-lucide-x" class="size-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div v-if="!templateForm.variables.some(v => v.scope === 'client')" class="p-4 text-center">
+                        <p class="text-xs text-muted-foreground">Filled by the client when signing</p>
+                      </div>
                     </div>
 
                     <!-- System Variables -->
@@ -453,6 +483,15 @@ const TYPE_ICONS: Record<string, string> = {
                            <span class="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">printDate</span>
                         </div>
                         <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100" title="Insert into document" @click="insertVariable('printDate')">
+                          <Icon name="i-lucide-plus" class="size-3.5" />
+                        </button>
+                      </div>
+
+                      <div class="flex items-center justify-between group">
+                        <div class="flex items-center gap-2">
+                           <span class="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">company_name</span>
+                        </div>
+                        <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100" title="Insert into document" @click="insertVariable('company_name')">
                           <Icon name="i-lucide-plus" class="size-3.5" />
                         </button>
                       </div>
@@ -516,10 +555,6 @@ const TYPE_ICONS: Record<string, string> = {
                   </div>
                   <h3 class="font-bold text-sm mb-1 group-hover:text-primary transition-colors">{{ tmpl.name }}</h3>
                   <p v-if="tmpl.description" class="text-xs text-muted-foreground line-clamp-2 mb-3">{{ tmpl.description }}</p>
-                  <div v-if="tmpl.variables?.length" class="flex flex-wrap gap-1 mb-3">
-                    <span v-for="v in tmpl.variables.slice(0, 4)" :key="v.key" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">{{ v.key }}</span>
-                    <span v-if="tmpl.variables.length > 4" class="text-[9px] text-muted-foreground px-1">+{{ tmpl.variables.length - 4 }} more</span>
-                  </div>
                   <div class="flex items-center justify-between pt-3 border-t border-border/40">
                     <span class="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Icon name="i-lucide-clock" class="size-3" />

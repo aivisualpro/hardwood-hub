@@ -40,7 +40,7 @@ const displayDescription = computed(() => {
 </script>
 
 <template>
-  <header class="sticky top-0 md:peer-data-[variant=inset]:top-2 z-10 flex items-center gap-4 border-b bg-background px-4 md:px-6 md:rounded-tl-xl md:rounded-tr-xl min-h-(--header-height)">
+  <header class="sticky top-0 md:peer-data-[variant=inset]:top-2 z-40 flex items-center gap-4 border-b bg-background px-4 md:px-6 md:rounded-tl-xl md:rounded-tr-xl min-h-(--header-height)">
     <div class="flex items-center gap-4 min-w-0 shrink-0">
       <SidebarTrigger />
       <Separator orientation="vertical" class="h-4" />
