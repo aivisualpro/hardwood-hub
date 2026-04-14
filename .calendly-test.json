@@ -1,0 +1,723 @@
+{
+  "collection": [
+    {
+      "calendar_event": {
+        "external_id": "c27u2mkpdc5oldg37q52s69rfk",
+        "kind": "google"
+      },
+      "cancellation": {
+        "canceled_by": "Ann Arbor Hardwoods LLC",
+        "canceler_type": "host",
+        "created_at": "2024-05-17T19:34:27.544508Z",
+        "reason": null
+      },
+      "created_at": "2024-05-17T19:33:38.367974Z",
+      "end_time": "2024-05-21T18:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-05-21T18:45:00.000000Z",
+          "buffered_start_time": "2024-05-21T17:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 0,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-05-21T17:00:00.000000Z",
+      "status": "canceled",
+      "updated_at": "2024-05-17T19:34:28.777577Z",
+      "uri": "https://api.calendly.com/scheduled_events/7274dc46-c063-493d-8e97-080db8ba8987"
+    },
+    {
+      "calendar_event": {
+        "external_id": "t4u62d0ekpj2ljmqgatg71ldb8",
+        "kind": "google"
+      },
+      "created_at": "2024-05-23T13:53:09.561354Z",
+      "end_time": "2024-05-28T16:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-05-28T16:45:00.000000Z",
+          "buffered_start_time": "2024-05-28T15:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-05-28T15:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-05-23T13:53:14.015117Z",
+      "uri": "https://api.calendly.com/scheduled_events/02cfae54-ca18-48b0-8291-931b7321c31e"
+    },
+    {
+      "calendar_event": {
+        "external_id": "nq104i3joobmjneo02evgof1ko",
+        "kind": "google"
+      },
+      "created_at": "2024-05-30T14:56:15.984532Z",
+      "end_time": "2024-06-04T17:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-04T17:45:00.000000Z",
+          "buffered_start_time": "2024-06-04T16:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-04T16:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-05-30T14:56:19.110143Z",
+      "uri": "https://api.calendly.com/scheduled_events/0e9993e5-942b-4dc0-b99e-7860e1e5b416"
+    },
+    {
+      "calendar_event": {
+        "external_id": "3aj9omh7p71a182ool5thl1p3o",
+        "kind": "google"
+      },
+      "created_at": "2024-05-28T16:58:55.933536Z",
+      "end_time": "2024-06-04T19:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-04T19:45:00.000000Z",
+          "buffered_start_time": "2024-06-04T18:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-04T18:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-05-28T16:58:58.757128Z",
+      "uri": "https://api.calendly.com/scheduled_events/6ce84a50-2758-477d-b317-d45db3c21ed9"
+    },
+    {
+      "calendar_event": {
+        "external_id": "0if79b922451s3tat4iqm6qa4s",
+        "kind": "google"
+      },
+      "created_at": "2024-05-31T20:14:29.850900Z",
+      "end_time": "2024-06-05T18:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-05T18:45:00.000000Z",
+          "buffered_start_time": "2024-06-05T17:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-05T17:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-05-31T20:14:32.926653Z",
+      "uri": "https://api.calendly.com/scheduled_events/f8b95b28-7694-4229-ae92-c814b03fca08"
+    },
+    {
+      "calendar_event": {
+        "external_id": "spda9a00q97v7evks7sht19a14",
+        "kind": "google"
+      },
+      "created_at": "2024-05-29T17:30:52.527465Z",
+      "end_time": "2024-06-06T17:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-06T17:45:00.000000Z",
+          "buffered_start_time": "2024-06-06T16:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-06T16:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-05-29T17:30:56.107675Z",
+      "uri": "https://api.calendly.com/scheduled_events/80aa2e1f-f01e-45c5-bd68-7436d620055f"
+    },
+    {
+      "calendar_event": {
+        "external_id": "hjc8s87f2jbrhpoh2k9uqa8o88",
+        "kind": "google"
+      },
+      "created_at": "2024-05-30T21:14:52.666941Z",
+      "end_time": "2024-06-07T19:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-07T19:45:00.000000Z",
+          "buffered_start_time": "2024-06-07T18:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-07T18:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-05-30T21:14:56.178376Z",
+      "uri": "https://api.calendly.com/scheduled_events/aac8dbfa-34ab-41b1-a8a7-d55975cf4beb"
+    },
+    {
+      "calendar_event": {
+        "external_id": "2ni4o4aen0hsk2vj8rcsnb26oo",
+        "kind": "google"
+      },
+      "created_at": "2024-05-30T16:23:52.222461Z",
+      "end_time": "2024-06-07T21:00:00.000000Z",
+      "event_guests": [
+        {
+          "created_at": "2024-05-30T16:23:52.334513Z",
+          "email": "zkhorfan@gmail.com",
+          "updated_at": "2024-05-30T16:23:52.334513Z"
+        }
+      ],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-07T21:45:00.000000Z",
+          "buffered_start_time": "2024-06-07T20:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-07T20:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-05-30T16:23:55.539682Z",
+      "uri": "https://api.calendly.com/scheduled_events/b8b49528-69de-4d5a-b24c-b698d061a725"
+    },
+    {
+      "calendar_event": {
+        "external_id": "l2l5bmcatt4u3blu5vdsc7p2qg",
+        "kind": "google"
+      },
+      "created_at": "2024-05-31T13:11:06.672676Z",
+      "end_time": "2024-06-12T20:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-12T20:45:00.000000Z",
+          "buffered_start_time": "2024-06-12T19:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-12T19:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-05-31T13:11:10.296441Z",
+      "uri": "https://api.calendly.com/scheduled_events/a2e78857-1c79-4de4-83ac-7324c686e410"
+    },
+    {
+      "calendar_event": {
+        "external_id": "8kreptk474gikadhcbe84734vk",
+        "kind": "google"
+      },
+      "created_at": "2024-06-10T17:37:38.510401Z",
+      "end_time": "2024-06-13T21:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-13T21:45:00.000000Z",
+          "buffered_start_time": "2024-06-13T20:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-13T20:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-10T17:37:41.292139Z",
+      "uri": "https://api.calendly.com/scheduled_events/77964bac-5a62-42f7-b163-54a119642615"
+    },
+    {
+      "calendar_event": {
+        "external_id": "h5gk5unbpmg9j08jh9a42nhqh8",
+        "kind": "google"
+      },
+      "created_at": "2024-06-11T14:54:05.256399Z",
+      "end_time": "2024-06-14T19:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-14T19:45:00.000000Z",
+          "buffered_start_time": "2024-06-14T18:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-14T18:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-11T14:54:08.621996Z",
+      "uri": "https://api.calendly.com/scheduled_events/fd23ce81-6be6-4bef-94b4-942591dc5c26"
+    },
+    {
+      "calendar_event": {
+        "external_id": "5q3nf09eihnl98gvo7is2gcovg",
+        "kind": "google"
+      },
+      "created_at": "2024-06-10T15:56:41.482811Z",
+      "end_time": "2024-06-14T21:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-14T21:45:00.000000Z",
+          "buffered_start_time": "2024-06-14T20:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-14T20:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-10T15:56:44.979013Z",
+      "uri": "https://api.calendly.com/scheduled_events/f300947f-2c42-440e-9dbe-c200e71303e8"
+    },
+    {
+      "calendar_event": {
+        "external_id": "t9u5rh5d6k5ghfo23a9jn27j44",
+        "kind": "google"
+      },
+      "created_at": "2024-06-13T17:18:55.697244Z",
+      "end_time": "2024-06-19T21:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-19T21:45:00.000000Z",
+          "buffered_start_time": "2024-06-19T20:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-19T20:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-13T17:18:59.107091Z",
+      "uri": "https://api.calendly.com/scheduled_events/c52ee965-8fce-460f-8f59-b17c1f001e7c"
+    },
+    {
+      "calendar_event": {
+        "external_id": "4ghpgp0ko4j8ed8q8bs7s8ra8c",
+        "kind": "google"
+      },
+      "created_at": "2024-06-17T13:57:02.488414Z",
+      "end_time": "2024-06-20T17:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-20T17:45:00.000000Z",
+          "buffered_start_time": "2024-06-20T16:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-20T16:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-17T13:57:05.674969Z",
+      "uri": "https://api.calendly.com/scheduled_events/c7865d9a-278f-4d33-a3a2-10d861487176"
+    },
+    {
+      "calendar_event": {
+        "external_id": "dm31gnviao09cssmqpoucqseis",
+        "kind": "google"
+      },
+      "created_at": "2024-06-16T21:59:09.529774Z",
+      "end_time": "2024-06-20T20:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-20T20:45:00.000000Z",
+          "buffered_start_time": "2024-06-20T19:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-20T19:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-16T21:59:12.806695Z",
+      "uri": "https://api.calendly.com/scheduled_events/b204b780-119d-4abe-bff6-0637a1de6df8"
+    },
+    {
+      "calendar_event": {
+        "external_id": "tvj806r7unqh28di6r8kna0ddk",
+        "kind": "google"
+      },
+      "created_at": "2024-06-17T21:43:14.495042Z",
+      "end_time": "2024-06-25T17:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-25T17:45:00.000000Z",
+          "buffered_start_time": "2024-06-25T16:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-25T16:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-17T21:43:17.765414Z",
+      "uri": "https://api.calendly.com/scheduled_events/08544332-96ef-4c45-9a7f-34339c81965a"
+    },
+    {
+      "calendar_event": {
+        "external_id": "nb8uajrgplmrffi0crr2hovhi4",
+        "kind": "google"
+      },
+      "created_at": "2024-06-20T18:07:50.845532Z",
+      "end_time": "2024-06-27T21:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-27T21:45:00.000000Z",
+          "buffered_start_time": "2024-06-27T20:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-27T20:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-20T18:07:53.936243Z",
+      "uri": "https://api.calendly.com/scheduled_events/0321b232-7f1c-491e-92cb-3add8398ad92"
+    },
+    {
+      "calendar_event": {
+        "external_id": "ln3jfu54vpa7e35bfb6tlqh08g",
+        "kind": "google"
+      },
+      "created_at": "2024-06-18T14:02:30.320352Z",
+      "end_time": "2024-06-28T14:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-28T14:45:00.000000Z",
+          "buffered_start_time": "2024-06-28T13:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-28T13:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-18T14:02:34.330046Z",
+      "uri": "https://api.calendly.com/scheduled_events/23aaa182-9b13-45a5-869b-9d9770500789"
+    },
+    {
+      "calendar_event": {
+        "external_id": "p0ijingorti0mv7q7ur00ae6ss",
+        "kind": "google"
+      },
+      "created_at": "2024-06-24T18:13:19.261781Z",
+      "end_time": "2024-06-28T16:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-28T16:45:00.000000Z",
+          "buffered_start_time": "2024-06-28T15:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-28T15:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-24T18:13:22.410241Z",
+      "uri": "https://api.calendly.com/scheduled_events/7fb7c4f5-71c8-4645-9fb5-0b0c8e481d21"
+    },
+    {
+      "calendar_event": {
+        "external_id": "7spmu4ganek17g7qen7h27d318",
+        "kind": "google"
+      },
+      "created_at": "2024-06-22T00:28:26.850590Z",
+      "end_time": "2024-06-28T21:00:00.000000Z",
+      "event_guests": [],
+      "event_memberships": [
+        {
+          "buffered_end_time": "2024-06-28T21:45:00.000000Z",
+          "buffered_start_time": "2024-06-28T20:00:00.000000Z",
+          "user": "https://api.calendly.com/users/520c70c0-3406-4cb8-aad7-93c599d34554",
+          "user_email": "michael@annarborhardwoods.com",
+          "user_name": "Ann Arbor Hardwoods LLC"
+        }
+      ],
+      "event_type": "https://api.calendly.com/event_types/ec1492d1-a54e-448e-bc9c-c40d581b12a2",
+      "invitees_counter": {
+        "active": 1,
+        "limit": 1,
+        "total": 1
+      },
+      "location": {
+        "location": null,
+        "type": "custom"
+      },
+      "meeting_notes_html": null,
+      "meeting_notes_plain": null,
+      "name": "In-home Appointment",
+      "start_time": "2024-06-28T20:00:00.000000Z",
+      "status": "active",
+      "updated_at": "2024-06-22T00:28:29.741852Z",
+      "uri": "https://api.calendly.com/scheduled_events/0cbffbcc-fee9-490b-9d0c-601efb90236d"
+    }
+  ],
+  "pagination": {
+    "count": 20,
+    "next_page": "https://api.calendly.com/scheduled_events?count=20&page_token=3RMtCVjBxXvYXpj_xOZ4oacEgNOJg-M0&user=https%3A%2F%2Fapi.calendly.com%2Fusers%2F520c70c0-3406-4cb8-aad7-93c599d34554",
+    "next_page_token": "3RMtCVjBxXvYXpj_xOZ4oacEgNOJg-M0",
+    "previous_page": null,
+    "previous_page_token": null
+  }
+}

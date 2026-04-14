@@ -68,6 +68,53 @@ async function handleQuickUpdate(customer: any, field: string, event: Event) {
   }
 }
 
+const stageSearch = ref('')
+const stageSearchInput = ref<HTMLInputElement | null>(null)
+
+watch(activeDropdown, (val) => {
+  if (val && val.endsWith('stage')) {
+    stageSearch.value = ''
+    setTimeout(() => {
+      stageSearchInput.value && stageSearchInput.value.focus()
+    }, 50)
+  }
+})
+
+const filteredStageOptions = computed(() => {
+  const all = [...STAGES, ...dynamicStages.value]
+  if (!stageSearch.value) return all
+  const sub = stageSearch.value.toLowerCase()
+  return all.filter(s => s.label.toLowerCase().includes(sub))
+})
+
+async function handleStageSelect(customer: any, newStage: string) {
+  if (!newStage.trim()) return
+  customer.stage = newStage.trim()
+  activeDropdown.value = null
+  
+  try {
+    const res = await $fetch<any>(`/api/customers/${customer._id}`, {
+      method: 'PUT',
+      body: { stage: customer.stage }
+    })
+    if (res.success) {
+      toast.success('Stage updated')
+    } else {
+       toast.error('Failed to update stage')
+    }
+  } catch (err) {
+    toast.error('Error updating stage')
+  }
+}
+
+function getStageClasses(stageName: string) {
+  if (!stageName) return 'bg-muted text-muted-foreground border-border'
+  const norm = normalizeStage(stageName)
+  const found = [...STAGES, ...dynamicStages.value].find(s => normalizeStage(s.id) === norm)
+  if (found) return `${found.bg} ${found.text} border ${found.border}`
+  return 'bg-muted/80 text-foreground border border-border'
+}
+
 async function handleFileUpload(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -293,7 +340,7 @@ const pipelineGroups = computed(() => {
       stage: { id: 'uncategorized', label: 'Uncategorized', bg: 'bg-muted', text: 'text-muted-foreground', border: 'border-border' },
       items: groups['uncategorized']
     }
-  ].filter(g => g.stage.id === 'all' || g.items.length > 0 || STAGES.find(x => x.id === g.stage.id))
+  ].filter(g => g.stage.id === 'all' || g.items.length > 0)
 })
 
 // Table grouping (applies both search AND tab filters)
@@ -511,11 +558,40 @@ function selectFilter(id: string) {
               <td class="p-2.5 text-center px-4" @click.stop>
                 <input type="checkbox" class="rounded border-border text-primary cursor-pointer" />
               </td>
-              <td class="p-2.5 font-semibold text-foreground/90 max-w-[200px]" :class="isQuickEditMode ? 'whitespace-normal' : 'truncate'">
-                <input v-if="isQuickEditMode" v-model="c.name" @change="handleQuickUpdate(c, 'name', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
-                <template v-else>
-                  {{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}
-                </template>
+              <td class="p-2.5 max-w-[200px] relative" :class="isQuickEditMode ? 'whitespace-normal' : 'truncate'" @click.stop>
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-foreground/90 truncate flex-1 block">
+                    <input v-if="isQuickEditMode" v-model="c.name" @change="handleQuickUpdate(c, 'name', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                    <template v-else>
+                      {{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}
+                    </template>
+                  </span>
+                  
+                  <!-- Stage Combobox -->
+                  <div class="relative shrink-0" :class="activeDropdown === c._id + 'stage' ? 'z-50' : ''">
+                    <button @click.stop="activeDropdown = activeDropdown === c._id + 'stage' ? null : c._id + 'stage'" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider hover:opacity-80 transition-colors shadow-sm shadow-black/5" :class="getStageClasses(c.stage)">
+                      {{ c.stage || 'Set Stage' }}
+                      <Icon name="i-lucide-chevron-down" class="size-3 ml-0.5 opacity-70" />
+                    </button>
+                    
+                    <div v-if="activeDropdown === c._id + 'stage'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+                    <div v-if="activeDropdown === c._id + 'stage'" class="absolute left-0 mt-1 top-full w-[200px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                       <div class="p-2 border-b border-border/50">
+                         <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop @keydown.enter="handleStageSelect(c, stageSearch)" />
+                       </div>
+                       <div class="max-h-[200px] overflow-y-auto py-1.5">
+                          <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
+                             <div class="size-2 rounded-full shadow-inner" :class="st.bg" />
+                             <span class="truncate">{{ st.label }}</span>
+                          </button>
+                          <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(c, stageSearch)" class="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
+                             <Icon name="i-lucide-plus" class="size-3.5 shrink-0" />
+                             <span class="truncate">Add "{{ stageSearch }}"</span>
+                          </button>
+                       </div>
+                    </div>
+                  </div>
+                </div>
               </td>
 
               <td class="p-2.5 text-muted-foreground" :class="{'whitespace-normal': isQuickEditMode}">
@@ -713,8 +789,35 @@ function selectFilter(id: string) {
               @click="!isQuickEditMode && navigateTo(`/crm/customers/${c._id}`)"
             >
               <div class="flex items-start justify-between gap-2">
-                <div class="flex flex-col min-w-0 flex-1">
-                  <span class="text-sm font-bold text-foreground truncate block w-full">{{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}</span>
+                <div class="flex flex-col min-w-0 flex-1 gap-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-bold text-foreground truncate">{{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}</span>
+                    
+                    <!-- Stage Combobox Mobile -->
+                    <div class="relative shrink-0" :class="activeDropdown === c._id + 'stage-mobile' ? 'z-50' : ''">
+                      <button @click.stop="activeDropdown = activeDropdown === c._id + 'stage-mobile' ? null : c._id + 'stage-mobile'" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider hover:opacity-80 transition-colors shadow-sm shadow-black/5" :class="getStageClasses(c.stage)">
+                        {{ c.stage || 'Set Stage' }}
+                        <Icon name="i-lucide-chevron-down" class="size-3 ml-0.5 opacity-70" />
+                      </button>
+                      
+                      <div v-if="activeDropdown === c._id + 'stage-mobile'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+                      <div v-if="activeDropdown === c._id + 'stage-mobile'" class="absolute left-0 mt-1 top-full w-[200px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                         <div class="p-2 border-b border-border/50">
+                           <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop @keydown.enter="handleStageSelect(c, stageSearch)" />
+                         </div>
+                         <div class="max-h-[200px] overflow-y-auto py-1.5">
+                            <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
+                               <div class="size-2 rounded-full shadow-inner" :class="st.bg" />
+                               <span class="truncate">{{ st.label }}</span>
+                            </button>
+                            <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(c, stageSearch)" class="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
+                               <Icon name="i-lucide-plus" class="size-3.5 shrink-0" />
+                               <span class="truncate">Add "{{ stageSearch }}"</span>
+                            </button>
+                         </div>
+                      </div>
+                    </div>
+                  </div>
                   <span class="text-[11px] text-muted-foreground truncate block w-full">{{ c.email || c.phone || '—' }}</span>
                 </div>
                 <div class="text-right flex flex-col items-end shrink-0 pt-0.5">

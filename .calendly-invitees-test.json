@@ -1,0 +1,62 @@
+{
+  "collection": [
+    {
+      "cancel_url": "https://calendly.com/cancellations/d5e7b7da-7645-40b0-bcba-49dff6770731",
+      "created_at": "2024-05-23T13:53:09.579016Z",
+      "email": "jessicaparx@gmail.com",
+      "event": "https://api.calendly.com/scheduled_events/02cfae54-ca18-48b0-8291-931b7321c31e",
+      "first_name": "Jessica",
+      "invitee_scheduled_by": null,
+      "last_name": "Nielsen",
+      "name": "Jessica Nielsen",
+      "new_invitee": null,
+      "no_show": null,
+      "old_invitee": null,
+      "payment": {
+        "amount": 40,
+        "currency": "USD",
+        "external_id": "ch_3PJc4t01WgpjsBXJ1dFoJQSj",
+        "provider": "stripe",
+        "successful": true,
+        "terms": "If you cancel the booking up to 24 hours before the meeting time, you will be entitled to a full refund. If you cancel the booking less than 24 hours before the meeting time, you will not be entitled to a refund. \n\nIf you reschedule the booking up to 24 hours before the meeting time, you will not be charged a reschedule fee. If you reschedule the booking less than 24 hours before the meeting time, your reschedule fee will be $20.00 USD. "
+      },
+      "questions_and_answers": [
+        {
+          "answer": "301 Maple Ridge St",
+          "position": 0,
+          "question": "Full Address"
+        },
+        {
+          "answer": "I bought a new house the flooring upstairs is carpet but it's a 120 year old house and I found pine wood underneath.  I wanted to get estimate on how much it would be to sand / stain / seal it etc. ",
+          "position": 1,
+          "question": "Please share anything that will help prepare for our meeting."
+        }
+      ],
+      "reconfirmation": null,
+      "reschedule_url": "https://calendly.com/reschedulings/d5e7b7da-7645-40b0-bcba-49dff6770731",
+      "rescheduled": false,
+      "routing_form_submission": null,
+      "scheduling_method": null,
+      "status": "active",
+      "text_reminder_number": "+1 517-428-2164",
+      "timezone": "America/New_York",
+      "tracking": {
+        "utm_campaign": null,
+        "utm_source": null,
+        "utm_medium": null,
+        "utm_content": null,
+        "utm_term": null,
+        "salesforce_uuid": null
+      },
+      "updated_at": "2024-05-23T13:53:32.161941Z",
+      "uri": "https://api.calendly.com/scheduled_events/02cfae54-ca18-48b0-8291-931b7321c31e/invitees/d5e7b7da-7645-40b0-bcba-49dff6770731"
+    }
+  ],
+  "pagination": {
+    "count": 1,
+    "next_page": null,
+    "next_page_token": null,
+    "previous_page": null,
+    "previous_page_token": null
+  }
+}

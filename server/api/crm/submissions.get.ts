@@ -19,7 +19,13 @@ export default defineEventHandler(async (event) => {
   const limit = Math.min(200, Math.max(1, Number(query.limit) || 50))
 
   const filter: Record<string, any> = {}
-  if (type) filter.type = type
+  if (type) {
+    filter.type = type
+    // Enforce Calendly-only logic: Calendly saves as form 0. Block legacy WP forms (> 0)
+    if (type === 'appointment') {
+      filter.gfFormId = 0
+    }
+  }
   if (status) filter.status = status
   const andConditions: any[] = []
 
