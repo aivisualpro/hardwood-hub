@@ -167,8 +167,8 @@ const stats = computed(() => {
 </script>
 
 <template>
-  <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
-    <div class="max-w-6xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
+  <div>
+    <div class="space-y-4 sm:space-y-6">
 
       <!-- ─── Stats Bar ─── -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">

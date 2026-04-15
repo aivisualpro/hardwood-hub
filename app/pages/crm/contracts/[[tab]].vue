@@ -585,7 +585,7 @@ const TYPE_ICONS: Record<string, string> = {
       <!-- Tab content: fills remaining height, no overflow on body -->
       <div class="flex-1 overflow-hidden">  
         <!-- ═══════ LIST TAB ═══════ -->
-        <div v-if="activeTab === 'list'" class="h-full overflow-y-auto p-4 lg:p-6">
+        <div v-if="activeTab === 'list'" class="h-full overflow-y-auto">
 
           <CrmContractsTable 
             :contracts="contracts" 

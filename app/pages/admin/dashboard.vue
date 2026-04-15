@@ -249,8 +249,8 @@ const metricCards = computed(() => [
 </script>
 
 <template>
-  <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
-    <div class="w-full flex flex-col gap-4 sm:gap-6 p-3 sm:p-6 max-w-[100rem] mx-auto">
+  <div>
+    <div class="w-full flex flex-col gap-4 sm:gap-6 max-w-[100rem] mx-auto">
 
       <!-- ══════ Loading Skeleton ══════ -->
       <template v-if="loading">
