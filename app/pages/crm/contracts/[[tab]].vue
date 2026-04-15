@@ -367,6 +367,38 @@ function removeVariable(idx: number) {
   templateForm.value.variables.splice(idx, 1)
 }
 
+function moveVariable(idx: number, direction: 'up' | 'down') {
+  const vars = templateForm.value.variables
+  const currentVar = vars[idx]
+  if (!currentVar) return
+
+  const targetScope = currentVar.scope || 'template'
+  
+  if (direction === 'up') {
+    for (let i = idx - 1; i >= 0; i--) {
+      const swapVar = vars[i]
+      if (!swapVar) continue
+      const scope = swapVar.scope || 'template'
+      if (scope === targetScope) {
+        vars[idx] = swapVar
+        vars[i] = currentVar
+        break
+      }
+    }
+  } else {
+    for (let i = idx + 1; i < vars.length; i++) {
+      const swapVar = vars[i]
+      if (!swapVar) continue
+      const scope = swapVar.scope || 'template'
+      if (scope === targetScope) {
+        vars[idx] = swapVar
+        vars[i] = currentVar
+        break
+      }
+    }
+  }
+}
+
 function insertVariable(key: string) {
   window.dispatchEvent(new CustomEvent('insert-variable', { detail: { key } }))
 }
@@ -570,7 +602,7 @@ const TYPE_ICONS: Record<string, string> = {
           <!-- ═══ EDITOR VIEW: fills remaining height ═══ -->
           <div v-if="showEditor" class="h-full">
             <!-- Two-column grid -->
-            <div class="h-full overflow-hidden grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-0 border border-border/50 rounded-xl bg-card shadow-sm">
+            <div class="h-full overflow-hidden grid grid-cols-1 xl:grid-cols-[1fr_450px] gap-0 border border-border/50 rounded-xl bg-card shadow-sm">
               <!-- LEFT: Editor — scrolls inside -->
               <div class="overflow-hidden flex flex-col border-r border-border/50">
                 <ClientOnly>
@@ -598,20 +630,33 @@ const TYPE_ICONS: Record<string, string> = {
                     </div>
                     <div class="divide-y divide-border/30">
                       <div v-for="(v, idx) in templateForm.variables" :key="idx">
-                        <div v-if="!v.scope || v.scope === 'template'" class="p-3 hover:bg-muted/20 transition-colors group flex flex-col gap-2">
-                          <div class="flex items-center gap-2">
-                            <input v-model="v.key" placeholder="variable_key" class="flex-1 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5 outline-none w-full">
-                            <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[80px]">
-                              <option value="text">Text</option>
-                              <option value="date">Date</option>
-                              <option value="number">Number</option>
-                              <option value="currency">Currency</option>
-                              <option value="textarea">Textarea</option>
-                            </select>
-                            <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
-                              <Icon name="i-lucide-x" class="size-3" />
+                        <div v-if="!v.scope || v.scope === 'template'" class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
+                          <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
+                              <Icon name="i-lucide-chevron-up" class="size-3" />
+                            </button>
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
+                              <Icon name="i-lucide-chevron-down" class="size-3" />
                             </button>
                           </div>
+                          <input v-model="v.key" placeholder="variable_key" class="flex-1 min-w-0 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5 outline-none">
+                          <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[68px]">
+                            <option value="text">Text</option>
+                            <option value="date">Date</option>
+                            <option value="number">Number</option>
+                            <option value="currency">Currency</option>
+                            <option value="textarea">Multi</option>
+                          </select>
+                          <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
+                            <input type="checkbox" :id="'req-'+idx" v-model="v.required" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer">
+                            <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
+                          </div>
+                          <button class="flex items-center gap-1 text-[10px] font-bold text-primary/70 hover:text-primary transition-colors hover:bg-primary/10 px-1.5 py-1.5 rounded shrink-0" @click="insertVariable(v.key)" title="Insert into document">
+                            <Icon name="i-lucide-arrow-left-to-line" class="size-3" /> Insert
+                          </button>
+                          <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
+                            <Icon name="i-lucide-x" class="size-3.5" />
+                          </button>
                         </div>
                       </div>
                       <div v-if="!templateForm.variables.some(v => !v.scope || v.scope === 'template')" class="p-4 text-center">
@@ -631,21 +676,26 @@ const TYPE_ICONS: Record<string, string> = {
                     </div>
                     <div class="divide-y divide-border/30">
                       <div v-for="(v, idx) in templateForm.variables" :key="idx">
-                        <div v-if="v.scope === 'client'" class="p-3 hover:bg-muted/20 transition-colors group flex flex-col gap-2">
-                          <div class="flex items-center gap-2">
-                            <input v-model="v.key" placeholder="variable_key" class="flex-1 text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded px-2 py-1.5 outline-none w-full">
-                            <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[80px]">
-                              <option value="text">Text</option>
-                              <option value="date">Date</option>
-                              <option value="number">Number</option>
-                              <option value="currency">Currency</option>
-                              <option value="textarea">Textarea</option>
-                              <option value="signature">Signature</option>
-                            </select>
-                            <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
-                              <Icon name="i-lucide-x" class="size-3" />
-                            </button>
+                        <div v-if="v.scope === 'client'" class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2 pl-[26px]">
+                          <input v-model="v.key" placeholder="variable_key" class="flex-1 min-w-0 text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded px-2 py-1.5 outline-none">
+                          <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[68px]">
+                            <option value="text">Text</option>
+                            <option value="date">Date</option>
+                            <option value="number">Number</option>
+                            <option value="currency">Currency</option>
+                            <option value="textarea">Multi</option>
+                            <option value="signature">Sign</option>
+                          </select>
+                          <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
+                            <input type="checkbox" :id="'req-'+idx" v-model="v.required" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer">
+                            <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
                           </div>
+                          <button class="flex items-center gap-1 text-[10px] font-bold text-primary/70 hover:text-primary transition-colors hover:bg-primary/10 px-1.5 py-1.5 rounded shrink-0" @click="insertVariable(v.key)" title="Insert into document">
+                            <Icon name="i-lucide-arrow-left-to-line" class="size-3" /> Insert
+                          </button>
+                          <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
+                            <Icon name="i-lucide-x" class="size-3.5" />
+                          </button>
                         </div>
                       </div>
                       <div v-if="!templateForm.variables.some(v => v.scope === 'client')" class="p-4 text-center">
