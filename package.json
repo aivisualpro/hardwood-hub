@@ -48,6 +48,7 @@
     "release": "echo 'Release not configured'"
   },
   "dependencies": {
+    "@google-cloud/vertexai": "^1.12.0",
     "@iconify-json/lucide": "^1.2.68",
     "@iconify-json/radix-icons": "^1.2.5",
     "@internationalized/date": "^3.10.0",
@@ -84,6 +85,7 @@
     "dagre": "^0.8.5",
     "embla-carousel": "^8.6.0",
     "embla-carousel-vue": "^8.6.0",
+    "google-auth-library": "^10.6.2",
     "html-pdf-node": "^1.0.8",
     "mongoose": "^8.2.1",
     "nanoid": "^5.1.6",
