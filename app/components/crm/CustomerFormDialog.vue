@@ -135,9 +135,13 @@ async function submit() {
     if (res.success) {
       emit('saved', res.data)
       emit('update:modelValue', false)
+      toast.success('Customer saved successfully')
+    } else {
+      toast.error(res.message || 'Failed to save customer')
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error(e)
+    toast.error(e?.data?.message || e?.message || 'An error occurred while saving')
   } finally {
     isLoading.value = false
   }
@@ -176,11 +180,20 @@ const activeDropdown = ref<string | null>(null)
 const stageSearch = ref('')
 const stageSearchInput = ref<HTMLInputElement | null>(null)
 
+const employeeSearch = ref('')
+const employeeSearchInput = ref<HTMLInputElement | null>(null)
+
 watch(activeDropdown, (val) => {
   if (val === 'stage') {
     stageSearch.value = ''
     setTimeout(() => {
       stageSearchInput.value && stageSearchInput.value.focus()
+    }, 50)
+  }
+  if (val === 'projectAssignedTo') {
+    employeeSearch.value = ''
+    setTimeout(() => {
+      employeeSearchInput.value && employeeSearchInput.value.focus()
     }, 50)
   }
 })
@@ -211,6 +224,34 @@ function getStageClasses(stageName: string) {
   const found = STAGES.find(s => normalizeStage(s.id) === norm)
   if (found) return `${found.bg} ${found.text} border ${found.border}`
   return 'bg-muted/80 text-foreground border-border'
+}
+
+const { data: employeesRes } = await useFetch<any>('/api/employees')
+const employeesData = computed(() => employeesRes.value?.data || [])
+
+const filteredEmployees = computed(() => {
+  if (!employeeSearch.value) return employeesData.value
+  const s = employeeSearch.value.toLowerCase()
+  return employeesData.value.filter((e: any) => e.employee.toLowerCase().includes(s))
+})
+
+function getSelectedEmployees() {
+  if (!form.value.projectAssignedTo) return []
+  return form.value.projectAssignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
+}
+
+function isSelectedEmployee(emp: string) {
+  return getSelectedEmployees().includes(emp)
+}
+
+function toggleEmployee(emp: string) {
+  const selected = getSelectedEmployees()
+  if (selected.includes(emp)) {
+    form.value.projectAssignedTo = selected.filter(x => x !== emp).join(', ')
+  } else {
+    selected.push(emp)
+    form.value.projectAssignedTo = selected.join(', ')
+  }
 }
 </script>
 
@@ -281,14 +322,33 @@ function getStageClasses(stageName: string) {
             </div>
           </div>
           
-          <div class="space-y-2">
-            <Label>Assigned To</Label>
-            <Input v-model="form.assignedTo" placeholder="Sales Rep" />
-          </div>
-
-          <div class="space-y-2">
+          <div class="space-y-2 col-span-2 sm:col-span-1 relative" :class="activeDropdown === 'projectAssignedTo' ? 'z-50' : ''">
             <Label>Project Assigned To</Label>
-            <Input v-model="form.projectAssignedTo" placeholder="Project Manager" />
+            <div class="relative">
+              <button type="button" @click.stop="activeDropdown = activeDropdown === 'projectAssignedTo' ? null : 'projectAssignedTo'" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] h-auto">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span v-if="!form.projectAssignedTo" class="text-muted-foreground">Select assignees...</span>
+                  <template v-else>
+                    <span v-for="emp in getSelectedEmployees()" :key="emp" class="text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">{{ emp }}</span>
+                  </template>
+                </div>
+                <Icon name="i-lucide-users" class="size-4 opacity-50 shrink-0" />
+              </button>
+              
+              <div v-if="activeDropdown === 'projectAssignedTo'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+              <div v-if="activeDropdown === 'projectAssignedTo'" class="absolute left-0 mt-1 top-full w-full bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                 <div class="p-2 border-b border-border/50">
+                   <input ref="employeeSearchInput" type="text" v-model="employeeSearch" placeholder="Search employees..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop />
+                 </div>
+                 <div class="max-h-[200px] overflow-y-auto py-1.5">
+                    <button type="button" v-for="emp in filteredEmployees" :key="emp.employee" @click.stop="toggleEmployee(emp.employee)" class="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center justify-between gap-2">
+                       <span class="truncate" :class="isSelectedEmployee(emp.employee) ? 'font-bold text-primary' : ''">{{ emp.employee }}</span>
+                       <Icon v-if="isSelectedEmployee(emp.employee)" name="i-lucide-check" class="size-4 text-primary shrink-0" />
+                    </button>
+                    <div v-if="!filteredEmployees.length" class="px-3 py-2 text-xs text-muted-foreground text-center">No employees found.</div>
+                 </div>
+              </div>
+            </div>
           </div>
           
           <div class="space-y-2">
