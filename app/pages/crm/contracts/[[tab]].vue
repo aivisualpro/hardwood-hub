@@ -1,6 +1,128 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 
+// ─── PDF Upload State ──────────────────────────────────────
+const showPdfUpload = ref(false)
+const pdfFile = ref<File | null>(null)
+const pdfParsing = ref(false)
+const pdfParseProgress = ref(0)
+const pdfParsed = ref<{
+  html: string
+  variables: any[]
+  templateName: string
+  description: string
+  category: string
+} | null>(null)
+const pdfDragOver = ref(false)
+const pdfPreviewStep = ref<'upload' | 'preview'>('upload')
+const pdfInputRef = ref<HTMLInputElement | null>(null)
+
+function openPdfUpload() {
+  showPdfUpload.value = true
+  pdfFile.value = null
+  pdfParsed.value = null
+  pdfParsing.value = false
+  pdfParseProgress.value = 0
+  pdfPreviewStep.value = 'upload'
+}
+
+function handlePdfDrop(e: DragEvent) {
+  pdfDragOver.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file && file.type === 'application/pdf') {
+    pdfFile.value = file
+  } else {
+    toast.error('Please drop a valid PDF file')
+  }
+}
+
+function handlePdfSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    pdfFile.value = file
+  }
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      // Remove data:application/pdf;base64, prefix
+      resolve(result.split(',')[1] ?? '')
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function parsePdf() {
+  if (!pdfFile.value) return
+  pdfParsing.value = true
+  pdfParseProgress.value = 10
+
+  // Simulate progress while waiting for AI
+  const progressInterval = setInterval(() => {
+    pdfParseProgress.value = Math.min(pdfParseProgress.value + Math.random() * 15, 90)
+  }, 800)
+
+  try {
+    const base64 = await fileToBase64(pdfFile.value)
+    pdfParseProgress.value = 30
+
+    const res = await $fetch<{ success: boolean, data: any }>('/api/contracts/templates/parse-pdf', {
+      method: 'POST',
+      body: {
+        pdfBase64: base64,
+        fileName: pdfFile.value.name,
+      },
+    })
+
+    clearInterval(progressInterval)
+    pdfParseProgress.value = 100
+
+    if (res.success && res.data) {
+      pdfParsed.value = res.data
+      pdfPreviewStep.value = 'preview'
+      toast.success('PDF analyzed successfully', { description: `Found ${res.data.variables?.length || 0} variables` })
+    }
+  } catch (e: any) {
+    clearInterval(progressInterval)
+    toast.error('Failed to parse PDF', { description: e?.data?.message || e?.message })
+  } finally {
+    pdfParsing.value = false
+  }
+}
+
+function acceptPdfTemplate() {
+  if (!pdfParsed.value) return
+  selectedTemplate.value = null
+  templateForm.value = {
+    name: pdfParsed.value.templateName,
+    description: pdfParsed.value.description,
+    content: pdfParsed.value.html,
+    category: pdfParsed.value.category || 'General',
+    variables: pdfParsed.value.variables.map((v: any) => ({
+      key: v.key,
+      label: v.label,
+      type: v.type || 'text',
+      defaultValue: v.defaultValue || '',
+      required: v.required || false,
+      scope: v.scope || 'template',
+    })),
+  }
+  showPdfUpload.value = false
+  showEditor.value = true
+  toast.success('Template loaded into editor — review and save when ready')
+}
+
+function removePdfVariable(idx: number) {
+  if (pdfParsed.value) {
+    pdfParsed.value.variables.splice(idx, 1)
+  }
+}
+
 const { setHeader } = usePageHeader()
 
 // Initial header state
@@ -334,14 +456,38 @@ const TYPE_ICONS: Record<string, string> = {
           <Icon name="i-lucide-plus" class="size-3.5" />
           <span class="hidden sm:inline">New Contract</span>
         </button>
-        <button
-          v-if="activeTab === 'templates' && !showEditor"
-          class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
-          @click="openNewTemplate"
-        >
-          <Icon name="i-lucide-plus" class="size-3.5" />
-          <span class="hidden sm:inline">New Template</span>
-        </button>
+        <DropdownMenu v-if="activeTab === 'templates' && !showEditor">
+          <DropdownMenuTrigger as-child>
+            <button
+              class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
+            >
+              <Icon name="i-lucide-plus" class="size-3.5" />
+              <span class="hidden sm:inline">New Template</span>
+              <Icon name="i-lucide-chevron-down" class="size-3 ml-0.5 opacity-70" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-52">
+            <DropdownMenuItem class="cursor-pointer gap-2.5 py-2.5" @click="openNewTemplate">
+              <div class="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Icon name="i-lucide-pen-tool" class="size-4 text-primary" />
+              </div>
+              <div class="flex flex-col">
+                <span class="text-sm font-semibold">Design Template</span>
+                <span class="text-[10px] text-muted-foreground">Build from scratch</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem class="cursor-pointer gap-2.5 py-2.5" @click="openPdfUpload">
+              <div class="size-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                <Icon name="i-lucide-file-up" class="size-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div class="flex flex-col">
+                <span class="text-sm font-semibold">Upload PDF</span>
+                <span class="text-[10px] text-muted-foreground">AI-powered extraction</span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <!-- ══ EDITOR MODE ACTIONS ══ -->
@@ -606,5 +752,238 @@ const TYPE_ICONS: Record<string, string> = {
     <CrmContractFormDialog ref="contractFormDialog" @saved="fetchContracts" />
 
     <CrmContractFormDialog ref="contractFormDialog" @saved="fetchContracts" />
+
+    <!-- ═══════ PDF UPLOAD DIALOG ═══════ -->
+    <Dialog :open="showPdfUpload" @update:open="showPdfUpload = $event">
+      <DialogContent class="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <!-- Header -->
+        <div class="shrink-0 px-6 pt-6 pb-4 border-b">
+          <div class="flex items-center gap-3">
+            <div class="size-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 flex items-center justify-center border border-amber-500/20">
+              <Icon name="i-lucide-sparkles" class="size-5 text-amber-500" />
+            </div>
+            <div>
+              <h2 class="text-lg font-bold">Upload PDF Template</h2>
+              <p class="text-xs text-muted-foreground">AI-powered content extraction with Gemini</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="flex-1 overflow-y-auto">
+          <!-- ══ STEP 1: Upload ══ -->
+          <div v-if="pdfPreviewStep === 'upload'" class="p-6 space-y-5">
+            <!-- Drop Zone -->
+            <div
+              class="relative border-2 border-dashed rounded-2xl p-10 text-center transition-all duration-300 cursor-pointer group"
+              :class="pdfDragOver
+                ? 'border-primary bg-primary/5 scale-[1.01]'
+                : pdfFile
+                  ? 'border-emerald-500/50 bg-emerald-500/5'
+                  : 'border-border/60 hover:border-primary/40 hover:bg-muted/30'"
+              @drop.prevent="handlePdfDrop"
+              @dragover.prevent="pdfDragOver = true"
+              @dragleave="pdfDragOver = false"
+              @click="pdfInputRef?.click()"
+            >
+              <input ref="pdfInputRef" type="file" accept=".pdf" class="hidden" @change="handlePdfSelect">
+
+              <div v-if="!pdfFile" class="flex flex-col items-center gap-3">
+                <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/15 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Icon name="i-lucide-cloud-upload" class="size-8 text-primary/70" />
+                </div>
+                <div>
+                  <p class="text-sm font-bold">Drop your PDF here</p>
+                  <p class="text-xs text-muted-foreground mt-1">or click to browse • PDF files only</p>
+                </div>
+              </div>
+
+              <div v-else class="flex items-center gap-4 justify-center">
+                <div class="size-14 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                  <Icon name="i-lucide-file-text" class="size-7 text-red-500" />
+                </div>
+                <div class="text-left">
+                  <p class="text-sm font-bold truncate max-w-[300px]">{{ pdfFile.name }}</p>
+                  <p class="text-xs text-muted-foreground">{{ (pdfFile.size / 1024).toFixed(1) }} KB</p>
+                </div>
+                <button
+                  class="size-8 rounded-lg hover:bg-destructive/10 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                  @click.stop="pdfFile = null"
+                >
+                  <Icon name="i-lucide-x" class="size-4" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Parsing Progress -->
+            <div v-if="pdfParsing" class="space-y-3">
+              <div class="flex items-center gap-3">
+                <div class="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Icon name="i-lucide-brain" class="size-4 text-primary animate-pulse" />
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold">Analyzing PDF with AI...</p>
+                  <p class="text-[10px] text-muted-foreground">Extracting content, layout, and identifying variables</p>
+                </div>
+              </div>
+              <div class="w-full bg-muted/40 rounded-full h-2 overflow-hidden">
+                <div
+                  class="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-500 ease-out"
+                  :style="{ width: pdfParseProgress + '%' }"
+                />
+              </div>
+              <div class="flex items-center justify-center gap-6 text-[10px] text-muted-foreground">
+                <span class="flex items-center gap-1"><Icon name="i-lucide-scan-text" class="size-3" /> Reading content</span>
+                <span class="flex items-center gap-1"><Icon name="i-lucide-braces" class="size-3" /> Detecting variables</span>
+                <span class="flex items-center gap-1"><Icon name="i-lucide-wand-2" class="size-3" /> Building template</span>
+              </div>
+            </div>
+
+            <!-- AI Info Box -->
+            <div class="rounded-xl bg-gradient-to-br from-violet-500/5 to-indigo-500/5 border border-violet-500/15 p-4">
+              <div class="flex items-start gap-3">
+                <Icon name="i-lucide-info" class="size-4 text-violet-500 shrink-0 mt-0.5" />
+                <div class="text-xs text-muted-foreground space-y-1">
+                  <p class="font-semibold text-foreground">How it works</p>
+                  <p>Google Gemini AI will analyze your PDF and extract:</p>
+                  <ul class="list-disc pl-4 space-y-0.5">
+                    <li>Full document content with formatting preserved</li>
+                    <li>Headings, tables, lists, and layout structure</li>
+                    <li>Fillable fields converted to template variables</li>
+                    <li>Automatic variable type detection (text, date, currency, etc.)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══ STEP 2: Preview ══ -->
+          <div v-if="pdfPreviewStep === 'preview' && pdfParsed" class="divide-y">
+            <!-- Template Info -->
+            <div class="p-5 space-y-3">
+              <div class="flex items-center gap-2">
+                <Icon name="i-lucide-check-circle" class="size-4 text-emerald-500" />
+                <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">PDF analyzed successfully</span>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Template Name</label>
+                  <input
+                    v-model="pdfParsed.templateName"
+                    class="w-full mt-1 h-8 px-3 text-sm border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 outline-none"
+                  >
+                </div>
+                <div>
+                  <label class="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Category</label>
+                  <select
+                    v-model="pdfParsed.category"
+                    class="w-full mt-1 h-8 px-2 text-sm border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 outline-none"
+                  >
+                    <option v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Description</label>
+                <input
+                  v-model="pdfParsed.description"
+                  class="w-full mt-1 h-8 px-3 text-sm border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 outline-none"
+                >
+              </div>
+            </div>
+
+            <!-- Detected Variables -->
+            <div class="p-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <Icon name="i-lucide-braces" class="size-4 text-amber-500" />
+                  <span class="text-sm font-bold">Detected Variables</span>
+                  <span class="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold">{{ pdfParsed.variables.length }}</span>
+                </div>
+              </div>
+
+              <div v-if="pdfParsed.variables.length === 0" class="text-center py-4">
+                <p class="text-xs text-muted-foreground">No variables detected in this PDF</p>
+              </div>
+
+              <div v-else class="space-y-1.5 max-h-48 overflow-y-auto">
+                <div
+                  v-for="(v, idx) in pdfParsed.variables"
+                  :key="idx"
+                  class="flex items-center gap-2 p-2 rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors group"
+                >
+                  <span
+                    class="px-2 py-0.5 rounded text-[10px] font-mono font-bold shrink-0"
+                    :class="v.scope === 'client'
+                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'"
+                  >{{ v.key }}</span>
+                  <span class="text-xs text-muted-foreground truncate flex-1">{{ v.label }}</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-semibold">{{ v.type }}</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded font-semibold"
+                    :class="v.scope === 'client' ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'"
+                  >{{ v.scope }}</span>
+                  <button
+                    class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                    @click="removePdfVariable(idx)"
+                  >
+                    <Icon name="i-lucide-x" class="size-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Content Preview -->
+            <div class="p-5 space-y-3">
+              <div class="flex items-center gap-2">
+                <Icon name="i-lucide-eye" class="size-4 text-primary" />
+                <span class="text-sm font-bold">Content Preview</span>
+              </div>
+              <div
+                class="border rounded-xl p-4 max-h-64 overflow-y-auto text-xs bg-background/50 prose prose-sm dark:prose-invert max-w-none"
+                v-html="pdfParsed.html"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="shrink-0 px-6 py-4 border-t bg-muted/10 flex items-center justify-between">
+          <div>
+            <button
+              v-if="pdfPreviewStep === 'preview'"
+              class="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              @click="pdfPreviewStep = 'upload'; pdfParsed = null; pdfFile = null"
+            >
+              <Icon name="i-lucide-arrow-left" class="size-3" />
+              Upload different PDF
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <Button variant="ghost" size="sm" @click="showPdfUpload = false">Cancel</Button>
+            <Button
+              v-if="pdfPreviewStep === 'upload'"
+              size="sm"
+              class="shadow-lg shadow-primary/20"
+              :disabled="!pdfFile || pdfParsing"
+              @click="parsePdf"
+            >
+              <Icon v-if="pdfParsing" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
+              <Icon v-else name="i-lucide-sparkles" class="mr-1.5 size-3.5" />
+              {{ pdfParsing ? 'Analyzing...' : 'Analyze with AI' }}
+            </Button>
+            <Button
+              v-if="pdfPreviewStep === 'preview'"
+              size="sm"
+              class="shadow-lg shadow-primary/20"
+              @click="acceptPdfTemplate"
+            >
+              <Icon name="i-lucide-check" class="mr-1.5 size-3.5" />
+              Open in Editor
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
