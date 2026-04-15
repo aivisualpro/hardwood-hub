@@ -115,8 +115,13 @@ async function downloadPDF(ct: any) {
     if (tableHTML.includes('Signature') && tableHTML.includes('____')) return ''
     return tableHTML
   })
-  mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/g, '')
-  mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/g, '')
+  const contractorSigImg = props.companyProfile?.signature
+    ? `<img src="${props.companyProfile.signature}" alt="Contractor Signature" style="max-height: 64px; object-fit: contain; vertical-align: middle;" />`
+    : ''
+
+  mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/gi, contractorSigImg)
+  mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/gi, contractorSigImg)
+  mergedHTML = mergedHTML.replace(/\{\{\s*contractor_signature\s*\}\}/gi, contractorSigImg)
   mergedHTML = mergedHTML.replace(/\{\{\s*customerSignature\s*\}\}/g, '')
   mergedHTML = mergedHTML.replace(/\{\{\s*customerSignatureDate\s*\}\}/g, '')
 
@@ -264,6 +269,9 @@ async function downloadPDF(ct: any) {
           </div>
         </div>
         <div class="content">
+          <div style="font-size: 1.5rem; font-weight: 800; text-align: right; margin-bottom: 2rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; color: #111;">
+            Contract #${ct.contractNumber || ''}
+          </div>
           ${mergedHTML}
         </div>
 

@@ -241,6 +241,10 @@ async function saveContract() {
     toast.error('Contract title is required')
     return
   }
+  if (!variableValues.value.contract_number?.trim()) {
+    toast.error('Contract Number is required')
+    return
+  }
 
   savingContract.value = true
   try {

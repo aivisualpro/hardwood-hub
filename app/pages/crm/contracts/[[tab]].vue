@@ -98,19 +98,24 @@ async function parsePdf() {
 function acceptPdfTemplate() {
   if (!pdfParsed.value) return
   selectedTemplate.value = null
+  const mappedVars = pdfParsed.value.variables.map((v: any) => ({
+    key: v.key,
+    label: v.label,
+    type: v.type || 'text',
+    defaultValue: v.defaultValue || '',
+    required: v.required || false,
+    scope: v.scope || 'template',
+  }))
+  
   templateForm.value = {
     name: pdfParsed.value.templateName,
     description: pdfParsed.value.description,
     content: pdfParsed.value.html,
     category: pdfParsed.value.category || 'General',
-    variables: pdfParsed.value.variables.map((v: any) => ({
-      key: v.key,
-      label: v.label,
-      type: v.type || 'text',
-      defaultValue: v.defaultValue || '',
-      required: v.required || false,
-      scope: v.scope || 'template',
-    })),
+    variables: [
+      { key: 'contract_number', label: 'Contract Number', type: 'text', defaultValue: '', required: true, scope: 'template' },
+      ...mappedVars.filter((v: any) => v.key !== 'contract_number')
+    ],
   }
   showPdfUpload.value = false
   showEditor.value = true
@@ -244,6 +249,7 @@ const systemVariables = [
   { key: 'company_email', label: 'Email' },
   { key: 'company_license', label: "Builder's License Number" },
   { key: 'company_logo', label: 'Logo' },
+  { key: 'contractor_signature', label: 'Contractor Signature' },
 ]
 
 const templatePages = ref(1)
@@ -288,7 +294,10 @@ function openTemplateEditor(template: ContractTemplate) {
     description: template.description,
     content: template.content,
     category: template.category,
-    variables: [...template.variables],
+    variables: [
+      { key: 'contract_number', label: 'Contract Number', type: 'text', defaultValue: '', required: true, scope: 'template' },
+      ...template.variables.filter(v => v.key !== 'contract_number')
+    ],
   }
   showEditor.value = true
 }
@@ -300,7 +309,9 @@ function openNewTemplate() {
     description: '',
     content: '<p>Start writing your contract template...</p>',
     category: 'General',
-    variables: [],
+    variables: [
+      { key: 'contract_number', label: 'Contract Number', type: 'text', defaultValue: '', required: true, scope: 'template' }
+    ],
   }
   showEditor.value = true
 }
@@ -619,7 +630,7 @@ const TYPE_ICONS: Record<string, string> = {
               <div class="flex flex-col overflow-hidden">
                 <div class="flex-1 overflow-y-auto">
                     <!-- Template Variables -->
-                    <div class="px-4 py-3 border-b border-border/50 bg-muted/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                    <div class="px-4 py-2 border-b border-border/50 bg-card flex items-center justify-between sticky top-0 z-10">
                       <h3 class="text-xs font-bold flex items-center gap-1.5">
                         <Icon name="i-lucide-braces" class="size-3.5 text-amber-500" />
                         Template Variables
@@ -631,15 +642,10 @@ const TYPE_ICONS: Record<string, string> = {
                     <div class="divide-y divide-border/30">
                       <div v-for="(v, idx) in templateForm.variables" :key="idx">
                         <div v-if="!v.scope || v.scope === 'template'" class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
-                          <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
-                              <Icon name="i-lucide-chevron-up" class="size-3" />
-                            </button>
-                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
-                              <Icon name="i-lucide-chevron-down" class="size-3" />
-                            </button>
-                          </div>
-                          <input v-model="v.key" placeholder="variable_key" class="flex-1 min-w-0 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5 outline-none">
+                          <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" @click="insertVariable(v.key)" title="Insert into document">
+                            <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
+                          </button>
+                          <input v-model="v.key" :readonly="v.key === 'contract_number'" placeholder="variable_key" class="flex-1 min-w-0 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5 outline-none" :class="{ 'opacity-80 cursor-default': v.key === 'contract_number' }">
                           <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[68px]">
                             <option value="text">Text</option>
                             <option value="date">Date</option>
@@ -648,13 +654,18 @@ const TYPE_ICONS: Record<string, string> = {
                             <option value="textarea">Multi</option>
                           </select>
                           <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
-                            <input type="checkbox" :id="'req-'+idx" v-model="v.required" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer">
+                            <input type="checkbox" :id="'req-'+idx" v-model="v.required" :disabled="v.key === 'contract_number'" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer disabled:opacity-50">
                             <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
                           </div>
-                          <button class="flex items-center gap-1 text-[10px] font-bold text-primary/70 hover:text-primary transition-colors hover:bg-primary/10 px-1.5 py-1.5 rounded shrink-0" @click="insertVariable(v.key)" title="Insert into document">
-                            <Icon name="i-lucide-arrow-left-to-line" class="size-3" /> Insert
-                          </button>
-                          <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
+                          <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }">
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
+                              <Icon name="i-lucide-chevron-up" class="size-3" />
+                            </button>
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
+                              <Icon name="i-lucide-chevron-down" class="size-3" />
+                            </button>
+                          </div>
+                          <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }">
                             <Icon name="i-lucide-x" class="size-3.5" />
                           </button>
                         </div>
@@ -665,7 +676,7 @@ const TYPE_ICONS: Record<string, string> = {
                     </div>
 
                     <!-- Client Variables -->
-                    <div class="px-4 py-3 border-y border-border/50 bg-muted/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                    <div class="px-4 py-2 border-y border-border/50 bg-card flex items-center justify-between sticky top-0 z-10">
                       <h3 class="text-xs font-bold flex items-center gap-1.5">
                         <Icon name="i-lucide-user" class="size-3.5 text-blue-500" />
                         Client Variables
@@ -676,7 +687,10 @@ const TYPE_ICONS: Record<string, string> = {
                     </div>
                     <div class="divide-y divide-border/30">
                       <div v-for="(v, idx) in templateForm.variables" :key="idx">
-                        <div v-if="v.scope === 'client'" class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2 pl-[26px]">
+                        <div v-if="v.scope === 'client'" class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
+                          <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" @click="insertVariable(v.key)" title="Insert into document">
+                            <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
+                          </button>
                           <input v-model="v.key" placeholder="variable_key" class="flex-1 min-w-0 text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded px-2 py-1.5 outline-none">
                           <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[68px]">
                             <option value="text">Text</option>
@@ -690,9 +704,14 @@ const TYPE_ICONS: Record<string, string> = {
                             <input type="checkbox" :id="'req-'+idx" v-model="v.required" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer">
                             <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
                           </div>
-                          <button class="flex items-center gap-1 text-[10px] font-bold text-primary/70 hover:text-primary transition-colors hover:bg-primary/10 px-1.5 py-1.5 rounded shrink-0" @click="insertVariable(v.key)" title="Insert into document">
-                            <Icon name="i-lucide-arrow-left-to-line" class="size-3" /> Insert
-                          </button>
+                          <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
+                              <Icon name="i-lucide-chevron-up" class="size-3" />
+                            </button>
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
+                              <Icon name="i-lucide-chevron-down" class="size-3" />
+                            </button>
+                          </div>
                           <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
                             <Icon name="i-lucide-x" class="size-3.5" />
                           </button>
@@ -710,14 +729,23 @@ const TYPE_ICONS: Record<string, string> = {
                       <div
                         v-for="sv in systemVariables"
                         :key="sv.key"
-                        class="flex items-center justify-between group"
+                        class="flex items-center gap-2 group px-2.5 py-1.5 hover:bg-muted/20 transition-colors"
                       >
-                        <div class="flex items-center gap-2">
-                           <span class="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">{{ sv.key }}</span>
-                        </div>
-                        <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors opacity-0 group-hover:opacity-100" title="Insert into document" @click="insertVariable(sv.key)">
-                          <Icon name="i-lucide-plus" class="size-3.5" />
+                        <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" title="Insert into document" @click="insertVariable(sv.key)">
+                          <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
                         </button>
+                        <input :value="sv.key" readonly class="flex-1 min-w-0 text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/5 border border-cyan-500/20 rounded px-2 py-1.5 outline-none cursor-default" />
+                        
+                        <!-- Invisible placeholders to mathematically match Client Variables width -->
+                        <select class="invisible pointer-events-none text-[10px] border rounded px-1.5 py-1.5 shrink-0 w-[68px]">
+                          <option>Text</option>
+                        </select>
+                        <div class="invisible pointer-events-none flex items-center gap-1 shrink-0 px-1">
+                          <div class="size-3.5 border rounded"></div>
+                          <label class="text-[10px] font-medium select-none">Req</label>
+                        </div>
+                        <div class="invisible pointer-events-none shrink-0 size-3.5"></div>
+                        <div class="invisible pointer-events-none shrink-0 size-6"></div>
                       </div>
 
                       <div class="mt-2 p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
