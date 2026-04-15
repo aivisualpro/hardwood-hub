@@ -513,6 +513,7 @@ function selectFilter(id: string) {
           <tr class="border-b bg-card text-muted-foreground text-[10px] font-bold uppercase tracking-wider sticky top-0 z-20">
             <th class="p-2.5 w-10 text-center"><input type="checkbox" class="rounded border-border text-primary cursor-pointer" /></th>
             <th class="p-2.5 min-w-[200px]">Name</th>
+            <th class="p-2.5 w-16 min-w-[60px] text-center">Stage</th>
             <th class="p-2.5 min-w-[100px]">Est. Duration</th>
             <th class="p-2.5 min-w-[120px]">Total Estimate</th>
             <th class="p-2.5 min-w-[140px]">Assigned To</th>
@@ -528,71 +529,52 @@ function selectFilter(id: string) {
         </thead>
         <tbody v-if="isLoading">
           <tr v-for="i in 5" :key="i">
-            <td colspan="13" class="p-4">
+            <td colspan="14" class="p-4">
               <div class="h-6 bg-muted/40 rounded animate-pulse"></div>
             </td>
           </tr>
         </tbody>
-        <tbody v-else v-for="g in tableGroupedCustomers" :key="g.stage.id" class="border-b-4 border-border/20 last:border-0 group/tbody">
-          
-          <!-- Stage Group Header -->
-          <tr class="cursor-pointer group/header" @click="expandedStages[g.stage.id] = !expandedStages[g.stage.id]">
-            <td colspan="13" class="p-0 sticky top-[34px] z-10 shadow-sm outline outline-1 outline-border/20">
-              <div class="flex items-center gap-2 px-3 py-2 bg-card/95 backdrop-blur-md hover:bg-muted/60 transition-colors border-l-[6px]" :class="g.stage.border">
-                <button type="button" class="flex items-center justify-center size-5 rounded hover:bg-background/80 transition-colors bg-background/40">
-                  <Icon :name="expandedStages[g.stage.id] ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-4 text-muted-foreground" />
+        <tbody v-else>
+          <tr v-for="c in filteredCustomers" :key="c._id" class="border-b border-border/30 last:border-0 text-[13px] transition-colors group/row" :class="!isQuickEditMode ? 'hover:bg-muted/20 cursor-pointer' : ''" @click="!isQuickEditMode && navigateTo(`/crm/customers/${c._id}`)">
+            <td class="p-2.5 text-center px-4" @click.stop>
+              <input type="checkbox" class="rounded border-border text-primary cursor-pointer" />
+            </td>
+            <td class="p-2.5 max-w-[200px] relative" :class="isQuickEditMode ? 'whitespace-normal' : 'truncate'" @click.stop>
+              <span class="font-semibold text-foreground/90 truncate flex-1 block">
+                <input v-if="isQuickEditMode" v-model="c.name" @change="handleQuickUpdate(c, 'name', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                <template v-else>
+                  {{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}
+                </template>
+              </span>
+            </td>
+            <td class="p-2.5" @click.stop>
+              <!-- Stage Combobox -->
+              <div class="relative w-full flex justify-center" :class="activeDropdown === c._id + 'stage' ? 'z-[100]' : 'z-10'">
+                <button @click.stop="activeDropdown = activeDropdown === c._id + 'stage' ? null : c._id + 'stage'" 
+                        class="size-5 rounded-full shadow-sm hover:scale-110 transition-transform focus:outline-none ring-1 ring-black/10 dark:ring-white/10 flex items-center justify-center cursor-pointer shrink-0" 
+                        :class="getStageClasses(c.stage)" 
+                        :title="c.stage || 'Set Stage'">
+                  <Icon v-if="!c.stage || c.stage.trim() === ''" name="i-lucide-plus" class="size-3 text-muted-foreground opacity-70" />
                 </button>
-                <div class="px-2 py-[3px] rounded text-[10px] uppercase font-bold tracking-wider inline-flex shadow-xs" :class="[g.stage.bg, g.stage.text]">
-                  {{ g.stage.label }}
+                
+                <div v-if="activeDropdown === c._id + 'stage'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+                <div v-if="activeDropdown === c._id + 'stage'" class="absolute left-1/2 -translate-x-1/2 mt-2 top-full min-w-[200px] max-w-[240px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                   <div class="p-2 border-b border-border/50">
+                     <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop @keydown.enter="handleStageSelect(c, stageSearch)" />
+                   </div>
+                   <div class="max-h-[200px] overflow-y-auto py-1.5">
+                      <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
+                         <div class="size-2 rounded-full shadow-inner" :class="st.bg" />
+                         <span class="truncate">{{ st.label }}</span>
+                      </button>
+                      <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(c, stageSearch)" class="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
+                         <Icon name="i-lucide-plus" class="size-3.5 shrink-0" />
+                         <span class="truncate">Add "{{ stageSearch }}"</span>
+                      </button>
+                   </div>
                 </div>
-                <button type="button" class="ml-1 flex items-center justify-center size-5 rounded-full hover:bg-background/80 transition-colors text-muted-foreground opacity-50 group-hover/header:opacity-100" title="Add Customer">
-                  <Icon name="i-lucide-plus" class="size-3.5" />
-                </button>
               </div>
             </td>
-          </tr>
-
-          <!-- Stage Group Items -->
-          <template v-if="expandedStages[g.stage.id]">
-            <tr v-for="c in g.items" :key="c._id" class="border-b border-border/30 last:border-0 text-[13px] transition-colors group/row" :class="!isQuickEditMode ? 'hover:bg-muted/20 cursor-pointer' : ''" @click="!isQuickEditMode && navigateTo(`/crm/customers/${c._id}`)">
-              <td class="p-2.5 text-center px-4" @click.stop>
-                <input type="checkbox" class="rounded border-border text-primary cursor-pointer" />
-              </td>
-              <td class="p-2.5 max-w-[200px] relative" :class="isQuickEditMode ? 'whitespace-normal' : 'truncate'" @click.stop>
-                <div class="flex items-center gap-2">
-                  <span class="font-semibold text-foreground/90 truncate flex-1 block">
-                    <input v-if="isQuickEditMode" v-model="c.name" @change="handleQuickUpdate(c, 'name', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
-                    <template v-else>
-                      {{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}
-                    </template>
-                  </span>
-                  
-                  <!-- Stage Combobox -->
-                  <div class="relative shrink-0" :class="activeDropdown === c._id + 'stage' ? 'z-50' : ''">
-                    <button @click.stop="activeDropdown = activeDropdown === c._id + 'stage' ? null : c._id + 'stage'" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider hover:opacity-80 transition-colors shadow-sm shadow-black/5" :class="getStageClasses(c.stage)">
-                      {{ c.stage || 'Set Stage' }}
-                      <Icon name="i-lucide-chevron-down" class="size-3 ml-0.5 opacity-70" />
-                    </button>
-                    
-                    <div v-if="activeDropdown === c._id + 'stage'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
-                    <div v-if="activeDropdown === c._id + 'stage'" class="absolute left-0 mt-1 top-full w-[200px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
-                       <div class="p-2 border-b border-border/50">
-                         <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop @keydown.enter="handleStageSelect(c, stageSearch)" />
-                       </div>
-                       <div class="max-h-[200px] overflow-y-auto py-1.5">
-                          <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
-                             <div class="size-2 rounded-full shadow-inner" :class="st.bg" />
-                             <span class="truncate">{{ st.label }}</span>
-                          </button>
-                          <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(c, stageSearch)" class="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
-                             <Icon name="i-lucide-plus" class="size-3.5 shrink-0" />
-                             <span class="truncate">Add "{{ stageSearch }}"</span>
-                          </button>
-                       </div>
-                    </div>
-                  </div>
-                </div>
-              </td>
 
               <td class="p-2.5 text-muted-foreground" :class="{'whitespace-normal': isQuickEditMode}">
                 <input v-if="isQuickEditMode" v-model="c.estimatedProjectDuration" @change="handleQuickUpdate(c, 'estimatedProjectDuration', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
@@ -753,7 +735,6 @@ function selectFilter(id: string) {
                 <template v-else>{{ formatShortDate(c.woodOrderDate) }}</template>
               </td>
             </tr>
-          </template>
         </tbody>
       </table>
     </div>
@@ -764,62 +745,46 @@ function selectFilter(id: string) {
         <div v-for="i in 5" :key="i" class="h-24 bg-muted/40 rounded-xl animate-pulse" />
       </div>
       
-      <div v-else class="space-y-4 p-3">
-        <div v-for="g in tableGroupedCustomers" :key="g.stage.id" class="space-y-2">
-          <!-- Group Header -->
-          <button 
-            type="button"
-            class="flex items-center gap-2 w-full px-3 py-2 bg-card hover:bg-muted/60 transition-colors border-l-[4px] rounded-lg border border-border/50 shadow-sm"
-            :class="g.stage.border"
-            @click="expandedStages[g.stage.id] = !expandedStages[g.stage.id]"
-          >
-            <Icon :name="expandedStages[g.stage.id] ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-4 text-muted-foreground mr-1 shrink-0" />
-            <div class="px-2 py-[3px] rounded text-[10px] uppercase font-bold tracking-wider inline-flex shadow-xs shrink-0" :class="[g.stage.bg, g.stage.text]">
-              {{ g.stage.label }}
-            </div>
-            <span class="text-xs font-bold text-muted-foreground ml-auto">{{ g.items.length }}</span>
-          </button>
-
-          <!-- Group Items -->
-          <div v-if="expandedStages[g.stage.id]" class="flex flex-col gap-3 pl-2 border-l-2 border-border/30 ml-2">
-            <div 
-              v-for="c in g.items" 
-              :key="c._id" 
-              class="bg-card border border-border/60 rounded-xl p-3 shadow-sm flex flex-col gap-2 relative"
-              @click="!isQuickEditMode && navigateTo(`/crm/customers/${c._id}`)"
-            >
-              <div class="flex items-start justify-between gap-2">
-                <div class="flex flex-col min-w-0 flex-1 gap-1">
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm font-bold text-foreground truncate">{{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}</span>
-                    
-                    <!-- Stage Combobox Mobile -->
-                    <div class="relative shrink-0" :class="activeDropdown === c._id + 'stage-mobile' ? 'z-50' : ''">
-                      <button @click.stop="activeDropdown = activeDropdown === c._id + 'stage-mobile' ? null : c._id + 'stage-mobile'" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider hover:opacity-80 transition-colors shadow-sm shadow-black/5" :class="getStageClasses(c.stage)">
-                        {{ c.stage || 'Set Stage' }}
-                        <Icon name="i-lucide-chevron-down" class="size-3 ml-0.5 opacity-70" />
+      <div v-else class="flex flex-col gap-3 p-3">
+        <div 
+          v-for="c in filteredCustomers" 
+          :key="c._id" 
+          class="bg-card border border-border/60 rounded-xl p-3 shadow-sm flex flex-col gap-2 relative transition-colors hover:bg-muted/20"
+          @click="!isQuickEditMode && navigateTo(`/crm/customers/${c._id}`)"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex flex-col min-w-0 flex-1 gap-2">
+              <div class="flex flex-col gap-1 min-w-0">
+                <span class="text-sm font-bold text-foreground truncate">{{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}</span>
+                <span class="text-[11px] text-muted-foreground truncate block w-full">{{ c.email || c.phone || '—' }}</span>
+              </div>
+              <!-- Stage Combobox Mobile -->
+              <div class="relative shrink-0 flex items-center justify-center mr-2 lg:mr-0" :class="activeDropdown === c._id + 'stage-mobile' ? 'z-[100]' : 'z-10'">
+                <button @click.stop="activeDropdown = activeDropdown === c._id + 'stage-mobile' ? null : c._id + 'stage-mobile'" 
+                        class="size-6 rounded-full shadow-sm hover:scale-110 transition-transform focus:outline-none ring-1 ring-black/10 dark:ring-white/10 flex items-center justify-center cursor-pointer shrink-0" 
+                        :class="getStageClasses(c.stage)" 
+                        :title="c.stage || 'Set Stage'">
+                  <Icon v-if="!c.stage || c.stage.trim() === ''" name="i-lucide-plus" class="size-3.5 text-muted-foreground opacity-70" />
+                </button>
+                
+                <div v-if="activeDropdown === c._id + 'stage-mobile'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+                <div v-if="activeDropdown === c._id + 'stage-mobile'" class="absolute right-0 mt-2 top-full min-w-[200px] max-w-[240px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                   <div class="p-2 border-b border-border/50">
+                     <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop @keydown.enter="handleStageSelect(c, stageSearch)" />
+                   </div>
+                   <div class="max-h-[200px] overflow-y-auto py-1.5">
+                      <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
+                         <div class="size-2 rounded-full shadow-inner" :class="st.bg" />
+                         <span class="truncate">{{ st.label }}</span>
                       </button>
-                      
-                      <div v-if="activeDropdown === c._id + 'stage-mobile'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
-                      <div v-if="activeDropdown === c._id + 'stage-mobile'" class="absolute left-0 mt-1 top-full w-[200px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
-                         <div class="p-2 border-b border-border/50">
-                           <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop @keydown.enter="handleStageSelect(c, stageSearch)" />
-                         </div>
-                         <div class="max-h-[200px] overflow-y-auto py-1.5">
-                            <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
-                               <div class="size-2 rounded-full shadow-inner" :class="st.bg" />
-                               <span class="truncate">{{ st.label }}</span>
-                            </button>
-                            <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(c, stageSearch)" class="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
-                               <Icon name="i-lucide-plus" class="size-3.5 shrink-0" />
-                               <span class="truncate">Add "{{ stageSearch }}"</span>
-                            </button>
-                         </div>
-                      </div>
-                    </div>
-                  </div>
-                  <span class="text-[11px] text-muted-foreground truncate block w-full">{{ c.email || c.phone || '—' }}</span>
+                      <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(c, stageSearch)" class="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
+                         <Icon name="i-lucide-plus" class="size-3.5 shrink-0" />
+                         <span class="truncate">Add "{{ stageSearch }}"</span>
+                      </button>
+                   </div>
                 </div>
+              </div>
+            </div>
                 <div class="text-right flex flex-col items-end shrink-0 pt-0.5">
                   <span class="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">Est. Total</span>
                   <span class="text-xs font-medium tabular-nums">{{ formatCurrency(c.totalEstimate) || '—' }}</span>
@@ -870,11 +835,9 @@ function selectFilter(id: string) {
                 </button>
               </div>
             </div>
-          </div>
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <style scoped>
