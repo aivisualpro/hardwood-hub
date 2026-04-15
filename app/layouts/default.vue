@@ -11,7 +11,7 @@ useHead({
     <SidebarInset>
       <LayoutHeader />
       <div class="flex flex-col flex-1 min-h-0">
-        <div class="@container/main px-4 pb-4 lg:px-6 lg:pb-6 pt-0 grow">
+        <div class="@container/main p-4 lg:p-6 grow">
           <slot />
         </div>
       </div>

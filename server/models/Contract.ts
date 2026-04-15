@@ -32,6 +32,9 @@ const ContractSchema = new mongoose.Schema(
         
         // Attached PDF string (base64 or URL)
         attachedPdf: { type: String, default: '' },
+        
+        // Attached from Customer Gallery (Array of URLs/base64)
+        attachedGalleryImages: { type: [String], default: [] },
 
         // Status
         status: {

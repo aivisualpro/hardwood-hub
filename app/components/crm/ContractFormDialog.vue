@@ -119,6 +119,27 @@ const customerSignatureDate = ref('')
 const attachedPdf = ref('')
 const attachedPdfName = ref('')
 const pdfFileInput = ref<HTMLInputElement | null>(null)
+const attachedGalleryImages = ref<string[]>([])
+
+async function loadCustomerGallery(id: string) {
+  try {
+    const res = await $fetch<any>(`/api/customers/${id}`)
+    if (res.success && res.data?.gallery) {
+      if (selectedCustomer.value) {
+        selectedCustomer.value.gallery = res.data.gallery
+      }
+    }
+  } catch (e) {}
+}
+
+function toggleGalleryImage(url: string) {
+  const index = attachedGalleryImages.value.indexOf(url)
+  if (index === -1) {
+    attachedGalleryImages.value.push(url)
+  } else {
+    attachedGalleryImages.value.splice(index, 1)
+  }
+}
 
 function handlePdfUpload(e: Event) {
   const target = e.target as HTMLInputElement;
@@ -141,6 +162,7 @@ function handlePdfUpload(e: Event) {
 function selectCustomer(c: any) {
   selectedCustomer.value = c
   createStep.value = 2
+  if (!c.gallery) loadCustomerGallery(c._id)
 }
 
 function selectModalTemplate(t: any) {
@@ -182,6 +204,7 @@ function openCreateModal() {
   customerSignatureDate.value = ''
   attachedPdf.value = ''
   attachedPdfName.value = ''
+  attachedGalleryImages.value = []
   fetchCustomers()
 }
 
@@ -194,6 +217,8 @@ function openEditContract(ct: any) {
   customerSignatureDate.value = ct.customerSignatureDate ? new Date(ct.customerSignatureDate).toISOString().split('T')[0]! : ''
   attachedPdf.value = ct.attachedPdf || ''
   attachedPdfName.value = ct.attachedPdf ? 'Attached PDF' : ''
+  attachedGalleryImages.value = ct.attachedGalleryImages || []
+  loadCustomerGallery(ct.customerId)
   
   const foundTemplate = templates.value.find(t => t._id === ct.templateId)
   selectedModalTemplate.value = foundTemplate || { 
@@ -234,6 +259,7 @@ async function saveContract() {
       customerSignatureDate: customerSignatureDate.value ? new Date(customerSignatureDate.value).toISOString() : null,
       content: selectedModalTemplate.value.content,
       attachedPdf: attachedPdf.value,
+      attachedGalleryImages: attachedGalleryImages.value,
       status: 'draft',
     }
 
@@ -268,8 +294,10 @@ function openForCustomer(customer: any) {
   customerSignatureDate.value = ''
   attachedPdf.value = ''
   attachedPdfName.value = ''
+  attachedGalleryImages.value = []
   fetchTemplates()
   if (!companyProfile.value.name) fetchCompanyProfile()
+  if (!customer.gallery) loadCustomerGallery(customer._id)
 }
 
 defineExpose({ openCreateModal, openEditContract, openForCustomer })
@@ -630,6 +658,36 @@ async function seedChangeOrder() {}
               <p class="text-[10px] text-muted-foreground mt-2">
                 This PDF will be appended to the final contract document.
               </p>
+            </div>
+
+            <!-- Gallery Image Attachments -->
+            <div v-if="selectedCustomer?.gallery?.length" class="mt-4 p-4 rounded-xl border border-border bg-card relative overflow-hidden">
+              <Label class="text-xs font-bold text-foreground uppercase tracking-wider mb-2 block">
+                Attach Customer Images (Optional)
+              </Label>
+              <p class="text-[10px] text-muted-foreground mb-3">
+                Select images from the customer's project gallery to append to the contract.
+              </p>
+              
+              <div class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                <button
+                  v-for="(img, idx) in selectedCustomer.gallery"
+                  :key="idx"
+                  class="relative size-20 sm:size-24 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer group"
+                  :class="attachedGalleryImages.includes(img.url) ? 'border-primary ring-2 ring-primary/20 scale-95' : 'border-transparent hover:border-border'"
+                  @click="toggleGalleryImage(img.url)"
+                >
+                  <img :src="img.url" class="w-full h-full object-cover" />
+                  <div v-if="attachedGalleryImages.includes(img.url)" class="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center">
+                    <div class="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
+                      <Icon name="i-lucide-check" class="size-3.5" />
+                    </div>
+                  </div>
+                  <div v-else class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Icon name="i-lucide-plus" class="size-6 text-white" />
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
         </div>

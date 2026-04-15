@@ -323,8 +323,8 @@ function getStageClasses(stageName: string) {
       </Teleport>
 
       <!-- Tabs and Tables -->
-      <div class="flex flex-col gap-4">
-        <div class="sticky top-(--header-height) z-30 bg-background/95 backdrop-blur-sm -mx-4 lg:-mx-6 px-4 lg:px-6 pt-2 border-b">
+      <div class="flex flex-col gap-4 -mt-4 lg:-mt-6">
+        <div class="sticky top-(--header-height) z-30 bg-background/95 backdrop-blur-sm -mx-4 lg:-mx-6 px-4 lg:px-6 pt-4 lg:pt-6 border-b">
           <div class="flex items-center justify-start pb-1 overflow-x-auto no-scrollbar">
             <div class="flex items-center gap-0.5 min-w-max">
               <button
@@ -435,10 +435,25 @@ function getStageClasses(stageName: string) {
                 </div>
               </div>
               <div class="pt-2 border-t border-border/40">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Full Address</h4>
-                <p class="font-medium text-sm text-foreground">
-                  {{ [customer.address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ') || '—' }}
-                </p>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Location</h4>
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="col-span-2">
+                    <p class="text-xs text-muted-foreground">Address</p>
+                    <p class="font-medium text-sm text-foreground">{{ customer.address || '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">City</p>
+                    <p class="font-medium text-sm text-foreground">{{ customer.city || '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">State</p>
+                    <p class="font-medium text-sm text-foreground">{{ customer.state || '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Zip Code</p>
+                    <p class="font-medium text-sm text-foreground">{{ customer.zip || '—' }}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
