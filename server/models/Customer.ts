@@ -11,8 +11,6 @@ const CustomerSchema = new mongoose.Schema(
     city: { type: String, default: '' },
     state: { type: String, default: '' },
     zip: { type: String, default: '' },
-    type: { type: String, default: 'lead' }, // 'lead', 'client', etc.
-    status: { type: String, default: 'new' }, // 'new', 'contacted', 'converted', etc.
     notes: { type: String, default: '' },
     stage: { type: String, default: '' },
     estimatedProjectDuration: { type: String, default: '' },
@@ -26,6 +24,11 @@ const CustomerSchema = new mongoose.Schema(
     projectAssignedTo: { type: String, default: '' },
     woodOrderDate: { type: Date, default: null },
     tags: [{ type: String }],
+    gallery: [{
+        url: { type: String, required: true },
+        caption: { type: String, default: '' },
+        uploadedAt: { type: Date, default: Date.now }
+    }]
   },
   {
     timestamps: true,
@@ -47,8 +50,6 @@ export interface ICustomer {
   city: string
   state: string
   zip: string
-  type: string
-  status: string
   notes: string
   stage?: string
   estimatedProjectDuration?: string
@@ -62,6 +63,11 @@ export interface ICustomer {
   projectAssignedTo?: string
   woodOrderDate?: Date
   tags?: string[]
+  gallery?: Array<{
+    url: string
+    caption?: string
+    uploadedAt: Date
+  }>
   createdAt?: Date
   updatedAt?: Date
 }

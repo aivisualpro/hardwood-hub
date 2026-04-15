@@ -17,6 +17,7 @@ const activeTab = computed(() => (route.params.tab as string) || 'details')
 
 const tabs = [
   { id: 'details', label: 'Details', icon: 'i-lucide-info', typeFilter: 'details' },
+  { id: 'gallery', label: 'Gallery', icon: 'i-lucide-images', typeFilter: 'gallery' },
   { id: 'appointments', label: 'Appointments', icon: 'i-lucide-calendar-check', typeFilter: 'appointment' },
   { id: 'estimates', label: 'Estimates', icon: 'i-lucide-ruler', typeFilter: 'flooring-estimate' },
   { id: 'contracts', label: 'Contracts', icon: 'i-lucide-file-signature', typeFilter: 'contract' },
@@ -44,11 +45,7 @@ async function fetchCustomer() {
     const res = await $fetch<any>(`/api/customers/${customerId}`)
     if (res.success) {
       customer.value = res.data
-      setHeader({
-        title: customer.value.name || `${customer.value.firstName} ${customer.value.lastName}`.trim(),
-        icon: 'i-lucide-user',
-        description: customer.value.email || customer.value.phone || 'Customer Profile',
-      })
+      updateHeaderForContext(customer.value, activeTab.value)
     }
   } catch (err) {
     toast.error('Failed to load customer profile.')
@@ -77,11 +74,29 @@ const customerSubmissions = computed(() => {
 
 const loadingSubmissionsForTab = computed(() => loadingAllSubmissions.value)
 
-watch(customer, (newCust) => {
+watch([customer, activeTab], ([newCust, newTab]) => {
   if (!newCust) return
   fetchAllData(newCust.email, newCust.phone)
   fetchCustomerContracts()
+  updateHeaderForContext(newCust, newTab)
 }, { immediate: true })
+
+function updateHeaderForContext(cust: any, tab: string) {
+  if (!cust) return
+  if (tab === 'gallery') {
+    setHeader({
+      title: 'Project Gallery',
+      icon: 'i-lucide-images',
+      description: cust.name || `${cust.firstName || ''} ${cust.lastName || ''}`.trim(),
+    })
+  } else {
+    setHeader({
+      title: cust.name || `${cust.firstName || ''} ${cust.lastName || ''}`.trim(),
+      icon: 'i-lucide-user',
+      description: cust.email || cust.phone || 'Customer Profile',
+    })
+  }
+}
 
 async function fetchAllData(email: string, phone: string) {
   if (!email && !phone) {
@@ -173,11 +188,7 @@ const contractFormDialog = ref<any>(null)
 
 function onCustomerUpdated(updatedCustomer: any) {
   customer.value = updatedCustomer
-  setHeader({
-    title: customer.value.name || `${customer.value.firstName} ${customer.value.lastName}`.trim(),
-    icon: 'i-lucide-user',
-    description: customer.value.email || customer.value.phone || 'Customer Profile',
-  })
+  updateHeaderForContext(customer.value, activeTab.value)
 }
 
 async function deleteCustomer() {
@@ -196,9 +207,10 @@ async function deleteCustomer() {
 
 const visibleTabs = computed(() => {
   return tabs.filter(tab => {
-    if (tab.id === 'details' || tab.id === 'conditional-logic') return true
+    if (tab.id === 'details' || tab.id === 'conditional-logic' || tab.id === 'gallery') return true
     if (tab.id === 'contracts') return customerContracts.value.length > 0
     if (tab.typeFilter) {
+      if (tab.typeFilter === 'gallery') return true
       return allSubmissions.value.some(s => s.type === tab.typeFilter)
     }
     return true
@@ -298,11 +310,12 @@ function getStageClasses(stageName: string) {
       
       <Teleport to="#header-toolbar">
         <div class="flex items-center gap-2">
-          <button @click="showEditCustomer = true" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20" title="Edit Customer">
+          <!-- The CrmCustomerGallery handles dynamic header button injections via its own Teleport too! -->
+          <button v-if="activeTab !== 'gallery'" @click="showEditCustomer = true" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20" title="Edit Customer">
             <Icon name="i-lucide-pencil" class="size-3.5" />
             <span class="hidden sm:inline">Edit</span>
           </button>
-          <button @click="deleteCustomer" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all shrink-0" title="Delete Customer">
+          <button v-if="activeTab !== 'gallery'" @click="deleteCustomer" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all shrink-0" title="Delete Customer">
             <Icon name="i-lucide-trash-2" class="size-3.5" />
             <span class="hidden sm:inline">Delete</span>
           </button>
@@ -329,7 +342,7 @@ function getStageClasses(stageName: string) {
                   class="ml-1 px-1.5 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold tabular-nums"
                   :class="activeTab === tab.id ? 'bg-background/25 text-primary-foreground' : 'bg-primary/10 text-primary group-hover:bg-primary/20'"
                 >
-                  {{ tab.id === 'contracts' ? customerContracts.length : allSubmissions.filter(s => s.type === tab.typeFilter).length }}
+                  {{ tab.id === 'contracts' ? customerContracts.length : (tab.id === 'gallery' ? (customer.gallery?.length || 0) : allSubmissions.filter(s => s.type === tab.typeFilter).length) }}
                 </div>
               </button>
             </div>
@@ -377,16 +390,6 @@ function getStageClasses(stageName: string) {
                 <p class="font-medium text-sm text-foreground" v-if="customer.email">{{ customer.email }}</p>
                 <p class="font-medium text-sm text-foreground" v-if="customer.phone">{{ customer.phone }}</p>
                 <p class="text-sm text-muted-foreground" v-if="!customer.email && !customer.phone">—</p>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Type</h4>
-                  <span class="px-2.5 py-1 rounded-full text-xs font-bold capitalize bg-primary/10 text-primary">{{ customer.type || 'lead' }}</span>
-                </div>
-                <div>
-                  <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Status</h4>
-                  <span class="px-2.5 py-1 rounded-full text-xs font-bold capitalize border bg-muted/50 text-muted-foreground">{{ customer.status || 'new' }}</span>
-                </div>
               </div>
               <div>
                 <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Tags</h4>
@@ -484,6 +487,11 @@ function getStageClasses(stageName: string) {
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Gallery View -->
+        <div v-else-if="activeTab === 'gallery'" class="relative">
+          <CrmCustomerGallery :customer="customer" @updated="onCustomerUpdated" />
         </div>
 
         <!-- Contracts View -->
