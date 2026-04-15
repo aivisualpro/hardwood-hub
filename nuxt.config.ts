@@ -92,6 +92,9 @@ export default defineNuxtConfig({
     googleClientEmail: process.env.GOOGLE_CLIENT_EMAIL,
     googlePrivateKey: process.env.GOOGLE_PRIVATE_KEY,
 
+    // Gemini AI Studio API (https://aistudio.google.com/apikey)
+    geminiApiKey: process.env.GEMINI_API_KEY,
+
     gfSiteUrl: process.env.GF_SITE_URL,
     gfConsumerKey: process.env.GF_CONSUMER_KEY,
     gfConsumerSecret: process.env.GF_CONSUMER_SECRET,
