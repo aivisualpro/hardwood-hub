@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
     })
 
     const model = vertexAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash-001',
     })
 
     const prompt = `You are a document analysis expert. Analyze this PDF document and extract its content.

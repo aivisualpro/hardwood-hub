@@ -49,12 +49,9 @@ export default defineEventHandler(async (event) => {
         if (!body.title) throw createError({ statusCode: 400, message: 'Contract title is required' })
         if (!body.customerId) throw createError({ statusCode: 400, message: 'Customer is required' })
 
-        // Auto-generate contract number: CO-YYMM-XXXX
-        const now = new Date()
-        const yymm = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}`
-        const count = await Contract.countDocuments()
-        const contractNumber = body.contractNumber || `CO-${yymm}-${String(count + 1).padStart(4, '0')}`
-
+        // Extract from variableValues if provided, else from body directly
+        const contractNumber = body.contractNumber || body.variableValues?.contract_number || `draft-${Date.now()}` // Fallback if missing
+        
         const doc = await Contract.create({ ...body, contractNumber })
         return { success: true, data: doc }
     }
