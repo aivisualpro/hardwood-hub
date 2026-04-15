@@ -13,20 +13,25 @@ export default defineEventHandler(async (event) => {
     })
 
     const body = await readBody(event)
-    const { file } = body // expects a data: URL string
+    const { file, folder } = body // expects a data: URL string
 
     if (!file) {
         throw createError({ statusCode: 400, message: 'No file provided' })
     }
 
-    const result = await cloudinary.uploader.upload(file, {
-        folder: 'hardwood-hub/employees',
-        resource_type: 'image',
-    })
+    try {
+      const result = await cloudinary.uploader.upload(file, {
+          folder: folder || 'hardwood-hub/uploads',
+          resource_type: 'image',
+      })
 
-    return {
-        success: true,
-        url: result.secure_url,
-        publicId: result.public_id,
+      return {
+          success: true,
+          url: result.secure_url,
+          publicId: result.public_id,
+      }
+    } catch (e: any) {
+        throw createError({ statusCode: 500, message: e.message })
     }
+
 })
