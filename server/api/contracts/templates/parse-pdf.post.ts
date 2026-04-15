@@ -1,6 +1,7 @@
 // POST /api/contracts/templates/parse-pdf
 // Accepts a PDF (base64) and uses Google Vertex AI (Gemini) to extract
 // the content as HTML and detect template variables.
+// Uses GOOGLE_CLOUD_* credentials from .env (service account auth)
 
 import { VertexAI } from '@google-cloud/vertexai'
 
@@ -23,7 +24,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // Initialize Vertex AI
+    // Initialize Vertex AI with service account credentials
     const vertexAI = new VertexAI({
       project: projectId,
       location,
@@ -36,7 +37,7 @@ export default defineEventHandler(async (event) => {
     })
 
     const model = vertexAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
     })
 
     const prompt = `You are a document analysis expert. Analyze this PDF document and extract its content.
@@ -91,13 +92,13 @@ Return ONLY the JSON object, no markdown code blocks, no extra text.`
         {
           role: 'user',
           parts: [
-            { text: prompt },
             {
               inlineData: {
                 mimeType: 'application/pdf',
                 data: pdfBase64,
               },
             },
+            { text: prompt },
           ],
         },
       ],
@@ -113,16 +114,13 @@ Return ONLY the JSON object, no markdown code blocks, no extra text.`
     // Parse the JSON response — handle possible markdown code blocks
     let parsed
     try {
-      // Try direct JSON parse first
       parsed = JSON.parse(text)
     } catch {
-      // Try to extract JSON from markdown code block
-      const jsonMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[1].trim())
-      } else {
-        // Try to find JSON object in the text
-        const braceMatch = text.match(/\{[\s\S]*\}/)
+      const cleanJson = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim()
+      try {
+        parsed = JSON.parse(cleanJson)
+      } catch {
+        const braceMatch = cleanJson.match(/\{[\s\S]*\}/)
         if (braceMatch) {
           parsed = JSON.parse(braceMatch[0])
         } else {

@@ -468,7 +468,7 @@ const TYPE_ICONS: Record<string, string> = {
 <template>
   <div class="space-y-0 -mt-4 lg:-mt-6">
     <!-- Header Teleport -->
-    <Teleport to="#header-toolbar">
+    <Teleport defer to="#header-toolbar">
       <div v-if="!showEditor" class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">
         <div class="relative flex-1">
           <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground" />
@@ -732,7 +732,7 @@ const TYPE_ICONS: Record<string, string> = {
               </div>
           </div>
 
-          <div v-else class="h-full overflow-y-auto p-4 lg:p-6">
+          <div v-else class="h-full overflow-y-auto">
             <div v-if="loadingTemplates" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div v-for="i in 3" :key="i" class="h-48 bg-muted/40 rounded-xl animate-pulse" />
             </div>
