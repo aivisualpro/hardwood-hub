@@ -28,6 +28,15 @@ const CustomerSchema = new mongoose.Schema(
         url: { type: String, required: true },
         caption: { type: String, default: '' },
         uploadedAt: { type: Date, default: Date.now }
+    }],
+    relatedContacts: [{
+      firstName: { type: String, default: '' },
+      lastName: { type: String, default: '' },
+      title: { type: String, default: '' },
+      emails: [{ type: String }],
+      phones: [{ type: String }],
+      preferredContact: { type: String, default: '' },
+      address: { type: String, default: '' }
     }]
   },
   {
@@ -67,6 +76,16 @@ export interface ICustomer {
     url: string
     caption?: string
     uploadedAt: Date
+  }>
+  relatedContacts?: Array<{
+    _id?: any
+    firstName?: string
+    lastName?: string
+    title?: string
+    emails?: string[]
+    phones?: string[]
+    preferredContact?: string
+    address?: string
   }>
   createdAt?: Date
   updatedAt?: Date

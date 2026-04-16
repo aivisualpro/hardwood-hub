@@ -351,7 +351,8 @@ function getStageClasses(stageName: string) {
         
         <!-- Details View -->
         <div v-if="activeTab === 'details'" class="relative space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-card p-6 rounded-xl border border-border/50">
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            <div class="xl:col-span-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 bg-card p-6 rounded-xl border border-border/50 shadow-sm shadow-black/5">
             <!-- Basic Info -->
             <div class="space-y-4">
               <div>
@@ -502,6 +503,10 @@ function getStageClasses(stageName: string) {
               </div>
             </div>
           </div>
+          <div class="xl:col-span-4 h-[calc(100vh-220px)] sticky top-[calc(var(--header-height)+80px)]">
+            <CrmCustomerRelatedContacts :customer="customer" @updated="onCustomerUpdated" />
+          </div>
+        </div>
         </div>
 
         <!-- Gallery View -->
