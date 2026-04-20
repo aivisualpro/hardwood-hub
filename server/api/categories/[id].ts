@@ -21,6 +21,7 @@ export default defineEventHandler(async (event) => {
         if (body.description !== undefined) update.description = body.description
         if (body.icon !== undefined) update.icon = body.icon
         if (body.color !== undefined) update.color = body.color
+        if (body.info !== undefined) update.info = body.info
 
         const updated = await Category.findByIdAndUpdate(id, update, { returnDocument: 'after' }).lean()
         if (!updated) throw createError({ statusCode: 404, message: 'Category not found' })

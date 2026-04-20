@@ -13,6 +13,7 @@ interface SkillItem {
   category: string
   subCategory: string
   isRequired?: boolean
+  info?: string
 }
 interface BonusRule {
   skillSet: string
@@ -33,6 +34,7 @@ interface Cat {
   _id: string
   name: string
   color?: string
+  info?: string
   subCategories: SubCat[]
 }
 
@@ -48,6 +50,114 @@ const showMobileSidebar = ref(false)
 const showSkillModal = ref(false)
 const savingSkill = ref(false)
 const skillForm = ref({ skill: '', isRequired: false, category: '', subCategory: '' })
+
+// ─── PDF INFO state (Category) ─────────
+const showCatInfoModal = ref(false)
+const activeCatId = ref<string | null>(null)
+const catPdfUrl = ref('') // could be data: URL or http
+const savingCatPdf = ref(false)
+
+function openCatInfo(cat: Cat) {
+  activeCatId.value = cat._id
+  catPdfUrl.value = cat.info || ''
+  showCatInfoModal.value = true
+}
+
+function onCatPdfSelected(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  if (file.type !== 'application/pdf') {
+    toast.error('Only PDF files are allowed')
+    target.value = ''
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = (re) => {
+    catPdfUrl.value = re.target?.result as string
+  }
+  reader.readAsDataURL(file)
+}
+
+async function saveCatPdf() {
+  if (!activeCatId.value) return
+  savingCatPdf.value = true
+  try {
+    let finalUrl = catPdfUrl.value
+    if (finalUrl && finalUrl.startsWith('data:')) {
+      toast.loading('Uploading PDF...', { id: 'category-pdf-upload' })
+      const sigRes = await $fetch<any>('/api/upload/cloudinary-signature', {
+        params: { folder: 'hardwood-hub/categories' }
+      })
+      const fd = new FormData()
+      fd.append('file', finalUrl)
+      fd.append('api_key', sigRes.apiKey)
+      fd.append('timestamp', String(sigRes.timestamp))
+      fd.append('signature', sigRes.signature)
+      fd.append('folder', sigRes.folder)
+
+      const clRes = await $fetch<any>(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/auto/upload`, {
+        method: 'POST',
+        body: fd
+      })
+      if (clRes && clRes.secure_url) {
+        finalUrl = clRes.secure_url
+      }
+      toast.dismiss('category-pdf-upload')
+    }
+    
+    await $fetch(`/api/categories/${activeCatId.value}`, {
+      method: 'PUT',
+      body: { info: finalUrl }
+    })
+    
+    // Update local tree
+    const targetCat = tree.value.find(c => c._id === activeCatId.value)
+    if (targetCat) targetCat.info = finalUrl
+    
+    toast.success('Category PDF saved')
+    showCatInfoModal.value = false
+  } catch(e: any) {
+    toast.error('Failed to save PDF', { description: e.message })
+    toast.dismiss('category-pdf-upload')
+  } finally {
+    savingCatPdf.value = false
+  }
+}
+
+// ─── Skill Info State ──────────────────
+const showSkillInfoModal = ref(false)
+const activeSkillId = ref<string | null>(null)
+const skillInfoText = ref('')
+const savingSkillInfo = ref(false)
+
+function openSkillInfo(sk: SkillItem) {
+  activeSkillId.value = sk._id
+  skillInfoText.value = sk.info || ''
+  showSkillInfoModal.value = true
+}
+
+async function saveSkillInfo() {
+  if (!activeSkillId.value) return
+  savingSkillInfo.value = true
+  try {
+    const found = findSkill(activeSkillId.value)
+    if (found) {
+      found.skill.info = skillInfoText.value
+    }
+    
+    await $fetch(`/api/skills/${activeSkillId.value}`, {
+      method: 'PUT',
+      body: { info: skillInfoText.value }
+    })
+    toast.success('Skill info saved')
+    showSkillInfoModal.value = false
+  } catch(e: any) {
+    toast.error('Failed to save skill info', { description: e.message })
+  } finally {
+    savingSkillInfo.value = false
+  }
+}
 
 // ─── Inline edit state ───────────────────────────────────
 const editingSkillId = ref<string | null>(null)
@@ -964,6 +1074,13 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                         <!-- Action buttons (top-right, hover) -->
                         <div v-if="canUpdate() || canDelete()" class="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 flex gap-0.5 sm:gap-1 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity">
                           <button
+                            class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            title="Skill Info"
+                            @click="openSkillInfo(sk)"
+                          >
+                            <Icon name="i-lucide-info" class="size-3" :class="sk.info ? 'text-primary' : ''" />
+                          </button>
+                          <button
                             v-if="canUpdate()"
                             class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                             @click="startInlineEdit(sk)"
@@ -1171,6 +1288,73 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           <Button :disabled="savingSubCat" @click="saveSubCat">
             <Icon v-if="savingSubCat" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
             Add Sub Category
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+
+
+    <!-- ══════════════════════ CATEGORY PDF MODAL ══════════════════════ -->
+    <Dialog v-model:open="showCatInfoModal">
+      <DialogContent class="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Category Info (PDF)</DialogTitle>
+          <DialogDescription>Upload a PDF that details the requirements or specs for this category.</DialogDescription>
+        </DialogHeader>
+
+        <div class="flex flex-col gap-4 py-2">
+          <Input type="file" accept="application/pdf" @change="onCatPdfSelected" />
+          
+          <div v-if="catPdfUrl" class="w-full h-[500px] border border-border/50 rounded-lg overflow-hidden relative bg-muted/20">
+            <iframe :src="catPdfUrl" class="w-full h-full" frameborder="0"></iframe>
+          </div>
+          <div v-else class="w-full h-32 border border-dashed border-border flex items-center justify-center rounded-lg bg-muted/10">
+            <span class="text-sm text-muted-foreground">No PDF uploaded</span>
+          </div>
+        </div>
+
+        <DialogFooter class="flex items-center justify-between">
+            <Button variant="destructive" size="sm" v-if="catPdfUrl" @click="catPdfUrl = ''">Clear PDF</Button>
+            <div v-else></div>
+            <div class="flex gap-2">
+              <Button variant="outline" @click="showCatInfoModal = false">Cancel</Button>
+              <Button :disabled="savingCatPdf" @click="saveCatPdf">
+                <Icon v-if="savingCatPdf" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+                Save PDF
+              </Button>
+            </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- ══════════════════════ SKILL INFO MODAL ══════════════════════ -->
+    <Dialog v-model:open="showSkillInfoModal">
+      <DialogContent class="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Skill Information</DialogTitle>
+          <DialogDescription>Provide detailed description or rich text info for this skill.</DialogDescription>
+        </DialogHeader>
+
+        <div class="flex flex-col gap-2 py-2">
+          <ClientOnly>
+            <ContractsEditor v-model="skillInfoText" />
+            <template #fallback>
+              <textarea
+                v-model="skillInfoText"
+                rows="10"
+                class="w-full resize-none rounded-md border border-input bg-muted/40 px-3 py-2.5 text-sm leading-relaxed"
+                placeholder="Loading editor..."
+              />
+            </template>
+          </ClientOnly>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showSkillInfoModal = false">Cancel</Button>
+          <Button :disabled="savingSkillInfo" @click="saveSkillInfo">
+            <Icon v-if="savingSkillInfo" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+            Save Info
           </Button>
         </DialogFooter>
       </DialogContent>
