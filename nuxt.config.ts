@@ -41,6 +41,7 @@ export default defineNuxtConfig({
         if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('puppeteer')) return
         if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('nitropack')) return
         if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('nitro')) return
+        if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('virtual:#imports')) return
         warn(warning)
       },
     },
