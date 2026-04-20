@@ -28,6 +28,13 @@ export default defineNuxtConfig({
     externals: {
       inline: ['@sparticuz/chromium', 'puppeteer-core'],
     },
+    rollupConfig: {
+      onwarn(warning, warn) {
+        // Suppress puppeteer-core ESM decorator rewriting noise
+        if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('puppeteer')) return
+        warn(warning)
+      },
+    },
   },
 
   components: [
