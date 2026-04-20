@@ -942,10 +942,10 @@ async function deleteSelected() {
                   <Icon name="i-lucide-layers" class="size-3.5 sm:size-4" :class="pal(catIdx).icon" />
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-semibold flex items-center gap-2" :class="pal(catIdx).text">
+                  <p class="text-sm font-semibold flex items-center gap-1.5" :class="pal(catIdx).text">
                     {{ cat.name }}
-                    <button v-if="cat.info" @click.stop="openCatPdf(cat)" class="hover:text-foreground text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-0.5" title="View PDF">
-                      <Icon name="i-lucide-file-text" class="size-3.5" />
+                    <button v-if="cat.info" @click.stop="openCatPdf(cat)" class="hover:text-primary hover:bg-primary/10 text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-1.5 rounded-md" title="View PDF">
+                      <Icon name="i-lucide-file-text" class="size-4 sm:size-5" />
                     </button>
                   </p>
                   <p class="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
@@ -1064,10 +1064,10 @@ async function deleteSelected() {
                           <!-- Skill info -->
                           <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-1.5 sm:gap-2">
-                              <p class="text-[13px] sm:text-sm leading-snug flex items-center gap-2">
+                              <p class="text-[13px] sm:text-sm leading-snug flex items-center gap-1.5">
                                 {{ sk.name }}
-                                <button v-if="sk.info" @click.stop="openSkillInfoView(sk)" class="hover:text-foreground text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-0.5" title="Skill Info">
-                                  <Icon name="i-lucide-info" class="size-3.5" />
+                                <button v-if="sk.info" @click.stop="openSkillInfoView(sk)" class="hover:text-primary hover:bg-primary/10 text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-1.5 rounded-md" title="Skill Info">
+                                  <Icon name="i-lucide-info" class="size-4 sm:size-5" />
                                 </button>
                               </p>
                             </div>
