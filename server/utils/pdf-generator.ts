@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer-core'
+// @ts-ignore: pnpm may not surface types until TS server is restarted
 import chromium from '@sparticuz/chromium'
 
 export const generatePdfFromHtml = async (htmlContent: string) => {
