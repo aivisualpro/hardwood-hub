@@ -24,6 +24,12 @@ export default defineNuxtConfig({
     },
   },
 
+  nitro: {
+    externals: {
+      inline: ['@sparticuz/chromium', 'puppeteer-core'],
+    },
+  },
+
   components: [
     {
       path: '~/components',
