@@ -775,6 +775,34 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           <span class="xs:hidden">Sub Cat</span>
         </Button>
 
+        <!-- Add Category PDF Button -->
+        <Button
+          v-if="canUpdate() && selectedCat && !selectedCat.info"
+          size="sm"
+          variant="outline"
+          class="shrink-0 gap-1 sm:gap-1.5 border-dashed border-primary/40 text-primary hover:bg-primary/5 hover:text-primary text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 ml-1"
+          @click="openCatInfo(selectedCat)"
+          title="Upload Category PDF"
+        >
+          <Icon name="i-lucide-upload" class="size-3 sm:size-3.5" />
+          <span class="hidden xs:inline">Upload PDF</span>
+          <span class="xs:hidden">PDF</span>
+        </Button>
+
+        <!-- View Category PDF Button -->
+        <Button
+          v-if="selectedCat && selectedCat.info"
+          size="sm"
+          variant="default"
+          class="shrink-0 gap-1 sm:gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 ml-1"
+          @click="openCatInfo(selectedCat)"
+          title="View PDF Document"
+        >
+          <Icon name="i-lucide-file-text" class="size-3 sm:size-3.5" />
+          <span class="hidden xs:inline">View PDF</span>
+          <span class="xs:hidden">PDF</span>
+        </Button>
+
         <div class="flex-1" />
 
         <!-- Sub-stats -->
@@ -1297,31 +1325,41 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
     <!-- ══════════════════════ CATEGORY PDF MODAL ══════════════════════ -->
     <Dialog v-model:open="showCatInfoModal">
-      <DialogContent class="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Category Info (PDF)</DialogTitle>
-          <DialogDescription>Upload a PDF that details the requirements or specs for this category.</DialogDescription>
+      <DialogContent class="sm:max-w-4xl h-[90vh] flex flex-col p-4 sm:p-6">
+        <DialogHeader class="shrink-0">
+          <DialogTitle>Category Documentation</DialogTitle>
+          <DialogDescription>Upload and preview the official PDF guide for this category.</DialogDescription>
         </DialogHeader>
 
-        <div class="flex flex-col gap-4 py-2">
-          <Input type="file" accept="application/pdf" @change="onCatPdfSelected" />
+        <div class="flex flex-col gap-4 py-2 flex-1 min-h-0 overflow-hidden">
+          <div class="shrink-0">
+             <Input type="file" accept="application/pdf" @change="onCatPdfSelected" class="file:bg-primary file:text-primary-foreground file:border-0 file:rounded-md file:px-3 file:py-1 file:mr-3 file:text-xs file:font-semibold cursor-pointer border-border/50 text-sm" />
+          </div>
           
-          <div v-if="catPdfUrl" class="w-full h-[500px] border border-border/50 rounded-lg overflow-hidden relative bg-muted/20">
+          <div v-if="catPdfUrl" class="w-full flex-1 border border-border/50 rounded-xl overflow-hidden relative shadow-inner bg-muted/20">
             <iframe :src="catPdfUrl" class="w-full h-full" frameborder="0"></iframe>
           </div>
-          <div v-else class="w-full h-32 border border-dashed border-border flex items-center justify-center rounded-lg bg-muted/10">
-            <span class="text-sm text-muted-foreground">No PDF uploaded</span>
+          <div v-else class="w-full flex-1 border-2 border-dashed border-muted flex flex-col gap-3 items-center justify-center rounded-xl bg-muted/5 transition-colors hover:bg-muted/10">
+            <div class="size-16 rounded-full bg-muted/50 flex flex-col items-center justify-center mb-2 shadow-sm">
+               <Icon name="i-lucide-file-text" class="size-8 text-muted-foreground/50" />
+            </div>
+            <span class="text-[15px] font-semibold text-foreground">No Document Available</span>
+            <span class="text-xs font-medium text-muted-foreground max-w-[200px] text-center">Click the file upload button above to select a PDF</span>
           </div>
         </div>
 
-        <DialogFooter class="flex items-center justify-between">
-            <Button variant="destructive" size="sm" v-if="catPdfUrl" @click="catPdfUrl = ''">Clear PDF</Button>
+        <DialogFooter class="flex items-center justify-between shrink-0 pt-4 border-t border-border/40 mt-2">
+            <Button variant="destructive" size="sm" v-if="catPdfUrl" @click="catPdfUrl = ''" class="bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border-0 shadow-none">
+               <Icon name="i-lucide-trash-2" class="mr-1.5 size-3.5" />
+               Clear PDF
+            </Button>
             <div v-else></div>
             <div class="flex gap-2">
               <Button variant="outline" @click="showCatInfoModal = false">Cancel</Button>
-              <Button :disabled="savingCatPdf" @click="saveCatPdf">
-                <Icon v-if="savingCatPdf" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
-                Save PDF
+              <Button :disabled="savingCatPdf" @click="saveCatPdf" class="min-w-[140px] shadow-md relative overflow-hidden group">
+                <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
+                <Icon v-if="savingCatPdf" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin relative z-10" />
+                <span class="relative z-10 font-semibold">{{ catPdfUrl ? 'Save & Upload PDF' : 'Save Changes' }}</span>
               </Button>
             </div>
         </DialogFooter>
