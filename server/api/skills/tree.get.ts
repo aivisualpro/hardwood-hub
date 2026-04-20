@@ -25,6 +25,7 @@ export default defineEventHandler(async () => {
             description: cat.description || '',
             icon: cat.icon || '',
             color: cat.color || '',
+            info: cat.info || '',
             subCategories: catSubs.map((sub: any) => {
                 const subId = String(sub._id)
                 const subSkills = skills.filter(
@@ -47,6 +48,7 @@ export default defineEventHandler(async () => {
                         isRequired: sk.isRequired || false,
                         category: catId,
                         subCategory: subId,
+                        info: sk.info || '',
                     })),
                 }
             }),
