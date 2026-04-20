@@ -1,6 +1,4 @@
 import puppeteer from 'puppeteer-core'
-// @ts-ignore: pnpm may not surface types until TS server is restarted
-import chromium from '@sparticuz/chromium'
 
 export const generatePdfFromHtml = async (htmlContent: string) => {
   const isLocal = process.env.NODE_ENV === 'development' || !process.env.VERCEL
@@ -12,6 +10,9 @@ export const generatePdfFromHtml = async (htmlContent: string) => {
     executablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
     launchArgs = ['--no-sandbox', '--disable-setuid-sandbox']
   } else {
+    // Dynamic import — only loads on Vercel, never at server boot time
+    // @ts-ignore
+    const chromium = await import('@sparticuz/chromium').then(m => m.default ?? m)
     chromium.setGraphicsMode = false
     executablePath = await chromium.executablePath()
     launchArgs = [
@@ -23,10 +24,10 @@ export const generatePdfFromHtml = async (htmlContent: string) => {
       '--no-zygote',
       '--single-process',
     ]
-  }
 
-  if (!executablePath) {
-    throw new Error(`Could not resolve Chromium executable path (isLocal: ${isLocal})`)
+    if (!executablePath) {
+      throw new Error('Could not resolve Chromium executable path on Vercel')
+    }
   }
 
   const browser = await puppeteer.launch({
