@@ -6,6 +6,7 @@ const CategorySchema = new mongoose.Schema(
         description: { type: String, default: '' },
         icon: { type: String, default: '' },
         color: { type: String, default: '' },
+        info: { type: String, default: '' },
     },
     { timestamps: true, collection: 'hardwoodDB_Categories' },
 )

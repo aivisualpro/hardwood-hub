@@ -6,6 +6,7 @@ const SkillSchema = new mongoose.Schema(
         isRequired: { type: Boolean, default: false },
         category: { type: String, required: true, trim: true },    // Category _id
         subCategory: { type: String, required: true, trim: true }, // SubCategory _id
+        info: { type: String, default: '' },
     },
     { timestamps: true, collection: 'hardwoodDB_Skills' },
 )
