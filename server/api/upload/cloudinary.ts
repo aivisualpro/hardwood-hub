@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     try {
       const result = await cloudinary.uploader.upload(file, {
           folder: folder || 'hardwood-hub/uploads',
-          resource_type: 'image',
+          resource_type: 'auto',
       })
 
       return {

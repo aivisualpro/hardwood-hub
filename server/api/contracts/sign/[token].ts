@@ -1,7 +1,26 @@
 // GET /api/contracts/sign/:token — fetch contract details for signing
 // POST /api/contracts/sign/:token — submit signature
+// @ts-ignore: No types available for html-pdf-node
+import htmlPdf from 'html-pdf-node'
+// @ts-ignore: IDE cache invalidation workaround
+import { PDFDocument } from 'pdf-lib'
 import { connectDB } from '../../../utils/mongoose'
 import { Contract } from '../../../models/Contract'
+import { AppSetting } from '../../../models/AppSetting'
+import { ContractTemplate } from '../../../models/ContractTemplate'
+
+const safeFetch = async (url: string, timeoutMs = 8000) => {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { signal: controller.signal })
+    clearTimeout(id)
+    return res
+  } catch (err) {
+    clearTimeout(id)
+    throw err
+  }
+}
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -19,12 +38,10 @@ export default defineEventHandler(async (event) => {
   // ─── GET: Return contract details for display ───
   if (event.method === 'GET') {
     // Load company profile for letterhead
-    const { AppSetting } = await import('../../../models/AppSetting')
     const settingsDoc = await AppSetting.findOne({ key: 'companyProfile' }).lean() as any
     const company = settingsDoc?.value || {}
 
     // Load template to get variable definitions (for signature rendering)
-    const { ContractTemplate } = await import('../../../models/ContractTemplate')
     const template = await ContractTemplate.findById(contract.templateId).lean() as any
 
     let mergedHTML = contract.content || ''
@@ -49,6 +66,17 @@ export default defineEventHandler(async (event) => {
     const sysPrintDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     mergedHTML = mergedHTML.replace(/\{\{\s*printDate\s*\}\}/g, sysPrintDate)
     mergedHTML = mergedHTML.replace(/\{\{\s*company_name\s*\}\}/g, company?.name || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_address\s*\}\}/g, company?.address || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_city\s*\}\}/g, company?.city || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_state\s*\}\}/g, company?.state || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_zip\s*\}\}/g, company?.zip || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_phone1\s*\}\}/g, company?.phone1 || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_phone2\s*\}\}/g, company?.phone2 || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_website\s*\}\}/g, company?.website || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/g, company?.email || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_license\s*\}\}/g, company?.licenseNumber || '')
+    const companyLogoHtml = company?.logo ? `<img src="${company.logo}" alt="Company Logo" style="max-height: 80px; object-fit: contain;" />` : ''
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_logo\s*\}\}/g, companyLogoHtml)
 
     // Strip old template signature tables & inline variables
     mergedHTML = mergedHTML.replace(
@@ -58,8 +86,12 @@ export default defineEventHandler(async (event) => {
         return tableHTML
       },
     )
-    mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/g, '')
-    mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/g, '')
+    const contractorSigImg = company?.signature
+      ? `<img src="${company.signature}" alt="Contractor Signature" style="max-height: 64px; object-fit: contain; vertical-align: middle;" />`
+      : ''
+    mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/gi, contractorSigImg)
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/gi, contractorSigImg)
+    mergedHTML = mergedHTML.replace(/\{\{\s*contractor_signature\s*\}\}/gi, contractorSigImg)
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignature\s*\}\}/g, '')
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignatureDate\s*\}\}/g, '')
 
@@ -112,11 +144,9 @@ export default defineEventHandler(async (event) => {
     await contract.save()
 
     // ─── Generate Signed HTML for Email ───
-    const { AppSetting } = await import('../../../models/AppSetting')
     const settingsDoc = await AppSetting.findOne({ key: 'companyProfile' }).lean() as any
     const company = settingsDoc?.value || {}
 
-    const { ContractTemplate } = await import('../../../models/ContractTemplate')
     const template = await ContractTemplate.findById(contract.templateId).lean() as any
 
     let mergedHTML = contract.content || ''
@@ -138,16 +168,31 @@ export default defineEventHandler(async (event) => {
 
     // Replace system variables — plain text
     const sysPrintDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    mergedHTML = mergedHTML.replace(/\{\{\s*printDate\s*\}\}/g, sysPrintDate)
-    mergedHTML = mergedHTML.replace(/\{\{\s*company_name\s*\}\}/g, company?.name || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*printDate\s*\}\}/gi, sysPrintDate)
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_name\s*\}\}/gi, company?.name || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_address\s*\}\}/gi, company?.address || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_city\s*\}\}/gi, company?.city || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_state\s*\}\}/gi, company?.state || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_zip\s*\}\}/gi, company?.zip || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_phone[1]?\s*\}\}/gi, company?.phone1 || company?.phone || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_phone2\s*\}\}/gi, company?.phone2 || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_website\s*\}\}/gi, company?.website || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/gi, company?.email || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_license\s*\}\}/gi, company?.licenseNumber || '')
+    const companyLogoHtml = company?.logo ? `<img src="${company.logo}" alt="Company Logo" style="max-height: 80px; object-fit: contain;" />` : ''
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_logo\s*\}\}/gi, companyLogoHtml)
 
     // Strip old signature markers
     mergedHTML = mergedHTML.replace(/<table[\s\S]*?<\/table>/gi, (tableHTML: string) => {
       if (tableHTML.includes('Signature') && tableHTML.includes('____')) return ''
       return tableHTML
     })
-    mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/g, '')
-    mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/g, '')
+    const contractorSigImg = company?.signature
+      ? `<img src="${company.signature}" alt="Contractor Signature" style="max-height: 64px; object-fit: contain; vertical-align: middle;" />`
+      : ''
+    mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/gi, contractorSigImg)
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/gi, contractorSigImg)
+    mergedHTML = mergedHTML.replace(/\{\{\s*contractor_signature\s*\}\}/gi, contractorSigImg)
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignature\s*\}\}/g, '')
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignatureDate\s*\}\}/g, '')
 
@@ -173,17 +218,17 @@ export default defineEventHandler(async (event) => {
     `
 
     const letterHead = `
-      <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px;">
+      <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 20px; border: none;">
         <tr>
-          <td valign="top" width="50%">
+          <td valign="top" width="50%" style="border: none; padding: 0;">
             ${companyLogo}
           </td>
-          <td valign="top" width="50%">
+          <td valign="top" width="50%" style="border: none; padding: 0;">
             ${companyDetails}
           </td>
         </tr>
       </table>
-      <hr style="border: 0; border-bottom: 2px solid #1e3a8a; margin-bottom: 20px;" />
+      <hr style="border: 0; border-bottom: 2px solid ${companyColor}; margin-bottom: 20px;" />
     `
 
     const companySigBox = `
@@ -232,6 +277,17 @@ export default defineEventHandler(async (event) => {
     `
 
     mergedHTML += signatureSection
+    
+    if (contract.attachedGalleryImages && contract.attachedGalleryImages.length > 0) {
+      mergedHTML += `
+        <div style="page-break-before: always; margin-top: 40px; text-align: center;">
+          <h2 style="font-size: 1.5rem; font-weight: 700; color: #111; margin-bottom: 20px; text-align: left;">Attached Pictures</h2>
+          ${contract.attachedGalleryImages.map((imgUrl: string) => `
+            <img src="${imgUrl}" style="max-width: 100%; max-height: 800px; object-fit: contain; margin-bottom: 24px; border-radius: 8px; border: 1px solid #ccc; page-break-inside: avoid; display: block;" />
+          `).join('')}
+        </div>
+      `
+    }
 
     if (contract.customerEmail) {
       const emailHTML = `
@@ -261,8 +317,6 @@ export default defineEventHandler(async (event) => {
       
       let attachments: any[] = []
       try {
-        // @ts-ignore: No types available
-        const htmlPdf = await import('html-pdf-node')
         // Strip out the background styles for the PDF to look like a clean document
         const pdfHTML = `
           <!DOCTYPE html>
@@ -299,18 +353,26 @@ export default defineEventHandler(async (event) => {
           </body>
           </html>
         `
-        const pdfBuffer = await htmlPdf.default.generatePdf({ content: pdfHTML }, { format: 'Letter', margin: { top: '32px', right: '40px', bottom: '32px', left: '40px' } })
+        const pdfBuffer = await htmlPdf.generatePdf({ content: pdfHTML }, { format: 'Letter', margin: { top: '32px', right: '40px', bottom: '32px', left: '40px' } })
         
         let finalPdfBuffer = pdfBuffer;
         if (contract.attachedPdf) {
           try {
-            const { PDFDocument } = await import('pdf-lib');
             const mainPdf = await PDFDocument.load(pdfBuffer);
-            const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '');
-            const attachedPdfDoc = await PDFDocument.load(Buffer.from(attachedBase64, 'base64'));
+            let attachedPdfBuffer: Buffer;
+            if (contract.attachedPdf.startsWith('http')) {
+              const fetchRes = await safeFetch(contract.attachedPdf);
+              if (!fetchRes.ok) throw new Error(`Fetch failed: ${fetchRes.statusText}`);
+              const arrayBuffer = await fetchRes.arrayBuffer();
+              attachedPdfBuffer = Buffer.from(arrayBuffer);
+            } else {
+              const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '');
+              attachedPdfBuffer = Buffer.from(attachedBase64, 'base64');
+            }
+            const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer);
             
             const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices());
-            copiedPages.forEach((page) => {
+            copiedPages.forEach((page: any) => {
               mainPdf.addPage(page);
             });
             
@@ -329,11 +391,75 @@ export default defineEventHandler(async (event) => {
         console.error('Failed to generate PDF:', e)
       }
 
+      // Explicitly append the original uploaded PDF as a separate attachment if it exists
+      if (contract.attachedPdf) {
+        try {
+          if (contract.attachedPdf.startsWith('http')) {
+            const pdfFetch = await safeFetch(contract.attachedPdf)
+            if (pdfFetch.ok) {
+              attachments.push({
+                filename: `Attached_Document_${contract.contractNumber || 'Contract'}.pdf`,
+                content: Buffer.from(await pdfFetch.arrayBuffer()),
+                contentType: 'application/pdf'
+              })
+            }
+          } else {
+            const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '');
+            attachments.push({
+              filename: `Attached_Document_${contract.contractNumber || 'Contract'}.pdf`,
+              content: Buffer.from(attachedBase64, 'base64'),
+              contentType: 'application/pdf'
+            })
+          }
+        } catch (err) {
+          console.error('Error attaching original PDF:', err)
+        }
+      }
+
+      // Explicitly append all gallery images as separate image attachments safely
+      if (contract.attachedGalleryImages && contract.attachedGalleryImages.length > 0) {
+        for (let idx = 0; idx < contract.attachedGalleryImages.length; idx++) {
+          const imgUrl = contract.attachedGalleryImages[idx]
+          try {
+            if (imgUrl.startsWith('http')) {
+              const imgFetch = await safeFetch(imgUrl)
+              if (imgFetch.ok) {
+                attachments.push({
+                  filename: `Attached_Image_${idx + 1}.png`,
+                  content: Buffer.from(await imgFetch.arrayBuffer())
+                })
+              }
+            } else {
+              const imgBase64 = imgUrl.replace(/^data:image\/\w+;base64,/, '');
+              attachments.push({
+                filename: `Attached_Image_${idx + 1}.png`,
+                content: Buffer.from(imgBase64, 'base64')
+              })
+            }
+          } catch (err) {
+            console.error('Error attaching image:', err)
+          }
+        }
+      }
+
+      let finalEmailHTML = emailHTML;
+      let imgCidCounter = 1;
+      finalEmailHTML = finalEmailHTML.replace(/src=["'](data:image\/[^;]+;base64,([^"']+))["']/gi, (match, fullDataUri, base64Data) => {
+        const cid = `inline-img-${imgCidCounter++}`;
+        attachments.push({
+          filename: `${cid}.png`,
+          content: Buffer.from(base64Data, 'base64'),
+          cid: cid,
+          disposition: 'inline'
+        });
+        return `src="cid:${cid}"`;
+      });
+
       const { sendMail } = await import('../../../utils/mailer')
       await sendMail({
         to: contract.customerEmail,
         subject: `Signed Copy: ${contract.title}`,
-        html: emailHTML,
+        html: finalEmailHTML,
         attachments
       }).catch(err => {
         console.error('Failed to send signed contract email:', err)

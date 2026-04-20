@@ -4,6 +4,10 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   spaLoadingTemplate: false,
 
+  experimental: {
+    asyncContext: true,
+  },
+
   watch: ['~/app.config.ts'],
 
   css: ['~/assets/css/tailwind.css'],

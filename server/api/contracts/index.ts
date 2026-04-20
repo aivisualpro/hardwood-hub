@@ -30,6 +30,7 @@ export default defineEventHandler(async (event) => {
 
         const [data, total] = await Promise.all([
             Contract.find(filter)
+                .select('-content -attachedPdf -attachedGalleryImages')
                 .sort({ createdAt: -1 })
                 .skip((page - 1) * limit)
                 .limit(limit)

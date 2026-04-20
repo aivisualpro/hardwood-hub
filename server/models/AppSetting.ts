@@ -9,4 +9,4 @@ const AppSettingSchema = new mongoose.Schema(
     { timestamps: true, collection: 'hardwoodDB_AppSettings' },
 )
 
-export const AppSetting = mongoose.models.AppSetting || mongoose.model('AppSetting', AppSettingSchema)
+export const AppSetting = (mongoose.models.AppSetting || mongoose.model('AppSetting', AppSettingSchema)) as any

@@ -52,4 +52,4 @@ const ContractSchema = new mongoose.Schema(
 
 ContractSchema.index({ status: 1, createdAt: -1 })
 
-export const Contract = mongoose.models.Contract || mongoose.model('Contract', ContractSchema)
+export const Contract = (mongoose.models.Contract || mongoose.model('Contract', ContractSchema)) as any

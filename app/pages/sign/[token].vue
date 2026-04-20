@@ -170,15 +170,7 @@ onMounted(fetchContract)
         <div class="contract-content px-6 sm:px-10 pb-8 text-slate-800 font-medium" v-html="contractData.content" />
 
         <!-- Existing Signatures Display (Company Side) -->
-        <div class="px-6 sm:px-10 pb-12 pt-4 flex flex-col sm:flex-row justify-between gap-12 sm:gap-24">
-           <!-- Customer Placeholder (Left) -->
-           <div class="w-full sm:w-1/2 flex flex-col items-start opacity-30">
-              <div class="h-14 w-full"></div>
-              <div class="border-t-[1.5px] border-slate-900 w-full pt-2">
-                 <p class="text-xs font-bold text-slate-900 font-sans">Client's Signature</p>
-              </div>
-           </div>
-           
+        <div class="px-6 sm:px-10 pb-12 pt-4 flex justify-end">
            <!-- Contractor Signature (Right) -->
            <div class="w-full sm:w-1/2 flex flex-col items-start relative">
               <div class="h-14 w-full flex items-end relative -mb-1">
