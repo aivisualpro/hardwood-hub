@@ -23,7 +23,7 @@ importers:
       '@number-flow/vue':
         specifier: ^0.4.8
         version: 0.4.8(vue@3.5.22(typescript@5.9.3))
-      '@sparticuz/chromium':
+      '@sparticuz/chromium-min':
         specifier: 119.0.2
         version: 119.0.2
       '@tailwindcss/vite':
@@ -1885,8 +1885,8 @@ packages:
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
 
-  '@sparticuz/chromium@119.0.2':
-    resolution: {integrity: sha512-VB6tHW13YpQ7HqyhKG1KU8Z1RIb/kfHMg8j/4ft5rk8mMvEm2YkBYFCHnj+yb0P/RPLcdgX3+VC58GuJilOtww==}
+  '@sparticuz/chromium-min@119.0.2':
+    resolution: {integrity: sha512-66ztqT2MScSzbK3Jv6tViEqc2prgKLOX2lst2l89GlKl64Y4Mh72ZlEppjkXybjAVNb1B5IqFVtq67t++En9kA==}
     engines: {node: '>= 16'}
 
   '@speed-highlight/core@1.2.8':
@@ -8517,7 +8517,7 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
-  '@sparticuz/chromium@119.0.2':
+  '@sparticuz/chromium-min@119.0.2':
     dependencies:
       follow-redirects: 1.16.0
       tar-fs: 3.0.4
