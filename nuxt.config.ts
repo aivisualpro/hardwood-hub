@@ -25,11 +25,18 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    // Keep chromium as a true node_modules external — do NOT inline/bundle it
+    // It needs to exist on disk so it can decompress to /tmp at runtime
     externals: {
-      inline: ['@sparticuz/chromium', 'puppeteer-core'],
+      external: ['@sparticuz/chromium'],
+    },
+    vercel: {
+      functions: {
+        maxDuration: 60,
+      },
     },
     rollupConfig: {
-      onwarn(warning, warn) {
+      onwarn(warning: any, warn: any) {
         // Suppress puppeteer-core ESM decorator rewriting noise
         if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('puppeteer')) return
         warn(warning)
