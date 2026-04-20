@@ -102,6 +102,7 @@ interface EmpBonusData {
       id: string; name: string; bonus: number; assessed: number; ruleCompliant: number; total: number
       hasOverride: boolean; proficient: number; mastered: number; needs: number
       ruleLevel: string // e.g. 'Proficient', 'Mastered', or '' if no rules
+      rulesToUse: any[]
       skills: SkillStatusItem[]
     }[]
   }[]
@@ -236,6 +237,7 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
           mastered: subMastered,
           needs: subNeeds,
           ruleLevel,
+          rulesToUse,
           skills: skillStatuses,
         }
       })
@@ -287,6 +289,52 @@ const topEarner = computed(() => {
 })
 const totalSystemSkills = computed(() => tree.value.reduce((s, c) =>
   s + c.subCategories.reduce((s2, sub) => s2 + sub.skills.length, 0), 0))
+
+interface MaxBonusBreakdownItem {
+  categoryName: string;
+  subName: string;
+  maxRule: number;
+  source: 'override' | 'global';
+}
+
+const maxPotentialResult = computed(() => {
+  let total = 0
+  const breakdown: MaxBonusBreakdownItem[] = []
+
+  if (!tree.value.length) return { total, breakdown }
+
+  for (const cat of tree.value) {
+    for (const sub of cat.subCategories) {
+      if (sub.skills.length === 0) continue
+      
+      const hasOverride = sub.bonusRules && sub.bonusRules.length > 0
+      const rules = hasOverride ? sub.bonusRules : generalRules.value
+      
+      let maxRule = 0
+      for (const r of rules) {
+        maxRule = Math.max(maxRule, r.bonusAmount || 0)
+      }
+      
+      if (maxRule > 0) {
+        total += maxRule
+        breakdown.push({
+          categoryName: cat.name,
+          subName: sub.name,
+          maxRule,
+          source: hasOverride ? 'override' : 'global'
+        })
+      }
+    }
+  }
+  
+  breakdown.sort((a, b) => b.maxRule - a.maxRule)
+  
+  return { total, breakdown }
+})
+
+const maxPotentialBonus = computed(() => maxPotentialResult.value.total)
+const maxPotentialBreakdown = computed(() => maxPotentialResult.value.breakdown)
+const showMaxBonusModal = ref(false)
 
 function toggleRow(empId: string) {
   if (expandedRows.value.has(empId)) expandedRows.value.delete(empId)
@@ -348,7 +396,7 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
     <div class="space-y-4 sm:space-y-6">
 
       <!-- ═══════ SUMMARY CARDS ═══════ -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
         <!-- Total Bonus Payout -->
         <div class="rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-3 sm:p-5 relative overflow-hidden group">
           <div class="absolute top-0 right-0 p-2 sm:p-3 opacity-15"><Icon name="i-lucide-trophy" class="size-14 sm:size-20 text-amber-500" /></div>
@@ -386,6 +434,30 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
             <p class="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-violet-600/70 dark:text-violet-400/70">Categories</p>
             <p class="text-xl sm:text-3xl font-black text-violet-600 dark:text-violet-400 mt-1 sm:mt-2 tabular-nums">{{ tree.length }}</p>
             <p class="text-[9px] sm:text-[10px] text-violet-600/50 dark:text-violet-400/50 mt-0.5 sm:mt-1">{{ totalSystemSkills }} skills</p>
+          </div>
+        </div>
+
+
+        <!-- Max Potential Bonus (Shiny Animated Card) -->
+        <div 
+          role="button"
+          tabindex="0"
+          @click="showMaxBonusModal = true"
+          @keydown.enter.space="showMaxBonusModal = true"
+          class="cursor-pointer rounded-xl border border-pink-500/30 bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent p-3 sm:p-5 relative overflow-hidden group shadow-[0_0_15px_rgba(236,72,153,0.15)] hover:shadow-[0_0_25px_rgba(236,72,153,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+        >
+          <div class="absolute -inset-1 bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-fuchsia-500/20 blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+          
+          <div class="absolute top-0 right-0 p-2 sm:p-3 opacity-20 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6 pointer-events-none">
+            <Icon name="i-lucide-rocket" class="size-14 sm:size-20 text-pink-500" />
+          </div>
+          <div class="relative z-10">
+            <p class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-pink-600/90 dark:text-pink-400/90 flex items-center gap-1.5">
+              MAX POTENTIAL
+              <Icon name="i-lucide-zap" class="size-3 text-pink-500 animate-pulse drop-shadow-[0_0_5px_rgba(236,72,153,0.8)]" />
+            </p>
+            <p class="text-xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500 mt-1 sm:mt-2 tabular-nums drop-shadow-sm">{{ fmt(maxPotentialBonus) }}</p>
+            <p class="text-[9px] sm:text-[10px] text-pink-600/70 dark:text-pink-400/70 mt-0.5 sm:mt-1 font-medium">Per employee capacity</p>
           </div>
         </div>
       </div>
@@ -465,7 +537,12 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
                 </div>
               </div>
               <div class="min-w-0">
-                <p class="text-sm font-semibold truncate">{{ row.employee.employee }}</p>
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-semibold truncate">{{ row.employee.employee }}</p>
+                  <button @click.stop="navigateTo(`/my-profile?employee=${row.employee._id}`)" title="View Profile" class="text-muted-foreground hover:text-primary transition-colors flex items-center justify-center p-1 rounded-md hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/20">
+                    <Icon name="i-lucide-eye" class="size-3.5" />
+                  </button>
+                </div>
                 <p class="text-[10px] text-muted-foreground truncate">{{ row.employee.position || 'Employee' }}</p>
               </div>
             </div>
@@ -547,7 +624,12 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
                 </div>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold truncate">{{ row.employee.employee }}</p>
+                <div class="flex items-center gap-1.5">
+                  <p class="text-sm font-semibold truncate">{{ row.employee.employee }}</p>
+                  <button @click.stop="navigateTo(`/my-profile?employee=${row.employee._id}`)" title="View Profile" class="text-muted-foreground hover:text-primary transition-colors flex items-center justify-center p-1 rounded-md hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/20">
+                    <Icon name="i-lucide-eye" class="size-3.5" />
+                  </button>
+                </div>
                 <p class="text-[10px] text-muted-foreground">{{ row.employee.position || 'Employee' }}</p>
               </div>
               <div class="flex items-center gap-2 shrink-0">
@@ -714,6 +796,19 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
                                 </div>
                               </div>
                             </div>
+                            
+                            <!-- Rules Config View -->
+                            <div v-if="sub.rulesToUse && sub.rulesToUse.length" class="flex flex-wrap gap-2 pt-1 pb-1.5">
+                              <div v-for="(rule, ri) in sub.rulesToUse" :key="ri" class="flex items-center gap-1.5 px-2 py-1 rounded bg-muted/40 border border-border/50 text-[9px] sm:text-[10px]">
+                                <span class="font-semibold" :class="rule.skillSet === 'Mastered' ? 'text-emerald-500' : rule.skillSet === 'Proficient' ? 'text-blue-500' : 'text-amber-500'">{{ rule.skillSet }}</span>
+                                <span class="text-muted-foreground">x{{ rule.reviewedTimes || 1 }}</span>
+                                <span class="text-muted-foreground border-l border-border/50 pl-1.5 ml-0.5" v-if="rule.supervisorCheck">
+                                  {{ rule.supervisorCheck === 'Unique' ? 'Unique Supervisors' : 'Any Supervisor' }}
+                                </span>
+                                <span class="text-amber-500 font-bold ml-1">{{ fmt(rule.bonusAmount || 0) }}</span>
+                                <span v-if="sub.hasOverride" class="text-[8px] uppercase tracking-wider text-violet-500 ml-1 leading-none">(Override)</span>
+                              </div>
+                            </div>
 
                             <!-- Uptime bar — each skill is a segment -->
                             <div v-if="sub.skills.length" class="flex gap-[2px]">
@@ -761,11 +856,7 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
                   </div>
 
                   <!-- Expanded footer -->
-                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-1">
-                    <Button variant="ghost" size="sm" class="text-xs gap-1.5 h-8" @click="navigateTo(`/my-profile?employee=${row.employee._id}`)">
-                      <Icon name="i-lucide-eye" class="size-3.5" />
-                      View Profile
-                    </Button>
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-end gap-2 px-1">
                     <div class="flex items-center gap-2 text-xs pl-2 sm:pl-0">
                       <span class="text-muted-foreground">Total:</span>
                       <span class="font-bold text-amber-500 text-sm tabular-nums">{{ fmt(row.totalBonus) }}</span>
@@ -816,5 +907,61 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
         </div>
       </div>
     </div>
+
+    <!-- ═══════ MAX POTENTIAL MODAL ═══════ -->
+    <Dialog v-model:open="showMaxBonusModal">
+      <DialogContent class="sm:max-w-2xl bg-gradient-to-b from-card to-background p-0 overflow-hidden border-pink-500/20 shadow-[0_0_50px_-12px_rgba(236,72,153,0.25)]">
+        <!-- Header with shiny background -->
+        <div class="relative px-6 py-8 overflow-hidden bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent border-b border-pink-500/10">
+          <div class="absolute -inset-1 bg-gradient-to-r from-pink-500/20 via-purple-500/20 to-fuchsia-500/20 blur-2xl opacity-50 pointer-events-none"></div>
+          <div class="relative z-10 flex flex-col items-center text-center gap-3">
+            <div class="size-16 rounded-3xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center shadow-inner">
+              <Icon name="i-lucide-rocket" class="size-8 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.5)] animate-bounce" />
+            </div>
+            <div>
+              <DialogTitle class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500 drop-shadow-sm flex items-center justify-center gap-2">
+                Max Potential Calculation
+                <Icon name="i-lucide-sparkles" class="size-5 text-purple-400" />
+              </DialogTitle>
+              <DialogDescription class="mt-1.5 text-sm text-pink-600/70 dark:text-pink-400/70 max-w-sm mx-auto">
+                A detailed breakdown of how the {{ fmt(maxPotentialBonus) }} per-employee capability ceiling is calculated across all active skills.
+              </DialogDescription>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrollable breakdown -->
+        <div class="px-6 py-4 max-h-[50vh] overflow-y-auto space-y-3 relative z-10">
+          <!-- Breakdown Items -->
+          <div v-for="(item, idx) in maxPotentialBreakdown" :key="idx" class="flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors">
+            <div class="size-10 rounded-lg flex items-center justify-center shrink-0" :class="item.source === 'override' ? 'bg-violet-500/10 border border-violet-500/20 text-violet-500' : 'bg-muted border border-border/40 text-muted-foreground'">
+                <Icon :name="item.source === 'override' ? 'i-lucide-zap' : 'i-lucide-layers'" class="size-5" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold truncate text-foreground">{{ item.subName }}</p>
+              <p class="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                <span class="truncate max-w-[80px] sm:max-w-none">{{ item.categoryName }}</span>
+                <span class="size-1 rounded-full bg-muted-foreground/30"></span>
+                <span v-if="item.source === 'override'" class="text-violet-500 font-medium">Custom Override Rule</span>
+                <span v-else>Global Bonus Rule</span>
+              </p>
+            </div>
+            <div class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-600 dark:text-pink-400 tabular-nums">
+               <span class="text-xs font-bold leading-none">+{{ fmt(item.maxRule) }}</span>
+            </div>
+          </div>
+
+          <div v-if="!maxPotentialBreakdown.length" class="text-center py-8 text-sm text-muted-foreground italic">
+            No bonus rules found for any active sub-categories with skills.
+          </div>
+        </div>
+
+        <!-- Footer Total -->
+        <div class="px-6 py-4 border-t border-border/50 bg-muted/10 flex items-center justify-between z-10 relative">
+          <p class="text-sm font-medium text-muted-foreground">Total Potential</p>
+          <p class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500 drop-shadow-sm tabular-nums">{{ fmt(maxPotentialBonus) }}</p>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
