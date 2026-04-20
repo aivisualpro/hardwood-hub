@@ -213,7 +213,13 @@ export default defineEventHandler(async (event) => {
     </html>
   `
 
-  const pdfBuffer = await generatePdfFromHtml(pdfHTML)
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await generatePdfFromHtml(pdfHTML)
+  } catch (err: any) {
+    console.error("PDF Generate Error", err)
+    throw createError({ statusCode: 500, statusMessage: err?.message || "PDF generation crashed", data: err?.stack })
+  }
   
   let finalPdfBuffer = pdfBuffer;
 

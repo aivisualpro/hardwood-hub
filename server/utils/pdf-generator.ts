@@ -10,23 +10,28 @@ export const generatePdfFromHtml = async (htmlContent: string) => {
     executablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
     launchArgs = ['--no-sandbox', '--disable-setuid-sandbox']
   } else {
-    // Dynamic import — only loads on Vercel, never at server boot time
-    // @ts-ignore
-    const chromium = await import('@sparticuz/chromium-min').then(m => m.default ?? m)
-    chromium.setGraphicsMode = false
-    executablePath = await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v119.0.2/chromium-v119.0.2-pack.tar')
-    launchArgs = [
-      ...chromium.args,
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-      '--no-zygote',
-      '--single-process',
-    ]
+    try {
+      // Dynamic import — only loads on Vercel, never at server boot time
+      // @ts-ignore
+      const module = await import('@sparticuz/chromium-min')
+      const chromium = module.default || module
+      chromium.setGraphicsMode = false
+      executablePath = await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v119.0.2/chromium-v119.0.2-pack.tar')
+      launchArgs = [
+        ...chromium.args,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-gpu',
+        '--disable-dev-shm-usage',
+        '--no-zygote',
+        '--single-process',
+      ]
 
-    if (!executablePath) {
-      throw new Error('Could not resolve Chromium executable path on Vercel')
+      if (!executablePath) {
+        throw new Error('Could not resolve Chromium executable path on Vercel')
+      }
+    } catch (e: any) {
+      throw new Error('Chromium Init Error: ' + e.message)
     }
   }
 
