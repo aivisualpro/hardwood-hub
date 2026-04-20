@@ -24,66 +24,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [content: string]
-  'update:pages': [pages: number]
 }>()
-
-function calculatePages() {
-  if (!editor.value) return 1
-  const dom = editor.value.view.dom
-  if (!dom) return 1
-  return Math.max(1, Math.ceil(dom.clientHeight / 992))
-}
-
-const currentFontSize = ref('14')
-
-function changeFontSize(delta: number) {
-  if (!editor.value) return
-  let current = parseInt(currentFontSize.value) || 14
-  current += delta
-  if (current < 8) current = 8
-  if (current > 72) current = 72
-  setFontSize(current.toString())
-}
-
-function setFontSize(size: string | Event) {
-  if (!editor.value) return
-  const rawValue = typeof size === 'object' ? (size.target as HTMLInputElement).value : size
-  const val = parseInt(rawValue)
-  if (val && !isNaN(val)) {
-    // @ts-ignore
-    editor.value.commands.setFontSize(`${val}px`)
-    currentFontSize.value = val.toString()
-    editor.value.commands.focus()
-  } else {
-    // @ts-ignore
-    editor.value.commands.unsetFontSize()
-    currentFontSize.value = '14'
-  }
-}
 
 const editor = useEditor({
   content: props.modelValue || '',
   extensions: [
     StarterKit.configure({
-      heading: { levels: [1, 2, 3, 4] },
+      heading: false,
       horizontalRule: false,
     }),
     Placeholder.configure({
       placeholder: 'Start typing here...',
     }),
-    Underline,
-    TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    Highlight.configure({ multicolor: true }),
-    Table.configure({ resizable: true }),
-    TableRow,
-    TableCell,
-    TableHeader,
-    Image.configure({ inline: false, allowBase64: true }),
     Link.configure({ openOnClick: false, HTMLAttributes: { class: 'editor-link' } }),
-    TextStyle,
-    Color,
-    FontSize,
-    HorizontalRule,
   ],
   editorProps: {
     attributes: {
@@ -130,44 +83,6 @@ onUnmounted(() => {
   window.removeEventListener('insert-variable', onInsertVariable)
   editor.value?.destroy()
 })
-
-// Colors
-const textColors = [
-  { name: 'Default', color: '' },
-  { name: 'Red', color: '#EF4444' },
-  { name: 'Orange', color: '#F97316' },
-  { name: 'Green', color: '#10B981' },
-  { name: 'Blue', color: '#3B82F6' },
-  { name: 'Purple', color: '#8B5CF6' },
-]
-
-const showColorPicker = ref(false)
-function setColor(color: string) {
-  if (!editor.value) return
-  if (!color) { editor.value.chain().focus().unsetColor().run() }
-  else { editor.value.chain().focus().setColor(color).run() }
-  showColorPicker.value = false
-}
-
-function setLink() {
-  if (!editor.value) return
-  const previousUrl = editor.value.getAttributes('link').href
-  const url = window.prompt('Enter URL:', previousUrl)
-  if (url === null) return
-  if (url === '') {
-    editor.value.chain().focus().extendMarkRange('link').unsetLink().run()
-    return
-  }
-  editor.value.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
-}
-
-function insertImage() {
-  if (!editor.value) return
-  const url = window.prompt('Enter image URL:')
-  if (url) {
-    editor.value.chain().focus().setImage({ src: url }).run()
-  }
-}
 </script>
 
 <template>
@@ -200,10 +115,18 @@ function insertImage() {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  color: hsl(var(--foreground));
+  @apply text-foreground;
   min-height: 200px;
   width: 100%;
 }
+
+.simple-editor-content * {
+  color: inherit !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
 .simple-editor-content:focus { outline: none; }
 
 .simple-editor-content h1 {
