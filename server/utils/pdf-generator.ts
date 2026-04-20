@@ -13,11 +13,11 @@ export const generatePdfFromHtml = async (htmlContent: string) => {
     try {
       // Dynamic import — only loads on Vercel, never at server boot time
       // @ts-ignore
-      const module = await import('@sparticuz/chromium-min')
+      const module = await import('@sparticuz/chromium')
       const chromium = module.default || module
       chromium.setGraphicsMode = false
-      // Supply the v131.0.1 binary url
-      executablePath = await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar')
+      // Supply empty arg to use full chromium bundle
+      executablePath = await chromium.executablePath()
       launchArgs = [
         ...chromium.args,
         '--no-sandbox',
