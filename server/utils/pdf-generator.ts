@@ -6,7 +6,7 @@ export const generatePdfFromHtml = async (htmlContent: string) => {
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless === true ? true : chromium.headless,
+    headless: chromium.headless as any,
   })
 
   const page = await browser.newPage()
