@@ -293,6 +293,33 @@ async function saveSubCat() {
   }
 }
 
+// ─── Delete category ──────────────────────────────────────
+async function deleteCat(catId: string) {
+  const idx = tree.value.findIndex(c => c._id === catId)
+  if (idx === -1) return
+  const cat = tree.value[idx]
+  if (cat && cat.subCategories.length > 0) return toast.error('Cannot delete a category with sub-categories')
+
+  // Snapshot for revert
+  const snapshot = cat
+
+  // Optimistic: remove immediately
+  tree.value.splice(idx, 1)
+  if (selectedCatId.value === catId) {
+    selectedCatId.value = tree.value.length ? (tree.value[0]?._id ?? null) : null
+  }
+
+  try {
+    await $fetch(`/api/categories/${catId}`, { method: 'DELETE' })
+    toast.success('Category removed', { duration: 2000 })
+  } catch (e: any) {
+    // Revert
+    if (snapshot) tree.value.splice(idx, 0, snapshot)
+    selectedCatId.value = catId
+    toast.error('Failed to delete category', { description: e?.message })
+  }
+}
+
 // ─── Delete sub-category ──────────────────────────────────
 async function deleteSubCat(subId: string) {
   const found = findSub(subId)
@@ -801,6 +828,20 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           <Icon name="i-lucide-file-text" class="size-3 sm:size-3.5" />
           <span class="hidden xs:inline">View PDF</span>
           <span class="xs:hidden">PDF</span>
+        </Button>
+
+        <!-- Delete Category Button -->
+        <Button
+          v-if="canDelete() && selectedCat && selectedCat.subCategories.length === 0"
+          size="sm"
+          variant="outline"
+          class="shrink-0 gap-1 sm:gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 ml-1"
+          @click="deleteCat(selectedCat._id)"
+          title="Delete Category"
+        >
+          <Icon name="i-lucide-trash-2" class="size-3 sm:size-3.5" />
+          <span class="hidden xs:inline">Delete Category</span>
+          <span class="xs:hidden">Delete</span>
         </Button>
 
         <div class="flex-1" />
