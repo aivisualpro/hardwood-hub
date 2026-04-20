@@ -262,15 +262,26 @@ async function saveContract() {
     if (finalAttachedPdf && finalAttachedPdf.startsWith('data:')) {
       toast.loading('Uploading attached PDF...', { id: 'pdf-upload' })
       try {
-        const upRes = await $fetch<{ success: boolean, url: string }>('/api/upload/cloudinary', {
-          method: 'POST',
-          body: { file: finalAttachedPdf, folder: 'hardwood-hub/contracts' }
+        const sigRes = await $fetch<{ signature: string, timestamp: number, cloudName: string, apiKey: string, folder: string }>('/api/upload/cloudinary-signature', {
+          params: { folder: 'hardwood-hub/contracts' }
         })
-        if (upRes.success) {
-          finalAttachedPdf = upRes.url
+        
+        const fd = new FormData()
+        fd.append('file', finalAttachedPdf)
+        fd.append('api_key', sigRes.apiKey)
+        fd.append('timestamp', String(sigRes.timestamp))
+        fd.append('signature', sigRes.signature)
+        fd.append('folder', sigRes.folder)
+        
+        const clRes = await $fetch<any>(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/auto/upload`, {
+          method: 'POST',
+          body: fd
+        })
+        if (clRes && clRes.secure_url) {
+          finalAttachedPdf = clRes.secure_url
         }
       } catch (uploadErr: any) {
-        toast.error('Failed to upload PDF', { description: uploadErr.message })
+        toast.error('Failed to upload PDF', { description: uploadErr.message || 'Direct upload failed' })
         throw uploadErr
       } finally {
         toast.dismiss('pdf-upload')
