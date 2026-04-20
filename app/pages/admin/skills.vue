@@ -1337,7 +1337,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           </div>
           
           <div v-if="catPdfUrl" class="w-full flex-1 border border-border/50 rounded-xl overflow-hidden relative shadow-inner bg-muted/20">
-            <iframe :src="catPdfUrl" class="w-full h-full" frameborder="0"></iframe>
+            <iframe :src="catPdfUrl.includes('#') ? catPdfUrl + '&toolbar=0&navpanes=0&scrollbar=0' : catPdfUrl + '#toolbar=0&navpanes=0&scrollbar=0'" class="w-full h-full pointer-events-auto" style="overflow: hidden;" frameborder="0"></iframe>
           </div>
           <div v-else class="w-full flex-1 border-2 border-dashed border-muted flex flex-col gap-3 items-center justify-center rounded-xl bg-muted/5 transition-colors hover:bg-muted/10">
             <div class="size-16 rounded-full bg-muted/50 flex flex-col items-center justify-center mb-2 shadow-sm">
@@ -1349,11 +1349,16 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         </div>
 
         <DialogFooter class="flex items-center justify-between shrink-0 pt-4 border-t border-border/40 mt-2">
-            <Button variant="destructive" size="sm" v-if="catPdfUrl" @click="catPdfUrl = ''" class="bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border-0 shadow-none">
-               <Icon name="i-lucide-trash-2" class="mr-1.5 size-3.5" />
-               Clear PDF
-            </Button>
-            <div v-else></div>
+            <div class="flex gap-2">
+              <Button variant="destructive" size="sm" v-if="catPdfUrl" @click="catPdfUrl = ''" class="bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border-0 shadow-none">
+                 <Icon name="i-lucide-trash-2" class="mr-1.5 size-3.5" />
+                 Clear PDF
+              </Button>
+              <Button variant="outline" size="sm" v-if="catPdfUrl" as="a" :href="catPdfUrl" download="Category_Documentation.pdf" target="_blank" class="text-primary hover:text-primary">
+                 <Icon name="i-lucide-download" class="mr-1.5 size-3.5" />
+                 Download
+              </Button>
+            </div>
             <div class="flex gap-2">
               <Button variant="outline" @click="showCatInfoModal = false">Cancel</Button>
               <Button :disabled="savingCatPdf" @click="saveCatPdf" class="min-w-[140px] shadow-md relative overflow-hidden group">
