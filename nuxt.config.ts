@@ -28,7 +28,7 @@ export default defineNuxtConfig({
     // Keep chromium as a true node_modules external — do NOT inline/bundle it
     // It needs to exist on disk so it can decompress to /tmp at runtime
     externals: {
-      external: ['@sparticuz/chromium'],
+      external: ['@sparticuz/chromium-min'],
     },
     vercel: {
       functions: {
