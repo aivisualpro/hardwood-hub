@@ -345,7 +345,7 @@ function insertImage() {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.15;
-  color: var(--foreground);
+  color: hsl(var(--foreground));
   min-height: 992px;
   width: 816px;
   min-width: 816px;
