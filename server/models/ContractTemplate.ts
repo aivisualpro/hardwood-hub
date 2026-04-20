@@ -22,4 +22,4 @@ const ContractTemplateSchema = new mongoose.Schema(
     { timestamps: true, collection: 'hardwoodDB_ContractTemplates' },
 )
 
-export const ContractTemplate = mongoose.models.ContractTemplate || mongoose.model('ContractTemplate', ContractTemplateSchema)
+export const ContractTemplate = (mongoose.models.ContractTemplate || mongoose.model('ContractTemplate', ContractTemplateSchema)) as any

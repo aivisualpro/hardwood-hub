@@ -248,8 +248,6 @@ const systemVariables = [
   { key: 'company_website', label: 'Website' },
   { key: 'company_email', label: 'Email' },
   { key: 'company_license', label: "Builder's License Number" },
-  { key: 'company_logo', label: 'Logo' },
-  { key: 'contractor_signature', label: 'Contractor Signature' },
 ]
 
 const templatePages = ref(1)
@@ -479,85 +477,87 @@ const TYPE_ICONS: Record<string, string> = {
 <template>
   <div class="space-y-0 -mt-4 lg:-mt-6">
     <!-- Header Teleport -->
-    <Teleport defer to="#header-toolbar">
-      <div v-if="!showEditor" class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">
-        <div class="relative flex-1">
-          <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search contracts..."
-            class="w-full h-8 sm:h-9 pl-8 sm:pl-9 pr-4 rounded-lg border border-input bg-background/50 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
-            @input="activeTab === 'list' && fetchContracts()"
-          >
-        </div>
-        <button
-          v-if="activeTab === 'list'"
-          class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
-          @click="openCreateModal"
-        >
-          <Icon name="i-lucide-plus" class="size-3.5" />
-          <span class="hidden sm:inline">New Contract</span>
-        </button>
-        <DropdownMenu v-if="activeTab === 'templates' && !showEditor">
-          <DropdownMenuTrigger as-child>
-            <button
-              class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
+    <ClientOnly>
+      <Teleport defer to="#header-toolbar">
+        <div v-if="!showEditor" class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">
+          <div class="relative flex-1">
+            <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search contracts..."
+              class="w-full h-8 sm:h-9 pl-8 sm:pl-9 pr-4 rounded-lg border border-input bg-background/50 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+              @input="activeTab === 'list' && fetchContracts()"
             >
-              <Icon name="i-lucide-plus" class="size-3.5" />
-              <span class="hidden sm:inline">New Template</span>
-              <Icon name="i-lucide-chevron-down" class="size-3 ml-0.5 opacity-70" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" class="w-52">
-            <DropdownMenuItem class="cursor-pointer gap-2.5 py-2.5" @click="openNewTemplate">
-              <div class="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <Icon name="i-lucide-pen-tool" class="size-4 text-primary" />
-              </div>
-              <div class="flex flex-col">
-                <span class="text-sm font-semibold">Design Template</span>
-                <span class="text-[10px] text-muted-foreground">Build from scratch</span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem class="cursor-pointer gap-2.5 py-2.5" @click="openPdfUpload">
-              <div class="size-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
-                <Icon name="i-lucide-file-up" class="size-4 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div class="flex flex-col">
-                <span class="text-sm font-semibold">Upload PDF</span>
-                <span class="text-[10px] text-muted-foreground">AI-powered extraction</span>
-              </div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <!-- ══ EDITOR MODE ACTIONS ══ -->
-      <div v-else class="flex items-center gap-3">
-        <button class="size-8 rounded-lg border bg-card hover:bg-muted flex items-center justify-center transition-colors shrink-0" @click="showEditor = false">
-          <Icon name="i-lucide-arrow-left" class="size-4" />
-        </button>
-        <div class="h-4 w-px bg-border/50 mx-1" />
-        <div class="flex items-center gap-2 bg-muted/30 rounded-lg p-1 border border-border/50">
-           <input v-model="templateForm.name" type="text" placeholder="Template Name" class="text-sm font-bold bg-transparent border-none outline-none w-[180px] px-2 placeholder:text-muted-foreground/40 transition-colors focus:bg-background focus:ring-1 focus:ring-primary rounded">
-           <div class="h-3 w-px bg-border/50 mx-1" />
-           <Select v-model="templateForm.category">
-             <SelectTrigger class="w-28 h-7 text-xs border-none bg-transparent shadow-none focus:ring-0"><SelectValue placeholder="Category" /></SelectTrigger>
-             <SelectContent>
-               <SelectItem v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</SelectItem>
-             </SelectContent>
-           </Select>
+          </div>
+          <button
+            v-if="activeTab === 'list'"
+            class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
+            @click="openCreateModal"
+          >
+            <Icon name="i-lucide-plus" class="size-3.5" />
+            <span class="hidden sm:inline">New Contract</span>
+          </button>
+          <DropdownMenu v-if="activeTab === 'templates' && !showEditor">
+            <DropdownMenuTrigger as-child>
+              <button
+                class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
+              >
+                <Icon name="i-lucide-plus" class="size-3.5" />
+                <span class="hidden sm:inline">New Template</span>
+                <Icon name="i-lucide-chevron-down" class="size-3 ml-0.5 opacity-70" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" class="w-52">
+              <DropdownMenuItem class="cursor-pointer gap-2.5 py-2.5" @click="openNewTemplate">
+                <div class="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Icon name="i-lucide-pen-tool" class="size-4 text-primary" />
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-sm font-semibold">Design Template</span>
+                  <span class="text-[10px] text-muted-foreground">Build from scratch</span>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem class="cursor-pointer gap-2.5 py-2.5" @click="openPdfUpload">
+                <div class="size-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                  <Icon name="i-lucide-file-up" class="size-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-sm font-semibold">Upload PDF</span>
+                  <span class="text-[10px] text-muted-foreground">AI-powered extraction</span>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div class="h-4 w-px bg-border/50 mx-1" />
-        <Button variant="ghost" size="sm" class="h-8" @click="showEditor = false">Cancel</Button>
-        <Button size="sm" class="h-8 shadow-lg shadow-primary/20" :disabled="saving" @click="saveTemplate">
-          <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
-          <Icon v-else name="i-lucide-save" class="mr-1.5 size-3.5" />
-          Save
-        </Button>
-      </div>
-    </Teleport>
+
+        <!-- ══ EDITOR MODE ACTIONS ══ -->
+        <div v-else class="flex items-center gap-3">
+          <button class="size-8 rounded-lg border bg-card hover:bg-muted flex items-center justify-center transition-colors shrink-0" @click="showEditor = false">
+            <Icon name="i-lucide-arrow-left" class="size-4" />
+          </button>
+          <div class="h-4 w-px bg-border/50 mx-1" />
+          <div class="flex items-center gap-2 bg-muted/30 rounded-lg p-1 border border-border/50">
+             <input v-model="templateForm.name" type="text" placeholder="Template Name" class="text-sm font-bold bg-transparent border-none outline-none w-[180px] px-2 placeholder:text-muted-foreground/40 transition-colors focus:bg-background focus:ring-1 focus:ring-primary rounded">
+             <div class="h-3 w-px bg-border/50 mx-1" />
+             <Select v-model="templateForm.category">
+               <SelectTrigger class="w-28 h-7 text-xs border-none bg-transparent shadow-none focus:ring-0"><SelectValue placeholder="Category" /></SelectTrigger>
+               <SelectContent>
+                 <SelectItem v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</SelectItem>
+               </SelectContent>
+             </Select>
+          </div>
+          <div class="h-4 w-px bg-border/50 mx-1" />
+          <Button variant="ghost" size="sm" class="h-8" @click="showEditor = false">Cancel</Button>
+          <Button size="sm" class="h-8 shadow-lg shadow-primary/20" :disabled="saving" @click="saveTemplate">
+            <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
+            <Icon v-else name="i-lucide-save" class="mr-1.5 size-3.5" />
+            Save
+          </Button>
+        </div>
+      </Teleport>
+    </ClientOnly>
 
     <!-- Tabs Container -->
     <div class="flex flex-col h-[calc(100dvh-90px)]">

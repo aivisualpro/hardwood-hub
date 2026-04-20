@@ -208,28 +208,38 @@ function openCreateModal() {
   fetchCustomers()
 }
 
-function openEditContract(ct: any) {
-  editingContractId.value = ct._id
-  contractTitle.value = ct.title
-  selectedCustomer.value = { _id: ct.customerId, name: ct.customerName, email: ct.customerEmail, phone: ct.customerPhone } as any
-  variableValues.value = { ...ct.variableValues }
-  customerSignature.value = ct.customerSignature || ''
-  customerSignatureDate.value = ct.customerSignatureDate ? new Date(ct.customerSignatureDate).toISOString().split('T')[0]! : ''
-  attachedPdf.value = ct.attachedPdf || ''
-  attachedPdfName.value = ct.attachedPdf ? 'Attached PDF' : ''
-  attachedGalleryImages.value = ct.attachedGalleryImages || []
-  loadCustomerGallery(ct.customerId)
-  
-  const foundTemplate = templates.value.find(t => t._id === ct.templateId)
-  selectedModalTemplate.value = foundTemplate || { 
-    _id: ct.templateId, 
-    name: ct.templateName, 
-    content: ct.content, 
-    variables: Object.keys(ct.variableValues).map(k => ({ key: k, label: k, type: 'text' }))
-  } as any
-  
-  createStep.value = 3
-  showCreateModal.value = true
+async function openEditContract(ct: any) {
+  try {
+    toast.loading('Fetching contract details...', { id: 'fetch-contract' })
+    const res = await $fetch<{ success: boolean, data: any }>(`/api/contracts/detail/${ct._id}`)
+    const fullCt = res.data
+
+    editingContractId.value = fullCt._id
+    contractTitle.value = fullCt.title
+    selectedCustomer.value = { _id: fullCt.customerId, name: fullCt.customerName, email: fullCt.customerEmail, phone: fullCt.customerPhone } as any
+    variableValues.value = { ...fullCt.variableValues }
+    customerSignature.value = fullCt.customerSignature || ''
+    customerSignatureDate.value = fullCt.customerSignatureDate ? new Date(fullCt.customerSignatureDate).toISOString().split('T')[0]! : ''
+    attachedPdf.value = fullCt.attachedPdf || ''
+    attachedPdfName.value = fullCt.attachedPdf ? 'Attached PDF' : ''
+    attachedGalleryImages.value = fullCt.attachedGalleryImages || []
+    loadCustomerGallery(fullCt.customerId)
+    
+    const foundTemplate = templates.value.find(t => t._id === fullCt.templateId)
+    selectedModalTemplate.value = foundTemplate || { 
+      _id: fullCt.templateId, 
+      name: fullCt.templateName, 
+      content: fullCt.content, 
+      variables: Object.keys(fullCt.variableValues || {}).map(k => ({ key: k, label: k, type: 'text' }))
+    } as any
+    
+    createStep.value = 3
+    showCreateModal.value = true
+  } catch (err: any) {
+    toast.error('Failed to load contract details', { description: err?.message })
+  } finally {
+    toast.dismiss('fetch-contract')
+  }
 }
 
 async function saveContract() {
@@ -248,6 +258,25 @@ async function saveContract() {
 
   savingContract.value = true
   try {
+    let finalAttachedPdf = attachedPdf.value
+    if (finalAttachedPdf && finalAttachedPdf.startsWith('data:')) {
+      toast.loading('Uploading attached PDF...', { id: 'pdf-upload' })
+      try {
+        const upRes = await $fetch<{ success: boolean, url: string }>('/api/upload/cloudinary', {
+          method: 'POST',
+          body: { file: finalAttachedPdf, folder: 'hardwood-hub/contracts' }
+        })
+        if (upRes.success) {
+          finalAttachedPdf = upRes.url
+        }
+      } catch (uploadErr: any) {
+        toast.error('Failed to upload PDF', { description: uploadErr.message })
+        throw uploadErr
+      } finally {
+        toast.dismiss('pdf-upload')
+      }
+    }
+
     const c = selectedCustomer.value
     const payload = {
       title: contractTitle.value,
@@ -262,7 +291,7 @@ async function saveContract() {
       customerSignature: customerSignature.value,
       customerSignatureDate: customerSignatureDate.value ? new Date(customerSignatureDate.value).toISOString() : null,
       content: selectedModalTemplate.value.content,
-      attachedPdf: attachedPdf.value,
+      attachedPdf: finalAttachedPdf,
       attachedGalleryImages: attachedGalleryImages.value,
       status: 'draft',
     }

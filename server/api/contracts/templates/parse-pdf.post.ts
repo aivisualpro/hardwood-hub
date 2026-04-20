@@ -1,44 +1,56 @@
 // POST /api/contracts/templates/parse-pdf
-// Accepts a PDF (base64) and uses Google Vertex AI (Gemini) to extract
-// the content as HTML and detect template variables.
-// Uses GOOGLE_CLOUD_* credentials from .env (service account auth)
+// Accepts a PDF (base64) and uses Google Vertex AI (Gemini) via the new
+// @google/genai SDK to extract the content as HTML and detect template variables.
+// Uses GOOGLE_CLOUD_* credentials from .env (service account auth).
 
-import { VertexAI } from '@google-cloud/vertexai'
+import { GoogleGenAI } from '@google/genai'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const { pdfBase64, fileName } = body
 
   if (!pdfBase64) {
-    throw createError({ statusCode: 400, message: 'PDF file is required (base64)' })
+    throw createError({
+      statusCode: 400,
+      message: 'PDF file is required (base64)',
+    })
   }
 
-  const config = useRuntimeConfig()
-  const projectId = config.googleCloudProjectId
-  const location = config.googleCloudLocation || 'us-central1'
-  const clientEmail = config.googleClientEmail
-  const privateKey = config.googlePrivateKey
+  const runtimeConfig = useRuntimeConfig()
 
-  if (!projectId || !clientEmail || !privateKey) {
-    throw createError({ statusCode: 500, message: 'Google Cloud credentials not configured' })
+  // Prefer Vertex AI (service account) since the Gemini API key is blocked
+  const projectId = runtimeConfig.googleCloudProjectId
+  const location = runtimeConfig.googleCloudLocation || 'us-central1'
+  const clientEmail = runtimeConfig.googleClientEmail
+  const privateKey = runtimeConfig.googlePrivateKey
+  const apiKey = runtimeConfig.geminiApiKey
+
+  if (!projectId && !apiKey) {
+    throw createError({
+      statusCode: 500,
+      message: 'Neither Vertex AI credentials nor Gemini API Key configured',
+    })
   }
 
   try {
-    // Initialize Vertex AI with service account credentials
-    const vertexAI = new VertexAI({
-      project: projectId,
-      location,
-      googleAuthOptions: {
-        credentials: {
-          client_email: clientEmail,
-          private_key: privateKey.replace(/\\n/g, '\n'),
+    let ai: GoogleGenAI
+    if (projectId && clientEmail && privateKey) {
+      // Use Vertex AI with service account credentials
+      ai = new GoogleGenAI({
+        vertexai: true,
+        project: projectId,
+        location,
+        googleAuthOptions: {
+          credentials: {
+            client_email: clientEmail,
+            private_key: privateKey.replace(/\\n/g, '\n'),
+          },
         },
-      },
-    })
-
-    const model = vertexAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-001',
-    })
+      })
+    } else {
+      // Fallback to API key
+      ai = new GoogleGenAI({ apiKey })
+    }
 
     const prompt = `You are a document analysis expert. Analyze this PDF document and extract its content.
 
@@ -57,7 +69,7 @@ Your task:
    - Fields with labels like "Name: ___", "Date: ___", "Address:", etc.
    - Any placeholder text in brackets like [Customer Name], {date}, etc.
    - Dollar amounts, percentages, or numbers that would change per contract
-   
+
    For each variable found, provide:
    - key: a snake_case identifier (e.g., "customer_name", "contract_date", "total_amount")
    - label: a human-readable label (e.g., "Customer Name", "Contract Date")
@@ -67,7 +79,7 @@ Your task:
 
 4. **Preserve the document structure** — maintain sections, spacing, and logical flow.
 
-IMPORTANT: Return your response as a valid JSON object with this exact structure:
+Return your response as a valid JSON object with this exact structure:
 {
   "html": "<the full HTML content with {{variable}} placeholders>",
   "variables": [
@@ -83,11 +95,10 @@ IMPORTANT: Return your response as a valid JSON object with this exact structure
   "templateName": "Suggested template name based on the document title or content",
   "description": "Brief description of what this document/template is about",
   "category": "General|Agreements|Change Orders|Legal|Warranties"
-}
+}`
 
-Return ONLY the JSON object, no markdown code blocks, no extra text.`
-
-    const result = await model.generateContent({
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
       contents: [
         {
           role: 'user',
@@ -102,21 +113,25 @@ Return ONLY the JSON object, no markdown code blocks, no extra text.`
           ],
         },
       ],
-      generationConfig: {
+      config: {
         temperature: 0.1,
-        maxOutputTokens: 65536,
+        maxOutputTokens: 65535,
+        responseMimeType: 'application/json',
       },
     })
 
-    const response = result.response
-    const text = response?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const text = response.text ?? ''
 
-    // Parse the JSON response — handle possible markdown code blocks
-    let parsed
+    // With responseMimeType: 'application/json' this should parse cleanly,
+    // but keep fallbacks in case the model wraps it in a code block.
+    let parsed: any
     try {
       parsed = JSON.parse(text)
     } catch {
-      const cleanJson = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim()
+      const cleanJson = text
+        .replace(/^```(?:json)?\n?/i, '')
+        .replace(/\n?```$/i, '')
+        .trim()
       try {
         parsed = JSON.parse(cleanJson)
       } catch {
@@ -134,7 +149,10 @@ Return ONLY the JSON object, no markdown code blocks, no extra text.`
       data: {
         html: parsed.html || '',
         variables: parsed.variables || [],
-        templateName: parsed.templateName || fileName?.replace('.pdf', '') || 'Imported Template',
+        templateName:
+          parsed.templateName ||
+          fileName?.replace(/\.pdf$/i, '') ||
+          'Imported Template',
         description: parsed.description || '',
         category: parsed.category || 'General',
       },

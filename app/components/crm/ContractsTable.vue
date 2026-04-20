@@ -88,229 +88,36 @@ async function confirmSendEmail() {
 async function downloadPDF(ct: any) {
   toast.loading('Generating Contract PDF...')
   
-  // 1. Merge the template content with the variables
-  let mergedHTML = ct.content || ''
-  
-  if (ct.variableValues) {
-    const t = props.templates.find((tt: any) => tt._id === ct.templateId) || {} as any
-    for (const [key, val] of Object.entries<string>(ct.variableValues)) {
-       const vDef = t?.variables?.find((v: any) => v.key === key)
-       const isSig = vDef?.type === 'signature'
-       
-       let mergedVal = String(val || '')
-       if (isSig && val) {
-         mergedVal = `<img src="${val}" alt="Signature" style="max-height: 80px; object-fit: contain; vertical-align: middle;" />`
-       }
-
-       const re = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g')
-       mergedHTML = mergedHTML.replace(re, mergedVal)
-    }
-  }
-
-  const sysPrintDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  mergedHTML = mergedHTML.replace(/\{\{\s*printDate\s*\}\}/g, sysPrintDate)
-  mergedHTML = mergedHTML.replace(/\{\{\s*company_name\s*\}\}/g, props.companyProfile?.name || '')
-
-  mergedHTML = mergedHTML.replace(/<table[\s\S]*?<\/table>/gi, (tableHTML: string) => {
-    if (tableHTML.includes('Signature') && tableHTML.includes('____')) return ''
-    return tableHTML
-  })
-  const contractorSigImg = props.companyProfile?.signature
-    ? `<img src="${props.companyProfile.signature}" alt="Contractor Signature" style="max-height: 64px; object-fit: contain; vertical-align: middle;" />`
-    : ''
-
-  mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/gi, contractorSigImg)
-  mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/gi, contractorSigImg)
-  mergedHTML = mergedHTML.replace(/\{\{\s*contractor_signature\s*\}\}/gi, contractorSigImg)
-  mergedHTML = mergedHTML.replace(/\{\{\s*customerSignature\s*\}\}/g, '')
-  mergedHTML = mergedHTML.replace(/\{\{\s*customerSignatureDate\s*\}\}/g, '')
-
-  // Render variables text out of template boxes
-  mergedHTML = mergedHTML.replace(/<span[^>]*class="[^"]*template-variable[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, '$1')
-  // Strip lines
-  mergedHTML = mergedHTML.replace(/<hr\s*\/?>/gi, '')
-
-  if (ct.customerSignature) {
-     mergedHTML += `
-      <div style="margin-top: 60px;">
-        <div style="margin-bottom: 40px; width: 100%; max-width: 480px;">
-          <div style="height: 64px;">
-            <img src="${ct.customerSignature}" style="max-height: 64px; max-width: 100%; object-fit: contain; object-position: left bottom; margin: 0; display: block;" />
-          </div>
-          <div style="border-top: 1.5px solid #111827; margin-top: 4px; padding-top: 8px;">
-            <div style="float: left; font-size: 15px; font-weight: 700; color: #111827; font-family: Helvetica, Arial, sans-serif; letter-spacing: -0.01em;">
-              Client's Signature
-            </div>
-            <div style="float: right; font-size: 14px; font-weight: 400; color: #111827; font-family: Helvetica, Arial, sans-serif;">
-              Date: ${ct.customerSignatureDate ? formatDate(ct.customerSignatureDate) : sysPrintDate}
-            </div>
-            <div style="clear: both;"></div>
-          </div>
-        </div>
-
-        <div style="width: 100%; max-width: 480px;">
-          <div style="height: 64px;">
-            ${props.companyProfile?.signature ? `<img src="${props.companyProfile.signature}" style="max-height: 64px; max-width: 100%; object-fit: contain; object-position: left bottom; margin: 0; display: block;" />` : ``}
-          </div>
-          <div style="border-top: 1.5px solid #111827; margin-top: 4px; padding-top: 8px;">
-            <div style="float: left; font-size: 15px; font-weight: 700; color: #111827; font-family: Helvetica, Arial, sans-serif; letter-spacing: -0.01em;">
-              Contractor's Signature
-            </div>
-            <div style="float: right; font-size: 14px; font-weight: 400; color: #111827; font-family: Helvetica, Arial, sans-serif;">
-              Date: ${sysPrintDate}
-            </div>
-            <div style="clear: both;"></div>
-          </div>
-        </div>
-      </div>
-     `
-  }
-
-  const printDate = new Date().toLocaleString()
-
-  const docHTML = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Contract - ${ct.contractNumber}</title>
-        <style>
-          @page { margin: 32px 40px; size: letter; }
-          body { 
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            color: #111; 
-            line-height: 1.75;
-            padding: 0;
-            margin: 0;
-            max-width: 100%;
-            font-size: 14px;
-          }
-          
-          /* ── Letterhead ── */
-          .letterhead {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            margin-bottom: 24px;
-            padding-bottom: 24px;
-            border-bottom: 2.5px solid ${props.companyProfile?.brandColor || '#1e3a8a'};
-          }
-          .letterhead img {
-            max-height: 90px;
-            max-width: 280px;
-            object-fit: contain;
-          }
-          .letterhead-info {
-            text-align: right;
-            font-size: 11px;
-            color: #4b5563;
-          }
-          .letterhead-info h2 {
-            margin: 0 0 6px 0;
-            font-size: 18px;
-            font-weight: 800;
-            color: ${props.companyProfile?.brandColor || '#1e3a8a'};
-            letter-spacing: -0.02em;
-          }
-          .letterhead-info p {
-            margin: 0 0 3px 0;
-            font-weight: 500;
-          }
-
-          /* ── Main Content ── */
-          .content {
-            font-size: 14px;
-          }
-          .content h1 { font-size: 1.875rem; font-weight: 900; letter-spacing: -0.025em; margin-bottom: 1rem; margin-top: 2rem; color: #111; }
-          .content h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 0.75rem; margin-top: 1.5rem; color: #111; }
-          .content h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; margin-top: 1.25rem; color: #111; }
-          .content p { font-size: 0.875rem; line-height: 1.625; margin-bottom: 0.75rem; margin-top: 1em; }
-          .content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; margin-top: 1em; }
-          .content ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; margin-top: 1em; }
-          .content li { font-size: 0.875rem; }
-          .content blockquote { border-left: 4px solid rgba(0,0,0,0.2); padding-left: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; margin: 1rem 0; font-style: italic; color: #666; background: rgba(0,0,0,0.02); }
-          .content hr { border-top: 2px solid #ccc; margin: 1.5rem 0; text-align: center; }
-          .content img { max-width: 100%; border-radius: 0.5rem; margin: 1rem 0; }
-          .content a { color: #2563eb; text-decoration: underline; }
-          .content mark { background: #fef08a; padding: 0 0.125rem; border-radius: 0.125rem; }
-          .content table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
-          .content th, .content td { border: 1px solid #ccc; padding: 0.5rem 0.75rem; text-align: left; }
-          .content th { background: #f3f4f6; font-weight: 600; color: #374151; }
-
-          /* ── Footer ── */
-          .doc-footer {
-            margin-top: 48px;
-            padding-top: 16px;
-            border-top: 1.5px solid #d1d5db;
-            font-size: 10px;
-            color: #9ca3af;
-            text-align: center;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-          }
-
-          @media print {
-            body { padding: 0; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="letterhead">
-          <div>
-            ${props.companyProfile?.logo ? `<img src="${props.companyProfile.logo}" />` : ''}
-          </div>
-          <div class="letterhead-info">
-            <h2>${props.companyProfile?.name || ''}</h2>
-            <p>${props.companyProfile?.address || ''}</p>
-            <p>${props.companyProfile?.city || ''}, ${props.companyProfile?.state || ''} ${props.companyProfile?.zip || ''}</p>
-            <p>${props.companyProfile?.phone1 || ''}</p>
-            <p>${props.companyProfile?.email || ''}</p>
-            <p>${props.companyProfile?.website?.replace(/^https?:\/\//, '') || ''}</p>
-            <p>License: ${props.companyProfile?.licenseNumber || ''}</p>
-          </div>
-        </div>
-        <div class="content">
-          <div style="font-size: 1.5rem; font-weight: 800; text-align: right; margin-bottom: 2rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; color: #111;">
-            Contract #${ct.contractNumber || ''}
-          </div>
-          ${mergedHTML}
-        </div>
-
-        <div class="doc-footer">
-          ${props.companyProfile?.name || ''} &middot; Generated ${printDate} &middot; Contract #${ct.contractNumber || ''}
-        </div>
-      </body>
-    </html>
-  `
-
-  // 3. Create a hidden iframe
-  const iframe = document.createElement('iframe')
-  iframe.style.position = 'absolute'
-  iframe.style.width = '0'
-  iframe.style.height = '0'
-  iframe.style.border = 'none'
-  document.body.appendChild(iframe)
-
-  // 4. Write string to iframe document
-  const doc = iframe.contentWindow?.document
-  if (doc) {
-    doc.open()
-    doc.write(docHTML)
-    doc.close()
-
-    // 5. Trigger print after images load
+  try {
+    // Call the dedicated backend endpoint
+    const res: any = await $fetch(`/api/contracts/download-pdf/${ct._id}`, { responseType: 'blob' })
+    
+    // Create an object URL from the blob
+    const url = URL.createObjectURL(res)
+    
+    // Create an invisible download link
+    const a = document.createElement('a')
+    a.style.display = 'none'
+    a.href = url
+    a.download = `Contract_${ct.contractNumber}.pdf`
+    
+    // Append to body, click natively to trigger download, and cleanup
+    document.body.appendChild(a)
+    a.click()
+    
     setTimeout(() => {
-      iframe.contentWindow?.focus()
-      iframe.contentWindow?.print()
-      setTimeout(() => {
-        document.body.removeChild(iframe)
-        toast.dismiss()
-        toast.success('Print dialog opened')
-      }, 1000)
-    }, 500) // Small delay to allow images to load
-  } else {
-    toast.error('Could not generate PDF')
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.dismiss()
+      toast.success('PDF downloaded successfully')
+    }, 600)
+    
+  } catch (err: any) {
+    toast.dismiss()
+    toast.error('Could not generate PDF', { description: err?.message || 'Server error' })
   }
 }
+
 
 </script>
 
@@ -388,25 +195,28 @@ async function downloadPDF(ct: any) {
                       <h4 class="text-sm font-bold leading-none">Contract Timeline</h4>
                     </div>
                     <div class="space-y-4 relative">
-                      <!-- Timeline vertical line -->
-                      <div class="absolute left-[11px] top-2 bottom-3 w-px bg-border/80"></div>
+                      <!-- Timeline vertical line (Progress Bar) -->
+                      <div class="absolute left-[11px] top-2 bottom-3 w-[2px] bg-muted/60 rounded-full"></div>
+                      <div class="absolute left-[11px] top-2 w-[2px] bg-primary rounded-full transition-all duration-500"
+                           :class="ct.customerSignatureDate ? 'bottom-3' : ct.sentAt ? 'bottom-[50%]' : 'h-0'"></div>
 
                       <!-- Created Node -->
-                      <div class="flex items-start gap-4 relative z-10 w-full">
-                        <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background bg-zinc-200 dark:bg-zinc-800 text-zinc-500 shadow-sm">
-                          <Icon name="i-lucide-file-plus" class="size-3" />
+                      <div class="flex items-start gap-4 relative z-10 w-full" :class="{ 'opacity-100': ct.createdAt, 'opacity-40': !ct.createdAt }">
+                        <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background transition-colors shadow-sm"
+                          :class="ct.createdAt ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'">
+                          <Icon :name="ct.createdAt ? 'i-lucide-check' : 'i-lucide-file-plus'" class="size-3" />
                         </div>
                         <div class="flex-1 min-w-0 pt-0.5">
-                          <p class="text-xs font-bold leading-none">Draft Created</p>
+                          <p class="text-xs font-bold leading-none" :class="{ 'text-muted-foreground': !ct.createdAt }">Draft Created</p>
                           <p class="text-[10px] text-muted-foreground mt-1.5">{{ formatDate(ct.createdAt) }}</p>
                         </div>
                       </div>
 
                       <!-- Sent Node -->
-                      <div class="flex items-start gap-4 relative z-10 w-full">
+                      <div class="flex items-start gap-4 relative z-10 w-full" :class="{ 'opacity-100': ct.sentAt, 'opacity-40': !ct.sentAt }">
                         <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background transition-colors shadow-sm"
-                          :class="ct.sentAt ? 'bg-blue-500 text-white' : 'bg-muted text-muted-foreground'">
-                          <Icon :name="ct.sentAt ? 'i-lucide-send' : 'i-lucide-clock'" class="size-3" />
+                          :class="ct.sentAt ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'">
+                          <Icon :name="ct.sentAt ? 'i-lucide-check' : 'i-lucide-send'" class="size-3" />
                         </div>
                         <div class="flex-1 min-w-0 pt-0.5">
                           <p class="text-xs font-bold leading-none" :class="{ 'text-muted-foreground': !ct.sentAt }">Sent for Signature</p>
@@ -415,10 +225,10 @@ async function downloadPDF(ct: any) {
                       </div>
 
                       <!-- Signed Node -->
-                      <div class="flex items-start gap-4 relative z-10 w-full">
+                      <div class="flex items-start gap-4 relative z-10 w-full" :class="{ 'opacity-100': ct.customerSignatureDate, 'opacity-40': !ct.customerSignatureDate }">
                         <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background transition-colors shadow-sm"
                           :class="ct.customerSignatureDate ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'">
-                          <Icon :name="ct.customerSignatureDate ? 'i-lucide-check-check' : 'i-lucide-pen-line'" class="size-3" />
+                          <Icon :name="ct.customerSignatureDate ? 'i-lucide-check' : 'i-lucide-pen-line'" class="size-3" />
                         </div>
                         <div class="flex-1 min-w-0 pt-0.5">
                           <p class="text-xs font-bold leading-none" :class="{ 'text-muted-foreground': !ct.customerSignatureDate }">Client Signed</p>
@@ -485,7 +295,9 @@ async function downloadPDF(ct: any) {
                       <h4 class="text-sm font-bold leading-none">Contract Timeline</h4>
                     </div>
                     <div class="space-y-4 relative">
-                      <div class="absolute left-[11px] top-2 bottom-3 w-px bg-border/80"></div>
+                      <div class="absolute left-[11px] top-2 bottom-3 w-[2px] bg-muted/60 rounded-full"></div>
+                      <div class="absolute left-[11px] top-2 w-[2px] bg-primary rounded-full transition-all duration-500"
+                           :class="ct.customerSignatureDate ? 'bottom-3' : ct.sentAt ? 'bottom-[50%]' : 'h-0'"></div>
                       <div class="flex items-start gap-4 relative z-10 w-full">
                         <div class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background bg-zinc-200 text-zinc-500 shadow-sm">
                           <Icon name="i-lucide-file-plus" class="size-3" />
