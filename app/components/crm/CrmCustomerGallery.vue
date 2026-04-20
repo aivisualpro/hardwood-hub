@@ -88,17 +88,28 @@ async function handleFileSubmit(event: Event) {
           if (item.progress < 90) item.progress += 5
         }, 300)
 
-        const res = await $fetch<any>('/api/upload/cloudinary', {
+        const sigRes = await $fetch<{ signature: string, timestamp: number, cloudName: string, apiKey: string, folder: string }>('/api/upload/cloudinary-signature', {
+          params: { folder: 'hardwood-hub/crm/gallery' }
+        })
+
+        const fd = new FormData()
+        fd.append('file', dataUrl)
+        fd.append('api_key', sigRes.apiKey)
+        fd.append('timestamp', String(sigRes.timestamp))
+        fd.append('signature', sigRes.signature)
+        fd.append('folder', sigRes.folder)
+
+        const clRes = await $fetch<any>(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/auto/upload`, {
           method: 'POST',
-          body: { file: dataUrl, folder: 'hardwood-hub/crm/gallery' }
+          body: fd
         })
         
         clearInterval(interval)
         item.progress = 100
         
-        if (res.success && res.url) {
+        if (clRes && clRes.secure_url) {
           uploadedImages.push({
-            url: res.url,
+            url: clRes.secure_url,
             caption: '',
             uploadedAt: new Date().toISOString()
           })

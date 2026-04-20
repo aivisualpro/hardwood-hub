@@ -141,12 +141,26 @@ async function onFileChange(e: Event) {
     // Use WebP or JPEG for much smaller payload size (~70% compression)
     const base64 = canvas.toDataURL('image/jpeg', 0.8)
 
-    // 4. Send the much-smaller optimized string to the server
-    const res = await $fetch<{ success: boolean, url: string }>('/api/upload/cloudinary', {
-      method: 'POST',
-      body: { file: base64 },
+    // 4. Send the much-smaller optimized string directly to Cloudinary
+    const sigRes = await $fetch<{ signature: string, timestamp: number, cloudName: string, apiKey: string, folder: string }>('/api/upload/cloudinary-signature', {
+      params: { folder: 'hardwood-hub/uploads' }
     })
-    form.value.profileImage = res.url // store only the Cloudinary URL
+    
+    const fd = new FormData()
+    fd.append('file', base64)
+    fd.append('api_key', sigRes.apiKey)
+    fd.append('timestamp', String(sigRes.timestamp))
+    fd.append('signature', sigRes.signature)
+    fd.append('folder', sigRes.folder)
+
+    const clRes = await $fetch<any>(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/auto/upload`, {
+      method: 'POST',
+      body: fd
+    })
+    
+    if (clRes && clRes.secure_url) {
+      form.value.profileImage = clRes.secure_url // store only the Cloudinary URL
+    }
     uploadingImage.value = false
   } catch (e: any) {
     uploadingImage.value = false
