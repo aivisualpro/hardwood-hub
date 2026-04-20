@@ -345,7 +345,7 @@ function insertImage() {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.15;
-  color: hsl(var(--foreground));
+  color: var(--foreground);
   min-height: 992px;
   width: 816px;
   min-width: 816px;
@@ -445,7 +445,7 @@ function insertImage() {
   padding-bottom: 0.5rem;
   margin: 1rem 0;
   font-style: italic;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   background: hsl(var(--primary) / 0.05);
   border-radius: 0 0.5rem 0.5rem 0;
 }
@@ -463,7 +463,7 @@ function insertImage() {
 
 .contract-editor-content a,
 .contract-editor-content .editor-link {
-  color: hsl(var(--primary));
+  color: var(--primary);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -511,7 +511,7 @@ function insertImage() {
 /* Placeholder: only show when the entire editor is blank */
 .contract-editor-content .tiptap.is-editor-empty .is-empty::before {
   content: attr(data-placeholder);
-  color: hsl(var(--muted-foreground) / 0.4);
+  color: var(--muted-foreground);
   pointer-events: none;
   float: left;
   height: 0;
@@ -525,7 +525,7 @@ function insertImage() {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   transition: all 0.15s ease;
   border: none;
   background: transparent;
@@ -534,7 +534,7 @@ function insertImage() {
 
 .contract-toolbar-btn:hover {
   background: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
+  color: var(--accent-foreground);
 }
 
 .contract-toolbar-btn:disabled {
@@ -544,7 +544,7 @@ function insertImage() {
 
 .contract-toolbar-btn.is-active {
   background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
+  color: var(--primary);
 }
 
 /* ─── Bubble Menu ─── */
@@ -555,7 +555,7 @@ function insertImage() {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   transition: all 0.1s ease;
   border: none;
   background: transparent;
@@ -564,12 +564,12 @@ function insertImage() {
 
 .bubble-btn:hover {
   background: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
+  color: var(--accent-foreground);
 }
 
 .bubble-btn.is-active {
   background: hsl(var(--primary) / 0.15);
-  color: hsl(var(--primary));
+  color: var(--primary);
 }
 
 /* ─── Animations ─── */
