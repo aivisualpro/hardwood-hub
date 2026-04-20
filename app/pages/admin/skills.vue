@@ -1099,8 +1099,11 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                     >
                       <!-- ── VIEW MODE ── -->
                       <template v-if="editingSkillId !== sk._id">
-                        <!-- Action buttons (top-right, hover) -->
-                        <div v-if="canUpdate() || canDelete()" class="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 flex gap-0.5 sm:gap-1 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity">
+                        <!-- Skill text -->
+                        <p class="text-xs sm:text-sm leading-relaxed pb-6">{{ sk.name }}</p>
+
+                        <!-- Action buttons (bottom-right, hover) -->
+                        <div v-if="canUpdate() || canDelete()" class="absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 flex gap-0.5 sm:gap-1 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity">
                           <button
                             class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                             title="Skill Info"
@@ -1123,9 +1126,6 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                             <Icon name="i-lucide-trash-2" class="size-3" />
                           </button>
                         </div>
-
-                        <!-- Skill text -->
-                        <p class="text-xs sm:text-sm leading-relaxed pr-10 sm:pr-12">{{ sk.name }}</p>
                       </template>
 
                       <!-- ── EDIT MODE (inline) ── -->
@@ -1376,7 +1376,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
         <div class="flex flex-col gap-2 py-2">
           <ClientOnly>
-            <ContractsEditor v-model="skillInfoText" />
+            <SimpleEditor v-model="skillInfoText" />
             <template #fallback>
               <textarea
                 v-model="skillInfoText"
