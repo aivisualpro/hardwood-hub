@@ -1,7 +1,6 @@
 // GET /api/contracts/sign/:token — fetch contract details for signing
 // POST /api/contracts/sign/:token — submit signature
-// @ts-ignore: No types available for html-pdf-node
-import htmlPdf from 'html-pdf-node'
+import { generatePdfFromHtml } from '../../../utils/pdf-generator'
 // @ts-ignore: IDE cache invalidation workaround
 import { PDFDocument } from 'pdf-lib'
 import { connectDB } from '../../../utils/mongoose'
@@ -353,7 +352,7 @@ export default defineEventHandler(async (event) => {
           </body>
           </html>
         `
-        const pdfBuffer = await htmlPdf.generatePdf({ content: pdfHTML }, { format: 'Letter', margin: { top: '32px', right: '40px', bottom: '32px', left: '40px' } })
+        const pdfBuffer = await generatePdfFromHtml(pdfHTML)
         
         let finalPdfBuffer = pdfBuffer;
         if (contract.attachedPdf) {
