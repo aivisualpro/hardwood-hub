@@ -39,6 +39,8 @@ export default defineNuxtConfig({
       onwarn(warning: any, warn: any) {
         // Suppress puppeteer-core ESM decorator rewriting noise
         if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('puppeteer')) return
+        if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('nitropack')) return
+        if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('nitro')) return
         warn(warning)
       },
     },
