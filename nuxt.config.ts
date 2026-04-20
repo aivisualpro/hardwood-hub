@@ -28,11 +28,12 @@ export default defineNuxtConfig({
     // Keep chromium as a true node_modules external — do NOT inline/bundle it
     // It needs to exist on disk so it can decompress to /tmp at runtime
     externals: {
-      external: ['@sparticuz/chromium', 'puppeteer-core'],
+      external: ['@sparticuz/chromium-min', 'puppeteer-core'],
     },
     vercel: {
       functions: {
         maxDuration: 60,
+        memory: 3008
       },
     },
     rollupConfig: {
