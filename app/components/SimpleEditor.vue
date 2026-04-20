@@ -43,22 +43,8 @@ const editor = useEditor({
       class: 'simple-editor-content focus:outline-none max-w-full',
     },
   },
-  onCreate() {
-    setTimeout(() => {
-      emit('update:pages', calculatePages())
-    }, 100)
-  },
   onUpdate({ editor: ed }) {
     emit('update:modelValue', ed.getHTML())
-    emit('update:pages', calculatePages())
-  },
-  onSelectionUpdate: ({ editor: ed }) => {
-    const attrs = ed.getAttributes('textStyle')
-    if (attrs && attrs.fontSize) {
-      currentFontSize.value = attrs.fontSize.replace('px', '')
-    } else {
-      currentFontSize.value = '14'
-    }
   },
 })
 
