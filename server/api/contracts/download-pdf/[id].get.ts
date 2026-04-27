@@ -238,7 +238,7 @@ export default defineEventHandler(async (event) => {
   // Always run through pdf-lib for compression via useObjectStreams
   let finalPdfBuffer: Buffer;
   try {
-    const mainPdf = await PDFDocument.load(pdfBuffer);
+    const mainPdf = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
 
     // Merge attached PDF if present
     if (contract.attachedPdf) {
@@ -254,7 +254,7 @@ export default defineEventHandler(async (event) => {
           attachedPdfBuffer = Buffer.from(attachedBase64, 'base64');
         }
 
-        const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer);
+        const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer, { ignoreEncryption: true });
         const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices());
         copiedPages.forEach((page: any) => {
           mainPdf.addPage(page);
