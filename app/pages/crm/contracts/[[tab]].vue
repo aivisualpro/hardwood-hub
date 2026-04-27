@@ -163,6 +163,8 @@ interface TemplateVariable {
   options?: string[]
   required: boolean
   scope?: 'template' | 'client'
+  _isNew?: boolean
+  _optionsText?: string
 }
 
 interface ContractTemplate {
@@ -352,12 +354,8 @@ async function saveTemplate() {
       }
   });
 
-  // Remove template-scoped variables that are no longer in the text
-  templateForm.value.variables = templateForm.value.variables.filter(v => {
-      if (v.scope === 'client') return true;
-      if (ignoreKeys.has(v.key)) return true;
-      return foundKeys.has(v.key);
-  });
+  // We no longer auto-delete variables to preserve manual changes to keys.
+  // The user can manually delete them via the UI if they are no longer needed.
 
   // Validate variables
   const invalidVars = templateForm.value.variables.filter(v => !v.key.trim())
@@ -408,7 +406,7 @@ async function deleteTemplate(id: string) {
 }
 
 function addVariable(scope: 'template' | 'client' = 'template') {
-  templateForm.value.variables.push({ key: '', label: '', type: 'text', defaultValue: '', required: false, scope })
+  templateForm.value.variables.push({ key: '', label: '', type: 'text', defaultValue: '', required: false, scope, _isNew: true })
 }
 
 function removeVariable(idx: number) {
@@ -445,6 +443,36 @@ function moveVariable(idx: number, direction: 'up' | 'down') {
       }
     }
   }
+}
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function syncVariableKeyAndContent(v: any) {
+  const oldKey = v.key
+  const newLabel = v.label
+  
+  if (!oldKey) {
+    v.key = newLabel
+    return
+  }
+  
+  if (newLabel && oldKey !== newLabel) {
+    const regex = new RegExp(`\\{\\{${escapeRegExp(oldKey)}\\}\\}`, 'g')
+    templateForm.value.content = templateForm.value.content.replace(regex, `{{${newLabel}}}`)
+    v.key = newLabel
+  }
+}
+
+function initOptionsText(v: any) {
+  if (v._optionsText === undefined) {
+    v._optionsText = (v.options || []).join(', ')
+  }
+}
+
+function updateOptions(v: any) {
+  v.options = (v._optionsText || '').split(',').map((s: string) => s.trim()).filter(Boolean)
 }
 
 function insertVariable(key: string) {
@@ -680,33 +708,47 @@ const TYPE_ICONS: Record<string, string> = {
                     </div>
                     <div class="divide-y divide-border/30">
                       <div v-for="(v, idx) in templateForm.variables" :key="idx">
-                        <div v-if="!v.scope || v.scope === 'template'" class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
-                          <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" @click="insertVariable(v.key)" title="Insert into document">
-                            <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
-                          </button>
-                          <input v-model="v.key" :readonly="v.key === 'contract_number'" placeholder="variable_key" class="flex-1 min-w-0 text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5 outline-none" :class="{ 'opacity-80 cursor-default': v.key === 'contract_number' }">
-                          <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[68px]">
-                            <option value="text">Text</option>
-                            <option value="date">Date</option>
-                            <option value="number">Number</option>
-                            <option value="currency">Currency</option>
-                            <option value="textarea">Multi</option>
-                          </select>
-                          <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
-                            <input type="checkbox" :id="'req-'+idx" v-model="v.required" :disabled="v.key === 'contract_number'" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer disabled:opacity-50">
-                            <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
-                          </div>
-                          <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }">
-                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
-                              <Icon name="i-lucide-chevron-up" class="size-3" />
+                        <div v-if="!v.scope || v.scope === 'template'">
+                          <div class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
+                            <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" @click="insertVariable(v.key)" title="Insert into document">
+                              <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
                             </button>
-                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
-                              <Icon name="i-lucide-chevron-down" class="size-3" />
+                            <div class="flex-1 min-w-0 relative group">
+                              <input v-model="v.label" @input="syncVariableKeyAndContent(v)" :readonly="v.key === 'contract_number'" placeholder="Variable Name" class="w-full text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 focus:border-amber-500/50 rounded px-2 py-1.5 outline-none transition-all pr-12" :class="{ 'opacity-80 cursor-default': v.key === 'contract_number' }">
+                              <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                                <span class="text-[8px] font-mono font-bold text-amber-500/50 bg-amber-500/10 px-1 py-0.5 rounded max-w-[60px] truncate" :title="v.key">
+                                  {{ v.key || 'key' }}
+                                </span>
+                              </div>
+                            </div>
+                            <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[72px]">
+                              <option value="text">Text</option>
+                              <option value="date">Date</option>
+                              <option value="number">Number</option>
+                              <option value="currency">Currency</option>
+                              <option value="select">Dropdown</option>
+                              <option value="textarea">LongText</option>
+                            </select>
+                            <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
+                              <input type="checkbox" :id="'req-'+idx" v-model="v.required" :disabled="v.key === 'contract_number'" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer disabled:opacity-50">
+                              <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
+                            </div>
+                            <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }">
+                              <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
+                                <Icon name="i-lucide-chevron-up" class="size-3" />
+                              </button>
+                              <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
+                                <Icon name="i-lucide-chevron-down" class="size-3" />
+                              </button>
+                            </div>
+                            <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }">
+                              <Icon name="i-lucide-x" class="size-3.5" />
                             </button>
                           </div>
-                          <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }">
-                            <Icon name="i-lucide-x" class="size-3.5" />
-                          </button>
+                          <!-- Dropdown Options Input -->
+                          <div v-if="v.type === 'select'" class="px-2 pb-2 pl-10 border-b border-border/20 last:border-0 bg-muted/5">
+                            <input v-model="v._optionsText" @focus="initOptionsText(v)" @input="updateOptions(v)" placeholder="Enter dropdown options separated by commas (e.g. Option A, Option B)" class="w-full text-[10px] font-medium bg-background border border-amber-500/20 rounded px-2 py-1.5 outline-none focus:border-amber-500/50 shadow-sm text-foreground">
+                          </div>
                         </div>
                       </div>
                       <div v-if="!templateForm.variables.some(v => !v.scope || v.scope === 'template')" class="p-4 text-center">
@@ -726,34 +768,48 @@ const TYPE_ICONS: Record<string, string> = {
                     </div>
                     <div class="divide-y divide-border/30">
                       <div v-for="(v, idx) in templateForm.variables" :key="idx">
-                        <div v-if="v.scope === 'client'" class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
-                          <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" @click="insertVariable(v.key)" title="Insert into document">
-                            <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
-                          </button>
-                          <input v-model="v.key" placeholder="variable_key" class="flex-1 min-w-0 text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded px-2 py-1.5 outline-none">
-                          <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[68px]">
-                            <option value="text">Text</option>
-                            <option value="date">Date</option>
-                            <option value="number">Number</option>
-                            <option value="currency">Currency</option>
-                            <option value="textarea">Multi</option>
-                            <option value="signature">Sign</option>
-                          </select>
-                          <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
-                            <input type="checkbox" :id="'req-'+idx" v-model="v.required" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer">
-                            <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
-                          </div>
-                          <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
-                              <Icon name="i-lucide-chevron-up" class="size-3" />
+                        <div v-if="v.scope === 'client'">
+                          <div class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
+                            <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" @click="insertVariable(v.key)" title="Insert into document">
+                              <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
                             </button>
-                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
-                              <Icon name="i-lucide-chevron-down" class="size-3" />
+                            <div class="flex-1 min-w-0 relative group">
+                              <input v-model="v.label" @input="syncVariableKeyAndContent(v)" placeholder="Variable Name" class="w-full text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 focus:border-blue-500/50 rounded px-2 py-1.5 outline-none transition-all pr-12">
+                              <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                                <span class="text-[8px] font-mono font-bold text-blue-500/50 bg-blue-500/10 px-1 py-0.5 rounded max-w-[60px] truncate" :title="v.key">
+                                  {{ v.key || 'key' }}
+                                </span>
+                              </div>
+                            </div>
+                            <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[72px]">
+                              <option value="text">Text</option>
+                              <option value="date">Date</option>
+                              <option value="number">Number</option>
+                              <option value="currency">Currency</option>
+                              <option value="select">Dropdown</option>
+                              <option value="textarea">LongText</option>
+                              <option value="signature">Sign</option>
+                            </select>
+                            <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
+                              <input type="checkbox" :id="'req-'+idx" v-model="v.required" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer">
+                              <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
+                            </div>
+                            <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
+                                <Icon name="i-lucide-chevron-up" class="size-3" />
+                              </button>
+                              <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
+                                <Icon name="i-lucide-chevron-down" class="size-3" />
+                              </button>
+                            </div>
+                            <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
+                              <Icon name="i-lucide-x" class="size-3.5" />
                             </button>
                           </div>
-                          <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
-                            <Icon name="i-lucide-x" class="size-3.5" />
-                          </button>
+                          <!-- Dropdown Options Input -->
+                          <div v-if="v.type === 'select'" class="px-2 pb-2 pl-10 border-b border-border/20 last:border-0 bg-muted/5">
+                            <input v-model="v._optionsText" @focus="initOptionsText(v)" @input="updateOptions(v)" placeholder="Enter dropdown options separated by commas (e.g. Option A, Option B)" class="w-full text-[10px] font-medium bg-background border border-blue-500/20 rounded px-2 py-1.5 outline-none focus:border-blue-500/50 shadow-sm text-foreground">
+                          </div>
                         </div>
                       </div>
                       <div v-if="!templateForm.variables.some(v => v.scope === 'client')" class="p-4 text-center">
