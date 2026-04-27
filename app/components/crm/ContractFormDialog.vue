@@ -172,7 +172,7 @@ async function handlePdfUpload(e: Event) {
     toast.loading(`Uploading ${sizeMB}MB PDF to Vercel Blob…`, { id: 'pdf-upload' })
 
     const newBlob = await upload(`hardwood-hub/contracts/raw/${file.name}`, file, {
-      access: 'public',
+      access: 'private',
       handleUploadUrl: '/api/upload/blob-token',
     })
 
