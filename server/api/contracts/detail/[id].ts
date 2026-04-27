@@ -24,7 +24,20 @@ export default defineEventHandler(async (event) => {
     }
 
     if (event.method === 'DELETE') {
-        await Contract.findByIdAndDelete(id)
+        const doc = await Contract.findById(id).lean()
+        if (doc) {
+            // Cleanup Vercel Blobs if attached
+            if (doc.attachedPdf && (doc.attachedPdf.includes('vercel-storage.com') || doc.attachedPdf.includes('vercel.com'))) {
+                try {
+                    const { del } = await import('@vercel/blob')
+                    await del(doc.attachedPdf, { token: process.env.BLOB_READ_WRITE_TOKEN })
+                    console.log('[vercel-blob] Deleted attached PDF:', doc.attachedPdf)
+                } catch (e: any) {
+                    console.warn('[vercel-blob] Failed to delete blob:', e.message)
+                }
+            }
+            await Contract.findByIdAndDelete(id)
+        }
         return { success: true }
     }
 
