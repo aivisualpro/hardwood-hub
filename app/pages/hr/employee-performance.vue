@@ -1483,11 +1483,11 @@ async function deleteSelected() {
 
     <!-- Modals -->
     <Dialog v-model:open="showCatPdfModal">
-      <DialogContent class="sm:max-w-4xl h-[90vh] flex flex-col p-4 sm:p-6">
+      <DialogContent class="w-[95vw] max-h-[90vh] sm:max-w-4xl h-[90vh] flex flex-col p-4 sm:p-6">
         <DialogHeader class="shrink-0 flex justify-between items-start">
           <div>
-            <DialogTitle>{{ activeCatName }} Documentation</DialogTitle>
-            <DialogDescription>Official PDF guide for this category.</DialogDescription>
+            <DialogTitle class="text-base sm:text-lg">{{ activeCatName }} Documentation</DialogTitle>
+            <DialogDescription class="text-xs sm:text-sm">Official PDF guide for this category.</DialogDescription>
           </div>
         </DialogHeader>
         <div class="flex flex-col gap-4 py-2 flex-1 min-h-0 overflow-hidden">
@@ -1495,42 +1495,42 @@ async function deleteSelected() {
             <iframe :src="activeCatPdfUrl.includes('#') ? activeCatPdfUrl + '&toolbar=0&navpanes=0&scrollbar=0' : activeCatPdfUrl + '#toolbar=0&navpanes=0&scrollbar=0'" class="w-full h-full pointer-events-auto" style="overflow: hidden;" frameborder="0"></iframe>
           </div>
         </div>
-        <DialogFooter class="flex items-center justify-between shrink-0 pt-4 border-t border-border/40 mt-2">
+        <DialogFooter class="flex flex-row items-center justify-between shrink-0 pt-4 border-t border-border/40 mt-2 gap-2">
            <div class="flex gap-2">
               <Button variant="outline" size="sm" as="a" :href="activeCatPdfUrl" download="Category_Documentation.pdf" target="_blank" class="text-primary hover:text-primary">
-                 <Icon name="i-lucide-download" class="mr-1.5 size-3.5" />
+                 <Icon name="i-lucide-download" class="mr-1 sm:mr-1.5 size-3.5" />
                  Download
               </Button>
            </div>
-           <Button variant="outline" @click="showCatPdfModal = false">Close</Button>
+           <Button variant="outline" size="sm" @click="showCatPdfModal = false">Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
     <Dialog v-model:open="showSkillInfoModal">
-      <DialogContent class="sm:max-w-2xl sm:max-h-[85vh] flex flex-col p-0">
-        <DialogHeader class="px-6 py-5 border-b border-border/40 bg-muted/20 shrink-0">
-          <DialogTitle class="text-lg">{{ activeSkillName }}</DialogTitle>
-          <DialogDescription>Standard Operating Procedure & Requirements</DialogDescription>
+      <DialogContent class="w-[95vw] max-h-[85vh] sm:max-w-2xl flex flex-col p-0">
+        <DialogHeader class="px-4 py-4 sm:px-6 sm:py-5 border-b border-border/40 bg-muted/20 shrink-0">
+          <DialogTitle class="text-base sm:text-lg">{{ activeSkillName }}</DialogTitle>
+          <DialogDescription class="text-xs sm:text-sm">Standard Operating Procedure & Requirements</DialogDescription>
         </DialogHeader>
-        <div class="p-6 flex-1 min-h-[200px] overflow-y-auto w-full">
-          <div class="simple-editor-content prose prose-sm dark:prose-invert max-w-full prose-p:leading-relaxed prose-headings:font-semibold !p-0" v-html="activeSkillInfoText"></div>
+        <div class="p-4 sm:p-6 flex-1 min-h-0 overflow-y-auto w-full">
+          <div class="simple-editor-content prose prose-sm dark:prose-invert max-w-full prose-p:leading-relaxed prose-headings:font-semibold break-words !p-0" v-html="activeSkillInfoText"></div>
         </div>
-        <DialogFooter class="px-6 py-4 border-t border-border/40 bg-muted/5 shrink-0">
-          <Button variant="outline" @click="showSkillInfoModal = false">Close</Button>
+        <DialogFooter class="px-4 py-3 sm:px-6 sm:py-4 border-t border-border/40 bg-muted/5 shrink-0 flex-row justify-end">
+          <Button variant="outline" size="sm" @click="showSkillInfoModal = false">Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
 
     <!-- ══════════════════════ SUB-CATEGORY BONUS RULES MODAL ══════════════════════ -->
     <Dialog v-model:open="showSubRulesModal">
-      <DialogContent class="sm:max-w-lg p-0 overflow-hidden">
-        <DialogHeader class="px-6 py-5 border-b border-border/40 bg-muted/20 shrink-0">
-          <DialogTitle class="text-lg flex items-center gap-2">
-            <Icon name="i-lucide-trophy" class="size-5 text-amber-500" />
+      <DialogContent class="w-[95vw] max-h-[85vh] sm:max-w-lg p-0 flex flex-col overflow-hidden">
+        <DialogHeader class="px-4 py-4 sm:px-6 sm:py-5 border-b border-border/40 bg-muted/20 shrink-0">
+          <DialogTitle class="text-base sm:text-lg flex items-center gap-2">
+            <Icon name="i-lucide-trophy" class="size-4 sm:size-5 text-amber-500" />
             {{ activeSubRulesName }}
           </DialogTitle>
-          <DialogDescription class="flex items-center gap-2">
+          <DialogDescription class="flex items-center gap-2 mt-0.5 text-xs sm:text-sm">
             Bonus Rules
             <span
               class="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded border"
@@ -1544,11 +1544,11 @@ async function deleteSelected() {
           </DialogDescription>
         </DialogHeader>
 
-        <div class="p-6 space-y-3">
-          <div v-for="(rule, ri) in activeSubRules" :key="ri" class="flex items-center gap-3 p-3.5 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/30 transition-colors">
+        <div class="p-4 sm:p-6 flex-1 min-h-0 overflow-y-auto space-y-3">
+          <div v-for="(rule, ri) in activeSubRules" :key="ri" class="flex items-center gap-2 sm:gap-3 p-3 sm:p-3.5 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/30 transition-colors">
             <!-- Level badge -->
             <div
-              class="size-10 rounded-lg flex items-center justify-center shrink-0 border"
+              class="size-8 sm:size-10 rounded-lg flex items-center justify-center shrink-0 border"
               :class="rule.skillSet === 'Mastered'
                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
                 : rule.skillSet === 'Proficient'
@@ -1557,35 +1557,35 @@ async function deleteSelected() {
             >
               <Icon
                 :name="rule.skillSet === 'Mastered' ? 'i-lucide-crown' : rule.skillSet === 'Proficient' ? 'i-lucide-award' : 'i-lucide-alert-triangle'"
-                class="size-5"
+                class="size-4 sm:size-5"
               />
             </div>
             <!-- Details -->
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold" :class="rule.skillSet === 'Mastered' ? 'text-emerald-500' : rule.skillSet === 'Proficient' ? 'text-blue-500' : 'text-amber-500'">
+              <p class="text-xs sm:text-sm font-semibold" :class="rule.skillSet === 'Mastered' ? 'text-emerald-500' : rule.skillSet === 'Proficient' ? 'text-blue-500' : 'text-amber-500'">
                 {{ rule.skillSet }}
               </p>
-              <p class="text-xs text-muted-foreground mt-0.5">
+              <p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                 {{ rule.reviewedTimes || 1 }} review{{ (rule.reviewedTimes || 1) > 1 ? 's' : '' }}
                 by <span class="font-medium text-foreground">{{ rule.supervisorCheck === 'Unique' ? 'unique supervisors' : 'any supervisor' }}</span>
               </p>
             </div>
             <!-- Bonus -->
-            <div class="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <Icon name="i-lucide-coins" class="size-3 text-amber-500" />
-              <span class="text-sm font-bold text-amber-500 tabular-nums">${{ (rule.bonusAmount || 0).toFixed(2) }}</span>
+            <div class="shrink-0 flex items-center gap-1 px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Icon name="i-lucide-coins" class="size-2.5 sm:size-3 text-amber-500" />
+              <span class="text-xs sm:text-sm font-bold text-amber-500 tabular-nums">${{ (rule.bonusAmount || 0).toFixed(2) }}</span>
             </div>
           </div>
 
           <!-- Total -->
           <div class="flex items-center justify-between pt-3 border-t border-border/40">
-            <span class="text-xs text-muted-foreground font-medium">Total Potential Bonus</span>
-            <span class="text-lg font-black text-amber-500 tabular-nums">${{ activeSubRules.reduce((s, r) => s + (r.bonusAmount || 0), 0).toFixed(2) }}</span>
+            <span class="text-[10px] sm:text-xs text-muted-foreground font-medium">Total Potential Bonus</span>
+            <span class="text-base sm:text-lg font-black text-amber-500 tabular-nums">${{ activeSubRules.reduce((s, r) => s + (r.bonusAmount || 0), 0).toFixed(2) }}</span>
           </div>
         </div>
 
-        <DialogFooter class="px-6 py-4 border-t border-border/40 bg-muted/5 shrink-0">
-          <Button variant="outline" @click="showSubRulesModal = false">Close</Button>
+        <DialogFooter class="px-4 py-3 sm:px-6 sm:py-4 border-t border-border/40 bg-muted/5 shrink-0 flex-row justify-end">
+          <Button variant="outline" size="sm" @click="showSubRulesModal = false">Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
