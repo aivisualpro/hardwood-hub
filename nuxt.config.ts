@@ -25,13 +25,10 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    // Keep these as true node_modules externals — do NOT inline/bundle them.
-    // - @sparticuz/chromium needs its binary on disk so it can decompress to /tmp at runtime
-    // - puppeteer-core ships ESM with decorators that break Rollup
-    // - sharp has prebuilt native bindings per platform (linux-x64) that must
-    //   stay in node_modules so Vercel's Lambda gets the right .node file
+    // sharp has prebuilt native bindings per platform (linux-x64) that must
+    // stay in node_modules so Vercel's Lambda gets the right .node file.
     externals: {
-      external: ['@sparticuz/chromium-min', 'puppeteer-core', 'sharp'],
+      external: ['sharp'],
     },
     vercel: {
       functions: {
@@ -133,6 +130,9 @@ export default defineNuxtConfig({
     gfPrivateApiKey: process.env.GF_PRIVATE_API_KEY,
     gmailUser: process.env.GMAIL_USER,
     gmailAppPassword: process.env.GMAIL_APP_PASSWORD,
+
+    // Browserless.io — used for server-side PDF rendering
+    browserlessToken: process.env.BROWSERLESS_TOKEN,
     public: {
       googleClientId: process.env.GOOGLE_CLIENT_ID,
     },
