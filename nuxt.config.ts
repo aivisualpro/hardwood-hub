@@ -25,15 +25,18 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    // Keep chromium as a true node_modules external — do NOT inline/bundle it
-    // It needs to exist on disk so it can decompress to /tmp at runtime
+    // Keep these as true node_modules externals — do NOT inline/bundle them.
+    // - @sparticuz/chromium needs its binary on disk so it can decompress to /tmp at runtime
+    // - puppeteer-core ships ESM with decorators that break Rollup
+    // - sharp has prebuilt native bindings per platform (linux-x64) that must
+    //   stay in node_modules so Vercel's Lambda gets the right .node file
     externals: {
-      external: ['@sparticuz/chromium', 'puppeteer-core'],
+      external: ['@sparticuz/chromium', 'puppeteer-core', 'sharp'],
     },
     vercel: {
       functions: {
         maxDuration: 60,
-        memory: 3008
+        memory: 3008,
       },
     },
     rollupConfig: {
