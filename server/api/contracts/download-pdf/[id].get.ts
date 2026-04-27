@@ -25,50 +25,7 @@ const safeFetch = async (url: string, timeoutMs = 8000, options: RequestInit = {
   }
 }
 
-/**
- * Upload a PDF buffer to Cloudinary and return the public URL.
- * Used as a fallback when the PDF is too large to return directly through Vercel.
- */
-async function uploadPdfToCloudinary(buffer: Buffer, filename: string): Promise<string> {
-  const config = useRuntimeConfig()
-  cloudinary.config({
-    cloud_name: config.cloudinaryCloudName,
-    api_key: config.cloudinaryApiKey,
-    api_secret: config.cloudinaryApiSecret,
-  })
-
-  const fs = await import('fs')
-  const path = await import('path')
-  const os = await import('os')
-
-  const tmpPath = path.join(
-    os.tmpdir(),
-    `${filename}_${Date.now()}_${Math.random().toString(36).slice(2)}.pdf`,
-  )
-  fs.writeFileSync(tmpPath, buffer)
-
-  try {
-    const result = await new Promise<any>((resolve, reject) => {
-      cloudinary.uploader.upload_large(
-        tmpPath,
-        {
-          folder: 'hardwood-hub/contracts/generated',
-          resource_type: 'raw',
-          chunk_size: 6_000_000,
-          use_filename: true,
-          unique_filename: true,
-        },
-        (err, res) => {
-          if (err) return reject(err)
-          resolve(res)
-        },
-      )
-    })
-    return result.secure_url
-  } finally {
-    try { fs.unlinkSync(tmpPath) } catch (e) { /* ignore */ }
-  }
-}
+import { Readable } from 'stream'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -333,35 +290,14 @@ export default defineEventHandler(async (event) => {
 
     const filename = `Contract_${contract.contractNumber || contract._id}`
 
-    // If the PDF is bigger than what Vercel can return as a body (~4.5MB),
-    // upload to Cloudinary and return its URL as JSON. We do NOT redirect —
-    // a 302 to Cloudinary trips CORS when the fetch has credentials.
-    if (finalPdfBuffer.length > VERCEL_BODY_LIMIT_BYTES) {
-      console.log(`[pdf-download] PDF over ${VERCEL_BODY_LIMIT_BYTES} bytes → routing via Cloudinary`)
-      try {
-        const cloudUrl = await uploadPdfToCloudinary(finalPdfBuffer, filename)
-        // fl_attachment tells Cloudinary to send a Content-Disposition header
-        // so the browser downloads the file instead of viewing it inline.
-        const downloadUrl = cloudUrl.replace('/upload/', `/upload/fl_attachment:${filename}/`)
-        setResponseHeader(event, 'Content-Type', 'application/json')
-        return {
-          large: true,
-          downloadUrl,
-          filename: `${filename}.pdf`,
-          sizeBytes: finalPdfBuffer.length,
-        }
-      } catch (uploadErr: any) {
-        console.error('[pdf-download] Cloudinary fallback upload failed:', uploadErr?.message)
-        throw createError({
-          statusCode: 500,
-          statusMessage: `PDF too large for direct download and Cloudinary upload failed: ${uploadErr?.message}`,
-        })
-      }
-    }
-
-    // Small enough → return directly as binary.
     setResponseHeader(event, 'Content-Type', 'application/pdf')
     setResponseHeader(event, 'Content-Disposition', `attachment; filename="${filename}.pdf"`)
+
+    if (finalPdfBuffer.length > VERCEL_BODY_LIMIT_BYTES) {
+      console.log(`[pdf-download] PDF over ${VERCEL_BODY_LIMIT_BYTES} bytes → Streaming response`)
+      return sendStream(event, Readable.from(finalPdfBuffer))
+    }
+
     return finalPdfBuffer
   } catch (err: any) {
     console.error('[CRITICAL PDF ERROR]', err)
