@@ -16,10 +16,8 @@ export const generatePdfFromHtml = async (htmlContent: string) => {
       const module = await import('@sparticuz/chromium')
       const chromium = module.default || module
       chromium.setGraphicsMode = false
-      // Dynamically download Chromium to /tmp at runtime to bypass Vercel's 50MB bundle limits!
-      executablePath = await chromium.executablePath(
-        'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
-      )
+      // Supply empty arg to use full chromium bundle
+      executablePath = await chromium.executablePath()
       launchArgs = [
         ...chromium.args,
         '--no-sandbox',
