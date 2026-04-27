@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   try {
     const jsonResponse = await handleUpload({
       body,
-      request: event.node.req,
+      request: toWebRequest(event),
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         return {
           allowedContentTypes: ['application/pdf'],
