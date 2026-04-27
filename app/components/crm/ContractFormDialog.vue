@@ -151,8 +151,8 @@ function handlePdfUpload(e: Event) {
   }
   
   const sizeMB = (file.size / 1024 / 1024).toFixed(1)
-  if (file.size > 50 * 1024 * 1024) {
-    toast.error('PDF too large', { description: `File is ${sizeMB}MB. Maximum allowed is 50MB.` })
+  if (file.size > 4.5 * 1024 * 1024) {
+    toast.error('PDF too large for Vercel', { description: `File is ${sizeMB}MB. Vercel serverless functions strictly limit uploads to 4.5MB. Please compress your PDF locally before uploading.` })
     target.value = ''
     return
   }
