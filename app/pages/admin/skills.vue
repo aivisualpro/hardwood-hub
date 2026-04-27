@@ -46,6 +46,21 @@ const expandedSubs = ref<Set<string>>(new Set())
 const searchQuery = ref('')
 const showMobileSidebar = ref(false)
 
+const route = useRoute()
+const router = useRouter()
+
+watch(selectedCatId, (newId) => {
+  if (newId) {
+    const cat = tree.value.find(c => c._id === newId)
+    if (cat) {
+      if (route.query.category !== cat.name) {
+        router.replace({ query: { ...route.query, category: cat.name } })
+      }
+      setHeader({ title: `Skills — ${cat.name}`, icon: 'i-lucide-graduation-cap', description: 'Manage skill categories and competencies' })
+    }
+  }
+})
+
 // ─── Modal state (create only) ───────────────────────────
 const showSkillModal = ref(false)
 const savingSkill = ref(false)
@@ -400,12 +415,21 @@ async function fetchTree() {
   try {
     const res = await $fetch<{ success: boolean, data: Cat[] }>('/api/skills/tree')
     tree.value = res.data
+    const queryCat = route.query.category as string | undefined
     if (res.data.length && !selectedCatId.value) {
-      const firstCat = res.data[0]
-      if (firstCat) {
-        selectedCatId.value = firstCat._id
-        const firstSub = firstCat.subCategories[0]
-        if (firstSub) expandedSubs.value.add(firstSub._id)
+      if (queryCat) {
+        const found = res.data.find(c => c._id === queryCat || c.name === queryCat)
+        if (found) {
+          selectedCatId.value = found._id
+        } else {
+          selectedCatId.value = res.data[0]!._id
+        }
+      } else {
+        const firstCat = res.data[0]
+        if (firstCat) {
+          selectedCatId.value = firstCat._id
+          // Sub-category accordions are closed by default per user request
+        }
       }
     }
   }
@@ -1422,12 +1446,14 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
         <div class="flex flex-col gap-2 py-2">
           <ClientOnly>
-            <SimpleEditor v-model="skillInfoText" />
+            <div class="h-[400px] overflow-y-auto rounded-md border border-input">
+              <SimpleEditor v-model="skillInfoText" />
+            </div>
             <template #fallback>
               <textarea
                 v-model="skillInfoText"
                 rows="10"
-                class="w-full resize-none rounded-md border border-input bg-muted/40 px-3 py-2.5 text-sm leading-relaxed"
+                class="w-full h-[400px] resize-none rounded-md border border-input bg-muted/40 px-3 py-2.5 text-sm leading-relaxed"
                 placeholder="Loading editor..."
               />
             </template>

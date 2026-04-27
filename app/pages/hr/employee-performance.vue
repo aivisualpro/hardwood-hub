@@ -8,6 +8,7 @@ setHeader({ title: 'Employee Performance', icon: 'i-lucide-bar-chart-3', descrip
 interface Employee { _id: string; employee: string; profileImage: string }
 interface SkillNode { _id: string; name: string; isRequired: boolean; category: string; subCategory: string; info?: string }
 interface BonusRule { skillSet: string; reviewedTimes: number; supervisorCheck: string; bonusAmount: number }
+interface GlobalBonusRule { _id: string; skillSet: string; reviewedTimes: number; supervisorCheck: string; bonusAmount: number }
 interface SubCatNode { _id: string; name: string; category: string; predecessor: string; predecessorName: string; bonusRules: BonusRule[]; skills: SkillNode[] }
 interface CatNode { _id: string; name: string; color: string; subCategories: SubCatNode[]; info?: string }
 interface PerfRecord {
@@ -23,6 +24,7 @@ const LEVEL_STEPS = ['Needs Improvement', 'Proficient', 'Mastered'] as const
 const employees = ref<Employee[]>([])
 const tree = ref<CatNode[]>([])
 const perfRecords = ref<PerfRecord[]>([])
+const globalBonusRules = ref<GlobalBonusRule[]>([])
 const loading = ref(true)
 const selectedEmployeeId = ref<string | null>(null)
 const expandedCats = ref<Set<string>>(new Set())
@@ -32,41 +34,62 @@ const activeView = ref<'tree' | 'table'>('tree')
 const minProgressionLevel = ref('Proficient')
 const savingSettings = ref(false)
 
-const userCookie = useCookie<{ _id: string, employee: string, email: string } | null>('hardwood_user')
+const userCookie = useCookie<{ _id: string, employee: string, email: string, position?: string } | null>('hardwood_user')
 const currentUserId = computed(() => userCookie.value?._id)
+const isSuperAdmin = computed(() => userCookie.value?.position === 'Super Admin')
+
+const route = useRoute()
+const router = useRouter()
+
+watch(selectedEmployeeId, (newId) => {
+  if (newId) {
+    const emp = employees.value.find(e => e._id === newId)
+    if (emp) {
+      if (route.query.employee !== emp.employee) {
+        router.replace({ query: { ...route.query, employee: emp.employee } })
+      }
+      setHeader({ title: `Employee Performance — ${emp.employee}`, icon: 'i-lucide-bar-chart-3', description: 'Track and manage employee skill assessments' })
+    }
+  }
+})
 
 // ─── Fetch all data ──────────────────────────────────────
 async function fetchAll() {
   loading.value = true
   try {
-    const [empRes, treeRes, perfRes, settingsRes] = await Promise.all([
+    const [empRes, treeRes, perfRes, settingsRes, bonusRes] = await Promise.all([
       $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
       $fetch<{ success: boolean, data: CatNode[] }>('/api/skills/tree'),
       $fetch<{ success: boolean, data: PerfRecord[] }>('/api/performance'),
       $fetch<{ success: boolean, data: Record<string, any> }>('/api/app-settings'),
+      $fetch<{ success: boolean, data: GlobalBonusRule[] }>('/api/skill-bonus'),
     ])
     employees.value = empRes.data
     tree.value = treeRes.data
     perfRecords.value = perfRes.data
+    globalBonusRules.value = bonusRes.data || []
     if (settingsRes.data?.minSkillProgressionLevel) {
       minProgressionLevel.value = settingsRes.data.minSkillProgressionLevel
     }
-    // Auto-select employee from query param or default to first
-    const route = useRoute()
-    const queryEmpId = route.query.employee as string | undefined
+    const queryEmp = route.query.employee as string | undefined
     if (empRes.data.length && !selectedEmployeeId.value) {
-      if (queryEmpId && empRes.data.some(e => e._id === queryEmpId)) {
-        selectedEmployeeId.value = queryEmpId
+      if (queryEmp) {
+        const found = empRes.data.find(e => e._id === queryEmp || e.employee === queryEmp)
+        if (found) {
+          selectedEmployeeId.value = found._id
+        } else {
+          selectedEmployeeId.value = empRes.data[0]!._id
+        }
       } else {
         selectedEmployeeId.value = empRes.data[0]!._id
       }
     }
-    // Expand first category by default
-    if (treeRes.data.length) {
-      expandedCats.value.add(treeRes.data[0]!._id)
-      const firstSub = treeRes.data[0]!.subCategories[0]
-      if (firstSub) expandedSubs.value.add(firstSub._id)
-    }
+    // Expand first category by default (disabled per user request)
+    // if (treeRes.data.length) {
+    //   expandedCats.value.add(treeRes.data[0]!._id)
+    //   const firstSub = treeRes.data[0]!.subCategories[0]
+    //   if (firstSub) expandedSubs.value.add(firstSub._id)
+    // }
   }
   catch (e: any) {
     toast.error('Failed to load data', { description: e?.message })
@@ -168,7 +191,9 @@ function getMyLevelDate(skillId: string, level: string): string | null {
 }
 
 // Helper: check if the current user's Proficient was on a prior date (enabling Mastered)
+// Super Admin bypasses this restriction entirely
 function canMarkMastered(skillId: string): boolean {
+  if (isSuperAdmin.value) return true
   const proficientDate = getMyLevelDate(skillId, 'Proficient')
   if (!proficientDate) return false
   // Compare dates (not times)
@@ -179,6 +204,7 @@ function canMarkMastered(skillId: string): boolean {
 
 // Helper: get the reason why Mastered is disabled
 function getMasteredDisabledReason(skillId: string): string {
+  if (isSuperAdmin.value) return '' // Super Admin bypasses all restrictions
   if (!hasMyLevel(skillId, 'Proficient')) return 'Must be marked as Proficient first'
   if (!canMarkMastered(skillId)) return 'Can mark Mastered starting tomorrow'
   return ''
@@ -204,7 +230,92 @@ const totalSkills = computed(() =>
     sum + cat.subCategories.reduce((s2, sub) => s2 + sub.skills.length, 0), 0),
 )
 
-// ─── Signal-style overview stats ─────────────────────────
+// ─── Bonus-rule-aware completion ─────────────────────────
+// Returns the applicable bonus rules for a sub-category.
+// If the sub has its own bonusRules, use those exclusively.
+// Otherwise, fall back to globalBonusRules.
+function getApplicableRules(sub: SubCatNode): BonusRule[] {
+  if (sub.bonusRules && sub.bonusRules.length > 0) return sub.bonusRules
+  return globalBonusRules.value as BonusRule[]
+}
+
+// Check if a specific level is truly "met" for a skill based on rule requirements.
+// e.g. Mastered may need 2 unique supervisors — if only 1 marked it, it's NOT met.
+function isLevelMet(skillId: string, level: string, sub: SubCatNode): boolean {
+  const rules = getApplicableRules(sub)
+  const rule = rules.find(r => r.skillSet === level)
+
+  // Get all records for this skill+level from ALL reviewers for the selected employee
+  const records = perfRecords.value.filter(
+    r => r.employee === selectedEmployeeId.value && r.skill === skillId && r.currentSkillLevel === level
+  )
+  if (records.length === 0) return false
+
+  if (!rule) {
+    // No rule defined for this level → any record counts as met
+    return records.length > 0
+  }
+
+  // Check supervisor count requirement
+  if (rule.supervisorCheck === 'Unique') {
+    const uniqueSupervisors = new Set(records.map(r => r.createdBy))
+    return uniqueSupervisors.size >= rule.reviewedTimes
+  } else {
+    // "Any" — just needs the required number of reviews (can be same supervisor)
+    return records.length >= rule.reviewedTimes
+  }
+}
+
+// Returns the highest level that is truly "met" for a skill (considering rules).
+// e.g. if Mastered requires 2 unique supervisors and only 1 exists, returns 'Proficient' at best.
+function getHighestMetLevel(skillId: string, sub: SubCatNode): string | null {
+  const visibleLevels = getVisibleLevels(sub)
+  // Walk from highest to lowest, return first met level
+  for (let i = visibleLevels.length - 1; i >= 0; i--) {
+    const level = visibleLevels[i]!
+    if (level === 'Needs Improvement') continue // NI doesn't count toward completion
+    if (isLevelMet(skillId, level, sub)) return level
+  }
+  return null
+}
+
+// Returns 0..1 weight based on which levels are truly met per bonus rules.
+// For [NI, Proficient, Mastered] target:
+//   Only Proficient met = 0.5, Both met = 1.0, Neither = 0
+// For [NI, Proficient] target (2-level rule):
+//   Proficient met = 1.0
+function skillCompletionWeight(sk: SkillNode, sub: SubCatNode): number {
+  const visibleLevels = getVisibleLevels(sub)
+  if (visibleLevels.length <= 1) return 0
+
+  const highestMet = getHighestMetLevel(sk._id, sub)
+  if (!highestMet) return 0
+
+  const metPos = LEVEL_STEPS.indexOf(highestMet as any)
+  if (metPos <= 0) return 0
+
+  const targetLevel = visibleLevels[visibleLevels.length - 1]!
+  const targetPos = LEVEL_STEPS.indexOf(targetLevel as any)
+  if (targetPos <= 0) return 0
+
+  return Math.min(metPos / targetPos, 1)
+}
+
+// Weighted percentage for a sub-category (0..100)
+function subCompletionPct(sub: SubCatNode): number {
+  if (!sub.skills.length) return 0
+  const totalWeight = sub.skills.reduce((sum, sk) => sum + skillCompletionWeight(sk, sub), 0)
+  return Math.round((totalWeight / sub.skills.length) * 100)
+}
+
+// Weighted percentage for a category (0..100)
+function catCompletionPct(cat: CatNode): number {
+  const allSkills = cat.subCategories.flatMap(sub => sub.skills.map(sk => ({ sk, sub })))
+  if (!allSkills.length) return 0
+  const totalWeight = allSkills.reduce((sum, { sk, sub }) => sum + skillCompletionWeight(sk, sub), 0)
+  return Math.round((totalWeight / allSkills.length) * 100)
+}
+
 const overallStats = computed(() => {
   const c = { mastered: 0, proficient: 0, needs: 0, unreviewed: 0 }
   for (const cat of tree.value) {
@@ -220,9 +331,19 @@ const overallStats = computed(() => {
   }
   return c
 })
-const overallPct = computed(() =>
-  totalSkills.value ? Math.round(((overallStats.value.mastered + overallStats.value.proficient) / totalSkills.value) * 100) : 0,
-)
+
+const overallPct = computed(() => {
+  if (!totalSkills.value) return 0
+  let totalWeight = 0
+  for (const cat of tree.value) {
+    for (const sub of cat.subCategories) {
+      for (const sk of sub.skills) {
+        totalWeight += skillCompletionWeight(sk, sub)
+      }
+    }
+  }
+  return Math.round((totalWeight / totalSkills.value) * 100)
+})
 function getSkillStatus(skillId: string) {
   const rec = highestPerfMap.value.get(skillId)
   if (!rec) return 'unreviewed'
@@ -381,25 +502,32 @@ const catPalette = [
 function pal(idx: number) { return catPalette[idx % catPalette.length]! }
 
 // ─── Mark skill level (progression-aware optimistic upsert) ────────────────
-async function markSkill(skill: SkillNode, level: string, catId: string) {
-  if (!selectedEmployeeId.value) return
+async function markSkill(skill: SkillNode, level: string, catId: string, silent = false) {
+  if (!selectedEmployeeId.value) return false
   if (!currentUserId.value) {
-    toast.error('You must be logged in to review')
-    return
+    if (!silent) toast.error('You must be logged in to review')
+    return false
   }
   const empId = selectedEmployeeId.value
   const myId = currentUserId.value
 
-  // ─── Client-side progression guards ─────────────────────
-  if (level === 'Mastered') {
+  // ─── Client-side progression guards (Super Admin bypasses) ─────
+  if (level === 'Mastered' && !isSuperAdmin.value) {
     if (!hasMyLevel(skill._id, 'Proficient')) {
-      toast.error('Cannot mark as Mastered', { description: 'Must be marked as Proficient first.' })
-      return
+      if (!silent) toast.error('Cannot mark as Mastered', { description: 'Must be marked as Proficient first.' })
+      return false
     }
     if (!canMarkMastered(skill._id)) {
-      toast.error('Cannot mark as Mastered today', { description: 'Proficient was marked today. Mastered can be selected starting tomorrow.' })
-      return
+      if (!silent) toast.error('Cannot mark as Mastered today', { description: 'Proficient was marked today. Mastered can be selected starting tomorrow.' })
+      return false
     }
+  }
+
+  // ─── Auto-mark Proficient when marking Mastered ─────────────
+  // If the current user hasn't marked Proficient yet, automatically create it first.
+  // This ensures Proficient is always recorded before Mastered (important for bonus rule counting).
+  if (level === 'Mastered' && !hasMyLevel(skill._id, 'Proficient')) {
+    await markSkill(skill, 'Proficient', catId, true) // silent = true, no extra toast
   }
 
   // If this level is already marked, this is a toggle-off (remove it)
@@ -408,12 +536,12 @@ async function markSkill(skill: SkillNode, level: string, catId: string) {
   if (existingLevelRec) {
     // Don't allow removing a level if a higher level depends on it
     if (level === 'Proficient' && hasMyLevel(skill._id, 'Mastered')) {
-      toast.error('Cannot remove Proficient', { description: 'Mastered depends on it. Remove Mastered first.' })
-      return
+      if (!silent) toast.error('Cannot remove Proficient', { description: 'Mastered depends on it. Remove Mastered first.' })
+      return false
     }
     // Delete this specific record
-    await deleteRecord(existingLevelRec._id)
-    return
+    await deleteRecord(existingLevelRec._id, silent)
+    return true
   }
 
   // Optimistic: find existing record for same employee+skill+createdBy+level
@@ -463,7 +591,8 @@ async function markSkill(skill: SkillNode, level: string, catId: string) {
       )
       if (temp) temp._id = String(res.data._id)
     }
-    toast.success(`Marked as ${level}`, { description: skill.name, duration: 2000 })
+    if (!silent) toast.success(`Marked as ${level}`, { description: skill.name, duration: 2000 })
+    return true
   }
   catch (e: any) {
     // Revert: remove the temp record we added
@@ -474,23 +603,50 @@ async function markSkill(skill: SkillNode, level: string, catId: string) {
       )
       if (idx !== -1) perfRecords.value.splice(idx, 1)
     }
-    toast.error('Failed to save', { description: e?.data?.message || e?.message })
+    if (!silent) toast.error('Failed to save', { description: e?.data?.message || e?.message })
+    return false
   }
 }
 
 // ─── Delete record ───────────────────────────────────────
-async function deleteRecord(id: string) {
+async function deleteRecord(id: string, silent = false) {
   const idx = perfRecords.value.findIndex(r => r._id === id)
   if (idx === -1) return
   const snapshot = perfRecords.value[idx]!
   perfRecords.value.splice(idx, 1)
   try {
     await $fetch(`/api/performance/${id}`, { method: 'DELETE' })
-    toast.success('Assessment removed', { duration: 2000 })
+    if (!silent) toast.success('Assessment removed', { duration: 2000 })
   }
   catch (e: any) {
     perfRecords.value.splice(idx, 0, snapshot)
-    toast.error('Delete failed', { description: e?.message })
+    if (!silent) toast.error('Delete failed', { description: e?.message })
+  }
+}
+
+async function markAllInSub(sub: SubCatNode, level: string, catId: string) {
+  if (isSubCatLocked(sub)) return;
+  if (!selectedEmployeeId.value) return;
+  if (!currentUserId.value) {
+    toast.error('You must be logged in to review');
+    return;
+  }
+
+  const skillsToMark = sub.skills.filter(sk => !hasMyLevel(sk._id, level));
+  if (skillsToMark.length === 0) {
+    toast.info(`All skills already marked as ${level}`);
+    return;
+  }
+
+  toast.info(`Marking ${skillsToMark.length} skills as ${level}...`);
+  let successCount = 0;
+  for (const sk of skillsToMark) {
+    const res = await markSkill(sk, level, catId, true);
+    if (res !== false) successCount++;
+  }
+  
+  if (successCount > 0) {
+    toast.success(`Successfully marked ${successCount} skills as ${level}`);
   }
 }
 
@@ -515,6 +671,21 @@ function openSkillInfoView(sk: SkillNode) {
   activeSkillInfoText.value = sk.info
   activeSkillName.value = sk.name
   showSkillInfoModal.value = true
+}
+
+// ─── Sub-category bonus rules info modal ─────────────────
+const showSubRulesModal = ref(false)
+const activeSubRulesName = ref('')
+const activeSubRules = ref<BonusRule[]>([])
+const activeSubRulesIsCustom = ref(false)
+
+function openSubRulesInfo(sub: SubCatNode) {
+  const rules = getApplicableRules(sub)
+  if (!rules.length) return
+  activeSubRulesName.value = sub.name
+  activeSubRules.value = rules as BonusRule[]
+  activeSubRulesIsCustom.value = !!(sub.bonusRules && sub.bonusRules.length > 0)
+  showSubRulesModal.value = true
 }
 
 // ─── Settings popover state ──────────────────────────────
@@ -958,16 +1129,11 @@ async function deleteSelected() {
                     <div
                       class="h-full rounded-full transition-all duration-500"
                       :class="pal(catIdx).dot"
-                      :style="{
-                        width: `${cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) === 0
-                          ? 0
-                          : (cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => myPerfMap.get(sk._id)).length, 0)
-                            / cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) * 100)}%`,
-                      }"
+                      :style="{ width: `${catCompletionPct(cat)}%` }"
                     />
                   </div>
                   <span class="text-[10px] font-bold text-muted-foreground min-w-[2.5rem] text-right" :class="pal(catIdx).text">
-                    {{ cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) === 0 ? '0' : Math.round(cat.subCategories.reduce((s, sub) => s + sub.skills.filter(sk => myPerfMap.get(sk._id)).length, 0) / cat.subCategories.reduce((s, sub) => s + sub.skills.length, 0) * 100) }}%
+                    {{ catCompletionPct(cat) }}%
                   </span>
                 </div>
               </div>
@@ -1032,9 +1198,18 @@ async function deleteSelected() {
                         </div>
                       </div>
 
+                      <!-- Bonus rules info icon -->
+                      <button
+                        @click.stop="openSubRulesInfo(sub)"
+                        class="hover:text-primary hover:bg-primary/10 text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-1.5 rounded-md"
+                        title="View Bonus Rules"
+                      >
+                        <Icon name="i-lucide-info" class="size-3.5" />
+                      </button>
+
                       <!-- Sub progress -->
                       <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/40 shrink-0">
-                        {{ sub.skills.filter(sk => myPerfMap.get(sk._id)).length }}/{{ sub.skills.length }}
+                        {{ subCompletionPct(sub) }}%
                       </span>
                     </div>
 
@@ -1049,6 +1224,21 @@ async function deleteSelected() {
                     >
                       <div v-if="expandedSubs.has(sub._id) && !isSubCatLocked(sub)" class="bg-muted/10 border-t border-border/20">
 
+                        <!-- Mark All Toolbar -->
+                        <div v-if="sub.skills.length > 0" class="flex items-center justify-end gap-2 px-3 sm:px-4 py-2 border-b border-border/10 bg-muted/5">
+                          <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Mark All As:</span>
+                          <div class="flex items-center gap-1.5">
+                            <button
+                              v-for="level in getVisibleLevels(sub)"
+                              :key="level"
+                              class="text-[10px] px-2 py-1 rounded-md border transition-colors font-semibold"
+                              :class="level === 'Mastered' ? 'border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-500' : level === 'Proficient' ? 'border-blue-500/30 hover:bg-blue-500/10 text-blue-500' : 'border-amber-500/30 hover:bg-amber-500/10 text-amber-500'"
+                              @click="markAllInSub(sub, level, cat._id)"
+                            >
+                              {{ level === 'Needs Improvement' ? 'Needs Imp.' : level }}
+                            </button>
+                          </div>
+                        </div>
                         <!-- Empty sub -->
                         <div v-if="sub.skills.length === 0" class="flex items-center justify-center py-6 gap-2">
                           <Icon name="i-lucide-sparkles" class="size-4 text-muted-foreground/50" />
@@ -1328,6 +1518,74 @@ async function deleteSelected() {
         </div>
         <DialogFooter class="px-6 py-4 border-t border-border/40 bg-muted/5 shrink-0">
           <Button variant="outline" @click="showSkillInfoModal = false">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- ══════════════════════ SUB-CATEGORY BONUS RULES MODAL ══════════════════════ -->
+    <Dialog v-model:open="showSubRulesModal">
+      <DialogContent class="sm:max-w-lg p-0 overflow-hidden">
+        <DialogHeader class="px-6 py-5 border-b border-border/40 bg-muted/20 shrink-0">
+          <DialogTitle class="text-lg flex items-center gap-2">
+            <Icon name="i-lucide-trophy" class="size-5 text-amber-500" />
+            {{ activeSubRulesName }}
+          </DialogTitle>
+          <DialogDescription class="flex items-center gap-2">
+            Bonus Rules
+            <span
+              class="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded border"
+              :class="activeSubRulesIsCustom
+                ? 'bg-violet-500/10 text-violet-500 border-violet-500/20'
+                : 'bg-muted text-muted-foreground border-border/40'"
+            >
+              <Icon :name="activeSubRulesIsCustom ? 'i-lucide-sparkles' : 'i-lucide-globe'" class="size-2.5" />
+              {{ activeSubRulesIsCustom ? 'Custom Override' : 'Global Rules' }}
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="p-6 space-y-3">
+          <div v-for="(rule, ri) in activeSubRules" :key="ri" class="flex items-center gap-3 p-3.5 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/30 transition-colors">
+            <!-- Level badge -->
+            <div
+              class="size-10 rounded-lg flex items-center justify-center shrink-0 border"
+              :class="rule.skillSet === 'Mastered'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                : rule.skillSet === 'Proficient'
+                  ? 'bg-blue-500/10 border-blue-500/20 text-blue-500'
+                  : 'bg-amber-500/10 border-amber-500/20 text-amber-500'"
+            >
+              <Icon
+                :name="rule.skillSet === 'Mastered' ? 'i-lucide-crown' : rule.skillSet === 'Proficient' ? 'i-lucide-award' : 'i-lucide-alert-triangle'"
+                class="size-5"
+              />
+            </div>
+            <!-- Details -->
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold" :class="rule.skillSet === 'Mastered' ? 'text-emerald-500' : rule.skillSet === 'Proficient' ? 'text-blue-500' : 'text-amber-500'">
+                {{ rule.skillSet }}
+              </p>
+              <p class="text-xs text-muted-foreground mt-0.5">
+                {{ rule.reviewedTimes || 1 }} review{{ (rule.reviewedTimes || 1) > 1 ? 's' : '' }}
+                by <span class="font-medium text-foreground">{{ rule.supervisorCheck === 'Unique' ? 'unique supervisors' : 'any supervisor' }}</span>
+              </p>
+            </div>
+            <!-- Bonus -->
+            <div class="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Icon name="i-lucide-coins" class="size-3 text-amber-500" />
+              <span class="text-sm font-bold text-amber-500 tabular-nums">${{ (rule.bonusAmount || 0).toFixed(2) }}</span>
+            </div>
+          </div>
+
+          <!-- Total -->
+          <div class="flex items-center justify-between pt-3 border-t border-border/40">
+            <span class="text-xs text-muted-foreground font-medium">Total Potential Bonus</span>
+            <span class="text-lg font-black text-amber-500 tabular-nums">${{ activeSubRules.reduce((s, r) => s + (r.bonusAmount || 0), 0).toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <DialogFooter class="px-6 py-4 border-t border-border/40 bg-muted/5 shrink-0">
+          <Button variant="outline" @click="showSubRulesModal = false">Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

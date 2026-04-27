@@ -62,24 +62,37 @@ export default defineEventHandler(async (event) => {
                 currentSkillLevel: 'Proficient',
             }).lean<any>()
 
+            // Check if user is Super Admin (to bypass guards)
+            const creatorEmployee = await Employee.findById(createdBy).lean<any>()
+            const isSuperAdmin = creatorEmployee?.position === 'Super Admin'
+
             if (!proficientRecord) {
-                throw createError({
-                    statusCode: 400,
-                    message: 'Cannot mark as Mastered. Employee must first be marked as Proficient by you.',
-                })
-            }
+                if (isSuperAdmin) {
+                    // Auto-create Proficient record for Super Admin
+                    await EmpSkillPerformance.findOneAndUpdate(
+                        { employee, skill, createdBy, currentSkillLevel: 'Proficient' },
+                        { employee, category, subCategory, skill, currentSkillLevel: 'Proficient', createdBy },
+                        { upsert: true },
+                    )
+                } else {
+                    throw createError({
+                        statusCode: 400,
+                        message: 'Cannot mark as Mastered. Employee must first be marked as Proficient by you.',
+                    })
+                }
+            } else if (!isSuperAdmin) {
+                // Check that Proficient was on a prior date (not today) — Super Admin bypasses
+                const profDate = new Date(proficientRecord.createdAt)
+                const today = new Date()
+                const profDateStr = profDate.toISOString().slice(0, 10)
+                const todayStr = today.toISOString().slice(0, 10)
 
-            // Check that Proficient was on a prior date (not today)
-            const profDate = new Date(proficientRecord.createdAt)
-            const today = new Date()
-            const profDateStr = profDate.toISOString().slice(0, 10)
-            const todayStr = today.toISOString().slice(0, 10)
-
-            if (profDateStr === todayStr) {
-                throw createError({
-                    statusCode: 400,
-                    message: 'Cannot mark as Mastered on the same day as Proficient. Please wait until the next day.',
-                })
+                if (profDateStr === todayStr) {
+                    throw createError({
+                        statusCode: 400,
+                        message: 'Cannot mark as Mastered on the same day as Proficient. Please wait until the next day.',
+                    })
+                }
             }
         }
 
