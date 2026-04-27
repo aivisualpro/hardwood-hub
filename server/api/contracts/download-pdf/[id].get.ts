@@ -12,11 +12,11 @@ import { ContractTemplate } from '../../../models/ContractTemplate'
 // responses. Anything bigger we route through Cloudinary and 302 the user.
 const VERCEL_BODY_LIMIT_BYTES = 4 * 1024 * 1024 // 4MB safe ceiling
 
-const safeFetch = async (url: string, timeoutMs = 8000) => {
+const safeFetch = async (url: string, timeoutMs = 8000, options: RequestInit = {}) => {
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await fetch(url, { signal: controller.signal })
+    const res = await fetch(url, { ...options, signal: controller.signal })
     clearTimeout(id)
     return res
   } catch (err) {
@@ -303,7 +303,11 @@ export default defineEventHandler(async (event) => {
         try {
           let attachedPdfBuffer: Buffer
           if (contract.attachedPdf.startsWith('http')) {
-            const fetchRes = await safeFetch(contract.attachedPdf, 15000)
+            const fetchOptions: RequestInit = {}
+            if (contract.attachedPdf.includes('vercel-storage.com') || contract.attachedPdf.includes('vercel.com')) {
+              fetchOptions.headers = { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
+            }
+            const fetchRes = await safeFetch(contract.attachedPdf, 15000, fetchOptions)
             if (!fetchRes.ok) throw new Error(`Fetch failed: ${fetchRes.statusText}`)
             const arrayBuffer = await fetchRes.arrayBuffer()
             attachedPdfBuffer = Buffer.from(arrayBuffer)
