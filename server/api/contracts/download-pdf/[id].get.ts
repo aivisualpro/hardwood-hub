@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*company_phone[1]?\s*\}\}/gi, company?.phone1 || company?.phone || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_phone2\s*\}\}/gi, company?.phone2 || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_website\s*\}\}/gi, company?.website || '')
-    mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/gi, company?.email || '')
+      mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/gi, company?.email || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_license\s*\}\}/gi, company?.licenseNumber || '')
 
     const companyLogoImg = company?.logo

@@ -151,8 +151,10 @@ function handlePdfUpload(e: Event) {
   }
   
   const sizeMB = (file.size / 1024 / 1024).toFixed(1)
-  if (file.size > 4.5 * 1024 * 1024) {
-    toast.error('PDF too large for Vercel', { description: `File is ${sizeMB}MB. Vercel serverless functions strictly limit uploads to 4.5MB. Please compress your PDF locally before uploading.` })
+  // Base64 encoding inflates size by ~33%. To stay under Vercel's 4.5MB payload limit,
+  // the raw file size must be strictly under 3.3MB.
+  if (file.size > 3.3 * 1024 * 1024) {
+    toast.error('PDF too large for Vercel', { description: `File is ${sizeMB}MB. Due to base64 encoding, this exceeds Vercel's strict 4.5MB payload limit. Please compress your PDF to under 3.3MB locally before uploading.` })
     target.value = ''
     return
   }
