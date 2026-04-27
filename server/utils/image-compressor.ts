@@ -146,8 +146,8 @@ export async function compressImagesInHtml(
     const results = await Promise.all(
       batch.map(async (url) => {
         // Signatures and logos are small — use PNG w/ small width
-        const isPng = url.includes('f_png') || url.includes('.png')
-        const isSignature = url.includes('signature') || url.includes('Signature')
+        const isPng = url.includes('f_png') || url.includes('.png') || url.startsWith('data:image/png')
+        const isSignature = url.includes('signature') || url.includes('Signature') || url.startsWith('data:image/png')
         const isLogo = url.includes('logo') || url.includes('Logo')
         const isSmallAsset = isSignature || isLogo
 

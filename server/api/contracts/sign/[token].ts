@@ -163,7 +163,8 @@ export default defineEventHandler(async (event) => {
         const isSig = vDef?.type === 'signature'
         let mergedVal = String(val || '')
         if (isSig && val) {
-          mergedVal = `<img src="${val}" alt="Signature" style="max-height: 80px; object-fit: contain; vertical-align: middle;" />`
+          // Style it to look exactly like the inline signature on the web view
+          mergedVal = `<img src="${val}" alt="Signature" style="display: inline-block; max-height: 36px; max-width: 140px; object-fit: contain; vertical-align: middle; border-bottom: 1.5px solid #10b981; margin: 0 4px; padding-bottom: 2px;" />`
         }
         // Non-signature: just inject the plain value — no boxes
         const re = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g')
