@@ -1,14 +1,42 @@
 import puppeteer from 'puppeteer-core'
+import fs from 'fs'
+import path from 'path'
 
-/**
- * Remote chromium pack — chromium-min downloads this at cold start and extracts
- * it to /tmp. The pack contains chromium binary AND every shared library it
- * needs (libnss3, libnspr4, libxshmfence, etc).
- *
- * IMPORTANT: This version MUST match @sparticuz/chromium-min in package.json.
- */
 const REMOTE_CHROMIUM_PACK =
   'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
+
+/**
+ * Walk a directory and return every directory that contains a file matching `pattern`.
+ * Used to locate where libnss3.so actually got extracted to.
+ */
+function findDirsContaining(
+  rootDir: string,
+  pattern: RegExp,
+  maxDepth = 4,
+): string[] {
+  const matches: string[] = []
+  const visit = (dir: string, depth: number) => {
+    if (depth > maxDepth) return
+    let entries: fs.Dirent[]
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    let dirHasMatch = false
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name)
+      if (entry.isFile() && pattern.test(entry.name)) {
+        dirHasMatch = true
+      } else if (entry.isDirectory()) {
+        visit(full, depth + 1)
+      }
+    }
+    if (dirHasMatch) matches.push(dir)
+  }
+  visit(rootDir, 0)
+  return matches
+}
 
 export const generatePdfFromHtml = async (htmlContent: string) => {
   const isLocal = process.env.NODE_ENV === 'development' || !process.env.VERCEL
@@ -21,15 +49,12 @@ export const generatePdfFromHtml = async (htmlContent: string) => {
     launchArgs = ['--no-sandbox', '--disable-setuid-sandbox']
   } else {
     try {
-      // Dynamic import — only loads on Vercel
       // @ts-ignore
       const mod = await import('@sparticuz/chromium-min')
       const chromium = mod.default || mod
 
-      // Disable graphics decoding to shave cold-start time + memory
       chromium.setGraphicsMode = false
 
-      // Trigger pack download + extraction. Returns /tmp/chromium.
       console.log('[pdf-generator] Resolving chromium executable from remote pack...')
       executablePath = await chromium.executablePath(REMOTE_CHROMIUM_PACK)
       console.log('[pdf-generator] executablePath:', executablePath)
@@ -38,45 +63,44 @@ export const generatePdfFromHtml = async (htmlContent: string) => {
         throw new Error('Could not resolve Chromium executable path on Vercel')
       }
 
-      // Verify the binary + libs actually exist on disk. This is the
-      // diagnostic we couldn't see before — if any of these are missing,
-      // the pack download/extraction silently failed.
-      const fs = await import('fs')
-      const path = await import('path')
       const binDir = path.dirname(executablePath)
-      let dirContents: string[] = []
-      try {
-        dirContents = fs.readdirSync(binDir)
-      } catch (e) {
-        console.error('[pdf-generator] Cannot read', binDir, e)
-      }
-      const hasNss = dirContents.some((f) => f.startsWith('libnss3'))
-      console.log(
-        `[pdf-generator] /tmp contents: ${dirContents.length} files. ` +
-        `chromium present: ${dirContents.includes('chromium')}. ` +
-        `libnss3 present: ${hasNss}.`,
-      )
-      if (!hasNss) {
-        console.warn(
-          '[pdf-generator] libnss3.so missing in /tmp. ' +
-          'Files found:',
-          dirContents.slice(0, 30),
+
+      // Recursively find every directory under /tmp that contains libnss3.so.
+      // chromium-min sometimes extracts system libs into a subdirectory like
+      // /tmp/chromium-pack/ rather than directly into /tmp.
+      const nssDirs = findDirsContaining(binDir, /^libnss3(\.so.*)?$/)
+      console.log('[pdf-generator] dirs containing libnss3:', nssDirs)
+
+      if (nssDirs.length === 0) {
+        // Last-ditch dump for diagnosis
+        const dump = (dir: string, depth = 0) => {
+          if (depth > 2) return
+          try {
+            const entries = fs.readdirSync(dir, { withFileTypes: true })
+            console.log(
+              `[pdf-generator] ${'  '.repeat(depth)}${dir}:`,
+              entries.map((e) => e.name + (e.isDirectory() ? '/' : '')).slice(0, 40),
+            )
+            for (const e of entries) {
+              if (e.isDirectory()) dump(path.join(dir, e.name), depth + 1)
+            }
+          } catch (err: any) {
+            console.log(`[pdf-generator] cannot read ${dir}: ${err?.message}`)
+          }
+        }
+        dump(binDir)
+        throw new Error(
+          'Chromium pack extracted but libnss3.so was not found anywhere under /tmp. ' +
+          'The pack tar is incomplete or extraction failed.',
         )
       }
 
-      // CRITICAL: ensure dynamic linker can find the .so files extracted
-      // alongside the chromium binary. Without this, the binary launches
-      // but immediately fails with "libnss3.so: cannot open shared object file".
-      // chromium-min sets this internally on some versions but not all —
-      // setting it explicitly is the bulletproof fix.
-      const existingLdPath = process.env.LD_LIBRARY_PATH || ''
-      if (!existingLdPath.split(':').includes(binDir)) {
-        process.env.LD_LIBRARY_PATH = `${binDir}:${existingLdPath}`
-        console.log('[pdf-generator] LD_LIBRARY_PATH set to:', process.env.LD_LIBRARY_PATH)
-      }
+      // Build LD_LIBRARY_PATH from every dir that contains libnss3 plus binDir itself.
+      const libDirs = Array.from(new Set([binDir, ...nssDirs]))
+      const existing = process.env.LD_LIBRARY_PATH || ''
+      process.env.LD_LIBRARY_PATH = [...libDirs, existing].filter(Boolean).join(':')
+      console.log('[pdf-generator] LD_LIBRARY_PATH set to:', process.env.LD_LIBRARY_PATH)
 
-      // Use chromium-min's curated args verbatim. Don't add --single-process
-      // — it actively breaks Chromium on AWS Lambda / Vercel.
       launchArgs = chromium.args
     } catch (e: any) {
       console.error('[pdf-generator] Chromium init failed:', e)
