@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { ref, computed, watch } from 'vue'
+import { upload } from '@vercel/blob/client'
 
 const emit = defineEmits(['saved', 'update:modelValue'])
 
@@ -118,6 +119,7 @@ const customerSignature = ref('')
 const customerSignatureDate = ref('')
 const attachedPdf = ref('')
 const attachedPdfName = ref('')
+const isUploadingPdf = ref(false)
 const pdfFileInput = ref<HTMLInputElement | null>(null)
 const attachedGalleryImages = ref<string[]>([])
 
@@ -153,10 +155,10 @@ async function handlePdfUpload(e: Event) {
 
   const sizeMB = (file.size / 1024 / 1024).toFixed(1)
 
-  // Cloudinary's free tier hard-caps single uploads at 100MB.
-  if (file.size > 100 * 1024 * 1024) {
+  // Vercel Blob handles up to 500MB on client uploads, so we're good
+  if (file.size > 200 * 1024 * 1024) {
     toast.error('PDF too large', {
-      description: `File is ${sizeMB}MB. Cloudinary's max upload size is 100MB.`,
+      description: `File is ${sizeMB}MB. Max upload size is 200MB.`,
     })
     target.value = ''
     return
@@ -164,64 +166,21 @@ async function handlePdfUpload(e: Event) {
 
   attachedPdfName.value = `${file.name} (${sizeMB}MB)`
   attachedPdf.value = ''
+  isUploadingPdf.value = true
 
   try {
-    // ── Step 1: get a signed upload payload for Cloudinary
-    toast.loading(`Uploading ${sizeMB}MB PDF to Cloudinary…`, { id: 'pdf-upload' })
+    toast.loading(`Uploading ${sizeMB}MB PDF to Vercel Blob…`, { id: 'pdf-upload' })
 
-    const sig = await $fetch<{
-      success: boolean
-      signature: string
-      timestamp: number
-      apiKey: string
-      cloudName: string
-      folder: string
-      uploadUrl: string
-    }>('/api/upload/cloudinary-signature', {
-      query: {
-        folder: 'hardwood-hub/contracts/raw',
-        resourceType: 'raw',
-      },
+    const newBlob = await upload(`hardwood-hub/contracts/raw/${file.name}`, file, {
+      access: 'public',
+      handleUploadUrl: '/api/upload/blob-token',
     })
 
-    // ── Step 2: upload binary directly to Cloudinary (bypasses Vercel)
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('signature', sig.signature)
-    formData.append('timestamp', String(sig.timestamp))
-    formData.append('api_key', sig.apiKey)
-    formData.append('folder', sig.folder)
+    if (!newBlob?.url) throw new Error('Vercel Blob did not return a URL')
 
-    const cloudRes = await fetch(sig.uploadUrl, { method: 'POST', body: formData })
-    if (!cloudRes.ok) {
-      const errText = await cloudRes.text().catch(() => '')
-      throw new Error(`Cloudinary upload failed: ${cloudRes.status} ${errText.slice(0, 200)}`)
-    }
-    const cloudData = await cloudRes.json() as { secure_url: string; public_id: string }
-    if (!cloudData.secure_url) throw new Error('Cloudinary did not return a URL')
-
-    // ── Step 3: ask the server to compress the just-uploaded PDF
-    toast.loading('Compressing PDF…', { id: 'pdf-upload' })
-    const compressed = await $fetch<{
-      success: boolean
-      url: string
-      originalSize: string
-      compressedSize: string
-    }>('/api/upload/compress-pdf', {
-      method: 'POST',
-      body: {
-        url: cloudData.secure_url,
-        folder: 'hardwood-hub/contracts',
-        deleteOriginal: true,
-      },
-    })
-
-    if (!compressed?.url) throw new Error('Compression endpoint did not return a URL')
-
-    attachedPdf.value = compressed.url
-    attachedPdfName.value = `${file.name} (${compressed.compressedSize}MB)`
+    attachedPdf.value = newBlob.url
     toast.success(
-      `PDF ready: ${compressed.originalSize}MB → ${compressed.compressedSize}MB`,
+      `PDF uploaded successfully (${sizeMB}MB)`,
       { id: 'pdf-upload' },
     )
   } catch (err: any) {
@@ -232,6 +191,7 @@ async function handlePdfUpload(e: Event) {
     attachedPdf.value = ''
     attachedPdfName.value = ''
   } finally {
+    isUploadingPdf.value = false
     target.value = ''
   }
 }
@@ -261,8 +221,11 @@ function selectModalTemplate(t: any) {
     }
   }
   // Auto-set client name
-  if (variableValues.value.client_name !== undefined && selectedCustomer.value) {
-    variableValues.value.client_name = selectedCustomer.value.name
+  const clientKey = Object.keys(variableValues.value).find(k => 
+    ['clientname', 'client_name', 'customername', 'customer_name'].includes(k.toLowerCase())
+  )
+  if (clientKey && selectedCustomer.value) {
+    variableValues.value[clientKey] = selectedCustomer.value.name || `${selectedCustomer.value.firstName || ''} ${selectedCustomer.value.lastName || ''}`.trim() || ''
   }
   contractTitle.value = `${t.name} — ${selectedCustomer.value?.name || 'Customer'}`
   createStep.value = 3
@@ -666,7 +629,7 @@ async function seedChangeOrder() {}
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div
-                  v-for="v in selectedModalTemplate.variables.filter((v: any) => v.scope !== 'client' && !['company_name', 'companyName', 'client_name', 'clientName'].includes(v.key))"
+                  v-for="v in selectedModalTemplate.variables.filter((v: any) => v.scope !== 'client' && !['company_name', 'companyName', 'client_name', 'clientName', 'customer_name', 'customerName'].includes(v.key))"
                   :key="v.key"
                   :class="v.type === 'textarea' ? 'sm:col-span-2' : ''"
                 >
@@ -809,12 +772,13 @@ async function seedChangeOrder() {}
               v-if="createStep === 3"
               size="sm"
               class="shadow-lg shadow-primary/20"
-              :disabled="savingContract || !contractTitle.trim()"
+              :disabled="savingContract || isUploadingPdf || !contractTitle.trim()"
               @click="saveContract"
             >
-              <Icon v-if="savingContract" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
+              <Icon v-if="savingContract || isUploadingPdf" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
               <Icon v-else name="i-lucide-file-signature" class="mr-1.5 size-3.5" />
-              {{ editingContractId ? 'Save Changes' : 'Create Contract' }}
+              <span v-if="isUploadingPdf">Uploading PDF...</span>
+              <span v-else>{{ editingContractId ? 'Save Changes' : 'Create Contract' }}</span>
             </Button>
           </div>
         </div>
