@@ -682,6 +682,15 @@ async function seedChangeOrder() {}
                     rows="3"
                     class="w-full px-3 py-2 text-sm rounded-lg border bg-muted/20 hover:bg-background focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none shadow-sm max-h-[250px]"
                   />
+                  <select
+                    v-else-if="v.type === 'select'"
+                    :id="`var-${v.key}`"
+                    v-model="variableValues[v.key]"
+                    class="w-full h-10 px-3 text-sm rounded-lg border border-input bg-muted/20 hover:bg-background focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm appearance-none"
+                  >
+                    <option value="" disabled selected>Select an option...</option>
+                    <option v-for="opt in v.options" :key="opt" :value="opt">{{ opt }}</option>
+                  </select>
                   <Input
                     v-else-if="v.type === 'date'"
                     :id="`var-${v.key}`"

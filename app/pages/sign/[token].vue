@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { toast } from 'vue-sonner'
+
 definePageMeta({ layout: false, auth: false, colorMode: 'light' })
 
 const route = useRoute()
@@ -78,6 +80,18 @@ function generateContractHtml() {
           Click to sign ${v.required ? '*' : ''}
         </button>`
       }
+    } else if (v.type === 'select') {
+      const val = clientValues.value[v.key] || ''
+      const req = v.required ? 'required' : ''
+      const optionsHtml = (v.options || []).map((opt: string) => {
+        const isSelected = opt === val ? 'selected' : ''
+        return `<option value="${opt.replace(/"/g, '&quot;')}" ${isSelected}>${opt}</option>`
+      }).join('')
+      replacement = `<span class="inline-field-wrapper"><select class="inline-client-field appearance-none pr-8 bg-no-repeat" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2310b981%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-position: right 0.5rem center; background-size: 0.65em auto;" data-var-key="${v.key}" ${req}><option value="" disabled ${!val ? 'selected' : ''}>Select ${label}...</option>${optionsHtml}</select></span>`
+    } else if (v.type === 'textarea') {
+      const val = (clientValues.value[v.key] || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const req = v.required ? 'required' : ''
+      replacement = `<span class="inline-field-wrapper !block my-2 w-full max-w-lg"><textarea class="inline-client-field w-full min-h-[80px] resize-y" data-var-key="${v.key}" placeholder="${label}" ${req}>${val}</textarea></span>`
     } else {
       const inputType = v.type === 'date' ? 'date' : v.type === 'number' ? 'number' : 'text'
       const prefix = v.type === 'currency' ? '<span class="inline-field-prefix">$</span>' : ''
@@ -129,11 +143,42 @@ async function submitSignature() {
   
   // Validate required client variables
   if (contractData.value?.clientVariables) {
+    const missingFields: string[] = []
+    const missingKeys: string[] = []
+    
     for (const v of contractData.value.clientVariables) {
       if (v.required && !clientValues.value[v.key]) {
-        alert(`Please fill out the required field: ${v.label || v.key}`)
-        return
+        missingFields.push(v.label || v.key)
+        missingKeys.push(v.key)
       }
+    }
+    
+    if (missingFields.length > 0) {
+      toast.error('Missing Required Fields', {
+        description: `Please fill out the following fields:\n• ${missingFields.join('\n• ')}`
+      })
+      
+      // Trigger animations
+      const inputs = document.querySelectorAll('.inline-client-field, .inline-sig-button');
+      inputs.forEach(el => {
+        const key = el.getAttribute('data-var-key');
+        if (key && missingKeys.includes(key)) {
+          el.classList.remove('error-shake');
+          // Trigger reflow to restart animation
+          void (el as HTMLElement).offsetWidth;
+          el.classList.add('error-shake');
+        }
+      });
+      
+      // Scroll to the first missing field
+      setTimeout(() => {
+        const firstMissing = document.querySelector('.error-shake');
+        if (firstMissing) {
+          firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+      
+      return
     }
   }
 
@@ -447,7 +492,7 @@ onMounted(fetchContract)
   font-size: 0.875rem;
   font-weight: 600;
   color: #0f172a;
-  background: #f0fdf4;
+  background-color: #f0fdf4;
   border: none;
   border-bottom: 2px solid #10b981;
   padding: 3px 6px;
@@ -459,7 +504,7 @@ onMounted(fetchContract)
 }
 
 .contract-content :deep(.inline-client-field:focus) {
-  background: #ecfdf5;
+  background-color: #ecfdf5;
   border-bottom-color: #059669;
   box-shadow: 0 2px 0 0 #059669;
 }
@@ -537,5 +582,26 @@ onMounted(fetchContract)
   border-bottom: 2px dashed #10b981;
   margin: 0 4px;
   vertical-align: middle;
+}
+
+/* ─── Validation Animations ─── */
+@keyframes shake-and-glow {
+  0%, 100% { transform: translateX(0); box-shadow: 0 0 0 rgba(239, 68, 68, 0); border-bottom-color: #10b981; }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); border-bottom-color: #ef4444; }
+  20%, 40%, 60%, 80% { transform: translateX(4px); box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); border-bottom-color: #ef4444; }
+}
+
+.contract-content :deep(.error-shake) {
+  animation: shake-and-glow 0.6s cubic-bezier(.36,.07,.19,.97) both;
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border-bottom-color: #ef4444 !important;
+}
+
+.contract-content :deep(.inline-sig-button.error-shake) {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+  color: #ef4444 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 </style>
