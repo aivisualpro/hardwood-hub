@@ -849,7 +849,7 @@ async function deleteSelected() {
     <main class="flex-1 flex flex-col min-h-0 h-full">
 
       <!-- Top toolbar -->
-      <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-5 py-2 sm:py-1.5 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
+      <div class="relative z-50 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-5 py-2 sm:py-1.5 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
 
         <!-- Mobile: Employee banner with big avatar -->
         <div class="flex items-center gap-3 sm:hidden">
@@ -1514,7 +1514,7 @@ async function deleteSelected() {
           <DialogDescription>Standard Operating Procedure & Requirements</DialogDescription>
         </DialogHeader>
         <div class="p-6 flex-1 min-h-[200px] overflow-y-auto w-full">
-          <div class="prose prose-sm dark:prose-invert max-w-full prose-p:leading-relaxed prose-headings:font-semibold" v-html="activeSkillInfoText"></div>
+          <div class="simple-editor-content prose prose-sm dark:prose-invert max-w-full prose-p:leading-relaxed prose-headings:font-semibold !p-0" v-html="activeSkillInfoText"></div>
         </div>
         <DialogFooter class="px-6 py-4 border-t border-border/40 bg-muted/5 shrink-0">
           <Button variant="outline" @click="showSkillInfoModal = false">Close</Button>

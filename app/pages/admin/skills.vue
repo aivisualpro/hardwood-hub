@@ -756,7 +756,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
             <!-- Edit button (on hover) -->
             <button
               v-if="canUpdate()"
-              class="size-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0"
+              class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0"
               @click.stop="startEditCat(cat)"
             >
               <Icon name="i-lucide-pencil" class="size-3" />
@@ -990,7 +990,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border transition-all cursor-pointer shrink-0"
                 :class="sub.bonusRules?.length
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                  : 'sm:opacity-0 sm:group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted'"
+                  : 'bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted'"
                 @click.stop="openBonusRules(sub)"
                 @keydown.enter.stop="openBonusRules(sub)"
               >
@@ -1012,7 +1012,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                   class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border transition-all cursor-pointer"
                   :class="sub.predecessor
                     ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
-                    : 'sm:opacity-0 sm:group-hover:opacity-100 bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted'"
+                    : 'bg-muted/60 text-muted-foreground border-border/40 hover:bg-muted'"
                   @click.stop="editingPredecessorSubId = editingPredecessorSubId === sub._id ? null : sub._id; predecessorSearch = ''"
                 >
                   <Icon name="i-lucide-git-branch" class="size-2.5 sm:size-3" />
@@ -1097,7 +1097,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 v-if="canUpdate() && editingSubCatId !== sub._id"
                 role="button"
                 tabindex="0"
-                class="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-muted/60 text-muted-foreground border border-border/40 hover:bg-muted shrink-0 cursor-pointer"
+                class="flex items-center gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-muted/60 text-muted-foreground border border-border/40 hover:bg-muted shrink-0 cursor-pointer"
                 @click.stop="startEditSubCat(sub)"
                 @keydown.enter.stop="startEditSubCat(sub)"
               >
@@ -1110,7 +1110,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 v-if="canDelete() && sub.skills.length === 0"
                 role="button"
                 tabindex="0"
-                class="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shrink-0 cursor-pointer"
+                class="flex items-center gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shrink-0 cursor-pointer"
                 @click.stop="deleteSubCat(sub._id)"
                 @keydown.enter.stop="deleteSubCat(sub._id)"
               >
@@ -1123,7 +1123,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 v-if="canCreate()"
                 role="button"
                 tabindex="0"
-                class="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 shrink-0 cursor-pointer"
+                class="flex items-center gap-1 text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 shrink-0 cursor-pointer"
                 @click.stop="openCreateSkill(selectedCat!._id, sub._id)"
                 @keydown.enter.stop="openCreateSkill(selectedCat!._id, sub._id)"
               >
@@ -1167,8 +1167,8 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                         <!-- Skill text -->
                         <p class="text-xs sm:text-sm leading-relaxed pb-6">{{ sk.name }}</p>
 
-                        <!-- Action buttons (bottom-right, hover) -->
-                        <div v-if="canUpdate() || canDelete()" class="absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 flex gap-0.5 sm:gap-1 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity">
+                        <!-- Action buttons (bottom-right) -->
+                        <div v-if="canUpdate() || canDelete()" class="absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 flex gap-0.5 sm:gap-1">
                           <button
                             class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                             title="Skill Info"
