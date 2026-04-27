@@ -150,7 +150,14 @@ function handlePdfUpload(e: Event) {
     return;
   }
   
-  attachedPdfName.value = file.name;
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1)
+  if (file.size > 50 * 1024 * 1024) {
+    toast.error('PDF too large', { description: `File is ${sizeMB}MB. Maximum allowed is 50MB.` })
+    target.value = ''
+    return
+  }
+
+  attachedPdfName.value = `${file.name} (${sizeMB}MB)`;
   
   const reader = new FileReader();
   reader.onload = (ev) => {
@@ -260,28 +267,31 @@ async function saveContract() {
   try {
     let finalAttachedPdf = attachedPdf.value
     if (finalAttachedPdf && finalAttachedPdf.startsWith('data:')) {
-      toast.loading('Uploading attached PDF...', { id: 'pdf-upload' })
+      // Check raw size and warn user
+      const rawSizeBytes = Math.round((finalAttachedPdf.length - 'data:application/pdf;base64,'.length) * 0.75)
+      const rawSizeMB = (rawSizeBytes / 1024 / 1024).toFixed(1)
+      
+      if (rawSizeBytes > 50 * 1024 * 1024) {
+        toast.error('PDF too large', { description: `File is ${rawSizeMB}MB. Maximum allowed is 50MB.` })
+        savingContract.value = false
+        return
+      }
+
+      toast.loading(`Compressing & uploading PDF (${rawSizeMB}MB)...`, { id: 'pdf-upload' })
       try {
-        const sigRes = await $fetch<{ signature: string, timestamp: number, cloudName: string, apiKey: string, folder: string }>('/api/upload/cloudinary-signature', {
-          params: { folder: 'hardwood-hub/contracts' }
-        })
-        
-        const fd = new FormData()
-        fd.append('file', finalAttachedPdf)
-        fd.append('api_key', sigRes.apiKey)
-        fd.append('timestamp', String(sigRes.timestamp))
-        fd.append('signature', sigRes.signature)
-        fd.append('folder', sigRes.folder)
-        
-        const clRes = await $fetch<any>(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/auto/upload`, {
+        const uploadRes = await $fetch<{ success: boolean, url: string, originalSize: string, compressedSize: string }>('/api/upload/compress-pdf', {
           method: 'POST',
-          body: fd
+          body: {
+            file: finalAttachedPdf,
+            folder: 'hardwood-hub/contracts',
+          },
         })
-        if (clRes && clRes.secure_url) {
-          finalAttachedPdf = clRes.secure_url
+        if (uploadRes?.url) {
+          finalAttachedPdf = uploadRes.url
+          toast.success(`PDF compressed: ${uploadRes.originalSize}MB → ${uploadRes.compressedSize}MB`, { id: 'pdf-upload' })
         }
       } catch (uploadErr: any) {
-        toast.error('Failed to upload PDF', { description: uploadErr.message || 'Direct upload failed' })
+        toast.error('Failed to upload PDF', { description: uploadErr?.data?.message || uploadErr.message || 'Upload failed' })
         throw uploadErr
       } finally {
         toast.dismiss('pdf-upload')

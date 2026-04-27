@@ -1,6 +1,7 @@
 // GET /api/contracts/sign/:token — fetch contract details for signing
 // POST /api/contracts/sign/:token — submit signature
 import { generatePdfFromHtml } from '../../../utils/pdf-generator'
+import { compressImagesInHtml } from '../../../utils/image-compressor'
 // @ts-ignore: IDE cache invalidation workaround
 import { PDFDocument } from 'pdf-lib'
 import { connectDB } from '../../../utils/mongoose'
@@ -45,14 +46,19 @@ export default defineEventHandler(async (event) => {
 
     let mergedHTML = contract.content || ''
     
-    // Replace custom variables
+    // Replace custom variables (skip client variables so the frontend can render input fields in their place)
     if (contract.variableValues) {
       for (const [key, val] of Object.entries<string>(contract.variableValues)) {
         const vDef = template?.variables?.find((v: any) => v.key === key)
         const isSig = vDef?.type === 'signature'
+        const isClient = vDef?.scope === 'client'
+
+        // Keep the placeholder intact for client variables so the Vue component can inject inputs
+        if (isClient) continue
         
         let mergedVal = String(val || '')
         if (isSig && val) {
+           // For non-client signatures, or if we were replacing them
           mergedVal = `<img src="${val}" alt="Signature" style="max-height: 80px; object-fit: contain; vertical-align: middle;" />`
         }
 
@@ -74,7 +80,7 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*company_website\s*\}\}/g, company?.website || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/g, company?.email || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_license\s*\}\}/g, company?.licenseNumber || '')
-    const companyLogoHtml = company?.logo ? `<img src="${company.logo}" alt="Company Logo" style="max-height: 80px; object-fit: contain;" />` : ''
+    const companyLogoHtml = company?.logo ? `<img src="${company.logo.includes('cloudinary.com') ? company.logo.replace('/upload/', '/upload/q_60,f_png,w_300/') : company.logo}" alt="Company Logo" style="max-height: 80px; object-fit: contain;" />` : ''
     mergedHTML = mergedHTML.replace(/\{\{\s*company_logo\s*\}\}/g, companyLogoHtml)
 
     // Strip old template signature tables & inline variables
@@ -86,7 +92,7 @@ export default defineEventHandler(async (event) => {
       },
     )
     const contractorSigImg = company?.signature
-      ? `<img src="${company.signature}" alt="Contractor Signature" style="max-height: 64px; object-fit: contain; vertical-align: middle;" />`
+      ? `<img src="${company.signature.includes('cloudinary.com') ? company.signature.replace('/upload/', '/upload/q_60,f_png,w_300/') : company.signature}" alt="Contractor Signature" style="max-height: 64px; object-fit: contain; vertical-align: middle;" />`
       : ''
     mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/gi, contractorSigImg)
     mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/gi, contractorSigImg)
@@ -178,20 +184,20 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*company_website\s*\}\}/gi, company?.website || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/gi, company?.email || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_license\s*\}\}/gi, company?.licenseNumber || '')
-    const companyLogoHtml = company?.logo ? `<img src="${company.logo}" alt="Company Logo" style="max-height: 80px; object-fit: contain;" />` : ''
-    mergedHTML = mergedHTML.replace(/\{\{\s*company_logo\s*\}\}/gi, companyLogoHtml)
+    const companyLogoHtml2 = company?.logo ? `<img src="${company.logo.includes('cloudinary.com') ? company.logo.replace('/upload/', '/upload/q_60,f_png,w_300/') : company.logo}" alt="Company Logo" style="max-height: 80px; object-fit: contain;" />` : ''
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_logo\s*\}\}/gi, companyLogoHtml2)
 
     // Strip old signature markers
     mergedHTML = mergedHTML.replace(/<table[\s\S]*?<\/table>/gi, (tableHTML: string) => {
       if (tableHTML.includes('Signature') && tableHTML.includes('____')) return ''
       return tableHTML
     })
-    const contractorSigImg = company?.signature
-      ? `<img src="${company.signature}" alt="Contractor Signature" style="max-height: 64px; object-fit: contain; vertical-align: middle;" />`
+    const contractorSigImg2 = company?.signature
+      ? `<img src="${company.signature.includes('cloudinary.com') ? company.signature.replace('/upload/', '/upload/q_60,f_png,w_300/') : company.signature}" alt="Contractor Signature" style="max-height: 64px; object-fit: contain; vertical-align: middle;" />`
       : ''
-    mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/gi, contractorSigImg)
-    mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/gi, contractorSigImg)
-    mergedHTML = mergedHTML.replace(/\{\{\s*contractor_signature\s*\}\}/gi, contractorSigImg)
+    mergedHTML = mergedHTML.replace(/\{\{\s*companySignature\s*\}\}/gi, contractorSigImg2)
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_signature\s*\}\}/gi, contractorSigImg2)
+    mergedHTML = mergedHTML.replace(/\{\{\s*contractor_signature\s*\}\}/gi, contractorSigImg2)
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignature\s*\}\}/g, '')
     mergedHTML = mergedHTML.replace(/\{\{\s*customerSignatureDate\s*\}\}/g, '')
 
@@ -201,7 +207,7 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/<hr\s*\/?>/gi, '')
 
     const companyColor = company?.brandColor || '#84CC16'
-    const companyLogo = company?.logo ? `<img src="${company.logo}" style="max-height: 90px; max-width: 250px;" alt="Logo" />` : `<h1 style="color: ${companyColor}; margin: 0;">${company?.name || 'Company Name'}</h1>`
+    const companyLogo = company?.logo ? `<img src="${company.logo.includes('cloudinary.com') ? company.logo.replace('/upload/', '/upload/q_60,f_png,w_300/') : company.logo}" style="max-height: 90px; max-width: 250px;" alt="Logo" />` : `<h1 style="color: ${companyColor}; margin: 0;">${company?.name || 'Company Name'}</h1>`
 
     const companyDetails = `
       <div style="text-align: right; font-size: 12px; line-height: 1.5; color: #8A4F2A; font-family: Helvetica, Arial, sans-serif; font-weight: bold;">
@@ -233,7 +239,7 @@ export default defineEventHandler(async (event) => {
     const companySigBox = `
       <div style="width: 100%; max-width: 480px;">
         <div style="height: 64px;">
-          ${company?.signature ? `<img src="${company.signature}" style="max-height: 64px; max-width: 100%; object-fit: contain; object-position: left bottom; margin: 0; display: block;" />` : ``}
+          ${company?.signature ? `<img src="${company.signature.includes('cloudinary.com') ? company.signature.replace('/upload/', '/upload/q_60,f_png,w_300/') : company.signature}" style="max-height: 64px; max-width: 100%; object-fit: contain; object-position: left bottom; margin: 0; display: block;" />` : ``}
         </div>
         <div style="border-top: 1.5px solid #111827; margin-top: 4px; padding-top: 8px;">
           <div style="float: left; font-size: 15px; font-weight: 700; color: #111827; font-family: Helvetica, Arial, sans-serif; letter-spacing: -0.01em;">
@@ -281,9 +287,10 @@ export default defineEventHandler(async (event) => {
       mergedHTML += `
         <div style="page-break-before: always; margin-top: 40px; text-align: center;">
           <h2 style="font-size: 1.5rem; font-weight: 700; color: #111; margin-bottom: 20px; text-align: left;">Attached Pictures</h2>
-          ${contract.attachedGalleryImages.map((imgUrl: string) => `
-            <img src="${imgUrl}" style="max-width: 100%; max-height: 800px; object-fit: contain; margin-bottom: 24px; border-radius: 8px; border: 1px solid #ccc; page-break-inside: avoid; display: block;" />
-          `).join('')}
+          ${contract.attachedGalleryImages.map((imgUrl: string) => {
+            const optimizedUrl = imgUrl.includes('cloudinary.com') ? imgUrl.replace('/upload/', '/upload/q_60,f_jpg,w_800/') : imgUrl;
+            return `<img src="${optimizedUrl}" style="max-width: 100%; max-height: 800px; object-fit: contain; margin-bottom: 24px; border-radius: 8px; border: 1px solid #ccc; page-break-inside: avoid; display: block;" />`;
+          }).join('')}
         </div>
       `
     }
@@ -352,33 +359,45 @@ export default defineEventHandler(async (event) => {
           </body>
           </html>
         `
-        const pdfBuffer = await generatePdfFromHtml(pdfHTML)
+        // Pre-compress all images before Puppeteer renders them
+        const compressedPdfHTML = await compressImagesInHtml(pdfHTML, {
+          maxWidth: 800,
+          quality: 55,
+          format: 'jpeg',
+        })
+        const pdfBuffer = await generatePdfFromHtml(compressedPdfHTML)
         
-        let finalPdfBuffer = pdfBuffer;
-        if (contract.attachedPdf) {
-          try {
-            const mainPdf = await PDFDocument.load(pdfBuffer);
-            let attachedPdfBuffer: Buffer;
-            if (contract.attachedPdf.startsWith('http')) {
-              const fetchRes = await safeFetch(contract.attachedPdf);
-              if (!fetchRes.ok) throw new Error(`Fetch failed: ${fetchRes.statusText}`);
-              const arrayBuffer = await fetchRes.arrayBuffer();
-              attachedPdfBuffer = Buffer.from(arrayBuffer);
-            } else {
-              const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '');
-              attachedPdfBuffer = Buffer.from(attachedBase64, 'base64');
+        // Always run through pdf-lib for compression
+        let finalPdfBuffer: Buffer;
+        try {
+          const mainPdf = await PDFDocument.load(pdfBuffer);
+
+          if (contract.attachedPdf) {
+            try {
+              let attachedPdfBuffer: Buffer;
+              if (contract.attachedPdf.startsWith('http')) {
+                const fetchRes = await safeFetch(contract.attachedPdf);
+                if (!fetchRes.ok) throw new Error(`Fetch failed: ${fetchRes.statusText}`);
+                const arrayBuffer = await fetchRes.arrayBuffer();
+                attachedPdfBuffer = Buffer.from(arrayBuffer);
+              } else {
+                const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '');
+                attachedPdfBuffer = Buffer.from(attachedBase64, 'base64');
+              }
+              const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer);
+              const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices());
+              copiedPages.forEach((page: any) => {
+                mainPdf.addPage(page);
+              });
+            } catch (mergeErr) {
+              console.error('Failed to merge attached PDF:', mergeErr);
             }
-            const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer);
-            
-            const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices());
-            copiedPages.forEach((page: any) => {
-              mainPdf.addPage(page);
-            });
-            
-            finalPdfBuffer = Buffer.from(await mainPdf.save());
-          } catch (mergeErr) {
-            console.error('Failed to merge PDFs:', mergeErr);
           }
+
+          finalPdfBuffer = Buffer.from(await mainPdf.save({ useObjectStreams: true }));
+        } catch (compressErr) {
+          console.error('pdf-lib compression failed, using raw buffer:', compressErr);
+          finalPdfBuffer = pdfBuffer;
         }
 
         attachments = [{
@@ -390,56 +409,8 @@ export default defineEventHandler(async (event) => {
         console.error('Failed to generate PDF:', e)
       }
 
-      // Explicitly append the original uploaded PDF as a separate attachment if it exists
-      if (contract.attachedPdf) {
-        try {
-          if (contract.attachedPdf.startsWith('http')) {
-            const pdfFetch = await safeFetch(contract.attachedPdf)
-            if (pdfFetch.ok) {
-              attachments.push({
-                filename: `Attached_Document_${contract.contractNumber || 'Contract'}.pdf`,
-                content: Buffer.from(await pdfFetch.arrayBuffer()),
-                contentType: 'application/pdf'
-              })
-            }
-          } else {
-            const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '');
-            attachments.push({
-              filename: `Attached_Document_${contract.contractNumber || 'Contract'}.pdf`,
-              content: Buffer.from(attachedBase64, 'base64'),
-              contentType: 'application/pdf'
-            })
-          }
-        } catch (err) {
-          console.error('Error attaching original PDF:', err)
-        }
-      }
-
-      // Explicitly append all gallery images as separate image attachments safely
-      if (contract.attachedGalleryImages && contract.attachedGalleryImages.length > 0) {
-        for (let idx = 0; idx < contract.attachedGalleryImages.length; idx++) {
-          const imgUrl = contract.attachedGalleryImages[idx]
-          try {
-            if (imgUrl.startsWith('http')) {
-              const imgFetch = await safeFetch(imgUrl)
-              if (imgFetch.ok) {
-                attachments.push({
-                  filename: `Attached_Image_${idx + 1}.png`,
-                  content: Buffer.from(await imgFetch.arrayBuffer())
-                })
-              }
-            } else {
-              const imgBase64 = imgUrl.replace(/^data:image\/\w+;base64,/, '');
-              attachments.push({
-                filename: `Attached_Image_${idx + 1}.png`,
-                content: Buffer.from(imgBase64, 'base64')
-              })
-            }
-          } catch (err) {
-            console.error('Error attaching image:', err)
-          }
-        }
-      }
+      // The combined PDF generated above already includes the attached PDF and gallery images.
+      // So we do not need to attach them separately.
 
       let finalEmailHTML = emailHTML;
       let imgCidCounter = 1;

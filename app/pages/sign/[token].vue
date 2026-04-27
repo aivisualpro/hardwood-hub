@@ -12,6 +12,13 @@ const signed = ref(false)
 const signature = ref('')
 const clientValues = ref<Record<string, string>>({})
 
+// Inline fields and Modal state
+const renderedContractHtml = ref('')
+const isSigModalOpen = ref(false)
+const activeSigKey = ref('')
+const activeSigLabel = ref('')
+const tempSigValue = ref('')
+
 async function fetchContract() {
   loading.value = true
   error.value = ''
@@ -29,11 +36,92 @@ async function fetchContract() {
     if (res.data.alreadySigned) {
       signed.value = true
     }
+
+    generateContractHtml()
   } catch (e: any) {
     error.value = e?.data?.message || e?.message || 'Failed to load contract'
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * Build the contract HTML once. We do NOT use a computed property bound to clientValues,
+ * because typing in the inputs would trigger a full v-html re-render and lose input focus!
+ */
+function generateContractHtml() {
+  if (!contractData.value?.content) {
+    renderedContractHtml.value = ''
+    return
+  }
+  let html = contractData.value.content as string
+  const vars = contractData.value.clientVariables as any[] | undefined
+  if (!vars?.length) {
+    renderedContractHtml.value = html
+    return
+  }
+
+  for (const v of vars) {
+    const escaped = v.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(`\\{\\{\\s*${escaped}\\s*\\}\\}`, 'g')
+    const label = (v.label || v.key).replace(/"/g, '&quot;')
+
+    let replacement: string
+    if (v.type === 'signature') {
+      const currentSig = clientValues.value[v.key]
+      if (currentSig && currentSig.startsWith('data:image')) {
+        replacement = `<img src="${currentSig}" class="inline-sig-image" data-var-key="${v.key}" data-var-label="${label}" alt="${label} Signature" title="Click to resign" />`
+      } else {
+        const reqClass = v.required ? 'required-sig' : ''
+        replacement = `<button type="button" class="inline-sig-button ${reqClass}" data-var-key="${v.key}" data-var-label="${label}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+          Click to sign ${v.required ? '*' : ''}
+        </button>`
+      }
+    } else {
+      const inputType = v.type === 'date' ? 'date' : v.type === 'number' ? 'number' : 'text'
+      const prefix = v.type === 'currency' ? '<span class="inline-field-prefix">$</span>' : ''
+      const placeholder = v.type === 'date' ? '' : label
+      const val = (clientValues.value[v.key] || '').replace(/"/g, '&quot;')
+      const req = v.required ? 'required' : ''
+      replacement = `<span class="inline-field-wrapper">${prefix}<input type="${inputType}" class="inline-client-field" data-var-key="${v.key}" placeholder="${placeholder}" value="${val}" ${req} /></span>`
+    }
+
+    html = html.replace(pattern, replacement)
+  }
+  renderedContractHtml.value = html
+}
+function onContractInput(e: Event) {
+  const target = e.target as HTMLElement
+  if (target?.classList?.contains('inline-client-field')) {
+    const key = target.getAttribute('data-var-key')
+    if (key) {
+      clientValues.value[key] = (target as HTMLInputElement).value
+    }
+  }
+}
+
+function onContractClick(e: MouseEvent) {
+  const target = (e.target as HTMLElement).closest('.inline-sig-button, .inline-sig-image')
+  if (target) {
+    const key = target.getAttribute('data-var-key')
+    const label = target.getAttribute('data-var-label')
+    if (key) {
+      activeSigKey.value = key
+      activeSigLabel.value = label || key
+      tempSigValue.value = clientValues.value[key] || ''
+      isSigModalOpen.value = true
+    }
+  }
+}
+
+function saveInlineSignature() {
+  if (activeSigKey.value) {
+    clientValues.value[activeSigKey.value] = tempSigValue.value
+    // Re-render HTML so the button turns into the signature image
+    generateContractHtml()
+  }
+  isSigModalOpen.value = false
 }
 
 async function submitSignature() {
@@ -109,7 +197,7 @@ onMounted(fetchContract)
       </div>
     </div>
 
-    <!-- Success (Already signed or just signed) -->
+    <!-- Success -->
     <div v-else-if="signed" class="flex items-center justify-center min-h-screen px-4">
       <div class="max-w-md w-full text-center">
         <div class="size-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-500/25">
@@ -155,7 +243,7 @@ onMounted(fetchContract)
           </div>
         </div>
 
-        <!-- Contract Title Separator -->
+        <!-- Contract Title -->
         <div class="px-6 sm:px-10 pt-8 pb-4 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
           <div>
             <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ contractData.title }}</h2>
@@ -166,12 +254,18 @@ onMounted(fetchContract)
           </div>
         </div>
 
-        <!-- Contract Content -->
-        <div class="contract-content px-6 sm:px-10 pb-8 text-slate-800 font-medium" v-html="contractData.content" />
+        <!-- Contract Content — client variables rendered INLINE -->
+        <div
+          class="contract-content px-6 sm:px-10 pb-8 text-slate-800 font-medium"
+          v-html="renderedContractHtml"
+          @input="onContractInput"
+          @click="onContractClick"
+        />
 
-        <!-- Existing Signatures Display (Company Side) -->
+
+
+        <!-- Contractor Signature -->
         <div class="px-6 sm:px-10 pb-12 pt-4 flex justify-end">
-           <!-- Contractor Signature (Right) -->
            <div class="w-full sm:w-1/2 flex flex-col items-start relative">
               <div class="h-14 w-full flex items-end relative -mb-1">
                  <img v-if="contractData.company?.signature" :src="contractData.company.signature" class="max-h-16 object-contain z-10 block" />
@@ -184,7 +278,7 @@ onMounted(fetchContract)
         </div>
       </div>
 
-      <!-- Signature Section -->
+      <!-- Client Signature Section -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 sm:px-8 py-5 border-b border-slate-100 bg-slate-50/50">
           <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -194,74 +288,7 @@ onMounted(fetchContract)
           <p class="text-xs text-slate-500 mt-1">Draw your signature in the box below to sign this contract.</p>
         </div>
         <div class="p-6 sm:p-8">
-          
-          <!-- Client Variables Form -->
-          <div v-if="contractData.clientVariables?.length" class="mb-8 space-y-4 bg-muted/10 p-5 rounded-xl border border-border">
-            <h3 class="text-sm font-bold text-slate-900 mb-4">Please provide the following information:</h3>
-            <div class="grid grid-cols-1 gap-4">
-              <div v-for="v in contractData.clientVariables" :key="v.key">
-                <label :for="`var-${v.key}`" class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
-                  {{ v.label || v.key }}
-                  <span v-if="v.required" class="text-red-500">*</span>
-                </label>
-                
-                <textarea
-                  v-if="v.type === 'textarea'"
-                  :id="`var-${v.key}`"
-                  v-model="clientValues[v.key]"
-                  rows="3"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all resize-none"
-                  :required="v.required"
-                ></textarea>
-                
-                <input
-                  v-else-if="v.type === 'date'"
-                  :id="`var-${v.key}`"
-                  v-model="clientValues[v.key]"
-                  type="date"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
-                  :required="v.required"
-                />
-                
-                <input
-                  v-else-if="v.type === 'number'"
-                  :id="`var-${v.key}`"
-                  v-model="clientValues[v.key]"
-                  type="number"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all tabular-nums"
-                  :required="v.required"
-                />
-                
-                <div v-else-if="v.type === 'currency'" class="relative flex items-center">
-                  <span class="absolute left-3 text-sm text-slate-500 font-semibold">$</span>
-                  <input
-                    :id="`var-${v.key}`"
-                    v-model="clientValues[v.key]"
-                    type="text"
-                    class="w-full pl-7 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all tabular-nums"
-                    :required="v.required"
-                  />
-                </div>
-                
-                <div v-else-if="v.type === 'signature'" class="space-y-2">
-                  <SignaturePad v-model="clientValues[v.key]" class="w-full h-24 bg-white border border-slate-200 rounded-lg" />
-                </div>
-                
-                <input
-                  v-else
-                  :id="`var-${v.key}`"
-                  v-model="clientValues[v.key]"
-                  type="text"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all"
-                  :required="v.required"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <!-- Signature Component -->
           <SignaturePad v-model="signature" class="w-full bg-white border-2 border-dashed border-slate-200 rounded-xl" style="min-height: 160px;" />
-
           <div class="flex items-center justify-between mt-6 pt-6 border-t border-slate-100">
             <p class="text-xs text-slate-400">
               By signing, you agree to the terms outlined in this contract.
@@ -287,6 +314,29 @@ onMounted(fetchContract)
         </p>
       </div>
     </div>
+
+    <!-- Inline Signature Modal -->
+    <Teleport to="body">
+      <div v-if="isSigModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+          <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h3 class="font-bold text-slate-900">Sign: {{ activeSigLabel }}</h3>
+            <button @click="isSigModalOpen = false" class="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors">
+              <svg class="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="p-6">
+            <SignaturePad v-model="tempSigValue" class="w-full bg-white border-2 border-dashed border-slate-200 rounded-xl" style="height: 200px;" />
+          </div>
+          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+            <button @click="isSigModalOpen = false" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-lg transition-colors">Cancel</button>
+            <button @click="saveInlineSignature" class="px-5 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors" :disabled="!tempSigValue">
+              Save Signature
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -371,5 +421,121 @@ onMounted(fetchContract)
 .contract-content :deep(hr) {
   border-top: 1.5px solid #e2e8f0;
   margin: 1.25rem 0;
+}
+
+/* ─── Inline Client Variable Fields ─── */
+.contract-content :deep(.inline-field-wrapper) {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.contract-content :deep(.inline-field-prefix) {
+  position: absolute;
+  left: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.contract-content :deep(.inline-client-field) {
+  display: inline-block;
+  min-width: 160px;
+  max-width: 320px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f0fdf4;
+  border: none;
+  border-bottom: 2px solid #10b981;
+  padding: 3px 6px;
+  margin: 0 2px;
+  outline: none;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  border-radius: 2px 2px 0 0;
+}
+
+.contract-content :deep(.inline-client-field:focus) {
+  background: #ecfdf5;
+  border-bottom-color: #059669;
+  box-shadow: 0 2px 0 0 #059669;
+}
+
+.contract-content :deep(.inline-client-field::placeholder) {
+  color: #10b981;
+  font-weight: 500;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.contract-content :deep(.inline-client-field[type="date"]) {
+  min-width: 140px;
+}
+
+.contract-content :deep(.inline-field-wrapper:has(.inline-field-prefix) .inline-client-field) {
+  padding-left: 18px;
+}
+
+/* ─── Inline Signature Elements ─── */
+.contract-content :deep(.inline-sig-button) {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  padding: 4px 12px;
+  margin: 0 4px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.contract-content :deep(.inline-sig-button:hover) {
+  background: #f0fdf4;
+  border-color: #10b981;
+  color: #059669;
+  transform: translateY(-1px);
+}
+
+.contract-content :deep(.inline-sig-button.required-sig) {
+  border-color: #fca5a5;
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.contract-content :deep(.inline-sig-button.required-sig:hover) {
+  border-color: #ef4444;
+}
+
+.contract-content :deep(.inline-sig-image) {
+  display: inline-block;
+  vertical-align: middle;
+  max-height: 48px;
+  max-width: 160px;
+  object-fit: contain;
+  margin: 0 4px;
+  border-bottom: 1.5px solid #10b981;
+  cursor: pointer;
+  padding-bottom: 2px;
+  transition: opacity 0.2s ease;
+}
+
+.contract-content :deep(.inline-sig-image:hover) {
+  opacity: 0.8;
+}
+
+.contract-content :deep(.inline-sig-field) {
+  display: inline-block;
+  min-width: 200px;
+  height: 3px;
+  border-bottom: 2px dashed #10b981;
+  margin: 0 4px;
+  vertical-align: middle;
 }
 </style>
