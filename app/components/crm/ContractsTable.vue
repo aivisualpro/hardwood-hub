@@ -87,31 +87,36 @@ async function confirmSendEmail() {
 
 async function downloadPDF(ct: any) {
   toast.loading('Generating Contract PDF...')
-  
+
   try {
-    // Call the dedicated backend endpoint
-    const res: any = await $fetch(`/api/contracts/download-pdf/${ct._id}`, { responseType: 'blob' })
-    
-    // Create an object URL from the blob
-    const url = URL.createObjectURL(res)
-    
-    // Create an invisible download link
+    // Use native fetch so that a server 302 → Cloudinary URL is followed
+    // transparently. (Vercel body limits force big PDFs through Cloudinary.)
+    const response = await fetch(`/api/contracts/download-pdf/${ct._id}`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(text || `Server returned ${response.status}`)
+    }
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+
     const a = document.createElement('a')
     a.style.display = 'none'
     a.href = url
     a.download = `Contract_${ct.contractNumber}.pdf`
-    
-    // Append to body, click natively to trigger download, and cleanup
     document.body.appendChild(a)
     a.click()
-    
+
     setTimeout(() => {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       toast.dismiss()
       toast.success('PDF downloaded successfully')
     }, 600)
-    
   } catch (err: any) {
     toast.dismiss()
     toast.error('Could not generate PDF', { description: err?.message || 'Server error' })

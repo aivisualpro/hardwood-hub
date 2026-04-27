@@ -2,10 +2,15 @@ import { generatePdfFromHtml } from '../../../utils/pdf-generator'
 import { compressImagesInHtml } from '../../../utils/image-compressor'
 // @ts-ignore: IDE cache invalidation workaround
 import { PDFDocument } from 'pdf-lib'
+import { v2 as cloudinary } from 'cloudinary'
 import { connectDB } from '../../../utils/mongoose'
 import { Contract } from '../../../models/Contract'
 import { AppSetting } from '../../../models/AppSetting'
 import { ContractTemplate } from '../../../models/ContractTemplate'
+
+// Vercel serverless body cap is ~4.5MB on Hobby and 6MB on Pro for non-streamed
+// responses. Anything bigger we route through Cloudinary and 302 the user.
+const VERCEL_BODY_LIMIT_BYTES = 4 * 1024 * 1024 // 4MB safe ceiling
 
 const safeFetch = async (url: string, timeoutMs = 8000) => {
   const controller = new AbortController()
@@ -20,11 +25,56 @@ const safeFetch = async (url: string, timeoutMs = 8000) => {
   }
 }
 
+/**
+ * Upload a PDF buffer to Cloudinary and return the public URL.
+ * Used as a fallback when the PDF is too large to return directly through Vercel.
+ */
+async function uploadPdfToCloudinary(buffer: Buffer, filename: string): Promise<string> {
+  const config = useRuntimeConfig()
+  cloudinary.config({
+    cloud_name: config.cloudinaryCloudName,
+    api_key: config.cloudinaryApiKey,
+    api_secret: config.cloudinaryApiSecret,
+  })
+
+  const fs = await import('fs')
+  const path = await import('path')
+  const os = await import('os')
+
+  const tmpPath = path.join(
+    os.tmpdir(),
+    `${filename}_${Date.now()}_${Math.random().toString(36).slice(2)}.pdf`,
+  )
+  fs.writeFileSync(tmpPath, buffer)
+
+  try {
+    const result = await new Promise<any>((resolve, reject) => {
+      cloudinary.uploader.upload_large(
+        tmpPath,
+        {
+          folder: 'hardwood-hub/contracts/generated',
+          resource_type: 'raw',
+          chunk_size: 6_000_000,
+          use_filename: true,
+          unique_filename: true,
+        },
+        (err, res) => {
+          if (err) return reject(err)
+          resolve(res)
+        },
+      )
+    })
+    return result.secure_url
+  } finally {
+    try { fs.unlinkSync(tmpPath) } catch (e) { /* ignore */ }
+  }
+}
+
 export default defineEventHandler(async (event) => {
   try {
     await connectDB()
     const id = getRouterParam(event, 'id')
-    
+
     if (!id) {
       throw createError({ statusCode: 400, message: 'Contract ID is required' })
     }
@@ -39,7 +89,7 @@ export default defineEventHandler(async (event) => {
     const template = await ContractTemplate.findById(contract.templateId).lean() as any
 
     let mergedHTML = contract.content || ''
-    
+
     if (contract.variableValues) {
       for (const [key, val] of Object.entries<string>(contract.variableValues)) {
         const vDef = template?.variables?.find((v: any) => v.key === key)
@@ -63,7 +113,7 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*company_phone[1]?\s*\}\}/gi, company?.phone1 || company?.phone || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_phone2\s*\}\}/gi, company?.phone2 || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_website\s*\}\}/gi, company?.website || '')
-      mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/gi, company?.email || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/gi, company?.email || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_license\s*\}\}/gi, company?.licenseNumber || '')
 
     const companyLogoImg = company?.logo
@@ -75,7 +125,7 @@ export default defineEventHandler(async (event) => {
       if (tableHTML.includes('Signature') && tableHTML.includes('____')) return ''
       return tableHTML
     })
-    
+
     const contractorSigImg = company?.signature
       ? `<img src="${company.signature.includes('cloudinary.com') ? company.signature.replace('/upload/', '/upload/q_60,f_png,w_300/') : company.signature}" alt="Contractor Signature" style="max-height: 64px; object-fit: contain; vertical-align: middle;" />`
       : ''
@@ -216,74 +266,97 @@ export default defineEventHandler(async (event) => {
       </html>
     `
 
-    // Pre-compress all images in the HTML before Puppeteer renders them
-    // This replaces every <img src="..."> with a sharp-compressed base64 data URI
-    const compressedHTML = await compressImagesInHtml(pdfHTML, {
-      maxWidth: 800,
-      quality: 55,
-      format: 'jpeg',
-    })
+    // Pre-compress all images in the HTML before Puppeteer renders them.
+    // Wrapped in try/catch — if sharp fails on Vercel, fall back to raw HTML
+    // so the request still succeeds (just produces a bigger PDF).
+    let compressedHTML = pdfHTML
+    try {
+      compressedHTML = await compressImagesInHtml(pdfHTML, {
+        maxWidth: 800,
+        quality: 55,
+        format: 'jpeg',
+      })
+      console.log(`[pdf-download] HTML before/after compress: ${(pdfHTML.length / 1024).toFixed(0)}KB → ${(compressedHTML.length / 1024).toFixed(0)}KB`)
+    } catch (compressErr: any) {
+      console.warn('[pdf-download] Image compression failed, using raw HTML:', compressErr?.message)
+    }
 
-    console.log(`[pdf-download] HTML size before compress: ${(pdfHTML.length / 1024).toFixed(0)}KB`)
-    console.log(`[pdf-download] HTML size after compress: ${(compressedHTML.length / 1024).toFixed(0)}KB`)
-
-    let pdfBuffer: any;
+    let pdfBuffer: Buffer
     try {
       pdfBuffer = await generatePdfFromHtml(compressedHTML)
-      console.log(`[pdf-download] Puppeteer raw PDF size: ${(pdfBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+      console.log(`[pdf-download] Puppeteer PDF size: ${(pdfBuffer.length / 1024 / 1024).toFixed(2)}MB`)
     } catch (err: any) {
-      console.error("PDF Generate Error", err)
-      throw createError({ statusCode: 500, statusMessage: err?.message || "PDF generation crashed", data: err?.stack })
+      console.error('[pdf-download] Puppeteer error:', err)
+      throw createError({
+        statusCode: 500,
+        statusMessage: err?.message || 'PDF generation crashed',
+        data: err?.stack,
+      })
     }
-    
-    // Always run through pdf-lib for compression via useObjectStreams
-    let finalPdfBuffer: any;
-    try {
-      const mainPdf = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
 
-      // Merge attached PDF if present
+    // Always run through pdf-lib for compression + optional attached PDF merge.
+    let finalPdfBuffer: Buffer
+    try {
+      const mainPdf = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
+
       if (contract.attachedPdf) {
         try {
-          let attachedPdfBuffer: any;
+          let attachedPdfBuffer: Buffer
           if (contract.attachedPdf.startsWith('http')) {
-            const fetchRes = await safeFetch(contract.attachedPdf);
-            if (!fetchRes.ok) throw new Error(`Fetch failed: ${fetchRes.statusText}`);
-            const arrayBuffer = await fetchRes.arrayBuffer();
-            attachedPdfBuffer = Buffer.from(arrayBuffer);
+            const fetchRes = await safeFetch(contract.attachedPdf, 15000)
+            if (!fetchRes.ok) throw new Error(`Fetch failed: ${fetchRes.statusText}`)
+            const arrayBuffer = await fetchRes.arrayBuffer()
+            attachedPdfBuffer = Buffer.from(arrayBuffer)
           } else {
-            const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '');
-            attachedPdfBuffer = Buffer.from(attachedBase64, 'base64');
+            const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '')
+            attachedPdfBuffer = Buffer.from(attachedBase64, 'base64')
           }
 
-          const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer, { ignoreEncryption: true });
-          const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices());
-          copiedPages.forEach((page: any) => {
-            mainPdf.addPage(page);
-          });
+          const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer, { ignoreEncryption: true })
+          const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices())
+          copiedPages.forEach((page: any) => mainPdf.addPage(page))
         } catch (mergeErr) {
-          console.error('Failed to merge attached PDF:', mergeErr);
+          console.error('[pdf-download] Failed to merge attached PDF:', mergeErr)
         }
       }
 
-      finalPdfBuffer = Buffer.from(await mainPdf.save({ useObjectStreams: true }));
+      finalPdfBuffer = Buffer.from(await mainPdf.save({ useObjectStreams: true }))
       console.log(`[pdf-download] Final PDF after pdf-lib: ${(finalPdfBuffer.length / 1024 / 1024).toFixed(2)}MB`)
     } catch (compressErr) {
-      console.error('pdf-lib compression failed, using raw buffer:', compressErr);
-      finalPdfBuffer = pdfBuffer;
+      console.error('[pdf-download] pdf-lib compression failed, using raw buffer:', compressErr)
+      finalPdfBuffer = pdfBuffer
     }
 
-    setResponseHeader(event, 'Content-Type', 'application/pdf')
-    setResponseHeader(event, 'Content-Disposition', `attachment; filename="Contract_${contract.contractNumber}.pdf"`)
+    const filename = `Contract_${contract.contractNumber || contract._id}`
 
+    // Vercel can't return bodies bigger than ~4.5MB safely → upload to Cloudinary
+    // and 302-redirect. Browser sees this as a normal download.
+    if (finalPdfBuffer.length > VERCEL_BODY_LIMIT_BYTES) {
+      console.log(`[pdf-download] PDF over ${VERCEL_BODY_LIMIT_BYTES} bytes → routing via Cloudinary`)
+      try {
+        const cloudUrl = await uploadPdfToCloudinary(finalPdfBuffer, filename)
+        // fl_attachment forces the browser to download instead of inline-view.
+        const downloadUrl = cloudUrl.replace('/upload/', `/upload/fl_attachment:${filename}/`)
+        return await sendRedirect(event, downloadUrl, 302)
+      } catch (uploadErr: any) {
+        console.error('[pdf-download] Cloudinary fallback upload failed:', uploadErr?.message)
+        throw createError({
+          statusCode: 500,
+          statusMessage: `PDF too large for direct download and Cloudinary upload failed: ${uploadErr?.message}`,
+        })
+      }
+    }
+
+    // Small enough → return directly.
+    setResponseHeader(event, 'Content-Type', 'application/pdf')
+    setResponseHeader(event, 'Content-Disposition', `attachment; filename="${filename}.pdf"`)
     return finalPdfBuffer
   } catch (err: any) {
-    console.error("[CRITICAL PDF ERROR]", err)
-    // Send the EXACT error to the frontend
+    console.error('[CRITICAL PDF ERROR]', err)
     throw createError({
       statusCode: 500,
-      statusMessage: "PDF Error: " + (err.message || String(err)),
-      data: err.stack
+      statusMessage: 'PDF Error: ' + (err.message || String(err)),
+      data: err.stack,
     })
   }
 })
-
