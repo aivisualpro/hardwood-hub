@@ -31,7 +31,7 @@ export default defineNuxtConfig({
     // - sharp has prebuilt native bindings per platform (linux-x64) that must
     //   stay in node_modules so Vercel's Lambda gets the right .node file
     externals: {
-      external: ['@sparticuz/chromium', 'puppeteer-core', 'sharp'],
+      external: ['@sparticuz/chromium-min', 'puppeteer-core', 'sharp'],
     },
     vercel: {
       functions: {

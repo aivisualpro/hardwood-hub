@@ -1,5 +1,18 @@
 import puppeteer from 'puppeteer-core'
 
+/**
+ * Remote chromium pack — used on Vercel because the full @sparticuz/chromium
+ * package's .br archive files do NOT survive Vercel's bundling, which is what
+ * causes the "libnss3.so: cannot open shared object file" error.
+ *
+ * The -min package downloads this pack at cold start. The pack contains the
+ * chromium binary AND every shared library it needs (libnss3, libnspr4, etc.).
+ *
+ * Version MUST match the @sparticuz/chromium-min version in package.json.
+ */
+const REMOTE_CHROMIUM_PACK =
+  'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar'
+
 export const generatePdfFromHtml = async (htmlContent: string) => {
   const isLocal = process.env.NODE_ENV === 'development' || !process.env.VERCEL
 
@@ -13,22 +26,28 @@ export const generatePdfFromHtml = async (htmlContent: string) => {
     try {
       // Dynamic import — only loads on Vercel, never at server boot time
       // @ts-ignore
-      const module = await import('@sparticuz/chromium')
-      const chromium = module.default || module
+      const mod = await import('@sparticuz/chromium-min')
+      const chromium = mod.default || mod
+
+      // Disable WebGL/graphics to shave decompression time + memory
       chromium.setGraphicsMode = false
-      // Supply empty arg to use full chromium bundle
-      executablePath = await chromium.executablePath()
+
+      // Pass the remote pack URL — chromium-min will download + extract it
+      // (binary + ALL shared libs) into /tmp on first call. Cached for warm starts.
+      executablePath = await chromium.executablePath(REMOTE_CHROMIUM_PACK)
+
+      if (!executablePath) {
+        throw new Error('Could not resolve Chromium executable path on Vercel')
+      }
+
       launchArgs = [
         ...chromium.args,
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-gpu',
-        '--disable-dev-shm-usage'
+        '--disable-dev-shm-usage',
+        '--single-process',
       ]
-
-      if (!executablePath) {
-        throw new Error('Could not resolve Chromium executable path on Vercel')
-      }
     } catch (e: any) {
       throw new Error('Chromium Init Error: ' + e.message)
     }
