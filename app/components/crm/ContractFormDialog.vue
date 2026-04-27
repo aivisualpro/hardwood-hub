@@ -141,31 +141,99 @@ function toggleGalleryImage(url: string) {
   }
 }
 
-function handlePdfUpload(e: Event) {
-  const target = e.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
+async function handlePdfUpload(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
   if (file.type !== 'application/pdf') {
-    toast.error('Only PDF files are allowed');
-    return;
-  }
-  
-  const sizeMB = (file.size / 1024 / 1024).toFixed(1)
-  // Base64 encoding inflates size by ~33%. To stay under Vercel's 4.5MB payload limit,
-  // the raw file size must be strictly under 3.3MB.
-  if (file.size > 3.3 * 1024 * 1024) {
-    toast.error('PDF too large for Vercel', { description: `File is ${sizeMB}MB. Due to base64 encoding, this exceeds Vercel's strict 4.5MB payload limit. Please compress your PDF to under 3.3MB locally before uploading.` })
+    toast.error('Only PDF files are allowed')
     target.value = ''
     return
   }
 
-  attachedPdfName.value = `${file.name} (${sizeMB}MB)`;
-  
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    attachedPdf.value = ev.target?.result as string;
-  };
-  reader.readAsDataURL(file);
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1)
+
+  // Cloudinary's free tier hard-caps single uploads at 100MB.
+  if (file.size > 100 * 1024 * 1024) {
+    toast.error('PDF too large', {
+      description: `File is ${sizeMB}MB. Cloudinary's max upload size is 100MB.`,
+    })
+    target.value = ''
+    return
+  }
+
+  attachedPdfName.value = `${file.name} (${sizeMB}MB)`
+  attachedPdf.value = ''
+
+  try {
+    // ── Step 1: get a signed upload payload for Cloudinary
+    toast.loading(`Uploading ${sizeMB}MB PDF to Cloudinary…`, { id: 'pdf-upload' })
+
+    const sig = await $fetch<{
+      success: boolean
+      signature: string
+      timestamp: number
+      apiKey: string
+      cloudName: string
+      folder: string
+      uploadUrl: string
+    }>('/api/upload/cloudinary-signature', {
+      query: {
+        folder: 'hardwood-hub/contracts/raw',
+        resourceType: 'raw',
+      },
+    })
+
+    // ── Step 2: upload binary directly to Cloudinary (bypasses Vercel)
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('signature', sig.signature)
+    formData.append('timestamp', String(sig.timestamp))
+    formData.append('api_key', sig.apiKey)
+    formData.append('folder', sig.folder)
+
+    const cloudRes = await fetch(sig.uploadUrl, { method: 'POST', body: formData })
+    if (!cloudRes.ok) {
+      const errText = await cloudRes.text().catch(() => '')
+      throw new Error(`Cloudinary upload failed: ${cloudRes.status} ${errText.slice(0, 200)}`)
+    }
+    const cloudData = await cloudRes.json() as { secure_url: string; public_id: string }
+    if (!cloudData.secure_url) throw new Error('Cloudinary did not return a URL')
+
+    // ── Step 3: ask the server to compress the just-uploaded PDF
+    toast.loading('Compressing PDF…', { id: 'pdf-upload' })
+    const compressed = await $fetch<{
+      success: boolean
+      url: string
+      originalSize: string
+      compressedSize: string
+    }>('/api/upload/compress-pdf', {
+      method: 'POST',
+      body: {
+        url: cloudData.secure_url,
+        folder: 'hardwood-hub/contracts',
+        deleteOriginal: true,
+      },
+    })
+
+    if (!compressed?.url) throw new Error('Compression endpoint did not return a URL')
+
+    attachedPdf.value = compressed.url
+    attachedPdfName.value = `${file.name} (${compressed.compressedSize}MB)`
+    toast.success(
+      `PDF ready: ${compressed.originalSize}MB → ${compressed.compressedSize}MB`,
+      { id: 'pdf-upload' },
+    )
+  } catch (err: any) {
+    toast.error('PDF upload failed', {
+      description: err?.data?.message || err?.message || 'Upload error',
+      id: 'pdf-upload',
+    })
+    attachedPdf.value = ''
+    attachedPdfName.value = ''
+  } finally {
+    target.value = ''
+  }
 }
 
 function selectCustomer(c: any) {
@@ -267,38 +335,9 @@ async function saveContract() {
 
   savingContract.value = true
   try {
-    let finalAttachedPdf = attachedPdf.value
-    if (finalAttachedPdf && finalAttachedPdf.startsWith('data:')) {
-      // Check raw size and warn user
-      const rawSizeBytes = Math.round((finalAttachedPdf.length - 'data:application/pdf;base64,'.length) * 0.75)
-      const rawSizeMB = (rawSizeBytes / 1024 / 1024).toFixed(1)
-      
-      if (rawSizeBytes > 50 * 1024 * 1024) {
-        toast.error('PDF too large', { description: `File is ${rawSizeMB}MB. Maximum allowed is 50MB.` })
-        savingContract.value = false
-        return
-      }
-
-      toast.loading(`Compressing & uploading PDF (${rawSizeMB}MB)...`, { id: 'pdf-upload' })
-      try {
-        const uploadRes = await $fetch<{ success: boolean, url: string, originalSize: string, compressedSize: string }>('/api/upload/compress-pdf', {
-          method: 'POST',
-          body: {
-            file: finalAttachedPdf,
-            folder: 'hardwood-hub/contracts',
-          },
-        })
-        if (uploadRes?.url) {
-          finalAttachedPdf = uploadRes.url
-          toast.success(`PDF compressed: ${uploadRes.originalSize}MB → ${uploadRes.compressedSize}MB`, { id: 'pdf-upload' })
-        }
-      } catch (uploadErr: any) {
-        toast.error('Failed to upload PDF', { description: uploadErr?.data?.message || uploadErr.message || 'Upload failed' })
-        throw uploadErr
-      } finally {
-        toast.dismiss('pdf-upload')
-      }
-    }
+    // PDF upload + compression already happened in handlePdfUpload — at this
+    // point attachedPdf.value is either '' or a final Cloudinary URL.
+    const finalAttachedPdf = attachedPdf.value
 
     const c = selectedCustomer.value
     const payload = {
