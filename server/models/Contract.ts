@@ -32,9 +32,14 @@ const ContractSchema = new mongoose.Schema(
         
         // Attached PDF string (base64 or URL)
         attachedPdf: { type: String, default: '' },
-        
+
         // Attached from Customer Gallery (Array of URLs/base64)
         attachedGalleryImages: { type: [String], default: [] },
+
+        // Final merged PDF (contract + attached PDF) cached on Vercel Blob.
+        // Generated on save; downloaded directly without re-rendering.
+        mergedPdfUrl: { type: String, default: '' },
+        mergedPdfGeneratedAt: { type: Date, default: null },
 
         // Status
         status: {

@@ -329,15 +329,23 @@ export default defineEventHandler(async (event) => {
 
     const filename = `Contract_${contract.contractNumber || contract._id}`
 
-    // Vercel can't return bodies bigger than ~4.5MB safely → upload to Cloudinary
-    // and 302-redirect. Browser sees this as a normal download.
+    // If the PDF is bigger than what Vercel can return as a body (~4.5MB),
+    // upload to Cloudinary and return its URL as JSON. We do NOT redirect —
+    // a 302 to Cloudinary trips CORS when the fetch has credentials.
     if (finalPdfBuffer.length > VERCEL_BODY_LIMIT_BYTES) {
       console.log(`[pdf-download] PDF over ${VERCEL_BODY_LIMIT_BYTES} bytes → routing via Cloudinary`)
       try {
         const cloudUrl = await uploadPdfToCloudinary(finalPdfBuffer, filename)
-        // fl_attachment forces the browser to download instead of inline-view.
+        // fl_attachment tells Cloudinary to send a Content-Disposition header
+        // so the browser downloads the file instead of viewing it inline.
         const downloadUrl = cloudUrl.replace('/upload/', `/upload/fl_attachment:${filename}/`)
-        return await sendRedirect(event, downloadUrl, 302)
+        setResponseHeader(event, 'Content-Type', 'application/json')
+        return {
+          large: true,
+          downloadUrl,
+          filename: `${filename}.pdf`,
+          sizeBytes: finalPdfBuffer.length,
+        }
       } catch (uploadErr: any) {
         console.error('[pdf-download] Cloudinary fallback upload failed:', uploadErr?.message)
         throw createError({
@@ -347,7 +355,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Small enough → return directly.
+    // Small enough → return directly as binary.
     setResponseHeader(event, 'Content-Type', 'application/pdf')
     setResponseHeader(event, 'Content-Disposition', `attachment; filename="${filename}.pdf"`)
     return finalPdfBuffer

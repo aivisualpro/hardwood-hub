@@ -133,6 +133,10 @@ export default defineNuxtConfig({
 
     // Browserless.io — used for server-side PDF rendering
     browserlessToken: process.env.BROWSERLESS_TOKEN,
+
+    // Vercel Blob — long-term PDF storage. Token is auto-provided by Vercel
+    // once a Blob store is connected to the project.
+    blobReadWriteToken: process.env.BLOB_READ_WRITE_TOKEN,
     public: {
       googleClientId: process.env.GOOGLE_CLIENT_ID,
     },
