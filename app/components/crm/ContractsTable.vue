@@ -89,11 +89,8 @@ async function downloadPDF(ct: any) {
   toast.loading('Generating Contract PDF...')
 
   try {
-    // Use native fetch so that a server 302 → Cloudinary URL is followed
-    // transparently. (Vercel body limits force big PDFs through Cloudinary.)
     const response = await fetch(`/api/contracts/download-pdf/${ct._id}`, {
       method: 'GET',
-      credentials: 'include',
     })
 
     if (!response.ok) {
@@ -101,6 +98,45 @@ async function downloadPDF(ct: any) {
       throw new Error(text || `Server returned ${response.status}`)
     }
 
+    const contentType = response.headers.get('content-type') || ''
+
+    // Large PDFs are returned as JSON with a Cloudinary URL (avoids CORS
+    // problems that come from 302-redirecting to Cloudinary directly).
+    if (contentType.includes('application/json')) {
+      const data = await response.json() as { downloadUrl?: string; filename?: string }
+      if (!data?.downloadUrl) {
+        throw new Error('Server returned JSON without a downloadUrl')
+      }
+
+      // The HTML5 `download` attribute is ignored for cross-origin URLs, so
+      // we rely on Cloudinary's `fl_attachment` flag in the URL to make the
+      // server send Content-Disposition: attachment.
+      // Re-fetching the file as a blob and creating an object URL avoids any
+      // popup-blocker / cross-origin issues entirely — works in all browsers.
+      toast.loading('Fetching large PDF...')
+      const fileRes = await fetch(data.downloadUrl)
+      if (!fileRes.ok) {
+        throw new Error(`Failed to fetch PDF from Cloudinary: ${fileRes.status}`)
+      }
+      const fileBlob = await fileRes.blob()
+      const fileObjUrl = URL.createObjectURL(fileBlob)
+
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = fileObjUrl
+      a.download = data.filename || `Contract_${ct.contractNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(fileObjUrl)
+        toast.dismiss()
+        toast.success('PDF downloaded successfully')
+      }, 400)
+      return
+    }
+
+    // Small PDFs come back as a normal binary blob.
     const blob = await response.blob()
     const url = URL.createObjectURL(blob)
 

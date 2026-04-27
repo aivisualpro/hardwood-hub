@@ -320,10 +320,49 @@ async function saveTemplate() {
     return
   }
 
+  // --- AUTO-SYNC VARIABLES FROM CONTENT ---
+  const regex = /\{\{([^}]+)\}\}/g;
+  let match;
+  const foundKeys = new Set<string>();
+  
+  while ((match = regex.exec(templateForm.value.content)) !== null) {
+      let key = (match[1] || '').replace(/&nbsp;/g, ' ').replace(/<[^>]*>?/gm, '').trim();
+      if (key) foundKeys.add(key);
+  }
+
+  const ignoreKeys = new Set([
+      'contract_number',
+      'company_name', 'companyName', 'client_name', 'clientName',
+      ...systemVariables.map(sv => sv.key)
+  ]);
+
+  // Add missing variables found in text
+  foundKeys.forEach(key => {
+      if (ignoreKeys.has(key)) return;
+      const exists = templateForm.value.variables.some(v => v.key === key);
+      if (!exists) {
+          templateForm.value.variables.push({
+              key,
+              label: key,
+              type: 'text',
+              defaultValue: '',
+              required: false,
+              scope: 'template'
+          });
+      }
+  });
+
+  // Remove template-scoped variables that are no longer in the text
+  templateForm.value.variables = templateForm.value.variables.filter(v => {
+      if (v.scope === 'client') return true;
+      if (ignoreKeys.has(v.key)) return true;
+      return foundKeys.has(v.key);
+  });
+
   // Validate variables
   const invalidVars = templateForm.value.variables.filter(v => !v.key.trim())
   if (invalidVars.length > 0) {
-    toast.error('All variables must have a key')
+    toast.error('All variables must have a valid key')
     return
   }
 
