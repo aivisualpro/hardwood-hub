@@ -79,6 +79,7 @@
     "@tiptap/vue-3": "^3.22.1",
     "@unovis/ts": "^1.6.1",
     "@unovis/vue": "^1.6.1",
+    "@vercel/blob": "^2.3.3",
     "@vue-flow/background": "^1.3.2",
     "@vue-flow/controls": "^1.1.3",
     "@vue-flow/core": "^1.48.2",
