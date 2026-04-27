@@ -9,11 +9,11 @@ import { Contract } from '../../../models/Contract'
 import { AppSetting } from '../../../models/AppSetting'
 import { ContractTemplate } from '../../../models/ContractTemplate'
 
-const safeFetch = async (url: string, timeoutMs = 8000) => {
+const safeFetch = async (url: string, timeoutMs = 8000, options: RequestInit = {}) => {
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await fetch(url, { signal: controller.signal })
+    const res = await fetch(url, { ...options, signal: controller.signal })
     clearTimeout(id)
     return res
   } catch (err) {
@@ -377,7 +377,11 @@ export default defineEventHandler(async (event) => {
             try {
               let attachedPdfBuffer: Buffer;
               if (contract.attachedPdf.startsWith('http')) {
-                const fetchRes = await safeFetch(contract.attachedPdf);
+                const fetchOptions: RequestInit = {}
+                if (contract.attachedPdf.includes('vercel-storage.com') || contract.attachedPdf.includes('vercel.com')) {
+                  fetchOptions.headers = { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
+                }
+                const fetchRes = await safeFetch(contract.attachedPdf, 15000, fetchOptions);
                 if (!fetchRes.ok) throw new Error(`Fetch failed: ${fetchRes.statusText}`);
                 const arrayBuffer = await fetchRes.arrayBuffer();
                 attachedPdfBuffer = Buffer.from(arrayBuffer);
