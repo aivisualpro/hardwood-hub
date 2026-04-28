@@ -311,13 +311,13 @@ onMounted(fetchContract)
 
         <!-- Contractor Signature -->
         <div class="px-6 sm:px-10 pb-12 pt-4 flex justify-end">
-           <div class="w-full sm:w-1/2 flex flex-col items-start relative">
-              <div class="h-14 w-full flex items-end relative -mb-1">
-                 <img v-if="contractData.company?.signature" :src="contractData.company.signature" class="max-h-16 object-contain z-10 block" />
+           <div class="w-full sm:w-2/3 flex flex-col items-start relative">
+              <div class="h-28 w-full flex items-end relative -mb-1">
+                 <img v-if="contractData.company?.signature" :src="contractData.company.signature" class="max-h-28 max-w-xs object-contain object-left-bottom z-10 block" />
               </div>
               <div class="border-t-[1.5px] border-slate-900 w-full pt-2 flex justify-between">
-                 <p class="text-xs font-bold text-slate-900 font-sans">Contractor's Signature</p>
-                 <div class="text-xs font-medium text-slate-800 tabular-nums">Date: {{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) }}</div>
+                 <p class="text-sm font-bold text-slate-900 font-sans">Contractor's Signature</p>
+                 <div class="text-sm font-medium text-slate-800 tabular-nums">Date: {{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) }}</div>
               </div>
            </div>
         </div>
