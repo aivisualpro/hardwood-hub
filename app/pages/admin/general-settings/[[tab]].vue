@@ -102,6 +102,9 @@ const loadingCompany = ref(true)
 const savingCompany = ref(false)
 const uploadingLogo = ref(false)
 const uploadingSignature = ref(false)
+// Debounce timer for auto-save
+let _autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+const autoSaving = ref(false)
 
 async function fetchCompanyProfile() {
   loadingCompany.value = true
@@ -115,25 +118,43 @@ async function fetchCompanyProfile() {
   } finally { loadingCompany.value = false }
 }
 
-async function saveCompanyProfile() {
+async function uploadBase64ToCloudinary(base64: string): Promise<string> {
+  const res = await $fetch<{ success: boolean, url: string }>('/api/upload/company-logo', {
+    method: 'POST',
+    body: { file: base64 },
+  })
+  return res.url
+}
+
+async function saveCompanyProfile(silent = false) {
   savingCompany.value = true
   try {
     await $fetch('/api/app-settings', {
       method: 'POST',
       body: { key: 'companyProfile', value: companyProfile.value, description: 'Company profile information' },
     })
-    toast.success('Company profile saved')
+    if (!silent) toast.success('Company profile saved')
   } catch (e: any) {
     toast.error('Save failed', { description: e?.message })
   } finally { savingCompany.value = false }
 }
+
+// Auto-save on any field change (debounced 1.5s, silent)
+watch(companyProfile, () => {
+  if (loadingCompany.value) return
+  autoSaving.value = true
+  if (_autoSaveTimer) clearTimeout(_autoSaveTimer)
+  _autoSaveTimer = setTimeout(async () => {
+    await saveCompanyProfile(true)
+    autoSaving.value = false
+  }, 1500)
+}, { deep: true })
 
 async function handleLogoUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
 
-  // Validate
   if (!file.type.startsWith('image/')) {
     toast.error('Please select an image file')
     return
@@ -145,7 +166,6 @@ async function handleLogoUpload(event: Event) {
 
   uploadingLogo.value = true
   try {
-    // Convert to base64 data URL
     const reader = new FileReader()
     const dataUrl = await new Promise<string>((resolve, reject) => {
       reader.onload = () => resolve(reader.result as string)
@@ -158,12 +178,13 @@ async function handleLogoUpload(event: Event) {
       body: { file: dataUrl },
     })
     companyProfile.value.logo = res.url
-    toast.success('Logo uploaded')
+    await saveCompanyProfile(true)
+    toast.success('Logo uploaded & saved')
   } catch (e: any) {
     toast.error('Upload failed', { description: e?.message })
   } finally {
     uploadingLogo.value = false
-    input.value = '' // reset file input
+    input.value = ''
   }
 }
 
@@ -172,8 +193,8 @@ async function handleSignatureUpload(event: Event) {
   const file = input.files?.[0]
   if (!file) return
 
-  if (!file.type.startsWith('image/')) {
-    toast.error('Please select an image file')
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+    toast.error('Please select a PNG, JPEG, or WebP image')
     return
   }
   if (file.size > 5 * 1024 * 1024) {
@@ -190,18 +211,23 @@ async function handleSignatureUpload(event: Event) {
       reader.readAsDataURL(file)
     })
 
-    const res = await $fetch<{ success: boolean, url: string }>('/api/upload/company-logo', { // reusing logo logic since we just need it in cloudinary
-      method: 'POST',
-      body: { file: dataUrl },
-    })
-    companyProfile.value.signature = res.url
-    toast.success('Signature uploaded')
+    const url = await uploadBase64ToCloudinary(dataUrl)
+    // Set directly without triggering the debounce watcher
+    companyProfile.value.signature = url
+    await saveCompanyProfile(true)
+    toast.success('Signature uploaded & saved')
   } catch (e: any) {
     toast.error('Upload failed', { description: e?.message })
   } finally {
     uploadingSignature.value = false
     input.value = ''
   }
+}
+
+async function clearSignature() {
+  companyProfile.value.signature = ''
+  await saveCompanyProfile(true)
+  toast.success('Signature cleared')
 }
 
 const tabs = [
@@ -780,11 +806,48 @@ const WpIconsList = [
                   </h3>
                 </div>
                 <div class="p-5 flex-1 flex flex-col justify-center">
-                  <div class="flex-1 min-w-0 flex flex-col">
-                    <SignaturePad v-model="companyProfile.signature" class="w-full flex-1 bg-background mt-1 min-h-[220px]" />
+                  <div class="relative group w-full min-h-[320px] rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center bg-muted/10 overflow-hidden transition-all hover:border-primary/40">
+                    <!-- Existing signature preview -->
+                    <template v-if="companyProfile.signature">
+                      <img :src="companyProfile.signature" alt="Company Signature" class="max-h-[260px] max-w-[90%] w-auto object-contain p-6 bg-white rounded-xl shadow-sm" />
+                      <!-- Hover actions -->
+                      <div class="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20">
+                        <label class="flex items-center justify-center size-8 rounded-lg bg-background/95 backdrop-blur shadow-sm border cursor-pointer hover:bg-muted text-muted-foreground hover:text-primary transition-colors">
+                          <Icon name="i-lucide-upload" class="size-4" />
+                          <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" @change="handleSignatureUpload" />
+                        </label>
+                        <button class="flex items-center justify-center size-8 rounded-lg bg-background/95 backdrop-blur shadow-sm border cursor-pointer hover:bg-destructive hover:border-destructive hover:text-destructive-foreground text-muted-foreground transition-colors" @click.stop="clearSignature">
+                          <Icon name="i-lucide-trash-2" class="size-4" />
+                        </button>
+                      </div>
+                    </template>
+
+                    <!-- Empty state -->
+                    <template v-else>
+                      <label class="absolute inset-0 cursor-pointer z-10">
+                        <input type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" @change="handleSignatureUpload" />
+                        <div class="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                          <div class="size-14 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20 flex items-center justify-center">
+                            <Icon name="i-lucide-image-plus" class="size-7 text-primary" />
+                          </div>
+                          <div class="text-center">
+                            <span class="text-sm font-semibold text-foreground block">Upload Signature Image</span>
+                            <span class="text-xs text-muted-foreground">PNG, JPEG, or WebP — max 5MB</span>
+                          </div>
+                        </div>
+                      </label>
+                    </template>
+
+                    <!-- Upload spinner -->
+                    <div v-if="uploadingSignature" class="absolute inset-0 bg-background/80 flex items-center justify-center backdrop-blur-sm z-20">
+                      <Icon name="i-lucide-loader-circle" class="size-8 text-primary animate-spin" />
+                    </div>
                   </div>
+                  <p class="text-[10px] text-muted-foreground mt-2 text-center">
+                    Upload a transparent PNG of the company signature for best results on contracts.
+                  </p>
                 </div>
-            </div>
+              </div>
             </div>
 
             <!-- Company Info -->
@@ -899,13 +962,14 @@ const WpIconsList = [
               </div>
             </div>
 
-            <!-- Save -->
-            <div class="flex justify-end">
-              <Button :disabled="savingCompany" class="h-10 px-6 shadow-lg shadow-primary/20" @click="saveCompanyProfile">
-                <Icon v-if="savingCompany" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
-                <Icon v-else name="i-lucide-save" class="mr-2 size-4" />
-                Save Company Profile
-              </Button>
+            <!-- Auto-save indicator -->
+            <div class="flex justify-end items-center gap-2 h-8">
+              <transition name="fade">
+                <span v-if="autoSaving || savingCompany" class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Icon name="i-lucide-loader-circle" class="size-3.5 animate-spin" />
+                  Saving…
+                </span>
+              </transition>
             </div>
           </div>
         </template>
