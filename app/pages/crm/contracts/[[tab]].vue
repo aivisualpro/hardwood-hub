@@ -275,12 +275,6 @@ async function performAutoSave() {
   }
 }
 
-// Deep-watch the form for changes → trigger auto-save
-watch(
-  () => templateForm.value,
-  () => scheduleAutoSave(),
-  { deep: true },
-)
 
 // Cleanup timer on unmount
 onUnmounted(() => {
@@ -319,6 +313,13 @@ const templateForm = ref({
   category: 'General',
   variables: [] as TemplateVariable[],
 })
+
+// Deep-watch the form for changes → trigger auto-save
+watch(
+  templateForm,
+  () => scheduleAutoSave(),
+  { deep: true },
+)
 
 async function fetchTemplates() {
   loadingTemplates.value = true
@@ -1006,8 +1007,6 @@ const TYPE_ICONS: Record<string, string> = {
         <!-- ═══════════════════════════════════════════════════════ -->
     <!-- ═══════ CREATE CONTRACT MODAL ═══════ -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <CrmContractFormDialog ref="contractFormDialog" @saved="fetchContracts" />
-
     <CrmContractFormDialog ref="contractFormDialog" @saved="fetchContracts" />
 
     <!-- ═══════ PDF UPLOAD DIALOG ═══════ -->

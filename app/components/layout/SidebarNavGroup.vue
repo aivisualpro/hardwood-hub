@@ -50,7 +50,7 @@ const openCollapsible = ref(false)
               v-for="subItem in item.children"
               :key="subItem.title"
             >
-              <SidebarMenuSubButton as-child :data-active="subItem.link === $route.path">
+              <SidebarMenuSubButton as-child :data-active="$route.path === subItem.link || $route.path.startsWith(subItem.link + '/')">
                 <NuxtLink :to="subItem.link" @click="setOpenMobile(false)">
                   <span>{{ getChildTitle(subItem) }}</span>
                   <span v-if="subItem.new" class="rounded-md bg-[#adfa1d] px-1.5 py-0.5 text-xs text-black leading-none no-underline group-hover:no-underline">

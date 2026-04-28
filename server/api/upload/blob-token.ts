@@ -13,8 +13,8 @@ export default defineEventHandler(async (event) => {
           tokenPayload: JSON.stringify({ authorized: true }),
         }
       },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log('[vercel-blob] Upload completed:', blob.url)
+      onUploadCompleted: async () => {
+        // no-op — upload result is handled client-side
       },
     })
 
@@ -26,3 +26,4 @@ export default defineEventHandler(async (event) => {
     })
   }
 })
+

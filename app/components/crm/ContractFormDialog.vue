@@ -171,7 +171,8 @@ async function handlePdfUpload(e: Event) {
   try {
     toast.loading(`Uploading ${sizeMB}MB PDF to Vercel Blob…`, { id: 'pdf-upload' })
 
-    const newBlob = await upload(`hardwood-hub/contracts/raw/${file.name}`, file, {
+    const uniqueName = `${file.name.replace(/\.pdf$/i, '')}-${Date.now()}.pdf`
+    const newBlob = await upload(`hardwood-hub/contracts/raw/${uniqueName}`, file, {
       access: 'private',
       handleUploadUrl: '/api/upload/blob-token',
     })
@@ -291,7 +292,7 @@ async function saveContract() {
     toast.error('Contract title is required')
     return
   }
-  if (!variableValues.value.contract_number?.trim()) {
+  if (!String(variableValues.value.contract_number || '').trim()) {
     toast.error('Contract Number is required')
     return
   }
