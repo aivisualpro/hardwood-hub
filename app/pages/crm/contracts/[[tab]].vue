@@ -222,12 +222,17 @@ const showEditor = ref(false)
 
 watch(() => showEditor.value, (isEditing) => {
   if (isEditing) {
+    autoSaveStatus.value = 'idle'
+    lastSavedAt.value = null
     setHeader({
       title: 'Editing Template',
       icon: 'i-lucide-pen-tool',
       description: 'Customize contract layout and variables'
     })
   } else {
+    // Flush any pending auto-save before closing
+    if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null }
+    autoSaveStatus.value = 'idle'
     setHeader({
       title: 'Contracts',
       icon: 'i-lucide-file-signature',
@@ -237,6 +242,59 @@ watch(() => showEditor.value, (isEditing) => {
 })
 const saving = ref(false)
 const seeding = ref(false)
+
+// ─── Auto-Save Infrastructure ────────────────────────────
+const autoSaveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+const lastSavedAt = ref<Date | null>(null)
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+const AUTO_SAVE_DELAY = 1500 // 1.5s debounce
+
+function scheduleAutoSave() {
+  // Only auto-save when editor is open and template already exists in DB
+  if (!showEditor.value || !selectedTemplate.value?._id) return
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  autoSaveStatus.value = 'idle' // mark as unsaved / pending
+  autoSaveTimer = setTimeout(() => performAutoSave(), AUTO_SAVE_DELAY)
+}
+
+async function performAutoSave() {
+  if (!selectedTemplate.value?._id || saving.value) return
+  if (!templateForm.value.name?.trim()) return // don't save without a name
+
+  autoSaveStatus.value = 'saving'
+  try {
+    await $fetch(`/api/contracts/templates/${selectedTemplate.value._id}`, {
+      method: 'PUT',
+      body: templateForm.value,
+    })
+    lastSavedAt.value = new Date()
+    autoSaveStatus.value = 'saved'
+  } catch (e: any) {
+    console.error('[auto-save] Failed:', e?.message)
+    autoSaveStatus.value = 'error'
+  }
+}
+
+// Deep-watch the form for changes → trigger auto-save
+watch(
+  () => templateForm.value,
+  () => scheduleAutoSave(),
+  { deep: true },
+)
+
+// Cleanup timer on unmount
+onUnmounted(() => {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+})
+
+const autoSaveLabel = computed(() => {
+  if (autoSaveStatus.value === 'saving') return 'Saving...'
+  if (autoSaveStatus.value === 'saved' && lastSavedAt.value) {
+    return `Saved ${lastSavedAt.value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+  }
+  if (autoSaveStatus.value === 'error') return 'Save failed'
+  return ''
+})
 
 const systemVariables = [
   { key: 'printDate', label: 'Print Date' },
@@ -380,12 +438,18 @@ async function saveTemplate() {
       })
       toast.success('Template updated')
     } else {
-      await $fetch('/api/contracts/templates', {
+      const res = await $fetch<{ success: boolean, data: any }>('/api/contracts/templates', {
         method: 'POST',
         body: templateForm.value,
       })
+      // Promote to "existing" so auto-save activates from here
+      if (res.data?._id) {
+        selectedTemplate.value = res.data as ContractTemplate
+      }
       toast.success('Template created')
     }
+    lastSavedAt.value = new Date()
+    autoSaveStatus.value = 'saved'
     showEditor.value = false
     await fetchTemplates()
   } catch (e: any) {
@@ -616,6 +680,26 @@ const TYPE_ICONS: Record<string, string> = {
              </Select>
           </div>
           <div class="h-4 w-px bg-border/50 mx-1" />
+
+          <!-- Auto-save status badge -->
+          <Transition name="fade" mode="out-in">
+            <div
+              v-if="autoSaveLabel && selectedTemplate?._id"
+              class="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-md transition-all"
+              :class="{
+                'text-muted-foreground/60': autoSaveStatus === 'idle',
+                'text-amber-500 bg-amber-500/5': autoSaveStatus === 'saving',
+                'text-emerald-500 bg-emerald-500/5': autoSaveStatus === 'saved',
+                'text-red-500 bg-red-500/5': autoSaveStatus === 'error',
+              }"
+            >
+              <Icon v-if="autoSaveStatus === 'saving'" name="i-lucide-loader-circle" class="size-3 animate-spin" />
+              <Icon v-else-if="autoSaveStatus === 'saved'" name="i-lucide-cloud-check" class="size-3" />
+              <Icon v-else-if="autoSaveStatus === 'error'" name="i-lucide-cloud-off" class="size-3" />
+              {{ autoSaveLabel }}
+            </div>
+          </Transition>
+
           <Button variant="ghost" size="sm" class="h-8" @click="showEditor = false">Cancel</Button>
           <Button size="sm" class="h-8 shadow-lg shadow-primary/20" :disabled="saving" @click="saveTemplate">
             <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
