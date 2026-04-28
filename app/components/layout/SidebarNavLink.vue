@@ -22,7 +22,7 @@ const displayTitle = computed(() =>
 <template>
   <SidebarMenu>
     <SidebarMenuItem>
-      <SidebarMenuButton as-child :tooltip="displayTitle" :size="size" :data-active="item.link === $route.path">
+      <SidebarMenuButton as-child :tooltip="displayTitle" :size="size" :data-active="$route.path === item.link || $route.path.startsWith(item.link + '/')">
         <NuxtLink :to="item.link" @click="setOpenMobile(false)">
           <Icon :name="item.icon || ''" />
           <span>{{ displayTitle }}</span>
