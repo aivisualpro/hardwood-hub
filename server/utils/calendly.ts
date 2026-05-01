@@ -9,7 +9,9 @@ export async function fetchCalendlyAppointments() {
     throw new Error('Missing Calendly Access Token')
   }
 
-  // Decode UUID from token manually
+  // Decode user UUID from the PAT token payload
+  // Note: /users/me requires `users:read` scope which this PAT doesn't have,
+  // so we extract the UUID directly from the JWT instead.
   const parts = token.split('.')
   if (parts.length < 2) throw new Error('Invalid token format')
   
