@@ -23,10 +23,10 @@ export default defineEventHandler(async (event) => {
 
   // 1. Calendly Webhook Integration
   if (entry?.event && entry.event.startsWith('invitee.')) {
-    console.log('[CRM Webhook] Received Calendly webhook, triggering background sync...')
-    // Execute a full sync background fetch to update the DB cleanly
-    $fetch('/api/crm/sync', { method: 'POST' }).catch(e => console.error('Calendly webhook sync failed:', e))
-    return { success: true, message: 'Calendly sync background task triggered' }
+    console.log(`[CRM Webhook] Received Calendly webhook: ${entry.event}`)
+    // Use lightweight Calendly-only sync instead of full GF sync
+    $fetch('/api/crm/calendly-sync', { method: 'POST' }).catch(e => console.error('Calendly webhook sync failed:', e))
+    return { success: true, message: 'Calendly sync triggered' }
   }
 
   // 2. Gravity Forms Validation
