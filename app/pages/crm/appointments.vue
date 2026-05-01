@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import { format } from 'date-fns'
 
 const { setHeader } = usePageHeader()
 setHeader({
@@ -23,12 +24,47 @@ const {
 } = useCrmSubmissions('appointment')
 
 const viewMode = ref<'calendar' | 'list'>('calendar')
+const lastSyncTime = ref<string>('')
 
-onMounted(() => fetchSubmissions())
+// Auto-sync from Calendly on page load, then refresh the list
+async function autoSyncCalendly() {
+  try {
+    const res = await $fetch<any>('/api/crm/calendly-sync', { method: 'POST' })
+    if (res.success) {
+      lastSyncTime.value = new Date().toLocaleTimeString()
+      // Refresh the submissions list after background sync
+      await fetchSubmissions(currentPage.value)
+    }
+  } catch (err) {
+    console.warn('[Appointments] Auto-sync failed:', err)
+  }
+}
 
+onMounted(async () => {
+  // Fetch existing data from DB immediately for fast first paint
+  await fetchSubmissions()
+  // Then trigger a background Calendly sync to pull latest
+  autoSyncCalendly()
+})
+
+// Poll every 60 seconds to keep calendar up-to-date
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  pollTimer = setInterval(() => {
+    autoSyncCalendly()
+  }, 60_000)
+})
+
+onUnmounted(() => {
+  if (pollTimer) clearInterval(pollTimer)
+})
+
+// Manual full sync (Calendly + Gravity Forms)
 async function handleSync() {
   try {
     const res = await syncFromGravityForms()
+    lastSyncTime.value = new Date().toLocaleTimeString()
     toast.success(`Synced ${res.synced} new submissions`, {
       description: res.existing > 0 ? `${res.existing} already existed` : undefined,
     })
@@ -37,8 +73,6 @@ async function handleSync() {
     toast.error('Sync failed. Check your API credentials.')
   }
 }
-
-import { format } from 'date-fns'
 
 const selectedItem = ref<any>(null)
 const showDetailSheet = ref(false)
@@ -94,14 +128,19 @@ async function handleStatusUpdate(id: string, status: string) {
               <Icon name="i-lucide-list" class="size-3.5" />
             </button>
           </div>
-          <button
-            class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all disabled:opacity-50 shrink-0 shadow-lg shadow-primary/20"
-            :disabled="isSyncing"
-            @click="handleSync"
-          >
-            <Icon name="i-lucide-refresh-cw" class="size-3.5" :class="isSyncing ? 'animate-spin' : ''" />
-            <span class="hidden sm:inline">{{ isSyncing ? 'Syncing...' : 'Sync' }}</span>
-          </button>
+          <div class="flex items-center gap-2 shrink-0">
+            <span v-if="lastSyncTime" class="hidden lg:inline text-[10px] text-muted-foreground/60 font-medium">
+              synced {{ lastSyncTime }}
+            </span>
+            <button
+              class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all disabled:opacity-50 shrink-0 shadow-lg shadow-primary/20"
+              :disabled="isSyncing"
+              @click="handleSync"
+            >
+              <Icon name="i-lucide-refresh-cw" class="size-3.5" :class="isSyncing ? 'animate-spin' : ''" />
+              <span class="hidden sm:inline">{{ isSyncing ? 'Syncing...' : 'Sync' }}</span>
+            </button>
+          </div>
         </div>
       </Teleport>
     </ClientOnly>
