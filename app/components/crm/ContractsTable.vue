@@ -29,7 +29,11 @@ function formatDate(d: string) {
 
 // ─── Actions ─────────────────────────────────────────────
 
-async function deleteContract(id: string) {
+async function deleteContract(id: string, status?: string) {
+  if (status === 'signed') {
+    toast.error('Cannot delete', { description: 'Signed contracts cannot be deleted.' })
+    return
+  }
   toast.warning('Delete Contract?', {
     description: 'Are you sure you want to delete this contract? This action cannot be undone.',
     action: {
@@ -283,8 +287,8 @@ async function downloadPDF(ct: any) {
               <td class="px-4 py-3">
                 <span class="text-xs text-muted-foreground tabular-nums">{{ formatDate(ct.createdAt) }}</span>
               </td>
-              <td class="px-4 py-3 text-right sticky right-0 bg-card group-hover:bg-muted/10 transition-colors">
-                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1">
                   <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" title="Download PDF" @click.stop="downloadPDF(ct)">
                     <Icon name="i-lucide-download" class="size-3.5" />
                   </button>
@@ -302,10 +306,10 @@ async function downloadPDF(ct: any) {
                     <Icon v-else-if="ct.status === 'sent'" name="i-lucide-mail-check" class="size-3.5" />
                     <Icon v-else name="i-lucide-send" class="size-3.5" />
                   </button>
-                  <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Edit" @click.stop="emit('edit', ct)">
+                  <button v-if="ct.status !== 'signed'" class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Edit" @click.stop="emit('edit', ct)">
                     <Icon name="i-lucide-pencil" class="size-3.5" />
                   </button>
-                  <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete" @click.stop="deleteContract(ct._id)">
+                  <button v-if="ct.status !== 'signed'" class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete" @click.stop="deleteContract(ct._id, ct.status)">
                     <Icon name="i-lucide-trash-2" class="size-3.5" />
                   </button>
                 </div>
@@ -411,10 +415,10 @@ async function downloadPDF(ct: any) {
               </button>
             </div>
             <div class="flex gap-1.5 shrink-0">
-              <button class="size-8 rounded-lg border bg-background flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shadow-xs" @click.stop="emit('edit', ct)">
+              <button v-if="ct.status !== 'signed'" class="size-8 rounded-lg border bg-background flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shadow-xs" @click.stop="emit('edit', ct)">
                 <Icon name="i-lucide-pencil" class="size-3.5" />
               </button>
-              <button class="size-8 rounded-lg border border-red-500/20 bg-red-500/5 flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-colors shadow-xs" @click.stop="deleteContract(ct._id)">
+              <button v-if="ct.status !== 'signed'" class="size-8 rounded-lg border border-red-500/20 bg-red-500/5 flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-colors shadow-xs" @click.stop="deleteContract(ct._id, ct.status)">
                 <Icon name="i-lucide-trash-2" class="size-3.5" />
               </button>
             </div>

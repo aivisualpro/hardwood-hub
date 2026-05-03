@@ -17,27 +17,33 @@ export default defineEventHandler(async (event) => {
     }
 
     if (event.method === 'PUT') {
+        const existing = await Contract.findById(id).lean()
+        if (!existing) throw createError({ statusCode: 404, message: 'Contract not found' })
+        if (existing.status === 'signed') {
+            throw createError({ statusCode: 403, message: 'Signed contracts cannot be modified.' })
+        }
         const body = await readBody(event)
         const doc = await Contract.findByIdAndUpdate(id, body, { returnDocument: 'after' }).lean()
-        if (!doc) throw createError({ statusCode: 404, message: 'Contract not found' })
         return { success: true, data: doc }
     }
 
     if (event.method === 'DELETE') {
         const doc = await Contract.findById(id).lean()
-        if (doc) {
-            // Cleanup Vercel Blobs if attached
-            if (doc.attachedPdf && (doc.attachedPdf.includes('vercel-storage.com') || doc.attachedPdf.includes('vercel.com'))) {
-                try {
-                    const { del } = await import('@vercel/blob')
-                    await del(doc.attachedPdf, { token: process.env.BLOB_READ_WRITE_TOKEN })
-                    console.log('[vercel-blob] Deleted attached PDF:', doc.attachedPdf)
-                } catch (e: any) {
-                    console.warn('[vercel-blob] Failed to delete blob:', e.message)
-                }
-            }
-            await Contract.findByIdAndDelete(id)
+        if (!doc) return { success: true }
+        if (doc.status === 'signed') {
+            throw createError({ statusCode: 403, message: 'Signed contracts cannot be deleted.' })
         }
+        // Cleanup Vercel Blobs if attached
+        if (doc.attachedPdf && (doc.attachedPdf.includes('vercel-storage.com') || doc.attachedPdf.includes('vercel.com'))) {
+            try {
+                const { del } = await import('@vercel/blob')
+                await del(doc.attachedPdf, { token: process.env.BLOB_READ_WRITE_TOKEN })
+                console.log('[vercel-blob] Deleted attached PDF:', doc.attachedPdf)
+            } catch (e: any) {
+                console.warn('[vercel-blob] Failed to delete blob:', e.message)
+            }
+        }
+        await Contract.findByIdAndDelete(id)
         return { success: true }
     }
 

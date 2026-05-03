@@ -304,6 +304,7 @@ async function saveContract() {
     const finalAttachedPdf = attachedPdf.value
 
     const c = selectedCustomer.value
+    const userCookie = useCookie<{ _id: string, employee: string } | null>('hardwood_user')
     const payload = {
       title: contractTitle.value,
       customerId: c._id,
@@ -320,6 +321,7 @@ async function saveContract() {
       attachedPdf: finalAttachedPdf,
       attachedGalleryImages: attachedGalleryImages.value,
       status: 'draft',
+      createdBy: userCookie.value?.employee || '',
     }
 
     if (editingContractId.value) {

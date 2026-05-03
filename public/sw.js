@@ -1,7 +1,7 @@
 const CACHE_NAME = 'aivisualpro-v1'
 const STATIC_ASSETS = [
   '/',
-  '/favicon.svg',
+  '/favicon.ico',
   '/logo-192.png',
   '/logo-512.png',
   '/manifest.json',

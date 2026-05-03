@@ -9,6 +9,7 @@ interface Employee { _id: string; employee: string; profileImage: string; positi
 interface SkillNode { _id: string; name: string; isRequired: boolean }
 interface SubCatNode { _id: string; name: string; skills: SkillNode[]; bonusRules: any[] }
 interface CatNode { _id: string; name: string; color: string; subCategories: SubCatNode[] }
+interface CustomBonusRecord { _id: string; employee: string; subCategory: string; bonusAmount: number; reason: string; createdBy: string | null; createdAt: string }
 interface PerfRecord { _id: string; employee: string; skill: string; currentSkillLevel: string; createdBy: string; createdByName?: string; createdAt?: string }
 
 // ─── State ───────────────────────────────────────────────
@@ -100,9 +101,9 @@ interface EmpBonusData {
   masteredCount: number
   needsCount: number
   categories: {
-    id: string; name: string; bonus: number; maxBonus: number; customBonus: number; assessed: number; ruleCompliant: number; total: number
+    id: string; name: string; bonus: number; maxBonus: number; assessed: number; ruleCompliant: number; total: number
     subCategories: {
-      id: string; name: string; bonus: number; assessed: number; ruleCompliant: number; total: number
+      id: string; name: string; bonus: number; customBonus: number; assessed: number; ruleCompliant: number; total: number
       hasOverride: boolean; proficient: number; mastered: number; needs: number
       ruleLevel: string // e.g. 'Proficient', 'Mastered', or '' if no rules
       rulesToUse: any[]
@@ -236,10 +237,16 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
         masteredCount += subMastered
         needsCount += subNeeds
 
+        const customBonusRecord = customBonuses.value.find((cb: CustomBonusRecord) => cb.employee === emp._id && cb.subCategory === sub._id)
+        const subCustomBonus = customBonusRecord ? customBonusRecord.bonusAmount : 0
+
+        catBonus += subCustomBonus
+
         return {
           id: sub._id,
           name: sub.name,
           bonus: subBonus,
+          customBonus: subCustomBonus,
           assessed: subAssessed,
           ruleCompliant: subRuleCompliant,
           total: totalSub,
@@ -253,14 +260,11 @@ const employeeBonusData = computed<EmpBonusData[]>(() => {
         }
       })
 
-      const customBonusRecord = customBonuses.value.find(cb => cb.employee === emp._id && cb.category === cat._id)
-      const customBonus = customBonusRecord ? customBonusRecord.bonusAmount : 0
-
-      totalBonus += catBonus + customBonus
+      totalBonus += catBonus
       totalAssessed += catAssessed
       totalRuleCompliant += catRuleCompliant
 
-      return { id: cat._id, name: cat.name, bonus: catBonus, maxBonus: catMaxBonus, customBonus, assessed: catAssessed, ruleCompliant: catRuleCompliant, total: catTotal, subCategories }
+      return { id: cat._id, name: cat.name, bonus: catBonus, maxBonus: catMaxBonus, assessed: catAssessed, ruleCompliant: catRuleCompliant, total: catTotal, subCategories }
     })
 
     return {
@@ -459,19 +463,19 @@ function subStatus(sub: EmpBonusData['categories'][0]['subCategories'][0]): 'all
   return 'none'
 }
 
-// ─── Custom Bonus logic ──────────────────────────────────
+// ─── Custom Bonus logic (Sub-Category level) ────────────
 const showCustomBonusModal = ref(false)
 const customBonusEmp = ref<any>(null)
-const customBonusCat = ref<any>(null)
+const customBonusSub = ref<any>(null)
 const customBonusAmount = ref(0)
 const customBonusReason = ref('')
 const savingCustomBonus = ref(false)
 
-function openCustomBonusModal(emp: any, cat: any) {
+function openCustomBonusModal(emp: any, sub: any) {
   customBonusEmp.value = emp
-  customBonusCat.value = cat
-  customBonusAmount.value = cat.customBonus || 0
-  customBonusReason.value = '' // Optional to store reason in front-end
+  customBonusSub.value = sub
+  customBonusAmount.value = sub.customBonus || 0
+  customBonusReason.value = ''
   showCustomBonusModal.value = true
 }
 
@@ -483,14 +487,14 @@ async function saveCustomBonus() {
       method: 'POST',
       body: {
         employee: customBonusEmp.value._id,
-        category: customBonusCat.value.id,
+        subCategory: customBonusSub.value.id,
         bonusAmount: customBonusAmount.value,
         reason: customBonusReason.value
       }
     })
     
     // Update local state
-    const existing = customBonuses.value.find(cb => cb.employee === customBonusEmp.value._id && cb.category === customBonusCat.value.id)
+    const existing = customBonuses.value.find((cb: any) => cb.employee === customBonusEmp.value._id && cb.subCategory === customBonusSub.value.id)
     if (existing) {
       existing.bonusAmount = customBonusAmount.value
     } else {
@@ -832,18 +836,6 @@ async function saveCustomBonus() {
                           <span class="text-[9px] font-mono text-muted-foreground tabular-nums">{{ cat.assessed }}/{{ cat.total }}</span>
                         </div>
                         <div v-if="cat.bonus > 0 || cat.maxBonus > 0" class="flex items-center gap-2">
-                          <!-- Add/Edit Custom Bonus Button -->
-                          <button
-                            @click.stop="openCustomBonusModal(row.employee, cat)"
-                            class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full text-violet-500 font-bold border text-[10px] sm:text-[10px] transition-all group/btn"
-                            :class="cat.customBonus > 0 ? 'bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/20' : 'border-transparent hover:bg-violet-500/10 text-violet-500/50 hover:text-violet-500'"
-                            title="Add Custom Bonus"
-                          >
-                            <Icon name="i-lucide-plus-circle" class="size-3" />
-                            <span v-if="cat.customBonus > 0">+{{ fmt(cat.customBonus) }}</span>
-                            <span v-else class="opacity-0 group-hover/btn:opacity-100 max-w-0 group-hover/btn:max-w-[100px] transition-all duration-300 overflow-hidden overflow-ellipsis whitespace-nowrap">Bonus</span>
-                          </button>
-                          
                           <!-- Earned / Max Bonus -->
                           <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 text-[10px] sm:text-xs tabular-nums">
                             <Icon name="i-lucide-coins" class="size-2.5" />
@@ -912,6 +904,17 @@ async function saveCustomBonus() {
                                   </p>
                                   <p class="text-[9px] text-muted-foreground">Complete</p>
                                 </div>
+                                <!-- Custom Bonus Button (Sub-Category level) -->
+                                <button
+                                  @click.stop="openCustomBonusModal(row.employee, sub)"
+                                  class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full text-violet-500 font-bold border text-[10px] transition-all group/btn"
+                                  :class="sub.customBonus > 0 ? 'bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/20' : 'border-transparent hover:bg-violet-500/10 text-violet-500/50 hover:text-violet-500'"
+                                  title="Add Custom Bonus"
+                                >
+                                  <Icon name="i-lucide-plus-circle" class="size-3" />
+                                  <span v-if="sub.customBonus > 0">+{{ fmt(sub.customBonus) }}</span>
+                                  <span v-else class="opacity-0 group-hover/btn:opacity-100 max-w-0 group-hover/btn:max-w-[100px] transition-all duration-300 overflow-hidden overflow-ellipsis whitespace-nowrap">Bonus</span>
+                                </button>
                                 <div v-if="sub.bonus > 0" class="text-center">
                                   <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 tabular-nums text-[11px]">
                                     <Icon name="i-lucide-coins" class="size-2.5" />
@@ -1210,7 +1213,7 @@ async function saveCustomBonus() {
             Custom Bonus Award
           </DialogTitle>
           <DialogDescription>
-            Add an additional manual bonus for <span class="font-bold text-foreground">{{ customBonusEmp?.employee }}</span> in the <span class="font-bold text-foreground">{{ customBonusCat?.name }}</span> category.
+            Add an additional manual bonus for <span class="font-bold text-foreground">{{ customBonusEmp?.employee }}</span> in the <span class="font-bold text-foreground">{{ customBonusSub?.name }}</span> sub-category.
           </DialogDescription>
         </DialogHeader>
 

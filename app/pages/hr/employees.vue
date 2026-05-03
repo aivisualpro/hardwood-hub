@@ -19,6 +19,7 @@ interface Employee {
   profileImage: string
   status: string
   workspace: string
+  basePay: number
   createdAt?: string
 }
 
@@ -40,6 +41,7 @@ const emptyForm = () => ({
   profileImage: '',
   status: 'Active',
   workspace: 'none',
+  basePay: 0,
 })
 
 const form = ref(emptyForm())
@@ -178,7 +180,7 @@ function openCreate() {
 }
 
 function openEdit(emp: Employee) {
-  form.value = { employee: emp.employee, email: emp.email, position: emp.position, profileImage: emp.profileImage, status: emp.status || 'Active', workspace: emp.workspace || 'none' }
+  form.value = { employee: emp.employee, email: emp.email, position: emp.position, profileImage: emp.profileImage, status: emp.status || 'Active', workspace: emp.workspace || 'none', basePay: emp.basePay || 0 }
   editId.value = emp._id
   previewUrl.value = emp.profileImage
   isEditing.value = true
@@ -447,6 +449,15 @@ async function toggleStatus(emp: Employee) {
                 <SelectItem v-for="ws in workspacesList" :key="ws._id" :value="ws._id">{{ ws.name }}</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <!-- Base Pay -->
+          <div class="flex flex-col gap-1.5">
+            <Label for="emp-basepay">Base Pay (USD)</Label>
+            <div class="relative">
+              <Icon name="i-lucide-dollar-sign" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
+              <Input id="emp-basepay" type="number" v-model.number="form.basePay" placeholder="0.00" min="0" step="0.01" class="pl-9" />
+            </div>
           </div>
         </div>
 

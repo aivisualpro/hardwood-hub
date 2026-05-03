@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
+import { toast } from 'vue-sonner'
 
 const { setHeader } = usePageHeader()
 
@@ -49,6 +50,16 @@ const { data: bonusRulesData, pending: loadingRules } = await useFetch('/api/ski
   lazy: true,
   transform: (res: any) => res.data || []
 })
+
+// Fetch custom bonuses (sub-category level)
+const customBonuses = ref<any[]>([])
+async function fetchCustomBonuses() {
+  try {
+    const res = await $fetch<{ status: string, data: any[] }>('/api/performance/custom-bonus')
+    customBonuses.value = res.data || []
+  } catch { /* ignore */ }
+}
+onMounted(fetchCustomBonuses)
 
 // Utilities
 function levelIndex(lvl: string) {
@@ -125,7 +136,7 @@ const bonusReport = computed(() => {
 
   // Helper: evaluate a set of rules against skills in a sub-category
   function evaluateRules(rulesToCheck: any[], skillsInSub: any[]): number {
-    let maxBonus = 0
+    let totalBonus = 0
     for (const rule of rulesToCheck) {
       const requiredLevelIdx = levelIndex(rule.skillSet)
       const requiredTimes = rule.reviewedTimes || 1
@@ -151,10 +162,10 @@ const bonusReport = computed(() => {
       }
 
       if (ruleMet) {
-        maxBonus = Math.max(maxBonus, rule.bonusAmount || 0)
+        totalBonus += (rule.bonusAmount || 0)
       }
     }
-    return maxBonus
+    return totalBonus
   }
 
   const report = []
@@ -179,12 +190,16 @@ const bonusReport = computed(() => {
       // Calculate Bonus Earned:
       // 1. If sub-category has its own bonusRules override → use those exclusively
       // 2. Otherwise → fall back to general skill-bonus rules
-      let maxBonus = 0
+      let subBonus = 0
       if (totalSkills > 0) {
         const subOverrideRules = sub.bonusRules || []
         const rulesToUse = subOverrideRules.length > 0 ? subOverrideRules : generalRules
-        maxBonus = evaluateRules(rulesToUse, skillsInSub)
+        subBonus = evaluateRules(rulesToUse, skillsInSub)
       }
+
+      // Custom bonus for this employee + sub-category
+      const cbRecord = customBonuses.value.find((cb: any) => cb.employee === profileUserId.value && cb.subCategory === sub._id)
+      const customBonusAmt = cbRecord ? cbRecord.bonusAmount : 0
 
       report.push({
          id: sub._id,
@@ -193,7 +208,8 @@ const bonusReport = computed(() => {
          totalSkills,
          cntProficient,
          cntMastered,
-         bonusEarned: maxBonus,
+         bonusEarned: subBonus,
+         customBonus: customBonusAmt,
          hasOverride: (sub.bonusRules || []).length > 0
       })
     }
@@ -219,15 +235,58 @@ const bonusReportByCategory = computed(() => {
     }
     const catGroup = grouped.get(item.categoryName)!
     catGroup.subCategories.push(item)
-    catGroup.totalCategoryBonus += item.bonusEarned
+    catGroup.totalCategoryBonus += item.bonusEarned + (item.customBonus || 0)
   }
   
   return Array.from(grouped.values()).sort((a,b) => a.name.localeCompare(b.name))
 })
 
 const totalBonusEarned = computed(() => {
-  return bonusReport.value.reduce((sum, item) => sum + item.bonusEarned, 0)
+  return bonusReport.value.reduce((sum, item) => sum + item.bonusEarned + (item.customBonus || 0), 0)
 })
+
+// ─── Custom Bonus Modal (Profile) ─────────────────────
+const showProfileCustomBonusModal = ref(false)
+const profileCustomBonusSub = ref<any>(null)
+const profileCustomBonusAmount = ref(0)
+const profileCustomBonusReason = ref('')
+const savingProfileCustomBonus = ref(false)
+
+function openProfileCustomBonusModal(sub: any) {
+  profileCustomBonusSub.value = sub
+  profileCustomBonusAmount.value = sub.customBonus || 0
+  profileCustomBonusReason.value = ''
+  showProfileCustomBonusModal.value = true
+}
+
+async function saveProfileCustomBonus() {
+  if (profileCustomBonusAmount.value < 0) return
+  savingProfileCustomBonus.value = true
+  try {
+    const res = await $fetch<{ status: string, data: any }>('/api/performance/custom-bonus', {
+      method: 'POST',
+      body: {
+        employee: profileUserId.value,
+        subCategory: profileCustomBonusSub.value.id,
+        bonusAmount: profileCustomBonusAmount.value,
+        reason: profileCustomBonusReason.value,
+      }
+    })
+    // Update local state
+    const existing = customBonuses.value.find((cb: any) => cb.employee === profileUserId.value && cb.subCategory === profileCustomBonusSub.value.id)
+    if (existing) {
+      existing.bonusAmount = profileCustomBonusAmount.value
+    } else {
+      customBonuses.value.push(res.data)
+    }
+    showProfileCustomBonusModal.value = false
+    toast.success('Custom bonus updated')
+  } catch (e: any) {
+    toast.error('Failed to save', { description: e?.message })
+  } finally {
+    savingProfileCustomBonus.value = false
+  }
+}
 
 const expandedCategories = ref<Set<string>>(new Set())
 
@@ -245,11 +304,232 @@ const tabs = computed(() => {
     { id: 'skills', label: isViewingOther.value ? 'Skill Review' : 'My Skill Review', icon: 'i-lucide-clipboard-check' },
     { id: 'growth', label: isViewingOther.value ? 'Growth Rate' : 'My Growth Rate', icon: 'i-lucide-trending-up' },
     { id: 'bonus', label: 'Bonus Report', icon: 'i-lucide-award' },
+    { id: 'distribution', label: 'Bonus Distribution', icon: 'i-lucide-hand-coins' },
   ]
   if (!isViewingOther.value) {
     base.push({ id: 'theme', label: 'Theme', icon: 'i-lucide-paintbrush' })
   }
   return base
+})
+
+// ─── Bonus Distribution ──────────────────────────────────
+const distributionRecords = ref<any[]>([])
+const loadingDistribution = ref(false)
+const syncingDistribution = ref(false)
+const awardingId = ref<string | null>(null)
+const showAwardModal = ref(false)
+const awardTarget = ref<any>(null)
+const awardAmount = ref(0)
+const awardNotes = ref('')
+
+async function fetchDistribution() {
+  if (!profileUserId.value) return
+  loadingDistribution.value = true
+  try {
+    const res = await $fetch<{ status: string, data: any[] }>(`/api/bonus-distribution/${profileUserId.value}`)
+    distributionRecords.value = res.data
+  } catch (e: any) {
+    // Silently handle — tab may not have been visited yet
+  } finally {
+    loadingDistribution.value = false
+  }
+}
+
+async function syncDistribution() {
+  if (!profileUserId.value || !bonusReport.value.length) return
+  syncingDistribution.value = true
+  try {
+    // Build records from the bonus report
+    const records: { subCategory: string; subCategoryName: string; categoryName: string; bonusType: 'skill' | 'custom'; earnedAmount: number }[] = bonusReport.value
+      .filter(item => item.bonusEarned > 0 || item.hasOverride)
+      .map(item => ({
+        subCategory: item.id,
+        subCategoryName: item.name,
+        categoryName: item.categoryName,
+        bonusType: 'skill' as const,
+        earnedAmount: item.bonusEarned,
+      }))
+
+    // Also include custom bonuses
+    const customBonusesRes = await $fetch<{ status: string, data: any[] }>('/api/performance/custom-bonus')
+    const customBonuses = customBonusesRes?.data || []
+    const empCustom = customBonuses.filter((cb: any) => cb.employee === profileUserId.value && cb.bonusAmount > 0)
+    
+    for (const cb of empCustom) {
+      // Find the sub-category name from the tree
+      let subName = ''
+      let catName = ''
+      for (const cat of (treeData.value || [])) {
+        for (const sub of cat.subCategories) {
+          if (sub._id === cb.subCategory) {
+            subName = sub.name
+            catName = cat.name
+            break
+          }
+        }
+      }
+      records.push({
+        subCategory: cb.subCategory,
+        subCategoryName: subName,
+        categoryName: catName,
+        bonusType: 'custom' as const,
+        earnedAmount: cb.bonusAmount,
+      })
+    }
+
+    if (records.length > 0) {
+      await $fetch(`/api/bonus-distribution/${profileUserId.value}`, {
+        method: 'POST',
+        body: { action: 'sync', records }
+      })
+    }
+    await fetchDistribution()
+    toast.success('Distribution synced', { description: `${records.length} bonus records updated` })
+  } catch (e: any) {
+    toast.error('Sync failed', { description: e?.message })
+  } finally {
+    syncingDistribution.value = false
+  }
+}
+
+function openAwardModal(record: any) {
+  awardTarget.value = record
+  awardAmount.value = record.earnedAmount
+  awardNotes.value = ''
+  showAwardModal.value = true
+}
+
+async function confirmAward() {
+  if (!awardTarget.value) return
+  awardingId.value = awardTarget.value._id
+  try {
+    const userCk = userCookie.value
+    await $fetch(`/api/bonus-distribution/${profileUserId.value}`, {
+      method: 'POST',
+      body: {
+        action: 'award',
+        distributionId: awardTarget.value._id,
+        awardedAmount: awardAmount.value,
+        awardedBy: userCk?._id || null,
+        awardedByName: userCk?.employee || 'System',
+        notes: awardNotes.value,
+      }
+    })
+    showAwardModal.value = false
+    await fetchDistribution()
+    toast.success('Bonus marked as awarded')
+  } catch (e: any) {
+    toast.error('Failed to award', { description: e?.message })
+  } finally {
+    awardingId.value = null
+  }
+}
+
+async function unmarkAward(record: any) {
+  awardingId.value = record._id
+  try {
+    await $fetch(`/api/bonus-distribution/${profileUserId.value}`, {
+      method: 'POST',
+      body: { action: 'unmark', distributionId: record._id }
+    })
+    await fetchDistribution()
+    toast.success('Award reverted to earned')
+  } catch (e: any) {
+    toast.error('Failed to unmark', { description: e?.message })
+  } finally {
+    awardingId.value = null
+  }
+}
+
+function fmtCurrency(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
+}
+
+function fmtDistDate(d: string) {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const distributionSummary = computed(() => {
+  const total = distributionRecords.value.reduce((s, r) => s + (r.earnedAmount || 0), 0)
+  const awarded = distributionRecords.value.filter(r => r.status === 'awarded').reduce((s, r) => s + (r.awardedAmount || 0), 0)
+  const pending = total - awarded
+  const awardedCount = distributionRecords.value.filter(r => r.status === 'awarded').length
+  const pendingCount = distributionRecords.value.filter(r => r.status === 'earned').length
+  return { total, awarded, pending, awardedCount, pendingCount }
+})
+
+// Group distribution records by category
+const distributionByCategory = computed(() => {
+  const map = new Map<string, { name: string, records: any[] }>()
+  for (const rec of distributionRecords.value) {
+    const catName = rec.categoryName || 'Uncategorized'
+    if (!map.has(catName)) map.set(catName, { name: catName, records: [] })
+    map.get(catName)!.records.push(rec)
+  }
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+})
+
+// Auto-fetch distribution when the tab becomes active
+watch(activeTab, (val) => {
+  if (val === 'distribution' && distributionRecords.value.length === 0) {
+    fetchDistribution()
+  }
+})
+
+// ─── Gmail Integration ───────────────────────────────────
+const gmailConnected = ref(false)
+const gmailEmail = ref('')
+const gmailLoading = ref(false)
+
+async function checkGmailStatus() {
+  try {
+    const res = await $fetch<{ success: boolean, connected: boolean, email: string }>('/api/gmail/status')
+    gmailConnected.value = res.connected
+    gmailEmail.value = res.email
+  } catch { /* ignore */ }
+}
+
+async function connectGmail() {
+  gmailLoading.value = true
+  try {
+    const res = await $fetch<{ success: boolean, url: string }>('/api/gmail/auth-url')
+    // Redirect to Google consent in same window
+    window.location.href = res.url
+  } catch (e: any) {
+    toast.error('Failed to start Gmail connection', { description: e?.data?.message || e?.message })
+    gmailLoading.value = false
+  }
+}
+
+async function disconnectGmail() {
+  gmailLoading.value = true
+  try {
+    await $fetch('/api/gmail/disconnect', { method: 'POST' })
+    gmailConnected.value = false
+    gmailEmail.value = ''
+    toast.success('Gmail disconnected')
+  } catch (e: any) {
+    toast.error('Failed to disconnect', { description: e?.message })
+  } finally {
+    gmailLoading.value = false
+  }
+}
+
+// Check on mount + handle redirect params
+onMounted(async () => {
+  await checkGmailStatus()
+  const route = useRoute()
+  if (route.query.gmailConnected === 'true') {
+    await checkGmailStatus()
+    toast.success('Gmail connected successfully!', { description: gmailEmail.value })
+    // Clean up URL
+    navigateTo(route.path + (route.query.employee ? `?employee=${route.query.employee}` : ''), { replace: true })
+  }
+  if (route.query.gmailError) {
+    toast.error('Gmail connection failed', { description: String(route.query.gmailError) })
+    navigateTo(route.path + (route.query.employee ? `?employee=${route.query.employee}` : ''), { replace: true })
+  }
 })
 </script>
 
@@ -281,6 +561,46 @@ const tabs = computed(() => {
           <div class="mt-3 sm:mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs sm:text-sm font-medium">
             <Icon name="i-lucide-briefcase" class="size-3.5 sm:size-4" />
             {{ userProfile?.position || 'Employee' }}
+          </div>
+        </div>
+        <!-- Gmail connection card (only on own profile) -->
+        <div v-if="!isViewingOther" class="mt-3 md:mt-0 md:ml-auto shrink-0">
+          <div 
+            class="flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-sm transition-all"
+            :class="gmailConnected 
+              ? 'bg-emerald-500/5 border-emerald-500/20' 
+              : 'bg-muted/30 border-border/50'"
+          >
+            <div class="size-9 rounded-lg flex items-center justify-center shrink-0" :class="gmailConnected ? 'bg-emerald-500/15' : 'bg-muted'">
+              <Icon name="i-lucide-mail" class="size-4.5" :class="gmailConnected ? 'text-emerald-500' : 'text-muted-foreground'" />
+            </div>
+            <div class="min-w-0">
+              <p class="text-[10px] font-bold uppercase tracking-wider" :class="gmailConnected ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'">Gmail</p>
+              <p v-if="gmailConnected" class="text-xs font-medium text-foreground truncate max-w-[180px]">{{ gmailEmail }}</p>
+              <p v-else class="text-xs text-muted-foreground">Not connected</p>
+            </div>
+            <Button 
+              v-if="gmailConnected" 
+              variant="ghost" 
+              size="sm" 
+              class="h-7 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0" 
+              :disabled="gmailLoading"
+              @click="disconnectGmail"
+            >
+              <Icon v-if="gmailLoading" name="i-lucide-loader-2" class="size-3 animate-spin mr-1" />
+              Disconnect
+            </Button>
+            <Button 
+              v-else 
+              size="sm" 
+              class="h-7 px-3 text-xs shrink-0 shadow-sm" 
+              :disabled="gmailLoading"
+              @click="connectGmail"
+            >
+              <Icon v-if="gmailLoading" name="i-lucide-loader-2" class="size-3 animate-spin mr-1" />
+              <Icon v-else name="i-lucide-link" class="size-3 mr-1" />
+              Connect
+            </Button>
           </div>
         </div>
       </div>
@@ -522,6 +842,7 @@ const tabs = computed(() => {
                               <th class="px-3 sm:px-5 py-2.5 sm:py-3 text-center font-semibold text-[10px] sm:text-xs tracking-wider uppercase text-blue-500">Prof.</th>
                               <th class="px-3 sm:px-5 py-2.5 sm:py-3 text-center font-semibold text-[10px] sm:text-xs tracking-wider uppercase text-emerald-500">Mast.</th>
                               <th class="px-3 sm:px-5 py-2.5 sm:py-3 text-center font-semibold text-[10px] sm:text-xs tracking-wider uppercase text-amber-500">Bonus</th>
+                              <th class="px-3 sm:px-5 py-2.5 sm:py-3 text-center font-semibold text-[10px] sm:text-xs tracking-wider uppercase text-violet-500">Custom</th>
                             </tr>
                           </thead>
                           <tbody class="divide-y divide-border/30">
@@ -557,6 +878,18 @@ const tabs = computed(() => {
                                 </div>
                                 <span v-else class="text-muted-foreground/30 font-medium text-[10px] sm:text-xs">Unmet</span>
                               </td>
+                              <td class="px-3 sm:px-5 py-2.5 sm:py-3 text-center">
+                                <button
+                                  @click.stop="openProfileCustomBonusModal(row)"
+                                  class="inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full text-violet-500 font-bold border text-[10px] transition-all group/btn"
+                                  :class="row.customBonus > 0 ? 'bg-violet-500/10 border-violet-500/20 hover:bg-violet-500/20' : 'border-transparent hover:bg-violet-500/10 text-violet-500/50 hover:text-violet-500'"
+                                  title="Add Custom Bonus"
+                                >
+                                  <Icon name="i-lucide-plus-circle" class="size-3" />
+                                  <span v-if="row.customBonus > 0">${{ Number(row.customBonus).toFixed(2) }}</span>
+                                  <span v-else class="opacity-0 group-hover/btn:opacity-100 max-w-0 group-hover/btn:max-w-[80px] transition-all duration-300 overflow-hidden whitespace-nowrap">Add</span>
+                                </button>
+                              </td>
                             </tr>
                           </tbody>
                         </table>
@@ -578,7 +911,162 @@ const tabs = computed(() => {
             />
           </div>
 
-          <!-- 5. Theme Tab -->
+          <!-- 5. Bonus Distribution Tab -->
+          <div v-else-if="activeTab === 'distribution'" class="space-y-4 sm:space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <h2 class="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                <Icon name="i-lucide-hand-coins" class="text-primary" />
+                Bonus Distribution
+              </h2>
+              <button
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                :disabled="syncingDistribution"
+                @click="syncDistribution"
+              >
+                <Icon :name="syncingDistribution ? 'i-lucide-loader-2' : 'i-lucide-refresh-cw'" class="size-4" :class="syncingDistribution ? 'animate-spin' : ''" />
+                {{ syncingDistribution ? 'Syncing...' : 'Sync from Bonus Report' }}
+              </button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div class="rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-amber-500/5 p-3 sm:p-4">
+                <p class="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70">Total Earned</p>
+                <p class="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 tabular-nums">{{ fmtCurrency(distributionSummary.total) }}</p>
+                <p class="text-[9px] text-amber-600/50 dark:text-amber-400/50 mt-0.5">{{ distributionRecords.length }} entries</p>
+              </div>
+              <div class="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 p-3 sm:p-4">
+                <p class="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-emerald-600/70 dark:text-emerald-400/70">Awarded</p>
+                <p class="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">{{ fmtCurrency(distributionSummary.awarded) }}</p>
+                <p class="text-[9px] text-emerald-600/50 dark:text-emerald-400/50 mt-0.5">{{ distributionSummary.awardedCount }} paid out</p>
+              </div>
+              <div class="rounded-xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-orange-500/5 p-3 sm:p-4">
+                <p class="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-orange-600/70 dark:text-orange-400/70">Pending</p>
+                <p class="text-xl sm:text-2xl font-black text-orange-600 dark:text-orange-400 mt-1 tabular-nums">{{ fmtCurrency(distributionSummary.pending) }}</p>
+                <p class="text-[9px] text-orange-600/50 dark:text-orange-400/50 mt-0.5">{{ distributionSummary.pendingCount }} awaiting</p>
+              </div>
+              <div class="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-500/5 p-3 sm:p-4">
+                <p class="text-[10px] sm:text-xs font-medium uppercase tracking-wider text-blue-600/70 dark:text-blue-400/70">Award Rate</p>
+                <p class="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-1 tabular-nums">
+                  {{ distributionRecords.length ? Math.round((distributionSummary.awardedCount / distributionRecords.length) * 100) : 0 }}%
+                </p>
+                <p class="text-[9px] text-blue-600/50 dark:text-blue-400/50 mt-0.5">completion</p>
+              </div>
+            </div>
+
+            <!-- Loading -->
+            <div v-if="loadingDistribution" class="space-y-3">
+              <div v-for="i in 3" :key="i" class="h-16 rounded-xl bg-muted/50 animate-pulse border border-border/30" />
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="!distributionRecords.length" class="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-border/50 bg-card">
+              <div class="size-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Icon name="i-lucide-hand-coins" class="size-7 text-primary" />
+              </div>
+              <h3 class="font-bold text-lg mb-1">No distribution records yet</h3>
+              <p class="text-sm text-muted-foreground max-w-sm mb-4">
+                Click "Sync from Bonus Report" to pull in all earned bonuses and start tracking distributions.
+              </p>
+            </div>
+
+            <!-- Distribution Records by Category -->
+            <div v-else class="space-y-4">
+              <div v-for="catGroup in distributionByCategory" :key="catGroup.name" class="rounded-xl border border-border/50 bg-card overflow-hidden shadow-sm">
+                <!-- Category Header -->
+                <div class="flex items-center justify-between px-4 sm:px-5 py-3 bg-muted/20 border-b border-border/30">
+                  <div class="flex items-center gap-2.5">
+                    <div class="size-7 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                      <Icon name="i-lucide-layers" class="size-3.5 text-primary" />
+                    </div>
+                    <h3 class="font-semibold text-sm sm:text-base">{{ catGroup.name }}</h3>
+                    <span class="text-[10px] text-muted-foreground">{{ catGroup.records.length }} items</span>
+                  </div>
+                </div>
+
+                <!-- Records -->
+                <div class="divide-y divide-border/20">
+                  <div
+                    v-for="rec in catGroup.records"
+                    :key="rec._id"
+                    class="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/10 transition-colors"
+                  >
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <p class="text-sm font-semibold truncate">{{ rec.subCategoryName }}</p>
+                        <span
+                          class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border"
+                          :class="rec.bonusType === 'custom'
+                            ? 'bg-violet-500/10 text-violet-500 border-violet-500/20'
+                            : 'bg-blue-500/10 text-blue-500 border-blue-500/20'"
+                        >
+                          <Icon :name="rec.bonusType === 'custom' ? 'i-lucide-sparkles' : 'i-lucide-trophy'" class="size-2" />
+                          {{ rec.bonusType === 'custom' ? 'Custom' : 'Skill' }}
+                        </span>
+                      </div>
+                      <div v-if="rec.status === 'awarded'" class="flex items-center gap-2 mt-1">
+                        <span class="text-[10px] text-emerald-500 font-medium">Awarded by {{ rec.awardedByName }}</span>
+                        <span class="text-[10px] text-muted-foreground">on {{ fmtDistDate(rec.awardedAt) }}</span>
+                        <span v-if="rec.notes" class="text-[10px] text-muted-foreground italic truncate max-w-[200px]">— {{ rec.notes }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Amounts -->
+                    <div class="flex items-center gap-3 sm:gap-4 shrink-0">
+                      <div class="text-right">
+                        <p class="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">Earned</p>
+                        <p class="text-sm font-bold text-amber-500 tabular-nums">{{ fmtCurrency(rec.earnedAmount) }}</p>
+                      </div>
+                      <Icon name="i-lucide-arrow-right" class="size-3.5 text-muted-foreground/40" />
+                      <div class="text-right">
+                        <p class="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">Awarded</p>
+                        <p
+                          class="text-sm font-bold tabular-nums"
+                          :class="rec.status === 'awarded' ? 'text-emerald-500' : 'text-muted-foreground/30'"
+                        >
+                          {{ rec.status === 'awarded' ? fmtCurrency(rec.awardedAmount) : '$0.00' }}
+                        </p>
+                      </div>
+
+                      <!-- Status badge + action -->
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold border"
+                          :class="rec.status === 'awarded'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                            : 'bg-orange-500/10 text-orange-500 border-orange-500/20'"
+                        >
+                          <Icon :name="rec.status === 'awarded' ? 'i-lucide-check-circle-2' : 'i-lucide-clock'" class="size-3" />
+                          {{ rec.status === 'awarded' ? 'Awarded' : 'Pending' }}
+                        </span>
+                        <button
+                          v-if="rec.status === 'earned'"
+                          class="size-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors"
+                          title="Mark as Awarded"
+                          :disabled="awardingId === rec._id"
+                          @click="openAwardModal(rec)"
+                        >
+                          <Icon :name="awardingId === rec._id ? 'i-lucide-loader-2' : 'i-lucide-check'" class="size-3.5" :class="awardingId === rec._id ? 'animate-spin' : ''" />
+                        </button>
+                        <button
+                          v-else
+                          class="size-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:text-orange-500 hover:bg-orange-500/10 transition-colors"
+                          title="Revert to Pending"
+                          :disabled="awardingId === rec._id"
+                          @click="unmarkAward(rec)"
+                        >
+                          <Icon :name="awardingId === rec._id ? 'i-lucide-loader-2' : 'i-lucide-undo-2'" class="size-3.5" :class="awardingId === rec._id ? 'animate-spin' : ''" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Theme Tab -->
           <div v-else-if="activeTab === 'theme'" class="space-y-4 sm:space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
             <h2 class="text-xl sm:text-2xl font-bold flex items-center gap-2">
               <Icon name="i-lucide-paintbrush" class="text-primary" />
@@ -592,5 +1080,104 @@ const tabs = computed(() => {
         
       </div>
     </div>
+
+    <!-- Award Confirmation Modal -->
+    <Dialog v-model:open="showAwardModal">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2">
+            <Icon name="i-lucide-hand-coins" class="size-5 text-emerald-500" />
+            Award Bonus
+          </DialogTitle>
+          <DialogDescription>
+            Mark this bonus as awarded for <span class="font-bold text-foreground">{{ awardTarget?.subCategoryName }}</span>.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="grid gap-4 py-4">
+          <div class="flex flex-col gap-2">
+            <Label>Awarded Amount (USD)</Label>
+            <div class="relative">
+              <Icon name="i-lucide-dollar-sign" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
+              <Input
+                type="number"
+                v-model.number="awardAmount"
+                class="pl-9 text-lg font-bold text-emerald-500 h-12"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <p class="text-[10px] text-muted-foreground">Earned amount: {{ fmtCurrency(awardTarget?.earnedAmount || 0) }}</p>
+          </div>
+          <div class="flex flex-col gap-2">
+            <Label>Notes (Optional)</Label>
+            <Textarea
+              v-model="awardNotes"
+              placeholder="E.g. Paid via payroll on 05/01..."
+              class="resize-none"
+              rows="2"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showAwardModal = false" :disabled="!!awardingId">Cancel</Button>
+          <Button @click="confirmAward" class="bg-emerald-600 hover:bg-emerald-700 text-white" :disabled="!!awardingId">
+            <Icon v-if="awardingId" name="i-lucide-loader-2" class="size-4 animate-spin mr-2" />
+            <Icon v-else name="i-lucide-check" class="size-4 mr-2" />
+            {{ awardingId ? 'Awarding...' : 'Confirm Award' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Custom Bonus Modal (Profile) -->
+    <Dialog v-model:open="showProfileCustomBonusModal">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2">
+            <Icon name="i-lucide-award" class="size-5 text-violet-500" />
+            Custom Bonus Award
+          </DialogTitle>
+          <DialogDescription>
+            Add a custom bonus for <span class="font-bold text-foreground">{{ userProfile?.employee }}</span> in the <span class="font-bold text-foreground">{{ profileCustomBonusSub?.name }}</span> sub-category.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="grid gap-4 py-4">
+          <div class="flex flex-col gap-2">
+            <Label>Bonus Amount (USD)</Label>
+            <div class="relative">
+              <Icon name="i-lucide-dollar-sign" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
+              <Input
+                type="number"
+                v-model.number="profileCustomBonusAmount"
+                class="pl-9 text-lg font-bold text-amber-500 h-12"
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <Label>Reason / Note (Optional)</Label>
+            <Textarea
+              v-model="profileCustomBonusReason"
+              placeholder="E.g. Exceptional performance during the week..."
+              class="resize-none"
+              rows="3"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showProfileCustomBonusModal = false" :disabled="savingProfileCustomBonus">Cancel</Button>
+          <Button @click="saveProfileCustomBonus" class="bg-violet-500 hover:bg-violet-600 text-white" :disabled="savingProfileCustomBonus">
+            <Icon v-if="savingProfileCustomBonus" name="i-lucide-loader-2" class="size-4 animate-spin mr-2" />
+            <Icon v-else name="i-lucide-check" class="size-4 mr-2" />
+            Save Bonus
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
