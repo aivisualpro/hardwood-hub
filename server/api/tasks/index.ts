@@ -39,32 +39,50 @@ export default defineEventHandler(async (event) => {
     if (event.method === 'POST') {
         const body = await readBody(event)
 
-        // Auto-generate taskId
-        const last = await Task.findOne().sort({ createdAt: -1 }).select('taskId').lean<any>()
-        let nextNum = 1
-        if (last?.taskId) {
-            const match = last.taskId.match(/TASK-(\d+)/)
-            if (match) nextNum = parseInt(match[1]) + 1
+        // Auto-generate taskId — find the highest existing number to avoid duplicates
+        const maxRetries = 3
+        let doc: any = null
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const allTasks = await Task.find({}, { taskId: 1 }).lean<any[]>()
+                let maxNum = 0
+                for (const t of allTasks) {
+                    const match = t.taskId?.match(/TASK-(\d+)/)
+                    if (match) {
+                        const num = parseInt(match[1])
+                        if (num > maxNum) maxNum = num
+                    }
+                }
+                const nextNum = maxNum + 1 + attempt // offset by attempt to handle retries
+                const taskId = `TASK-${String(nextNum).padStart(3, '0')}`
+
+                // Get the max order for the target column
+                const maxOrderDoc = await Task.findOne({ status: body.status || 'todo' }).sort({ order: -1 }).select('order').lean<any>()
+                const order = (maxOrderDoc?.order ?? -1) + 1
+
+                doc = await Task.create({
+                    taskId,
+                    title: body.title,
+                    description: body.description || '',
+                    priority: body.priority || 'medium',
+                    assignee: body.assignee || null,
+                    dueDate: body.dueDate || null,
+                    status: body.status || 'todo',
+                    labels: body.labels || [],
+                    subtasks: body.subtasks || [],
+                    comments: body.comments || [],
+                    order,
+                })
+                break // success
+            } catch (e: any) {
+                // Retry on duplicate key error (code 11000)
+                if (e?.code === 11000 && attempt < maxRetries - 1) {
+                    continue
+                }
+                throw createError({ statusCode: 500, message: e?.message || 'Failed to create task' })
+            }
         }
-        const taskId = `TASK-${String(nextNum).padStart(3, '0')}`
-
-        // Get the max order for the target column
-        const maxOrderDoc = await Task.findOne({ status: body.status || 'todo' }).sort({ order: -1 }).select('order').lean<any>()
-        const order = (maxOrderDoc?.order ?? -1) + 1
-
-        const doc = await Task.create({
-            taskId,
-            title: body.title,
-            description: body.description || '',
-            priority: body.priority || 'medium',
-            assignee: body.assignee || null,
-            dueDate: body.dueDate || null,
-            status: body.status || 'todo',
-            labels: body.labels || [],
-            subtasks: body.subtasks || [],
-            comments: body.comments || [],
-            order,
-        })
 
         return { success: true, data: doc }
     }

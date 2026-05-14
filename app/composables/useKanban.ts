@@ -1,5 +1,6 @@
 import type { Column, NewTask, Task } from '~/types/kanban'
 import { nanoid } from 'nanoid'
+import { toast } from 'vue-sonner'
 
 export interface BoardState {
   columns: Column[]
@@ -113,8 +114,9 @@ export function useKanban() {
           columnTotals.value[columnId] = (columnTotals.value[columnId] || 0) + 1
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('[useKanban] addTask failed', e)
+      toast.error('Failed to create task', { description: e?.data?.message || e?.message || 'Unknown error' })
     }
   }
 
