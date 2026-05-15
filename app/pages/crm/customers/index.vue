@@ -496,7 +496,7 @@ function selectFilter(id: string) {
             <th class="p-2.5 min-w-[140px]">Assigned To</th>
             <th class="p-2.5 min-w-[80px] text-center">Views</th>
             <th class="p-2.5 min-w-[120px]">Estimate Sent On</th>
-            <th class="p-2.5 min-w-[250px]">Notes</th>
+
             <th class="p-2.5 min-w-[100px]">Contact Date</th>
             <th class="p-2.5 min-w-[100px]">Follow-Up On</th>
             <th class="p-2.5 min-w-[100px]">Date Approved</th>
@@ -628,10 +628,7 @@ function selectFilter(id: string) {
                 <template v-else>{{ formatShortDate(c.estimateSentOn) }}</template>
               </td>
               
-              <td class="p-2.5 text-xs text-muted-foreground" :class="isQuickEditMode ? 'whitespace-normal align-top' : 'max-w-[250px] truncate'" :title="c.notes">
-                <textarea v-if="isQuickEditMode" v-model="c.notes" @change="handleQuickUpdate(c, 'notes', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary resize-y min-h-[60px]" placeholder="Notes..."></textarea>
-                <template v-else>{{ c.notes || '' }}</template>
-              </td>
+
               
               <td class="p-2.5 tabular-nums text-muted-foreground">
                 <input v-if="isQuickEditMode" type="date" :value="c.initialContactDate ? new Date(c.initialContactDate).toISOString().split('T')[0] : ''" @change="handleQuickUpdate(c, 'initialContactDate', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 outline-none focus:border-primary" />
