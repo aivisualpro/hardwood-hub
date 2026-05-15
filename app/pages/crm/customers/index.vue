@@ -155,6 +155,64 @@ function getStageStyle(customer: any) {
   }
 }
 
+// ─── Drag & Drop Status Change ──────────────────────────
+const dragCustomer = ref<any>(null)
+const dragOverStageId = ref<string | null>(null)
+
+function onRowDragStart(e: DragEvent, customer: any) {
+  dragCustomer.value = customer
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', customer._id)
+    // Create a small custom drag image
+    const ghost = document.createElement('div')
+    ghost.textContent = customer.name || 'Customer'
+    ghost.style.cssText = 'position:fixed;top:-999px;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:700;color:#fff;background:hsl(var(--primary));box-shadow:0 4px 20px rgba(0,0,0,0.3);white-space:nowrap;'
+    document.body.appendChild(ghost)
+    e.dataTransfer.setDragImage(ghost, 0, 0)
+    setTimeout(() => document.body.removeChild(ghost), 0)
+  }
+}
+
+function onRowDragEnd() {
+  dragCustomer.value = null
+  dragOverStageId.value = null
+}
+
+function onStageDragOver(e: DragEvent, stageId: string) {
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  dragOverStageId.value = stageId
+}
+
+function onStageDragLeave() {
+  dragOverStageId.value = null
+}
+
+async function onStageDrop(e: DragEvent, stageId: string) {
+  e.preventDefault()
+  dragOverStageId.value = null
+  const customer = dragCustomer.value
+  dragCustomer.value = null
+  if (!customer || stageId === 'all' || stageId === 'uncategorized') return
+  if (String(customer.status) === stageId) return // already in this stage
+
+  // Optimistic update
+  customer.status = stageId
+  const resolved = statusMap.value.get(stageId)
+  const label = resolved?.label || 'status'
+
+  try {
+    await $fetch<any>(`/api/customers/${customer._id}`, {
+      method: 'PUT',
+      body: { status: stageId }
+    })
+    toast.success(`Moved to "${label}"`)
+  } catch {
+    toast.error('Failed to update status')
+  }
+}
+
 async function handleFileUpload(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -446,9 +504,16 @@ function selectFilter(id: string) {
     <div class="flex overflow-x-auto w-full scrollbar-hide text-xs whitespace-nowrap select-none bg-card rounded-xl overflow-hidden border border-border/50 shadow-sm mb-1">
       <div v-for="(g, idx) in pipelineGroups" :key="g.stage.id"
            class="relative -ml-3 first:ml-0 first:pl-2 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer origin-center"
-           :class="selectedStageFilter === g.stage.id ? 'z-50 scale-[1.12]' : 'opacity-70 hover:opacity-100 hover:brightness-110 hover:scale-[1.03]'"
-           :style="{ zIndex: selectedStageFilter === g.stage.id ? 50 : pipelineGroups.length - idx }"
-           @click="selectFilter(g.stage.id)">
+           :class="[
+             selectedStageFilter === g.stage.id ? 'z-50 scale-[1.12]' : 'opacity-70 hover:opacity-100 hover:brightness-110 hover:scale-[1.03]',
+             dragOverStageId === g.stage.id && g.stage.id !== 'all' ? 'drop-target-active !opacity-100 !scale-[1.2] !z-[60]' : '',
+             dragCustomer && g.stage.id !== 'all' ? 'drop-target-ready' : '',
+           ]"
+           :style="{ zIndex: dragOverStageId === g.stage.id ? 60 : (selectedStageFilter === g.stage.id ? 50 : pipelineGroups.length - idx) }"
+           @click="selectFilter(g.stage.id)"
+           @dragover="onStageDragOver($event, g.stage.id)"
+           @dragleave="onStageDragLeave"
+           @drop="onStageDrop($event, g.stage.id)">
            
            <!-- ACTIVE STATE (Rotating Conic Edge) -->
            <div v-if="selectedStageFilter === g.stage.id" class="relative flex items-center justify-center h-12 pl-6 pr-6">
@@ -512,7 +577,13 @@ function selectFilter(id: string) {
           </tr>
         </tbody>
         <tbody v-else>
-          <tr v-for="c in filteredCustomers" :key="c._id" class="border-b border-border/30 last:border-0 text-[13px] transition-colors group/row hover:bg-muted/20 cursor-pointer" @click="navigateTo(`/crm/customers/${c._id}`)">
+          <tr v-for="c in filteredCustomers" :key="c._id"
+              class="border-b border-border/30 last:border-0 text-[13px] transition-colors group/row hover:bg-muted/20 cursor-pointer"
+              :class="dragCustomer?._id === c._id ? 'opacity-40 scale-[0.98] bg-primary/5' : ''"
+              draggable="true"
+              @dragstart="onRowDragStart($event, c)"
+              @dragend="onRowDragEnd"
+              @click="navigateTo(`/crm/customers/${c._id}`)">
             <td class="p-2.5 text-center px-4" @click.stop>
               <input type="checkbox" class="rounded border-border text-primary cursor-pointer" />
             </td>
@@ -817,6 +888,29 @@ function selectFilter(id: string) {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Drag & Drop Animations */
+.drop-target-ready {
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.drop-target-active {
+  filter: brightness(1.3) drop-shadow(0 0 12px currentColor);
+  animation: drop-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes drop-pulse {
+  0%, 100% { filter: brightness(1.3) drop-shadow(0 0 8px currentColor); }
+  50% { filter: brightness(1.5) drop-shadow(0 0 18px currentColor); }
+}
+
+tr[draggable='true'] {
+  cursor: grab;
+}
+
+tr[draggable='true']:active {
+  cursor: grabbing;
 }
 
 /* 
