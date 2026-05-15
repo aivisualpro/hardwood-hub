@@ -516,7 +516,7 @@ function selectFilter(id: string) {
             <td class="p-2.5 text-center px-4" @click.stop>
               <input type="checkbox" class="rounded border-border text-primary cursor-pointer" />
             </td>
-            <td class="p-2.5 max-w-[200px] relative" :class="isQuickEditMode ? 'whitespace-normal' : 'truncate'" @click.stop>
+            <td class="p-2.5 max-w-[200px] relative" :class="isQuickEditMode ? 'whitespace-normal' : 'truncate'" @click="isQuickEditMode && $event.stopPropagation()">
               <span class="font-semibold text-foreground/90 truncate flex-1 block">
                 <input v-if="isQuickEditMode" v-model="c.name" @change="handleQuickUpdate(c, 'name', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
                 <template v-else>
@@ -542,9 +542,8 @@ function selectFilter(id: string) {
                      <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search status..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop />
                    </div>
                    <div class="max-h-[200px] overflow-y-auto py-1.5">
-                      <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
-                         <div class="size-2 rounded-full shadow-inner" :style="{ backgroundColor: st.color || '#737373' }" />
-                         <Icon v-if="st.icon" :name="st.icon" class="size-3" :style="{ color: st.color }" />
+                      <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2" :style="{ color: st.color || '' }">
+                         <Icon v-if="st.icon" :name="st.icon" class="size-3.5" />
                          <span class="truncate">{{ st.label }}</span>
                       </button>
                    </div>
@@ -751,9 +750,8 @@ function selectFilter(id: string) {
                      <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search status..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop />
                    </div>
                    <div class="max-h-[200px] overflow-y-auto py-1.5">
-                      <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
-                         <div class="size-2 rounded-full shadow-inner" :style="{ backgroundColor: st.color || '#737373' }" />
-                         <Icon v-if="st.icon" :name="st.icon" class="size-3" :style="{ color: st.color }" />
+                      <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2" :style="{ color: st.color || '' }">
+                         <Icon v-if="st.icon" :name="st.icon" class="size-3.5" />
                          <span class="truncate">{{ st.label }}</span>
                       </button>
                    </div>
