@@ -24,6 +24,11 @@ export interface ITask extends Document {
         name: string
         avatar?: string
     }
+    createdBy?: {
+        id: string
+        name: string
+        avatar?: string
+    }
     dueDate?: Date
     status: 'todo' | 'in-progress' | 'in-review' | 'done'
     labels?: string[]
@@ -55,6 +60,14 @@ const TaskSchema = new Schema(
         description: { type: String, default: '' },
         priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
         assignee: {
+            type: {
+                id: { type: String },
+                name: { type: String },
+                avatar: { type: String },
+            },
+            default: null,
+        },
+        createdBy: {
             type: {
                 id: { type: String },
                 name: { type: String },

@@ -67,6 +67,7 @@ export default defineEventHandler(async (event) => {
                     description: body.description || '',
                     priority: body.priority || 'medium',
                     assignee: body.assignee || null,
+                    createdBy: body.createdBy || null,
                     dueDate: body.dueDate || null,
                     status: body.status || 'todo',
                     labels: body.labels || [],

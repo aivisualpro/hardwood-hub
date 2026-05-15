@@ -364,6 +364,9 @@ function subCatStatsCalc(sub: any) {
 }
 
 // ─── Predecessor / locking logic ─────────────────────────
+// Track sub-categories manually unlocked by Super Admin
+const manuallyUnlocked = ref<Set<string>>(new Set())
+
 function levelMeetsThreshold(level: string): boolean {
   const stepIdx = LEVEL_STEPS.indexOf(level as any)
   const threshIdx = LEVEL_STEPS.indexOf(minProgressionLevel.value as any)
@@ -372,6 +375,9 @@ function levelMeetsThreshold(level: string): boolean {
 }
 
 function isSubCatLocked(sub: SubCatNode): boolean {
+  // Super Admin manual unlock override (scoped per employee)
+  const unlockKey = `${selectedEmployeeId.value}::${sub._id}`
+  if (manuallyUnlocked.value.has(unlockKey)) return false
   if (!sub.predecessor) return false // no predecessor = unlocked
   // Find predecessor sub-category
   const predSub = tree.value
@@ -386,6 +392,32 @@ function isSubCatLocked(sub: SubCatNode): boolean {
     const rec = highestPerfMap.value.get(sk._id)
     return rec && levelMeetsThreshold(rec.currentSkillLevel)
   })
+}
+
+// Check if a sub-category is naturally locked (ignoring manual overrides)
+function isSubCatNaturallyLocked(sub: SubCatNode): boolean {
+  if (!sub.predecessor) return false
+  const predSub = tree.value
+    .flatMap(c => c.subCategories)
+    .find(s => s._id === sub.predecessor)
+  if (!predSub) return false
+  const requiredSkills = predSub.skills.filter(sk => sk.isRequired)
+  if (requiredSkills.length === 0) return false
+  return !requiredSkills.every(sk => {
+    const rec = highestPerfMap.value.get(sk._id)
+    return rec && levelMeetsThreshold(rec.currentSkillLevel)
+  })
+}
+
+function toggleManualUnlock(sub: SubCatNode) {
+  if (!isSuperAdmin.value) return
+  const unlockKey = `${selectedEmployeeId.value}::${sub._id}`
+  if (manuallyUnlocked.value.has(unlockKey)) {
+    manuallyUnlocked.value.delete(unlockKey)
+  } else {
+    manuallyUnlocked.value.add(unlockKey)
+    toast.success('Sub-category unlocked', { description: `"${sub.name}" manually unlocked by Super Admin`, duration: 3000 })
+  }
 }
 
 function predecessorProgress(sub: SubCatNode): { met: number; total: number; predName: string } {
@@ -1162,12 +1194,36 @@ async function deleteSelected() {
                       @click="!isSubCatLocked(sub) && toggleSub(sub._id)"
                       @keydown.enter.space.prevent="!isSubCatLocked(sub) && toggleSub(sub._id)"
                     >
-                      <!-- Lock or expand icon -->
-                      <Icon
-                        v-if="isSubCatLocked(sub)"
-                        name="i-lucide-lock"
-                        class="size-3.5 text-muted-foreground/50 shrink-0"
-                      />
+                      <!-- Lock icon: clickable for Super Admin to manually unlock -->
+                      <Tooltip v-if="isSubCatLocked(sub)">
+                        <TooltipTrigger as-child>
+                          <button
+                            v-if="isSuperAdmin"
+                            class="shrink-0 hover:text-amber-400 transition-colors cursor-pointer p-0.5 rounded"
+                            @click.stop="toggleManualUnlock(sub)"
+                          >
+                            <Icon name="i-lucide-lock" class="size-3.5 text-muted-foreground/50" />
+                          </button>
+                          <Icon v-else name="i-lucide-lock" class="size-3.5 text-muted-foreground/50 shrink-0" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span v-if="isSuperAdmin">Click to unlock (Super Admin)</span>
+                          <span v-else>Locked — complete prerequisite first</span>
+                        </TooltipContent>
+                      </Tooltip>
+                      <!-- Manually unlocked indicator -->
+                      <Tooltip v-else-if="isSubCatNaturallyLocked(sub) && manuallyUnlocked.has(`${selectedEmployeeId}::${sub._id}`)">
+                        <TooltipTrigger as-child>
+                          <button
+                            v-if="isSuperAdmin"
+                            class="shrink-0 hover:text-amber-400 transition-colors cursor-pointer p-0.5 rounded"
+                            @click.stop="toggleManualUnlock(sub)"
+                          >
+                            <Icon name="i-lucide-lock-open" class="size-3.5 text-amber-400 shrink-0" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Manually unlocked by Super Admin — click to re-lock</TooltipContent>
+                      </Tooltip>
                       <Icon
                         v-else
                         name="i-lucide-chevron-right"
@@ -1188,6 +1244,12 @@ async function deleteSelected() {
                             Requires {{ minProgressionLevel }} in
                             {{ predecessorProgress(sub).met }}/{{ predecessorProgress(sub).total }}
                             required skills of "{{ predecessorProgress(sub).predName }}"
+                          </p>
+                        </div>
+                        <div v-else-if="isSubCatNaturallyLocked(sub) && manuallyUnlocked.has(`${selectedEmployeeId}::${sub._id}`)" class="flex items-center gap-1 mt-0.5">
+                          <Icon name="i-lucide-shield-check" class="size-3 text-amber-400 shrink-0" />
+                          <p class="text-[10px] text-amber-400/80">
+                            Unlocked by Super Admin
                           </p>
                         </div>
                         <div v-else-if="sub.predecessorName" class="flex items-center gap-1 mt-0.5">

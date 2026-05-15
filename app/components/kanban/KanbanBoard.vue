@@ -26,7 +26,21 @@ const userCookie = useCookie<{ employee: string, profileImage: string } | null>(
 // Permissions
 const { canCreate, canUpdate, canDelete } = usePermissions('/tasks')
 
-onMounted(() => fetchBoard())
+// Fetch employees for assignee dropdown
+const employees = ref<any[]>([])
+async function fetchEmployees() {
+  try {
+    const res = await $fetch<any>('/api/employees')
+    employees.value = (res.data || []).filter((e: any) => e.status === 'Active')
+  } catch (e) {
+    console.error('[KanbanBoard] Failed to fetch employees', e)
+  }
+}
+
+onMounted(() => {
+  fetchBoard()
+  fetchEmployees()
+})
 
 const newSubtaskTitle = ref('')
 const newCommentText = ref('')
@@ -55,6 +69,7 @@ const showModalTask = ref<{ type: 'create' | 'edit', open: boolean, columnId: st
   columnId: null,
   taskId: null,
 })
+const selectedAssignee = ref<{ id: string, name: string, avatar?: string } | undefined>(undefined)
 const newTask = reactive<NewTask>({
   title: '',
   description: '',
@@ -62,10 +77,12 @@ const newTask = reactive<NewTask>({
   dueDate: undefined,
   status: '',
   labels: undefined,
+  assignee: undefined,
 })
 function resetData() {
   dueDate.value = undefined
   dueTime.value = '00:00'
+  selectedAssignee.value = undefined
 }
 watch(() => showModalTask.value.open, (newVal) => {
   if (!newVal) resetData()
@@ -76,6 +93,7 @@ function openNewTask(colId: string) {
   newTask.title = ''
   newTask.description = ''
   newTask.priority = undefined
+  selectedAssignee.value = undefined
 }
 function createTask() {
   if (!showModalTask.value.columnId || !newTask.title.trim()) return
@@ -86,6 +104,12 @@ function createTask() {
     dueDate: dueDate.value?.toDate(getLocalTimeZone()),
     status: showModalTask.value.columnId,
     labels: newTask.labels,
+    assignee: selectedAssignee.value,
+    createdBy: userCookie.value ? {
+      id: '',
+      name: userCookie.value.employee,
+      avatar: userCookie.value.profileImage || '',
+    } : undefined,
   }
   addTask(showModalTask.value.columnId, payload)
   showModalTask.value.open = false
@@ -100,6 +124,7 @@ function editTask() {
     dueDate: dueDate.value?.toDate(getLocalTimeZone()),
     status: showModalTask.value.columnId,
     labels: newTask.labels,
+    assignee: selectedAssignee.value,
   }
   updateTask(showModalTask.value.columnId, showModalTask.value.taskId!, payload)
   showModalTask.value.open = false
@@ -111,6 +136,7 @@ function showEditTask(colId: string, taskId: string) {
   newTask.title = task.title
   newTask.description = task.description
   newTask.priority = task.priority
+  selectedAssignee.value = task.assignee || undefined
   if (task.dueDate) {
     try {
       const d = typeof task.dueDate === 'string' ? task.dueDate : new Date(task.dueDate as any).toISOString()
@@ -259,9 +285,19 @@ function handleAddComment(colId: string, taskId: string) {
               >
                 <template #item="{ element: t }: { element: Task }">
                   <div class="rounded-xl border bg-card px-2.5 sm:px-3 py-2 shadow-sm hover:bg-accent/50 cursor-pointer transition-colors">
-                    <div class="flex items-start justify-between gap-1.5 sm:gap-2">
-                      <div class="text-[10px] sm:text-[11px] text-muted-foreground font-mono">
-                        {{ t.id }}
+                    <div class="flex items-center justify-between gap-1.5 sm:gap-2">
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        <Tooltip v-if="t.createdBy">
+                          <TooltipTrigger as-child>
+                            <Avatar class="size-4 sm:size-5 shrink-0">
+                              <AvatarImage :src="t.createdBy.avatar || ''" :alt="t.createdBy.name" />
+                              <AvatarFallback class="text-[7px] sm:text-[8px]">{{ t.createdBy.name?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                            </Avatar>
+                          </TooltipTrigger>
+                          <TooltipContent>Created by {{ t.createdBy.name }}</TooltipContent>
+                        </Tooltip>
+                        <span class="text-[10px] sm:text-[11px] text-muted-foreground font-mono truncate">{{ t.id }}</span>
+                        <span class="text-[9px] sm:text-[10px] text-muted-foreground/60">{{ useTimeAgo(t.createdAt ?? '', OPTIONS) }}</span>
                       </div>
                       <DropdownMenu v-if="canUpdate() || canDelete()">
                         <DropdownMenuTrigger as-child>
@@ -457,6 +493,56 @@ function handleAddComment(colId: string, taskId: string) {
               <SelectItem value="high">High</SelectItem>
             </SelectContent>
           </Select>
+          <Label>Assignee</Label>
+          <Popover>
+            <PopoverTrigger as-child>
+              <Button variant="outline" class="w-full justify-start h-9 sm:h-10 font-normal">
+                <template v-if="selectedAssignee">
+                  <Avatar class="size-5 mr-2">
+                    <AvatarImage :src="selectedAssignee.avatar || ''" :alt="selectedAssignee.name" />
+                    <AvatarFallback class="text-[8px]">{{ selectedAssignee.name?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                  </Avatar>
+                  {{ selectedAssignee.name }}
+                </template>
+                <template v-else>
+                  <Icon name="lucide:user" class="mr-2 size-4 text-muted-foreground" />
+                  <span class="text-muted-foreground">Select assignee</span>
+                </template>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent class="w-[260px] p-1" align="start">
+              <div class="px-2 py-1.5 border-b mb-1">
+                <p class="text-xs font-semibold text-muted-foreground">Employees</p>
+              </div>
+              <div class="max-h-48 overflow-y-auto space-y-0.5">
+                <button
+                  v-if="selectedAssignee"
+                  class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors text-muted-foreground"
+                  @click="selectedAssignee = undefined"
+                >
+                  <Icon name="lucide:x" class="size-4" />
+                  <span>Clear assignee</span>
+                </button>
+                <button
+                  v-for="emp in employees"
+                  :key="emp._id"
+                  class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
+                  :class="selectedAssignee?.id === emp._id ? 'bg-accent' : ''"
+                  @click="selectedAssignee = { id: emp._id, name: emp.employee, avatar: emp.profileImage || '' }"
+                >
+                  <Avatar class="size-5">
+                    <AvatarImage :src="emp.profileImage || ''" :alt="emp.employee" />
+                    <AvatarFallback class="text-[8px]">{{ emp.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                  </Avatar>
+                  <div class="flex flex-col items-start">
+                    <span>{{ emp.employee }}</span>
+                    <span class="text-[10px] text-muted-foreground">{{ emp.position }}</span>
+                  </div>
+                  <Icon v-if="selectedAssignee?.id === emp._id" name="lucide:check" class="size-4 ml-auto text-primary" />
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Label>Due Date</Label>
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-1">
             <Popover>

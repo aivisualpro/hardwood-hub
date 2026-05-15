@@ -41,9 +41,6 @@ export function useKanban() {
   async function fetchBoard() {
     loading.value = true
     try {
-      // Seed first (no-op if already seeded)
-      await $fetch('/api/tasks/seed', { method: 'POST' })
-
       const res = await $fetch<any>(`/api/tasks?limit=${PAGE_SIZE}`)
       if (res.columns) {
         for (const col of board.value.columns) {
@@ -91,6 +88,7 @@ export function useKanban() {
       description: t.description,
       priority: t.priority,
       assignee: t.assignee,
+      createdBy: t.createdBy,
       dueDate: t.dueDate,
       status: t.status,
       labels: t.labels || [],

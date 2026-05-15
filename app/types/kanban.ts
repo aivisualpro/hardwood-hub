@@ -23,6 +23,11 @@ export interface Task {
     name: string
     avatar?: string
   }
+  createdBy?: {
+    id: string
+    name: string
+    avatar?: string
+  }
   dueDate?: Date | number | string
   status?: string
   labels?: string[]
@@ -31,7 +36,7 @@ export interface Task {
   createdAt: Date | number | string
 }
 
-export interface NewTask extends Omit<Task, 'id' | 'assignee' | 'createdAt'> {
+export interface NewTask extends Omit<Task, 'id' | 'createdAt'> {
 }
 
 export interface Column {

@@ -202,15 +202,7 @@ const seedTasks = [
     },
 ]
 
-export default defineEventHandler(async (event) => {
-    await connectDB()
-
-    // Only seed if collection is empty
-    const count = await Task.countDocuments()
-    if (count > 0) {
-        return { success: true, message: `Already seeded with ${count} tasks`, skipped: true }
-    }
-
-    await Task.insertMany(seedTasks)
-    return { success: true, message: `Seeded ${seedTasks.length} tasks`, seeded: seedTasks.length }
+export default defineEventHandler(async (_event) => {
+    // Seed disabled — tasks are now user-created only
+    return { success: true, message: 'Seed disabled', skipped: true }
 })
