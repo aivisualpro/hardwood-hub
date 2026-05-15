@@ -234,6 +234,7 @@ const tabs = [
   { id: 'skill-bonus', label: 'Skill Bonus', icon: 'i-lucide-trophy' },
   { id: 'workspaces', label: 'Workspaces', icon: 'i-lucide-network' },
   { id: 'company', label: 'Company', icon: 'i-lucide-building-2' },
+  { id: 'dropdowns', label: 'Dropdowns', icon: 'i-lucide-list' },
 ]
 
 // ─── Fetch ───────────────────────────────────────────────
@@ -261,10 +262,201 @@ async function fetchWorkspaces() {
   finally { loadingWp.value = false }
 }
 
+// ─── Dropdowns State ─────────────────────────────────────
+interface DropdownOption { _id: string; label: string; value: string; color: string; icon: string; order: number }
+interface DropdownRecord { _id: string; name: string; options: DropdownOption[] }
+const dropdowns = ref<DropdownRecord[]>([])
+const loadingDropdowns = ref(true)
+const activeDropdownId = ref<string | null>(null)
+const editingCell = ref<{ optId: string; field: string } | null>(null)
+const editingValue = ref('')
+const addingOption = ref(false)
+const newOptionLabel = ref('')
+
+const COLOR_PALETTE = [
+  '#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#22c55e','#10b981','#14b8a6','#06b6d4','#0ea5e9',
+  '#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#f43f5e','#be123c','#9f1239','#881337',
+  '#dc2626','#ea580c','#d97706','#ca8a04','#65a30d','#16a34a','#059669','#0d9488','#0891b2','#0284c7',
+  '#2563eb','#4f46e5','#7c3aed','#9333ea','#c026d3','#db2777','#e11d48','#78716c','#737373','#71717a',
+  '#64748b','#475569','#334155','#1e293b','#0f172a','#fbbf24','#a3e635','#34d399','#22d3ee','#818cf8',
+]
+
+const ICON_LIST = [
+  'i-lucide-star','i-lucide-heart','i-lucide-home','i-lucide-user','i-lucide-users','i-lucide-settings',
+  'i-lucide-mail','i-lucide-phone','i-lucide-calendar','i-lucide-clock','i-lucide-check','i-lucide-x',
+  'i-lucide-plus','i-lucide-minus','i-lucide-search','i-lucide-filter','i-lucide-edit','i-lucide-trash-2',
+  'i-lucide-eye','i-lucide-eye-off','i-lucide-lock','i-lucide-unlock','i-lucide-key','i-lucide-shield',
+  'i-lucide-flag','i-lucide-bookmark','i-lucide-tag','i-lucide-hash','i-lucide-at-sign','i-lucide-link',
+  'i-lucide-paperclip','i-lucide-image','i-lucide-camera','i-lucide-video','i-lucide-mic','i-lucide-headphones',
+  'i-lucide-music','i-lucide-play','i-lucide-pause','i-lucide-square','i-lucide-circle','i-lucide-triangle',
+  'i-lucide-diamond','i-lucide-hexagon','i-lucide-octagon','i-lucide-pentagon','i-lucide-zap','i-lucide-bolt',
+  'i-lucide-flame','i-lucide-sun','i-lucide-moon','i-lucide-cloud','i-lucide-umbrella','i-lucide-wind',
+  'i-lucide-snowflake','i-lucide-thermometer','i-lucide-droplet','i-lucide-waves','i-lucide-mountain',
+  'i-lucide-tree-pine','i-lucide-flower','i-lucide-leaf','i-lucide-sprout','i-lucide-apple','i-lucide-grape',
+  'i-lucide-cherry','i-lucide-banana','i-lucide-carrot','i-lucide-cookie','i-lucide-cake','i-lucide-coffee',
+  'i-lucide-beer','i-lucide-wine','i-lucide-cup-soda','i-lucide-utensils','i-lucide-pizza','i-lucide-soup',
+  'i-lucide-egg','i-lucide-fish','i-lucide-beef','i-lucide-bone','i-lucide-dog','i-lucide-cat',
+  'i-lucide-bird','i-lucide-bug','i-lucide-turtle','i-lucide-rabbit','i-lucide-snail','i-lucide-squirrel',
+  'i-lucide-car','i-lucide-bus','i-lucide-truck','i-lucide-bike','i-lucide-train-front','i-lucide-plane',
+  'i-lucide-ship','i-lucide-rocket','i-lucide-satellite','i-lucide-globe','i-lucide-map','i-lucide-compass',
+  'i-lucide-navigation','i-lucide-map-pin','i-lucide-signpost','i-lucide-milestone','i-lucide-building',
+  'i-lucide-building-2','i-lucide-warehouse','i-lucide-factory','i-lucide-hospital','i-lucide-school',
+  'i-lucide-church','i-lucide-castle','i-lucide-tent','i-lucide-store','i-lucide-landmark',
+  'i-lucide-briefcase','i-lucide-wallet','i-lucide-credit-card','i-lucide-banknote','i-lucide-coins',
+  'i-lucide-piggy-bank','i-lucide-receipt','i-lucide-shopping-cart','i-lucide-shopping-bag','i-lucide-gift',
+  'i-lucide-package','i-lucide-box','i-lucide-archive','i-lucide-folder','i-lucide-file','i-lucide-file-text',
+  'i-lucide-clipboard','i-lucide-notebook','i-lucide-book','i-lucide-book-open','i-lucide-library',
+  'i-lucide-graduation-cap','i-lucide-brain','i-lucide-lightbulb','i-lucide-puzzle','i-lucide-target',
+  'i-lucide-trophy','i-lucide-medal','i-lucide-award','i-lucide-crown','i-lucide-gem','i-lucide-sparkles',
+  'i-lucide-wand','i-lucide-palette','i-lucide-brush','i-lucide-paintbrush','i-lucide-pen','i-lucide-pencil',
+  'i-lucide-eraser','i-lucide-ruler','i-lucide-scissors','i-lucide-wrench','i-lucide-hammer','i-lucide-axe',
+  'i-lucide-pickaxe','i-lucide-shovel','i-lucide-drill','i-lucide-nut','i-lucide-cog','i-lucide-gauge',
+  'i-lucide-thermometer','i-lucide-magnet','i-lucide-battery','i-lucide-plug','i-lucide-cable',
+  'i-lucide-wifi','i-lucide-bluetooth','i-lucide-radio','i-lucide-tv','i-lucide-monitor','i-lucide-laptop',
+  'i-lucide-tablet','i-lucide-smartphone','i-lucide-watch','i-lucide-printer','i-lucide-scanner',
+  'i-lucide-keyboard','i-lucide-mouse','i-lucide-gamepad-2','i-lucide-joystick','i-lucide-speaker',
+  'i-lucide-cpu','i-lucide-hard-drive','i-lucide-server','i-lucide-database','i-lucide-cloud-upload',
+  'i-lucide-cloud-download','i-lucide-download','i-lucide-upload','i-lucide-share','i-lucide-share-2',
+  'i-lucide-send','i-lucide-inbox','i-lucide-archive','i-lucide-trash','i-lucide-refresh-cw',
+  'i-lucide-rotate-cw','i-lucide-repeat','i-lucide-shuffle','i-lucide-rewind','i-lucide-fast-forward',
+  'i-lucide-skip-back','i-lucide-skip-forward','i-lucide-volume','i-lucide-volume-1','i-lucide-volume-2',
+  'i-lucide-bell','i-lucide-alarm-clock','i-lucide-timer','i-lucide-hourglass','i-lucide-stopwatch',
+  'i-lucide-calendar-days','i-lucide-calendar-check','i-lucide-calendar-plus','i-lucide-calendar-x',
+  'i-lucide-chart-bar','i-lucide-chart-line','i-lucide-chart-pie','i-lucide-chart-area',
+  'i-lucide-trending-up','i-lucide-trending-down','i-lucide-activity','i-lucide-bar-chart',
+  'i-lucide-pie-chart','i-lucide-signal','i-lucide-percent','i-lucide-calculator',
+  'i-lucide-sigma','i-lucide-infinity','i-lucide-hash','i-lucide-code','i-lucide-terminal',
+  'i-lucide-braces','i-lucide-brackets','i-lucide-regex','i-lucide-git-branch','i-lucide-git-merge',
+  'i-lucide-git-pull-request','i-lucide-git-commit','i-lucide-github','i-lucide-gitlab',
+  'i-lucide-chrome','i-lucide-figma','i-lucide-framer','i-lucide-slack','i-lucide-trello',
+  'i-lucide-message-square','i-lucide-message-circle','i-lucide-messages-square','i-lucide-megaphone',
+  'i-lucide-siren','i-lucide-alert-triangle','i-lucide-alert-circle','i-lucide-alert-octagon',
+  'i-lucide-info','i-lucide-help-circle','i-lucide-badge','i-lucide-badge-check','i-lucide-badge-x',
+  'i-lucide-shield-check','i-lucide-shield-alert','i-lucide-shield-off','i-lucide-scan',
+  'i-lucide-qr-code','i-lucide-barcode','i-lucide-fingerprint','i-lucide-hand','i-lucide-thumbs-up',
+  'i-lucide-thumbs-down','i-lucide-handshake','i-lucide-heart-handshake','i-lucide-smile','i-lucide-frown',
+  'i-lucide-meh','i-lucide-angry','i-lucide-laugh','i-lucide-party-popper','i-lucide-confetti',
+  'i-lucide-candy','i-lucide-ice-cream','i-lucide-popcorn','i-lucide-donut',
+  'i-lucide-lamp','i-lucide-armchair','i-lucide-bed','i-lucide-bath','i-lucide-shower-head',
+  'i-lucide-washing-machine','i-lucide-microwave','i-lucide-refrigerator','i-lucide-air-vent',
+  'i-lucide-heater','i-lucide-fan','i-lucide-lamp-desk','i-lucide-sofa',
+  'i-lucide-door-open','i-lucide-door-closed','i-lucide-window','i-lucide-fence','i-lucide-construction',
+  'i-lucide-hard-hat','i-lucide-cone','i-lucide-traffic-cone','i-lucide-blocks',
+  'i-lucide-component','i-lucide-layers','i-lucide-layout','i-lucide-panel-left','i-lucide-panel-right',
+  'i-lucide-panel-top','i-lucide-panel-bottom','i-lucide-grid','i-lucide-list',
+  'i-lucide-table','i-lucide-kanban','i-lucide-columns','i-lucide-rows','i-lucide-align-left',
+  'i-lucide-align-center','i-lucide-align-right','i-lucide-align-justify',
+  'i-lucide-bold','i-lucide-italic','i-lucide-underline','i-lucide-strikethrough','i-lucide-type',
+  'i-lucide-heading','i-lucide-quote','i-lucide-list-ordered','i-lucide-list-checks',
+  'i-lucide-text','i-lucide-pilcrow','i-lucide-subscript','i-lucide-superscript',
+  'i-lucide-move','i-lucide-move-horizontal','i-lucide-move-vertical','i-lucide-grip',
+  'i-lucide-maximize','i-lucide-minimize','i-lucide-expand','i-lucide-shrink',
+  'i-lucide-zoom-in','i-lucide-zoom-out','i-lucide-fullscreen','i-lucide-pip',
+  'i-lucide-crop','i-lucide-slice','i-lucide-copy','i-lucide-clipboard-copy',
+  'i-lucide-save','i-lucide-undo','i-lucide-redo','i-lucide-history',
+  'i-lucide-log-in','i-lucide-log-out','i-lucide-user-plus','i-lucide-user-minus','i-lucide-user-check',
+  'i-lucide-user-x','i-lucide-user-cog','i-lucide-users-round','i-lucide-contact',
+  'i-lucide-id-card','i-lucide-scan-face','i-lucide-person-standing','i-lucide-accessibility',
+  'i-lucide-baby','i-lucide-footprints',
+  'i-lucide-anchor','i-lucide-compass','i-lucide-life-buoy','i-lucide-sailboat',
+  'i-lucide-fish','i-lucide-shell','i-lucide-palm-tree',
+  'i-lucide-sunrise','i-lucide-sunset','i-lucide-rainbow','i-lucide-cloudy','i-lucide-cloud-rain',
+  'i-lucide-cloud-snow','i-lucide-cloud-lightning','i-lucide-tornado','i-lucide-haze',
+  'i-lucide-asterisk','i-lucide-at-sign','i-lucide-ampersand','i-lucide-euro','i-lucide-pound-sterling',
+  'i-lucide-japanese-yen','i-lucide-russian-ruble','i-lucide-swiss-franc','i-lucide-indian-rupee',
+  'i-lucide-dollar-sign','i-lucide-bitcoin','i-lucide-ethereum',
+]
+
+const iconSearchQuery = ref('')
+const filteredIcons = computed(() => {
+  const q = iconSearchQuery.value.toLowerCase()
+  if (!q) return ICON_LIST.slice(0, 100)
+  return ICON_LIST.filter(i => i.toLowerCase().includes(q)).slice(0, 100)
+})
+
+const activeDropdown = computed(() => dropdowns.value.find(d => d._id === activeDropdownId.value) ?? null)
+
+async function fetchDropdowns() {
+  loadingDropdowns.value = true
+  try {
+    const res = await $fetch<{ success: boolean, data: DropdownRecord[] }>('/api/dropdowns')
+    dropdowns.value = res.data || []
+  } catch (e: any) {
+    toast.error('Failed to load dropdowns', { description: e?.message })
+  } finally { loadingDropdowns.value = false }
+}
+
+async function updateOption(dropdownId: string, optionId: string, patch: Record<string, any>) {
+  try {
+    const res = await $fetch<{ success: boolean, data: DropdownRecord }>('/api/dropdowns', {
+      method: 'PUT',
+      body: { dropdownId, optionId, patch },
+    })
+    if (res.data) {
+      const idx = dropdowns.value.findIndex(d => d._id === dropdownId)
+      if (idx !== -1) dropdowns.value[idx] = res.data
+    }
+    editingCell.value = null
+  } catch (e: any) {
+    toast.error('Update failed', { description: e?.message })
+  }
+}
+
+async function addOption(dropdownId: string) {
+  if (!newOptionLabel.value.trim()) return
+  const dd = dropdowns.value.find(d => d._id === dropdownId)
+  if (!dd) return
+  const newOpt = { label: newOptionLabel.value.trim(), value: newOptionLabel.value.trim(), color: '', icon: '', order: dd.options.length }
+  try {
+    const res = await $fetch<{ success: boolean, data: DropdownRecord }>('/api/dropdowns', {
+      method: 'POST',
+      body: { name: dd.name, options: [...dd.options, newOpt] },
+    })
+    if (res.data) {
+      const idx = dropdowns.value.findIndex(d => d._id === dropdownId)
+      if (idx !== -1) dropdowns.value[idx] = res.data
+    }
+    newOptionLabel.value = ''
+    addingOption.value = false
+    toast.success('Option added')
+  } catch (e: any) {
+    toast.error('Failed to add option', { description: e?.message })
+  }
+}
+
+async function removeOption(dropdownId: string, optionId: string) {
+  try {
+    const res = await $fetch<{ success: boolean, data: DropdownRecord }>('/api/dropdowns', {
+      method: 'DELETE',
+      body: { dropdownId, optionId },
+    })
+    if (res.data) {
+      const idx = dropdowns.value.findIndex(d => d._id === dropdownId)
+      if (idx !== -1) dropdowns.value[idx] = res.data
+    }
+    toast.success('Option removed')
+  } catch (e: any) {
+    toast.error('Delete failed', { description: e?.message })
+  }
+}
+
+function startEditLabel(opt: DropdownOption) {
+  editingCell.value = { optId: opt._id, field: 'label' }
+  editingValue.value = opt.label
+}
+
+function commitEditLabel(dropdownId: string, optId: string) {
+  if (editingValue.value.trim()) {
+    updateOption(dropdownId, optId, { label: editingValue.value.trim(), value: editingValue.value.trim() })
+  }
+  editingCell.value = null
+}
+
 onMounted(() => {
   fetchRecords()
   fetchWorkspaces()
   fetchCompanyProfile()
+  fetchDropdowns()
 })
 
 // ─── Open modals ─────────────────────────────────────────
@@ -970,6 +1162,233 @@ const WpIconsList = [
                   Saving…
                 </span>
               </transition>
+            </div>
+          </div>
+        </template>
+
+        <!-- ═══════ DROPDOWNS TAB ═══════ -->
+        <template v-else-if="activeTab === 'dropdowns'">
+          <div v-if="loadingDropdowns" class="space-y-3">
+            <div class="h-10 bg-muted/60 rounded-lg animate-pulse" />
+            <div v-for="i in 3" :key="i" class="h-24 bg-muted/40 rounded-lg animate-pulse" />
+          </div>
+
+          <div v-else-if="dropdowns.length === 0" class="flex flex-col items-center justify-center py-16 gap-4 text-center px-4">
+            <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+              <Icon name="i-lucide-list" class="size-8 text-primary" />
+            </div>
+            <h3 class="text-lg font-semibold">No Dropdowns</h3>
+            <p class="text-sm text-muted-foreground max-w-sm">No dropdown configurations found. Seed from the API to get started.</p>
+          </div>
+
+          <div v-else class="space-y-4">
+            <!-- Dropdown Cards Grid -->
+            <div v-if="!activeDropdownId" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div
+                v-for="dd in dropdowns"
+                :key="dd._id"
+                class="rounded-xl border border-border/50 bg-card p-5 group hover:border-primary/30 hover:shadow-md transition-all cursor-pointer"
+                @click="activeDropdownId = dd._id"
+              >
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="size-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+                    <Icon name="i-lucide-list" class="size-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-sm">{{ dd.name }}</h3>
+                    <p class="text-[10px] text-muted-foreground">{{ dd.options.length }} options</p>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-1">
+                  <span
+                    v-for="opt in dd.options.slice(0, 8)"
+                    :key="opt._id"
+                    class="text-[10px] px-2 py-0.5 rounded-full border font-medium"
+                    :style="opt.color ? { backgroundColor: opt.color + '20', color: opt.color, borderColor: opt.color + '40' } : {}"
+                    :class="!opt.color ? 'bg-muted/60 text-muted-foreground border-border/40' : ''"
+                  >
+                    {{ opt.label }}
+                  </span>
+                  <span v-if="dd.options.length > 8" class="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    +{{ dd.options.length - 8 }} more
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Expanded Dropdown Options Table -->
+            <div v-if="activeDropdown" class="space-y-4">
+              <div class="flex items-center gap-3">
+                <button
+                  class="size-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors"
+                  @click="activeDropdownId = null; addingOption = false"
+                >
+                  <Icon name="i-lucide-arrow-left" class="size-4" />
+                </button>
+                <h2 class="text-base font-bold">{{ activeDropdown.name }}</h2>
+                <span class="text-xs text-muted-foreground">{{ activeDropdown.options.length }} options</span>
+                <div class="ml-auto">
+                  <Button size="sm" class="h-8 px-3" @click="addingOption = true; newOptionLabel = ''">
+                    <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
+                    Add Option
+                  </Button>
+                </div>
+              </div>
+
+              <!-- Add new option row -->
+              <div v-if="addingOption" class="flex items-center gap-2 px-4 py-3 rounded-xl border border-primary/30 bg-primary/5">
+                <input
+                  v-model="newOptionLabel"
+                  class="flex-1 h-8 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="New option label..."
+                  @keydown.enter="addOption(activeDropdown!._id)"
+                  @keydown.escape="addingOption = false"
+                />
+                <Button size="sm" class="h-8" @click="addOption(activeDropdown!._id)">Add</Button>
+                <Button size="sm" variant="ghost" class="h-8" @click="addingOption = false">Cancel</Button>
+              </div>
+
+              <!-- Options Table -->
+              <div class="rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm" style="min-width: 600px">
+                    <thead>
+                      <tr class="border-b border-border/50 bg-muted/30">
+                        <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider w-8">#</th>
+                        <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">Label</th>
+                        <th class="text-center px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider w-24">Color</th>
+                        <th class="text-center px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider w-24">Icon</th>
+                        <th class="w-16 px-4 py-3" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="(opt, idx) in activeDropdown.options"
+                        :key="opt._id"
+                        class="group border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
+                      >
+                        <!-- Order -->
+                        <td class="px-4 py-2.5 text-xs text-muted-foreground font-mono">{{ idx + 1 }}</td>
+
+                        <!-- Label (inline-editable) -->
+                        <td class="px-4 py-2.5">
+                          <div
+                            v-if="editingCell?.optId === opt._id && editingCell?.field === 'label'"
+                            class="flex items-center gap-1"
+                          >
+                            <input
+                              v-model="editingValue"
+                              class="h-7 px-2 rounded border bg-background text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                              @keydown.enter="commitEditLabel(activeDropdown!._id, opt._id)"
+                              @keydown.escape="editingCell = null"
+                              @blur="commitEditLabel(activeDropdown!._id, opt._id)"
+                            />
+                          </div>
+                          <div
+                            v-else
+                            class="flex items-center gap-2 cursor-pointer group/label"
+                            @click="startEditLabel(opt)"
+                          >
+                            <span
+                              class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border"
+                              :style="opt.color ? { backgroundColor: opt.color + '20', color: opt.color, borderColor: opt.color + '40' } : {}"
+                              :class="!opt.color ? 'bg-muted/60 text-foreground border-border/40' : ''"
+                            >
+                              <Icon v-if="opt.icon" :name="opt.icon" class="size-3" />
+                              {{ opt.label }}
+                            </span>
+                            <Icon name="i-lucide-pencil" class="size-3 text-muted-foreground/0 group-hover/label:text-muted-foreground transition-colors" />
+                          </div>
+                        </td>
+
+                        <!-- Color picker -->
+                        <td class="px-4 py-2.5 text-center">
+                          <Popover>
+                            <PopoverTrigger as-child>
+                              <button class="mx-auto size-7 rounded-lg border flex items-center justify-center hover:bg-muted transition-colors">
+                                <div
+                                  v-if="opt.color"
+                                  class="size-4 rounded-md"
+                                  :style="{ backgroundColor: opt.color }"
+                                />
+                                <Icon v-else name="i-lucide-palette" class="size-3.5 text-muted-foreground" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent class="w-56 p-3" align="center">
+                              <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pick Color</p>
+                              <div class="grid grid-cols-10 gap-1">
+                                <button
+                                  v-for="c in COLOR_PALETTE"
+                                  :key="c"
+                                  class="size-5 rounded-md border transition-all hover:scale-110"
+                                  :class="opt.color === c ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : 'border-transparent'"
+                                  :style="{ backgroundColor: c }"
+                                  @click="updateOption(activeDropdown!._id, opt._id, { color: c })"
+                                />
+                              </div>
+                              <button
+                                v-if="opt.color"
+                                class="mt-2 w-full text-[10px] text-muted-foreground hover:text-foreground py-1 rounded hover:bg-muted transition-colors"
+                                @click="updateOption(activeDropdown!._id, opt._id, { color: '' })"
+                              >
+                                Clear color
+                              </button>
+                            </PopoverContent>
+                          </Popover>
+                        </td>
+
+                        <!-- Icon picker -->
+                        <td class="px-4 py-2.5 text-center">
+                          <Popover @update:open="(v: boolean) => { if (v) iconSearchQuery = '' }">
+                            <PopoverTrigger as-child>
+                              <button class="mx-auto size-7 rounded-lg border flex items-center justify-center hover:bg-muted transition-colors">
+                                <Icon v-if="opt.icon" :name="opt.icon" class="size-3.5" :style="opt.color ? { color: opt.color } : {}" />
+                                <Icon v-else name="i-lucide-smile" class="size-3.5 text-muted-foreground" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent class="w-64 p-3" align="center">
+                              <input
+                                v-model="iconSearchQuery"
+                                class="w-full h-7 px-2 rounded border bg-background text-xs mb-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                placeholder="Search icons..."
+                              />
+                              <div class="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto">
+                                <button
+                                  v-for="ic in filteredIcons"
+                                  :key="ic"
+                                  class="size-7 rounded-md flex items-center justify-center hover:bg-muted transition-colors"
+                                  :class="opt.icon === ic ? 'bg-primary/10 ring-1 ring-primary' : ''"
+                                  :title="ic.replace('i-lucide-', '')"
+                                  @click="updateOption(activeDropdown!._id, opt._id, { icon: ic })"
+                                >
+                                  <Icon :name="ic" class="size-3.5" />
+                                </button>
+                              </div>
+                              <button
+                                v-if="opt.icon"
+                                class="mt-2 w-full text-[10px] text-muted-foreground hover:text-foreground py-1 rounded hover:bg-muted transition-colors"
+                                @click="updateOption(activeDropdown!._id, opt._id, { icon: '' })"
+                              >
+                                Clear icon
+                              </button>
+                            </PopoverContent>
+                          </Popover>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-4 py-2.5">
+                          <button
+                            class="size-7 rounded flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+                            @click="removeOption(activeDropdown!._id, opt._id)"
+                          >
+                            <Icon name="i-lucide-trash-2" class="size-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </template>

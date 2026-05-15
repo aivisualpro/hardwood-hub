@@ -1,9 +1,12 @@
 // Utility to sync Calendly appointments
 import { Buffer } from 'node:buffer'
 
-const BATCH_SIZE = 5        // concurrent invitee requests per batch
-const BATCH_DELAY_MS = 1000 // delay between batches
-const MAX_RETRIES = 3       // retries for 429 errors
+const BATCH_SIZE = 2         // concurrent invitee requests per batch
+const BATCH_DELAY_MS = 1500  // delay between batches
+const MAX_RETRIES = 3        // retries for 429 errors
+
+// Global sync lock to prevent concurrent syncs from piling up
+let isSyncing = false
 
 async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -14,7 +17,7 @@ async function fetchWithRetry(url: string, headers: Record<string, string>, retr
     const res = await fetch(url, { headers })
     if (res.ok) return res
     if (res.status === 429) {
-      const retryAfter = parseInt(res.headers.get('retry-after') || '0') || (2 ** attempt) * 2
+      const retryAfter = parseInt(res.headers.get('retry-after') || '0') || (2 ** attempt) * 3
       console.warn(`[Calendly] Rate limited, waiting ${retryAfter}s (attempt ${attempt + 1}/${retries})`)
       await sleep(retryAfter * 1000)
       continue
@@ -26,7 +29,27 @@ async function fetchWithRetry(url: string, headers: Record<string, string>, retr
   return null
 }
 
-export async function fetchCalendlyAppointments() {
+/**
+ * Fetch Calendly appointments.
+ * @param recentOnly If true (default), only fetch events from the last 30 days.
+ *                   Set to false for a full historical sync.
+ */
+export async function fetchCalendlyAppointments(recentOnly = true) {
+  // Prevent concurrent syncs from piling up
+  if (isSyncing) {
+    console.log('[Calendly] Sync already in progress, skipping')
+    return []
+  }
+  isSyncing = true
+
+  try {
+    return await _doFetch(recentOnly)
+  } finally {
+    isSyncing = false
+  }
+}
+
+async function _doFetch(recentOnly: boolean) {
   const config = useRuntimeConfig()
   const token = config.calendlyAccessToken
 
@@ -35,8 +58,6 @@ export async function fetchCalendlyAppointments() {
   }
 
   // Decode user UUID from the PAT token payload
-  // Note: /users/me requires `users:read` scope which this PAT doesn't have,
-  // so we extract the UUID directly from the JWT instead.
   const parts = token.split('.')
   if (parts.length < 2) throw new Error('Invalid token format')
   
@@ -47,11 +68,19 @@ export async function fetchCalendlyAppointments() {
   if (!userUuid) throw new Error('Could not find user_uuid in Calendly token')
   
   const userUri = `https://api.calendly.com/users/${userUuid}`
-  console.log('[Calendly] User URI:', userUri)
-  
-  // Fetch ALL scheduled events (active + canceled) to get complete history
-  const allEvents: any[] = []
   const headers = { 'Authorization': `Bearer ${token}` }
+  
+  // Date range: only recent events to minimize API calls
+  const minDate = recentOnly
+    ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // last 30 days
+    : undefined
+  // Include future events too (upcoming appointments)
+  const maxDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+  
+  console.log(`[Calendly] Starting sync (recentOnly=${recentOnly}, since=${minDate || 'all'})`)
+  
+  // Fetch scheduled events
+  const allEvents: any[] = []
   
   for (const status of ['active', 'canceled']) {
     let nextPageToken: string | null = null
@@ -65,6 +94,8 @@ export async function fetchCalendlyAppointments() {
         count: '100',
         sort: 'start_time:desc',
       })
+      if (minDate) params.set('min_start_time', minDate)
+      params.set('max_start_time', maxDate)
       if (nextPageToken) params.set('page_token', nextPageToken)
       
       const url = `https://api.calendly.com/scheduled_events?${params.toString()}`
@@ -85,17 +116,15 @@ export async function fetchCalendlyAppointments() {
         allEvents.push({ event, status })
       }
       
-      // Check for next page
       nextPageToken = eventsData.pagination?.next_page_token || null
       
-      // Small delay between event pages to avoid rate limits
-      if (nextPageToken) await sleep(500)
+      if (nextPageToken) await sleep(1000)
     } while (nextPageToken)
   }
   
-  console.log(`[Calendly] Total events collected: ${allEvents.length}, fetching invitees in batches of ${BATCH_SIZE}...`)
+  console.log(`[Calendly] Total events: ${allEvents.length}, fetching invitees in batches of ${BATCH_SIZE}...`)
   
-  // Process invitees in batches to avoid rate limits
+  // Process invitees in small batches
   const allAppointments: any[] = []
   
   for (let i = 0; i < allEvents.length; i += BATCH_SIZE) {
@@ -109,7 +138,6 @@ export async function fetchCalendlyAppointments() {
       const invitees = inviteesData.collection || []
       
       return invitees.map((invitee: any) => {
-        // Map questions and answers
         const fields: Record<string, string> = {}
         let address = ''
         let details = ''
@@ -161,8 +189,8 @@ export async function fetchCalendlyAppointments() {
       })
     }))
     
-    for (const batch of results) {
-      allAppointments.push(...batch)
+    for (const r of results) {
+      allAppointments.push(...r)
     }
     
     // Delay between batches

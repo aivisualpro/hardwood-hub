@@ -71,6 +71,38 @@ async function handleQuickUpdate(customer: any, field: string, event: Event) {
 const stageSearch = ref('')
 const stageSearchInput = ref<HTMLInputElement | null>(null)
 
+// ─── Dropdown-based Status Resolution ───────────────────
+interface StatusOption { _id: string; label: string; value: string; color: string; icon: string; order: number }
+const statusOptions = ref<StatusOption[]>([])
+const statusMap = computed(() => {
+  const map = new Map<string, StatusOption>()
+  for (const opt of statusOptions.value) {
+    map.set(String(opt._id), opt)
+  }
+  return map
+})
+
+async function fetchStatusDropdown() {
+  try {
+    const res = await $fetch<any>('/api/dropdowns?name=Customer Status')
+    if (res?.data?.options) {
+      statusOptions.value = res.data.options
+    }
+  } catch (e) {
+    console.warn('Failed to load status dropdown', e)
+  }
+}
+
+function resolveStatus(customer: any): StatusOption | null {
+  const id = customer?.status
+  if (!id) return null
+  return statusMap.value.get(String(id)) || null
+}
+
+function getStatusName(customer: any): string {
+  return resolveStatus(customer)?.label || customer?.stage || ''
+}
+
 watch(activeDropdown, (val) => {
   if (val && val.endsWith('stage')) {
     stageSearch.value = ''
@@ -81,38 +113,46 @@ watch(activeDropdown, (val) => {
 })
 
 const filteredStageOptions = computed(() => {
-  const all = [...STAGES, ...dynamicStages.value]
+  const all = statusOptions.value.map(o => ({ id: String(o._id), label: o.label, color: o.color, icon: o.icon }))
   if (!stageSearch.value) return all
   const sub = stageSearch.value.toLowerCase()
   return all.filter(s => s.label.toLowerCase().includes(sub))
 })
 
-async function handleStageSelect(customer: any, newStage: string) {
-  if (!newStage.trim()) return
-  customer.stage = newStage.trim()
+async function handleStageSelect(customer: any, optionId: string) {
+  if (!optionId) return
+  customer.status = optionId
   activeDropdown.value = null
   
   try {
     const res = await $fetch<any>(`/api/customers/${customer._id}`, {
       method: 'PUT',
-      body: { stage: customer.stage }
+      body: { status: optionId }
     })
     if (res.success) {
-      toast.success('Stage updated')
+      toast.success('Status updated')
     } else {
-       toast.error('Failed to update stage')
+       toast.error('Failed to update status')
     }
   } catch (err) {
-    toast.error('Error updating stage')
+    toast.error('Error updating status')
   }
 }
 
-function getStageClasses(stageName: string) {
-  if (!stageName) return 'bg-muted text-muted-foreground border-border'
-  const norm = normalizeStage(stageName)
-  const found = [...STAGES, ...dynamicStages.value].find(s => normalizeStage(s.id) === norm)
-  if (found) return `${found.bg} ${found.text} border ${found.border}`
-  return 'bg-muted/80 text-foreground border border-border'
+function getStageClasses(customer: any) {
+  const opt = resolveStatus(customer)
+  if (!opt || !opt.color) return 'bg-muted text-muted-foreground border-border'
+  return ''
+}
+
+function getStageStyle(customer: any) {
+  const opt = resolveStatus(customer)
+  if (!opt || !opt.color) return {}
+  return {
+    backgroundColor: opt.color + '25',
+    color: opt.color,
+    borderColor: opt.color + '50',
+  }
 }
 
 async function handleFileUpload(event: Event) {
@@ -195,6 +235,7 @@ function getAssignedToNames(assignedTo: any): string {
 }
 
 onMounted(() => {
+  fetchStatusDropdown()
   fetchCustomers()
   fetchEmployees()
 })
@@ -221,20 +262,21 @@ const filteredCustomers = computed(() => {
   let list = customers.value
 
   if (query) {
-    list = list.filter(c => 
-      c.name?.toLowerCase().includes(query) || 
-      c.email?.toLowerCase().includes(query) || 
-      c.phone?.toLowerCase().includes(query) ||
-      c.stage?.toLowerCase().includes(query)
-    )
+    list = list.filter(c => {
+      const name = getStatusName(c)
+      return c.name?.toLowerCase().includes(query) || 
+        c.email?.toLowerCase().includes(query) || 
+        c.phone?.toLowerCase().includes(query) ||
+        name?.toLowerCase().includes(query)
+    })
   }
 
   // Filter by selected tab stage
   if (selectedStageFilter.value !== 'all') {
     if (selectedStageFilter.value === 'uncategorized') {
-      list = list.filter(c => !c.stage || c.stage.trim() === '')
+      list = list.filter(c => !c.status)
     } else {
-      list = list.filter(c => c.stage && normalizeStage(c.stage) === normalizeStage(selectedStageFilter.value))
+      list = list.filter(c => c.status && String(c.status) === selectedStageFilter.value)
     }
   }
 
@@ -245,146 +287,83 @@ const filteredCustomers = computed(() => {
   })
 })
 
-const STAGES = [
-  { id: 'contact made', label: 'contact made', bg: 'bg-[#FFD966]', text: 'text-black', border: 'border-[#FFD966]' },
-  { id: 'Needs estimate', label: 'Needs estimate', bg: 'bg-[#FFE599]', text: 'text-black', border: 'border-[#FFE599]' },
-  { id: 'Estimate sent', label: 'Estimate sent', bg: 'bg-[#F6B26B]', text: 'text-black', border: 'border-[#F6B26B]' },
-  { id: 'Changes requested', label: 'Changes requested', bg: 'bg-[#4A86E8]', text: 'text-white', border: 'border-[#4A86E8]' },
-  { id: 'Follow-Up Sent', label: 'Follow-Up Sent', bg: 'bg-[#E06666]', text: 'text-white', border: 'border-[#E06666]' },
-  { id: 'Needs Sched', label: 'Needs Sched', bg: 'bg-[#EA9999]', text: 'text-black', border: 'border-[#EA9999]' },
-  { id: 'Needs Contr', label: 'Needs Contr', bg: 'bg-[#B4A7D6]', text: 'text-black', border: 'border-[#B4A7D6]' },
-  { id: 'Waiting for sign', label: 'Waiting for Si...', bg: 'bg-[#8E7CC3]', text: 'text-white', border: 'border-[#8E7CC3]' },
-  { id: 'Needs Deposit', label: 'Needs Deposit', bg: 'bg-[#3D85C6]', text: 'text-white', border: 'border-[#3D85C6]' },
-  { id: 'Needs wood', label: 'Needs wood', bg: 'bg-[#0B5394]', text: 'text-white', border: 'border-[#0B5394]' },
-  { id: 'Needs Crew', label: 'Needs Crew', bg: 'bg-[#76A5AF]', text: 'text-black', border: 'border-[#76A5AF]' },
-  { id: 'Project In Rev', label: 'Project Is Re...', bg: 'bg-[#45818E]', text: 'text-white', border: 'border-[#45818E]' },
-  { id: 'Project In Pro', label: 'Project In Pro...', bg: 'bg-[#38761D]', text: 'text-white', border: 'border-[#38761D]' },
-  { id: 'needs follow', label: 'needs follow', bg: 'bg-[#6AA84F]', text: 'text-white', border: 'border-[#6AA84F]' },
-  { id: 'inspection do', label: 'inspection do...', bg: 'bg-[#93C47D]', text: 'text-black', border: 'border-[#93C47D]' },
-  { id: 'Waiting for P', label: 'Waiting for P...', bg: 'bg-[#8FCE00]', text: 'text-black', border: 'border-[#8FCE00]' },
-  { id: 'lost', label: 'lost', bg: 'bg-[#999999]', text: 'text-white', border: 'border-[#999999]' },
-  { id: 'subscribers', label: 'subscribers', bg: 'bg-[#333333]', text: 'text-white', border: 'border-[#333333]' }
-]
+// Dynamic STAGES from dropdown (replaces hardcoded array)
+const STAGES = computed(() => {
+  return statusOptions.value.map(opt => ({
+    id: String(opt._id),
+    label: opt.label,
+    color: opt.color || '#737373',
+    icon: opt.icon || '',
+  }))
+})
 
-// Helper to normalize stages and fix common CSV import typos
+// Helper to normalize stages
 function normalizeStage(stageStr: string): string {
   if (!stageStr) return ''
-  let s = stageStr.trim().toLowerCase()
-  s = s.replace('neads', 'needs') // fix typo from CSV
-  s = s.replace(/needs estimate\s*$/, 'needs estimate')
-  return s
+  return stageStr.trim().toLowerCase()
 }
 
-// We dynamically track new stages uploaded by users
-const dynamicStages = ref<any[]>([])
-
-// Pipeline groupings for correct top-bar counts (always global, ignoring active tab)
+// Pipeline groupings for correct top-bar counts
 const pipelineGroups = computed(() => {
+  const stages = STAGES.value
   const groups: Record<string, any[]> = {}
-  STAGES.forEach(s => groups[s.id] = [])
-  dynamicStages.value.forEach(s => groups[s.id] = [])
+  stages.forEach(s => groups[s.id] = [])
   groups['uncategorized'] = []
   
-  // Apply search query if needed
   const query = searchQuery.value.toLowerCase()
   let list = customers.value
   if (query) {
-    list = list.filter(c => 
-      c.name?.toLowerCase().includes(query) || 
-      c.email?.toLowerCase().includes(query) || 
-      c.phone?.toLowerCase().includes(query) ||
-      c.stage?.toLowerCase().includes(query)
-    )
+    list = list.filter(c => {
+      const name = getStatusName(c)
+      return c.name?.toLowerCase().includes(query) || 
+        c.email?.toLowerCase().includes(query) || 
+        c.phone?.toLowerCase().includes(query) ||
+        name?.toLowerCase().includes(query)
+    })
   }
 
   list.forEach(c => {
-    let s = c.stage
-    if (!s || s.trim() === '') {
-      const arr = groups['uncategorized'] || []
-      arr.push(c)
-      groups['uncategorized'] = arr
+    const statusId = c.status ? String(c.status) : null
+    if (!statusId) {
+      groups['uncategorized']!.push(c)
       return
     }
-    
-    let searchStage = normalizeStage(s)
-    
-    const matched = STAGES.find(x => normalizeStage(x.id) === searchStage)
-    if (matched) {
-      const arr = groups[matched.id] || []
-      arr.push(c)
-      groups[matched.id] = arr
+    if (groups[statusId]) {
+      groups[statusId]!.push(c)
     } else {
-      // Dynamic missing stage
-      const exactVal = s.trim()
-      let dynMatch = dynamicStages.value.find(x => x.id.toLowerCase() === exactVal.toLowerCase())
-      if (!dynMatch) {
-        dynMatch = { id: exactVal, label: exactVal, bg: 'bg-muted/80', text: 'text-foreground', border: 'border-border' }
-        dynamicStages.value.push(dynMatch)
-        groups[exactVal] = []
-      }
-      const arr = groups[dynMatch.id] || []
-      arr.push(c)
-      groups[dynMatch.id] = arr
+      groups['uncategorized']!.push(c)
     }
   })
   
-  const allStages = [...STAGES, ...dynamicStages.value]
-  
   return [
-    {
-      stage: { id: 'all', label: 'All', bg: 'bg-primary/20', text: 'text-primary', border: 'border-primary/20' },
-      items: list
-    },
-    ...allStages.map(s => ({ stage: s, items: groups[s.id] || [] })),
-    {
-      stage: { id: 'uncategorized', label: 'Uncategorized', bg: 'bg-muted', text: 'text-muted-foreground', border: 'border-border' },
-      items: groups['uncategorized']
-    }
+    { stage: { id: 'all', label: 'All', color: '' }, items: list },
+    ...stages.map(s => ({ stage: s, items: groups[s.id] || [] })),
+    { stage: { id: 'uncategorized', label: 'Uncategorized', color: '#737373' }, items: groups['uncategorized'] }
   ].filter(g => g.stage.id === 'all' || g.items.length > 0)
 })
 
 // Table grouping (applies both search AND tab filters)
 const tableGroupedCustomers = computed(() => {
+  const stages = STAGES.value
   const groups: Record<string, any[]> = {}
-  STAGES.forEach(s => groups[s.id] = [])
-  dynamicStages.value.forEach(s => groups[s.id] = [])
+  stages.forEach(s => groups[s.id] = [])
   groups['uncategorized'] = []
   
   filteredCustomers.value.forEach(c => {
-    let s = c.stage
-    if (!s || s.trim() === '') {
-      const arr = groups['uncategorized'] || []
-      arr.push(c)
-      groups['uncategorized'] = arr
+    const statusId = c.status ? String(c.status) : null
+    if (!statusId) {
+      groups['uncategorized']!.push(c)
       return
     }
-    
-    let searchStage = normalizeStage(s)
-    
-    const matched = STAGES.find(x => normalizeStage(x.id) === searchStage)
-    if (matched) {
-      const arr = groups[matched.id] || []
-      arr.push(c)
-      groups[matched.id] = arr
+    if (groups[statusId]) {
+      groups[statusId]!.push(c)
     } else {
-      const exactVal = s.trim()
-      const dynMatch = dynamicStages.value.find(x => x.id.toLowerCase() === exactVal.toLowerCase())
-      if (dynMatch) {
-         const arr = groups[dynMatch.id] || []
-         arr.push(c)
-         groups[dynMatch.id] = arr
-      } else {
-         const arr = groups['uncategorized'] || []
-         arr.push(c)
-         groups['uncategorized'] = arr
-      }
+      groups['uncategorized']!.push(c)
     }
   })
   
-  const allStages = [...STAGES, ...dynamicStages.value]
-  
-  return [...allStages.map(s => ({ stage: s, items: groups[s.id] || [] })), 
-    { stage: { id: 'uncategorized', label: 'Uncategorized', bg: 'bg-muted', text: 'text-foreground', border: 'border-border' }, items: groups['uncategorized'] }
+  return [...stages.map(s => ({ stage: s, items: groups[s.id] || [] })), 
+    { stage: { id: 'uncategorized', label: 'Uncategorized', color: '#737373' }, items: groups['uncategorized']! }
   ].filter(g => g.items.length > 0)
 })
 
@@ -392,7 +371,7 @@ const tableGroupedCustomers = computed(() => {
 const expandedStages = ref<Record<string, boolean>>({})
 
 watchEffect(() => {
-  STAGES.forEach(s => {
+  STAGES.value.forEach(s => {
     if (expandedStages.value[s.id] === undefined) {
       expandedStages.value[s.id] = true
     }
@@ -481,23 +460,21 @@ function selectFilter(id: string) {
               
               <!-- OUTER BORDER MASK (Clipped) -->
               <div class="absolute inset-0 overflow-hidden" :style="{ clipPath: getChevronClipPath(idx === 0) }">
-                 <div class="absolute inset-0 brightness-[0.7]" :class="g.stage.bg"></div>
+                 <div class="absolute inset-0 brightness-[0.7]" :style="{ backgroundColor: g.stage.color || 'hsl(var(--primary))' }"></div>
                  <div class="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0_300deg,white_360deg)] animate-[spin_2s_linear_infinite]" />
               </div>
 
               <!-- INNER CONTENT (Inset by 2.5px to reveal outer mask) -->
-              <div class="absolute inset-[2.5px] transition-all flex flex-col items-center justify-center pt-0.5 brightness-110 font-bold"
-                   :class="[g.stage.bg, g.stage.text]"
-                   :style="{ clipPath: getChevronClipPath(idx === 0) }">
+              <div class="absolute inset-[2.5px] transition-all flex flex-col items-center justify-center pt-0.5 brightness-110 font-bold text-white"
+                   :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'hsl(var(--primary))' }">
                   <span class="font-bold text-[13px] leading-tight">{{ g.items.length }}</span>
                   <span class="text-[9px] uppercase tracking-wider opacity-95 truncate max-w-[90px] text-center" :title="g.stage.label">{{ g.stage.label }}</span>
               </div>
            </div>
 
            <!-- INACTIVE STATE (Standard) -->
-           <div v-else class="flex items-center justify-center h-12 pl-6 pr-6 w-full transition-all duration-300"
-                :class="[g.stage.bg, g.stage.text]"
-                :style="{ clipPath: getChevronClipPath(idx === 0) }">
+           <div v-else class="flex items-center justify-center h-12 pl-6 pr-6 w-full transition-all duration-300 text-white"
+                :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'hsl(var(--primary))' }">
               <div class="flex flex-col items-center justify-center pt-0.5">
                 <span class="font-bold text-[13px] leading-tight">{{ g.items.length }}</span>
                 <span class="text-[9px] uppercase tracking-wider opacity-95 truncate max-w-[90px] text-center" :title="g.stage.label">{{ g.stage.label }}</span>
@@ -535,7 +512,7 @@ function selectFilter(id: string) {
           </tr>
         </tbody>
         <tbody v-else>
-          <tr v-for="c in filteredCustomers" :key="c._id" class="border-b border-border/30 last:border-0 text-[13px] transition-colors group/row" :class="!isQuickEditMode ? 'hover:bg-muted/20 cursor-pointer' : ''" @click="!isQuickEditMode && navigateTo(`/crm/customers/${c._id}`)">
+          <tr v-for="c in filteredCustomers" :key="c._id" class="border-b border-border/30 last:border-0 text-[13px] transition-colors group/row hover:bg-muted/20 cursor-pointer" @click="navigateTo(`/crm/customers/${c._id}`)">
             <td class="p-2.5 text-center px-4" @click.stop>
               <input type="checkbox" class="rounded border-border text-primary cursor-pointer" />
             </td>
@@ -551,25 +528,24 @@ function selectFilter(id: string) {
               <!-- Stage Combobox -->
               <div class="relative w-full flex justify-center" :class="activeDropdown === c._id + 'stage' ? 'z-[100]' : 'z-10'">
                 <button @click.stop="activeDropdown = activeDropdown === c._id + 'stage' ? null : c._id + 'stage'" 
-                        class="size-5 rounded-full shadow-sm hover:scale-110 transition-transform focus:outline-none ring-1 ring-black/10 dark:ring-white/10 flex items-center justify-center cursor-pointer shrink-0" 
-                        :class="getStageClasses(c.stage)" 
-                        :title="c.stage || 'Set Stage'">
-                  <Icon v-if="!c.stage || c.stage.trim() === ''" name="i-lucide-plus" class="size-3 text-muted-foreground opacity-70" />
+                        class="size-5 rounded-full shadow-sm hover:scale-110 transition-transform focus:outline-none ring-1 ring-black/10 dark:ring-white/10 flex items-center justify-center cursor-pointer shrink-0 border" 
+                        :style="getStageStyle(c)"
+                        :class="getStageClasses(c)" 
+                        :title="getStatusName(c) || 'Set Status'">
+                  <Icon v-if="!c.status" name="i-lucide-plus" class="size-3 text-muted-foreground opacity-70" />
+                  <Icon v-else-if="resolveStatus(c)?.icon" :name="resolveStatus(c)!.icon" class="size-3" />
                 </button>
                 
                 <div v-if="activeDropdown === c._id + 'stage'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
                 <div v-if="activeDropdown === c._id + 'stage'" class="absolute left-1/2 -translate-x-1/2 mt-2 top-full min-w-[200px] max-w-[240px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
                    <div class="p-2 border-b border-border/50">
-                     <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop @keydown.enter="handleStageSelect(c, stageSearch)" />
+                     <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search status..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop />
                    </div>
                    <div class="max-h-[200px] overflow-y-auto py-1.5">
                       <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
-                         <div class="size-2 rounded-full shadow-inner" :class="st.bg" />
+                         <div class="size-2 rounded-full shadow-inner" :style="{ backgroundColor: st.color || '#737373' }" />
+                         <Icon v-if="st.icon" :name="st.icon" class="size-3" :style="{ color: st.color }" />
                          <span class="truncate">{{ st.label }}</span>
-                      </button>
-                      <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(c, stageSearch)" class="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
-                         <Icon name="i-lucide-plus" class="size-3.5 shrink-0" />
-                         <span class="truncate">Add "{{ stageSearch }}"</span>
                       </button>
                    </div>
                 </div>
@@ -749,8 +725,8 @@ function selectFilter(id: string) {
         <div 
           v-for="c in filteredCustomers" 
           :key="c._id" 
-          class="bg-card border border-border/60 rounded-xl p-3 shadow-sm flex flex-col gap-2 relative transition-colors hover:bg-muted/20"
-          @click="!isQuickEditMode && navigateTo(`/crm/customers/${c._id}`)"
+          class="bg-card border border-border/60 rounded-xl p-3 shadow-sm flex flex-col gap-2 relative transition-colors hover:bg-muted/20 cursor-pointer"
+          @click="navigateTo(`/crm/customers/${c._id}`)"
         >
           <div class="flex items-start justify-between gap-2">
             <div class="flex flex-col min-w-0 flex-1 gap-2">
@@ -761,25 +737,24 @@ function selectFilter(id: string) {
               <!-- Stage Combobox Mobile -->
               <div class="relative shrink-0 flex items-center justify-center mr-2 lg:mr-0" :class="activeDropdown === c._id + 'stage-mobile' ? 'z-[100]' : 'z-10'">
                 <button @click.stop="activeDropdown = activeDropdown === c._id + 'stage-mobile' ? null : c._id + 'stage-mobile'" 
-                        class="size-6 rounded-full shadow-sm hover:scale-110 transition-transform focus:outline-none ring-1 ring-black/10 dark:ring-white/10 flex items-center justify-center cursor-pointer shrink-0" 
-                        :class="getStageClasses(c.stage)" 
-                        :title="c.stage || 'Set Stage'">
-                  <Icon v-if="!c.stage || c.stage.trim() === ''" name="i-lucide-plus" class="size-3.5 text-muted-foreground opacity-70" />
+                        class="size-6 rounded-full shadow-sm hover:scale-110 transition-transform focus:outline-none ring-1 ring-black/10 dark:ring-white/10 flex items-center justify-center cursor-pointer shrink-0 border" 
+                        :style="getStageStyle(c)"
+                        :class="getStageClasses(c)" 
+                        :title="getStatusName(c) || 'Set Status'">
+                  <Icon v-if="!c.status" name="i-lucide-plus" class="size-3.5 text-muted-foreground opacity-70" />
+                  <Icon v-else-if="resolveStatus(c)?.icon" :name="resolveStatus(c)!.icon" class="size-3.5" />
                 </button>
                 
                 <div v-if="activeDropdown === c._id + 'stage-mobile'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
                 <div v-if="activeDropdown === c._id + 'stage-mobile'" class="absolute right-0 mt-2 top-full min-w-[200px] max-w-[240px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
                    <div class="p-2 border-b border-border/50">
-                     <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop @keydown.enter="handleStageSelect(c, stageSearch)" />
+                     <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search status..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop />
                    </div>
                    <div class="max-h-[200px] overflow-y-auto py-1.5">
                       <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(c, st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
-                         <div class="size-2 rounded-full shadow-inner" :class="st.bg" />
+                         <div class="size-2 rounded-full shadow-inner" :style="{ backgroundColor: st.color || '#737373' }" />
+                         <Icon v-if="st.icon" :name="st.icon" class="size-3" :style="{ color: st.color }" />
                          <span class="truncate">{{ st.label }}</span>
-                      </button>
-                      <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(c, stageSearch)" class="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
-                         <Icon name="i-lucide-plus" class="size-3.5 shrink-0" />
-                         <span class="truncate">Add "{{ stageSearch }}"</span>
                       </button>
                    </div>
                 </div>

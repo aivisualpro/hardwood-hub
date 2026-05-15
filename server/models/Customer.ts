@@ -13,6 +13,7 @@ const CustomerSchema = new mongoose.Schema(
     zip: { type: String, default: '' },
     notes: { type: String, default: '' },
     stage: { type: String, default: '' },
+    status: { type: mongoose.Schema.Types.ObjectId, default: null },
     estimatedProjectDuration: { type: String, default: '' },
     totalEstimate: { type: Number, default: null },
     assignedTo: { type: String, default: '' },
@@ -61,6 +62,7 @@ export interface ICustomer {
   zip: string
   notes: string
   stage?: string
+  status?: any
   estimatedProjectDuration?: string
   totalEstimate?: number
   assignedTo?: string

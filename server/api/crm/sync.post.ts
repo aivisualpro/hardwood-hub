@@ -87,7 +87,7 @@ export default defineEventHandler(async () => {
     const config = useRuntimeConfig()
     if (config.calendlyAccessToken) {
       console.log('[CRM Sync] Starting Calendly sync...')
-      const calendlyApps = await fetchCalendlyAppointments()
+      const calendlyApps = await fetchCalendlyAppointments(false) // full historical sync
       console.log(`[CRM Sync] Calendly returned ${calendlyApps.length} appointments`)
       
       for (const parsed of calendlyApps) {
