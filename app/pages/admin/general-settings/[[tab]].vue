@@ -115,6 +115,8 @@ async function fetchCompanyProfile() {
     }
   } catch (e: any) {
     toast.error('Failed to load company profile', { description: e?.message })
+  } finally {
+    loadingCompany.value = false
   }
 }
 
@@ -245,6 +247,8 @@ async function fetchRecords() {
   }
   catch (e: any) {
     toast.error('Failed to load skill bonus records', { description: e?.message })
+  } finally {
+    loading.value = false
   }
 }
 
@@ -255,6 +259,8 @@ async function fetchWorkspaces() {
   }
   catch (e: any) {
     toast.error('Failed to load workspaces', { description: e?.message })
+  } finally {
+    loadingWp.value = false
   }
 }
 
@@ -390,6 +396,8 @@ async function fetchDropdowns() {
     dropdowns.value = res.data || []
   } catch (e: any) {
     toast.error('Failed to load dropdowns', { description: e?.message })
+  } finally {
+    loadingDropdowns.value = false
   }
 }
 
@@ -480,11 +488,11 @@ async function reorderOptions(dropdownId: string) {
   }
 }
 
-// ─── Server-first data fetching (blocks navigation until resolved) ──────
+// ─── Client-only data fetch (server: false avoids SSR cookie context loss) ──
 await useAsyncData('general-settings', async () => {
   await Promise.all([fetchRecords(), fetchWorkspaces(), fetchCompanyProfile(), fetchDropdowns()])
   return true
-})
+}, { server: false, lazy: true })
 
 // ─── Open modals ─────────────────────────────────────────
 function openCreate() {

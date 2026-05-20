@@ -12,26 +12,52 @@ export default defineEventHandler(async (event) => {
     // body.updates = [{ _id, status, order }, ...], body._changedBy = string
     const updates: { _id: string, status: string, order: number }[] = body.updates || []
     const changedBy = body._changedBy || ''
+    const changedById = body._changedById || ''
 
     if (!updates.length) {
         throw createError({ statusCode: 400, message: 'No updates provided' })
     }
 
     // ── Approval gate: block unapproved tasks from moving to "done" ──
+    // Exception: if the person dragging IS the task creator, auto-approve
     const doneIds = updates.filter(u => u.status === 'done').map(u => u._id)
     if (doneIds.length) {
         const unapproved: any[] = await Task.find({
             _id: { $in: doneIds },
             approvedBy: null,
             status: { $ne: 'done' },
-        }).select('taskId').lean()
+        }).select('taskId createdBy').lean()
 
         if (unapproved.length) {
-            const names = unapproved.map((t: any) => t.taskId).join(', ')
-            throw createError({
-                statusCode: 403,
-                message: `Tasks must be approved before moving to Done: ${names}`,
-            })
+            // Separate tasks the creator can auto-approve vs truly blocked
+            const autoApproveIds: string[] = []
+            const blockedTasks: any[] = []
+
+            for (const t of unapproved) {
+                const creatorId = t.createdBy?.toString?.() || String(t.createdBy)
+                if (changedById && creatorId === changedById) {
+                    autoApproveIds.push(String(t._id))
+                } else {
+                    blockedTasks.push(t)
+                }
+            }
+
+            // Auto-approve the creator's own tasks
+            if (autoApproveIds.length) {
+                await Task.updateMany(
+                    { _id: { $in: autoApproveIds } },
+                    { $set: { approvedBy: { name: changedBy, approvedAt: new Date() } } },
+                )
+            }
+
+            // Block the rest
+            if (blockedTasks.length) {
+                const names = blockedTasks.map((t: any) => t.taskId).join(', ')
+                throw createError({
+                    statusCode: 403,
+                    message: `Task must be approved by the creator before it can be moved to Done: ${names}`,
+                })
+            }
         }
     }
 

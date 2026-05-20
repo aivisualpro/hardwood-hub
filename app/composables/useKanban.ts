@@ -221,8 +221,8 @@ export function useKanban() {
     if (!updates.length) return
 
     // Throws on 403 (approval gate) so caller can revert
-    const userCookie = useCookie<{ employee?: string } | null>('hardwood_user')
-    await $fetch('/api/tasks/reorder', { method: 'POST', body: { updates, _changedBy: userCookie.value?.employee || '' } })
+    const userCookie = useCookie<{ _id?: string, employee?: string } | null>('hardwood_user')
+    await $fetch('/api/tasks/reorder', { method: 'POST', body: { updates, _changedBy: userCookie.value?.employee || '', _changedById: userCookie.value?._id || '' } })
   }
 
   // ─── Subtask CRUD ─────────────────────────────────

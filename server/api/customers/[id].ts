@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   if (!id) return { success: false, error: 'No ID provided' }
 
   if (method === 'GET') {
-    const customer = await Customer.findById(id)
+    const customer = await Customer.findById(id).lean()
     if (!customer) return { success: false, error: 'Not found' }
     return { success: true, data: customer }
   }

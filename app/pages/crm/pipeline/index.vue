@@ -257,8 +257,8 @@ async function onStageDrop(e: DragEvent, stageId: string) {
   }
 }
 
-// ─── Server-first data fetching (blocks navigation until resolved) ──────
-await useAsyncData('pipeline-page', async () => {
+// ─── Client-only data fetch (server: false avoids SSR cookie context loss) ──
+const { pending: loadingData } = await useAsyncData('pipeline-page', async () => {
   const [custRes, statusRes, empRes] = await Promise.all([
     $fetch<any>('/api/customers'),
     $fetch<any>('/api/dropdowns?name=Customer Status'),
@@ -268,7 +268,7 @@ await useAsyncData('pipeline-page', async () => {
   if (statusRes?.data?.options) statusOptions.value = statusRes.data.options
   if (empRes?.success) employeesList.value = empRes.data || []
   return true
-})
+}, { server: false, lazy: true })
 
 // Keep for manual refresh
 async function fetchCustomers() {
@@ -490,6 +490,7 @@ watch(() => route.query.status, (val) => {
 
 <template>
   <div class="h-[calc(100vh-theme(spacing.20))] sm:h-[calc(100vh-theme(spacing.24))] flex flex-col space-y-4 -mb-4 sm:-mb-6">
+    <ClientOnly>
     <Teleport to="#header-toolbar">
       <div class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">
         <div class="relative flex-1">
@@ -528,12 +529,21 @@ watch(() => route.query.status, (val) => {
         </button>
       </div>
     </Teleport>
+    </ClientOnly>
 
-    <CrmCustomerFormDialog 
-      v-model="showCreateModal"
-      @saved="onCustomerCreated"
-    />
-
+    <!-- Loading State -->
+    <div v-if="loadingData" class="flex-1 flex flex-col gap-4">
+      <div class="flex gap-2 overflow-hidden rounded-xl border border-border/50 bg-card p-2">
+        <div v-for="i in 5" :key="i" class="h-10 flex-1 bg-muted/40 rounded-lg animate-pulse" />
+      </div>
+      <div class="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div v-for="i in 6" :key="i" class="space-y-3">
+          <div class="h-20 bg-muted/30 rounded-xl animate-pulse" />
+          <div class="h-16 bg-muted/20 rounded-xl animate-pulse" />
+        </div>
+      </div>
+    </div>
+    <div v-if="!loadingData">
     <!-- Pipeline Headers as Filters -->
     <div class="flex overflow-x-auto w-full scrollbar-hide text-xs whitespace-nowrap select-none bg-card rounded-xl overflow-hidden border border-border/50 shadow-sm mb-4">
       <div v-for="(g, idx) in pipelineGroups" :key="g.stage.id"
@@ -905,6 +915,13 @@ watch(() => route.query.status, (val) => {
         </div>
       </div>
     </div>
+
+    </div>
+
+    <CrmCustomerFormDialog 
+      v-model="showCreateModal"
+      @saved="onCustomerCreated"
+    />
 
     <!-- Bulk Delete Confirmation -->
     <AlertDialog :open="showBulkDeleteConfirm" @update:open="v => showBulkDeleteConfirm = v">

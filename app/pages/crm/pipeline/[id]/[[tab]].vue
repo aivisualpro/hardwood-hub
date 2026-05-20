@@ -11,6 +11,10 @@ const customerId = route.params.id as string
 const customer = ref<any>(null)
 const isLoadingCustomer = ref(false)
 
+// Status dropdown options (must be declared before useAsyncData that populates it)
+interface StatusOption { _id: string; label: string; value: string; color: string; icon: string; order: number }
+const statusOptions = ref<StatusOption[]>([])
+
 const { setHeader } = usePageHeader()
 
 const activeTab = computed(() => (route.params.tab as string) || 'details')
@@ -161,10 +165,11 @@ async function fetchCompanyProfile() {
 
 // ─── Server-first data fetching (blocks navigation until resolved) ──────
 await useAsyncData(`pipeline-detail-${customerId}`, async () => {
-  const [custRes, templatesRes, settingsRes] = await Promise.all([
+  const [custRes, templatesRes, settingsRes, dropdownRes] = await Promise.all([
     $fetch<any>(`/api/customers/${customerId}`),
     $fetch<{ success: boolean, data: any[] }>('/api/contracts/templates'),
     $fetch<{ success: boolean, data: Record<string, any> }>('/api/app-settings'),
+    $fetch<any>('/api/dropdowns?name=Customer Status').catch(() => null),
   ])
   if (custRes.success) {
     customer.value = custRes.data
@@ -172,6 +177,7 @@ await useAsyncData(`pipeline-detail-${customerId}`, async () => {
   }
   templates.value = templatesRes.data || []
   if (settingsRes.data?.companyProfile) companyProfile.value = settingsRes.data.companyProfile
+  if (dropdownRes?.data?.options) statusOptions.value = dropdownRes.data.options
   return true
 })
 
@@ -230,32 +236,36 @@ const visibleTabs = computed(() => {
   })
 })
 
-const STAGES = [
-  { id: 'contact made', label: 'contact made', bg: 'bg-[#FFD966]', text: 'text-black', border: 'border-[#FFD966]' },
-  { id: 'Needs estimate', label: 'Needs estimate', bg: 'bg-[#FFE599]', text: 'text-black', border: 'border-[#FFE599]' },
-  { id: 'Estimate sent', label: 'Estimate sent', bg: 'bg-[#F6B26B]', text: 'text-black', border: 'border-[#F6B26B]' },
-  { id: 'Changes requested', label: 'Changes requested', bg: 'bg-[#4A86E8]', text: 'text-white', border: 'border-[#4A86E8]' },
-  { id: 'Follow-Up Sent', label: 'Follow-Up Sent', bg: 'bg-[#E06666]', text: 'text-white', border: 'border-[#E06666]' },
-  { id: 'Needs Sched', label: 'Needs Sched', bg: 'bg-[#EA9999]', text: 'text-black', border: 'border-[#EA9999]' },
-  { id: 'Needs Contr', label: 'Needs Contr', bg: 'bg-[#B4A7D6]', text: 'text-black', border: 'border-[#B4A7D6]' },
-  { id: 'Waiting for sign', label: 'Waiting for Si...', bg: 'bg-[#8E7CC3]', text: 'text-white', border: 'border-[#8E7CC3]' },
-  { id: 'Needs Deposit', label: 'Needs Deposit', bg: 'bg-[#3D85C6]', text: 'text-white', border: 'border-[#3D85C6]' },
-  { id: 'Needs wood', label: 'Needs wood', bg: 'bg-[#0B5394]', text: 'text-white', border: 'border-[#0B5394]' },
-  { id: 'Needs Crew', label: 'Needs Crew', bg: 'bg-[#76A5AF]', text: 'text-black', border: 'border-[#76A5AF]' },
-  { id: 'Project In Rev', label: 'Project Is Re...', bg: 'bg-[#45818E]', text: 'text-white', border: 'border-[#45818E]' },
-  { id: 'Project In Pro', label: 'Project In Pro...', bg: 'bg-[#38761D]', text: 'text-white', border: 'border-[#38761D]' },
-  { id: 'needs follow', label: 'needs follow', bg: 'bg-[#6AA84F]', text: 'text-white', border: 'border-[#6AA84F]' },
-  { id: 'inspection do', label: 'inspection do...', bg: 'bg-[#93C47D]', text: 'text-black', border: 'border-[#93C47D]' },
-  { id: 'Waiting for P', label: 'Waiting for P...', bg: 'bg-[#8FCE00]', text: 'text-black', border: 'border-[#8FCE00]' },
-  { id: 'lost', label: 'lost', bg: 'bg-[#999999]', text: 'text-white', border: 'border-[#999999]' }
-]
+// ─── Dropdown-based Status Resolution ───────────────────
+const statusMap = computed(() => {
+  const map = new Map<string, StatusOption>()
+  for (const opt of statusOptions.value) {
+    map.set(String(opt._id), opt)
+  }
+  return map
+})
 
-function normalizeStage(stageStr: string): string {
-  if (!stageStr) return ''
-  let s = stageStr.trim().toLowerCase()
-  s = s.replace('neads', 'needs')
-  s = s.replace(/needs estimate\s*$/, 'needs estimate')
-  return s
+async function fetchStatusDropdown() {
+  try {
+    const res = await $fetch<any>('/api/dropdowns?name=Customer Status')
+    if (res?.data?.options) {
+      statusOptions.value = res.data.options
+    }
+  } catch (e) {
+    console.warn('Failed to load status dropdown', e)
+  }
+}
+
+function resolveStatus(cust: any): StatusOption | null {
+  const id = cust?.status
+  if (!id) return null
+  return statusMap.value.get(String(id)) || null
+}
+
+function getStatusLabel(): string {
+  if (!customer.value) return 'Set Status'
+  const opt = resolveStatus(customer.value)
+  return opt?.label || 'Set Status'
 }
 
 const activeDropdown = ref<string | null>(null)
@@ -272,43 +282,41 @@ watch(activeDropdown, (val) => {
 })
 
 const filteredStageOptions = computed(() => {
-  if (!customer.value) return STAGES
-  let all = [...STAGES]
-  if (customer.value.stage) {
-     const exactVal = customer.value.stage.trim()
-     const found = all.find(x => normalizeStage(x.id) === normalizeStage(exactVal))
-     if (!found && exactVal) {
-        all.push({ id: exactVal, label: exactVal, bg: 'bg-muted/80', text: 'text-foreground', border: 'border-border' })
-     }
-  }
+  const all = statusOptions.value.map(o => ({ id: String(o._id), label: o.label, color: o.color || '' }))
   if (!stageSearch.value) return all
   const sub = stageSearch.value.toLowerCase()
   return all.filter(s => s.label.toLowerCase().includes(sub))
 })
 
-async function handleStageSelect(newStage: string) {
-  if (!newStage.trim() || !customer.value) return
-  customer.value.stage = newStage.trim()
+async function handleStageSelect(optionId: string) {
+  if (!optionId || !customer.value) return
+  customer.value.status = optionId
   activeDropdown.value = null
-  
+
   try {
     const res = await $fetch<any>(`/api/customers/${customerId}`, {
       method: 'PUT',
-      body: { stage: customer.value.stage }
+      body: { status: optionId }
     })
-    if (res.success) toast.success('Stage updated')
-    else toast.error('Failed to update stage')
+    if (res.success) toast.success('Status updated')
+    else toast.error('Failed to update status')
   } catch (err) {
-    toast.error('Error updating stage')
+    toast.error('Error updating status')
   }
 }
 
-function getStageClasses(stageName: string) {
-  if (!stageName) return 'bg-muted text-muted-foreground border-border'
-  const norm = normalizeStage(stageName)
-  const found = STAGES.find(s => normalizeStage(s.id) === norm)
-  if (found) return `${found.bg} ${found.text} border ${found.border}`
-  return 'bg-muted/80 text-foreground border-border'
+function getStageClasses(): string {
+  if (!customer.value) return 'bg-muted text-muted-foreground border-border'
+  const opt = resolveStatus(customer.value)
+  if (!opt?.color) return 'bg-muted text-muted-foreground border-border'
+  return `border-[${opt.color}]`
+}
+
+function getStageStyle(): Record<string, string> {
+  if (!customer.value) return {}
+  const opt = resolveStatus(customer.value)
+  if (!opt?.color) return {}
+  return { backgroundColor: opt.color + '22', color: opt.color, borderColor: opt.color }
 }
 </script>
 
@@ -372,26 +380,22 @@ function getStageClasses(stageName: string) {
                 <div class="flex items-center gap-2">
                   <p class="font-medium text-foreground truncate">{{ customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || '—' }}</p>
                   
-                  <!-- Stage Combobox -->
+                  <!-- Status Combobox -->
                   <div class="relative shrink-0" :class="activeDropdown === 'stage' ? 'z-50' : ''">
-                    <button @click.stop="activeDropdown = activeDropdown === 'stage' ? null : 'stage'" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider hover:opacity-80 transition-colors shadow-sm shadow-black/5" :class="getStageClasses(customer.stage)">
-                      {{ customer.stage || 'Set Stage' }}
+                    <button @click.stop="activeDropdown = activeDropdown === 'stage' ? null : 'stage'" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider hover:opacity-80 transition-colors shadow-sm shadow-black/5 border" :style="getStageStyle()" :class="!resolveStatus(customer) ? 'bg-muted text-muted-foreground border-border' : ''">
+                      {{ getStatusLabel() }}
                       <Icon name="i-lucide-chevron-down" class="size-3 ml-0.5 opacity-70" />
                     </button>
                     
                     <div v-if="activeDropdown === 'stage'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
                     <div v-if="activeDropdown === 'stage'" class="absolute left-0 mt-1 top-full w-[200px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
                        <div class="p-2 border-b border-border/50">
-                         <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop @keydown.enter="handleStageSelect(stageSearch)" />
+                         <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search status..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop />
                        </div>
                        <div class="max-h-[200px] overflow-y-auto py-1.5">
                           <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
-                             <div class="size-2 rounded-full shadow-inner" :class="st.bg" />
+                             <div class="size-2 rounded-full shadow-inner" :style="st.color ? { backgroundColor: st.color } : {}" />
                              <span class="truncate">{{ st.label }}</span>
-                          </button>
-                          <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(stageSearch)" class="w-full text-left px-3 py-1.5 text-xs hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
-                             <Icon name="i-lucide-plus" class="size-3.5 shrink-0" />
-                             <span class="truncate">Add "{{ stageSearch }}"</span>
                           </button>
                        </div>
                     </div>

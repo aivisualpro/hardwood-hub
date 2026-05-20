@@ -7,7 +7,11 @@ export default defineEventHandler(async (event) => {
   const method = event.node.req.method
 
   if (method === 'GET') {
-    const customers = await Customer.find().sort({ createdAt: -1 })
+    // Projection: exclude heavy embedded arrays not needed for list views
+    const customers = await Customer.find()
+      .select('-gallery -relatedContacts -notes')
+      .sort({ createdAt: -1 })
+      .lean()
     return { success: true, data: customers }
   }
 
