@@ -10,14 +10,12 @@ const { updateSubmission, toggleStar } = useCrmSubmissions()
 
 // State
 const item = ref<CrmSubmission | null>(null)
-const isLoading = ref(true)
 const isSaving = ref(false)
 const relatedSubmissions = ref<CrmSubmission[]>([])
 const isLoadingRelated = ref(false)
 
 // Fetch Data
 async function fetchData() {
-  isLoading.value = true
   try {
     const res = await $fetch<any>(`/api/crm/submissions/${route.params.id}`)
     item.value = res.data
@@ -36,8 +34,6 @@ async function fetchData() {
   } catch (err) {
     toast.error('Failed to load submission details')
     router.push('/crm/pipeline')
-  } finally {
-    isLoading.value = false
   }
 }
 
@@ -148,24 +144,13 @@ const showCarousel = ref(false)
 
 const statuses: CrmSubmission['status'][] = ['new', 'contacted', 'in-progress', 'completed', 'archived']
 
-onMounted(fetchData)
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData(`submission-${route.params.id}`, async () => { await fetchData(); return true })
 </script>
 
 <template>
   <div class="max-w-7xl mx-auto space-y-6 pb-20">
-    <!-- Skeleton Loading -->
-    <div v-if="isLoading" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 space-y-6">
-        <div class="h-40 rounded-3xl bg-muted animate-pulse" />
-        <div class="h-96 rounded-3xl bg-muted animate-pulse" />
-      </div>
-      <div class="space-y-6">
-        <div class="h-64 rounded-3xl bg-muted animate-pulse" />
-        <div class="h-96 rounded-3xl bg-muted animate-pulse" />
-      </div>
-    </div>
-
-    <template v-else-if="item">
+    <template v-if="item">
       <!-- Full-Screen Carousel Overlay -->
       <Teleport to="body">
         <div v-if="showCarousel && photos.length > 0" class="fixed inset-0 z-[100] bg-zinc-950/95 flex flex-col items-center justify-center p-4 lg:p-10 backdrop-blur-xl">

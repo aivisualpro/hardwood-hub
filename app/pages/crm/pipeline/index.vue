@@ -9,7 +9,6 @@ setHeader({
 })
 
 const customers = ref<any[]>([])
-const isLoading = ref(true)
 const showCreateModal = ref(false)
 
 // ─── Multi-Select ────────────────────────────────────────
@@ -258,10 +257,21 @@ async function onStageDrop(e: DragEvent, stageId: string) {
   }
 }
 
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData('pipeline-page', async () => {
+  const [custRes, statusRes, empRes] = await Promise.all([
+    $fetch<any>('/api/customers'),
+    $fetch<any>('/api/dropdowns?name=Customer Status'),
+    $fetch<any>('/api/employees'),
+  ])
+  if (custRes?.success) customers.value = custRes.data || []
+  if (statusRes?.data?.options) statusOptions.value = statusRes.data.options
+  if (empRes?.success) employeesList.value = empRes.data || []
+  return true
+})
 
-
+// Keep for manual refresh
 async function fetchCustomers() {
-  isLoading.value = true
   try {
     const res = await $fetch<any>('/api/customers')
     if (res?.success) {
@@ -269,8 +279,6 @@ async function fetchCustomers() {
     }
   } catch (error) {
     toast.error('Failed to load customers')
-  } finally {
-    isLoading.value = false
   }
 }
 
@@ -311,11 +319,6 @@ function getAssignedToNames(assignedTo: any): string {
   return arr.map(a => resolveAssignedTo(a)?.name).filter(Boolean).join(', ')
 }
 
-onMounted(() => {
-  fetchStatusDropdown()
-  fetchCustomers()
-  fetchEmployees()
-})
 
 function formatCurrency(val: any) {
   if (val === null || val === undefined || val === '') return ''
@@ -600,14 +603,7 @@ watch(() => route.query.status, (val) => {
             <th class="p-2.5 min-w-[100px]">Wood Ordered</th>
           </tr>
         </thead>
-        <tbody v-if="isLoading">
-          <tr v-for="i in 5" :key="i">
-            <td colspan="14" class="p-4">
-              <div class="h-6 bg-muted/40 rounded animate-pulse"></div>
-            </td>
-          </tr>
-        </tbody>
-        <tbody v-else>
+        <tbody>
           <tr v-for="c in filteredCustomers" :key="c._id"
               class="border-b border-border/30 last:border-0 text-[13px] transition-colors group/row hover:bg-muted/20 cursor-pointer"
               :class="[
@@ -818,11 +814,7 @@ watch(() => route.query.status, (val) => {
 
     <!-- Mobile Card View -->
     <div class="block lg:hidden flex-1 min-h-0 overflow-auto bg-muted/10 pb-16">
-      <div v-if="isLoading" class="p-4 space-y-4">
-        <div v-for="i in 5" :key="i" class="h-24 bg-muted/40 rounded-xl animate-pulse" />
-      </div>
-      
-      <div v-else class="flex flex-col gap-3 p-3">
+      <div class="flex flex-col gap-3 p-3">
         <div 
           v-for="c in filteredCustomers" 
           :key="c._id" 

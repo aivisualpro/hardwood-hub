@@ -108,7 +108,6 @@ let _autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 const autoSaving = ref(false)
 
 async function fetchCompanyProfile() {
-  loadingCompany.value = true
   try {
     const res = await $fetch<{ success: boolean, data: Record<string, any> }>('/api/app-settings')
     if (res.data?.companyProfile) {
@@ -116,7 +115,7 @@ async function fetchCompanyProfile() {
     }
   } catch (e: any) {
     toast.error('Failed to load company profile', { description: e?.message })
-  } finally { loadingCompany.value = false }
+  }
 }
 
 async function uploadBase64ToCloudinary(base64: string): Promise<string> {
@@ -240,7 +239,6 @@ const tabs = [
 
 // ─── Fetch ───────────────────────────────────────────────
 async function fetchRecords() {
-  loading.value = true
   try {
     const res = await $fetch<{ success: boolean, data: SkillBonusRecord[] }>('/api/skill-bonus')
     records.value = res.data
@@ -248,11 +246,9 @@ async function fetchRecords() {
   catch (e: any) {
     toast.error('Failed to load skill bonus records', { description: e?.message })
   }
-  finally { loading.value = false }
 }
 
 async function fetchWorkspaces() {
-  loadingWp.value = true
   try {
     const res = await $fetch<{ success: boolean, data: WorkspaceRecord[] }>('/api/workspaces')
     workspaces.value = res.data
@@ -260,7 +256,6 @@ async function fetchWorkspaces() {
   catch (e: any) {
     toast.error('Failed to load workspaces', { description: e?.message })
   }
-  finally { loadingWp.value = false }
 }
 
 // ─── Dropdowns State ─────────────────────────────────────
@@ -390,13 +385,12 @@ watch(() => activeDropdown.value?.options, (opts) => {
 }, { immediate: true, deep: true })
 
 async function fetchDropdowns() {
-  loadingDropdowns.value = true
   try {
     const res = await $fetch<{ success: boolean, data: DropdownRecord[] }>('/api/dropdowns')
     dropdowns.value = res.data || []
   } catch (e: any) {
     toast.error('Failed to load dropdowns', { description: e?.message })
-  } finally { loadingDropdowns.value = false }
+  }
 }
 
 async function updateOption(dropdownId: string, optionId: string, patch: Record<string, any>) {
@@ -486,11 +480,10 @@ async function reorderOptions(dropdownId: string) {
   }
 }
 
-onMounted(() => {
-  fetchRecords()
-  fetchWorkspaces()
-  fetchCompanyProfile()
-  fetchDropdowns()
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData('general-settings', async () => {
+  await Promise.all([fetchRecords(), fetchWorkspaces(), fetchCompanyProfile(), fetchDropdowns()])
+  return true
 })
 
 // ─── Open modals ─────────────────────────────────────────
@@ -775,14 +768,8 @@ const WpIconsList = [
         <!-- ═══════ SKILL BONUS TAB ═══════ -->
         <template v-if="activeTab === 'skill-bonus'">
 
-          <!-- Loading -->
-          <div v-if="loading" class="space-y-3">
-            <div class="h-10 bg-muted/60 rounded-lg animate-pulse" />
-            <div v-for="i in 3" :key="i" class="h-16 bg-muted/40 rounded-lg animate-pulse" />
-          </div>
-
           <!-- Empty state -->
-          <div v-else-if="records.length === 0" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
+          <div v-if="records.length === 0" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
             <div class="size-14 sm:size-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center">
               <Icon name="i-lucide-trophy" class="size-6 sm:size-8 text-amber-400" />
             </div>

@@ -116,35 +116,25 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
               <!-- Logo -->
               ${company.logo ? `<img src="${company.logo}" alt="${companyName}" style="max-height:32px; max-width:140px; object-fit:contain; margin-bottom:24px; display:block;" />` : ''}
 
-              <!-- Status Change Badge -->
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:20px;">
-                <tr>
-                  <td style="padding:6px 12px; background-color:#f1f5f9; border-radius:6px; font-size:12px; font-weight:600; color:#64748b; letter-spacing:0.04em; text-transform:uppercase;">
-                    STATUS UPDATED
-                  </td>
-                </tr>
-              </table>
+              <!-- Row 1: Task Title -->
+              <h1 style="margin:0 0 24px; font-size:22px; font-weight:700; color:#0f172a; line-height:1.3;">${title}</h1>
 
-              <!-- Title -->
-              <h1 style="margin:0 0 8px; font-size:20px; font-weight:700; color:#0f172a; line-height:1.3;">${title}</h1>
-              <p style="margin:0 0 24px; font-size:13px; color:#94a3b8;"></p>
-
-              <!-- Status Arrow -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px; background-color:#f8fafc; border-radius:8px;">
+              <!-- Row 2: From → To (Big Fonts) -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px; background-color:#f8fafc; border-radius:10px;">
                 <tr>
-                  <td style="padding:16px 20px;">
+                  <td style="padding:20px 24px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
                         <td width="40%" style="vertical-align:middle;">
-                          <p style="margin:0 0 4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">From</p>
-                          <p style="margin:0; font-size:15px; font-weight:600; color:#475569;">${fromLabel}</p>
+                          <p style="margin:0 0 6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8;">From</p>
+                          <p style="margin:0; font-size:22px; font-weight:700; color:#475569;">${fromLabel}</p>
                         </td>
                         <td width="20%" style="text-align:center; vertical-align:middle;">
-                          <span style="font-size:20px; color:#cbd5e1;">→</span>
+                          <span style="font-size:24px; color:#cbd5e1;">→</span>
                         </td>
                         <td width="40%" style="vertical-align:middle; text-align:right;">
-                          <p style="margin:0 0 4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">To</p>
-                          <p style="margin:0; font-size:15px; font-weight:700; color:${toColor};">${toLabel}</p>
+                          <p style="margin:0 0 6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8;">To</p>
+                          <p style="margin:0; font-size:22px; font-weight:800; color:${toColor};">${toLabel}</p>
                         </td>
                       </tr>
                     </table>
@@ -155,26 +145,30 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
               <!-- Divider -->
               <div style="height:1px; background-color:#e2e8f0; margin-bottom:20px;"></div>
 
-              <!-- Details Grid -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
+              <!-- Row 3: Due Date, Priority, Moved By (3 columns) -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:16px;">
                 <tr>
-                  <td width="50%" style="padding:0 0 14px; vertical-align:top;">
-                    <p style="margin:0 0 2px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Priority</p>
+                  <td width="33%" style="padding:0 0 14px; vertical-align:top;">
+                    <p style="margin:0 0 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Due Date</p>
+                    <p style="margin:0; font-size:14px; font-weight:600; color:#334155;">${formatDate(dueDate)}</p>
+                  </td>
+                  <td width="33%" style="padding:0 0 14px; vertical-align:top;">
+                    <p style="margin:0 0 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Priority</p>
                     <p style="margin:0; font-size:14px; font-weight:600; color:${priorityColor(priority || 'medium')};">${capitalizeFirst(priority || 'Medium')}</p>
                   </td>
-                  <td width="50%" style="padding:0 0 14px; vertical-align:top;">
-                    <p style="margin:0 0 2px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Due Date</p>
-                    <p style="margin:0; font-size:14px; font-weight:500; color:#334155;">${formatDate(dueDate)}</p>
+                  <td width="33%" style="padding:0 0 14px; vertical-align:top;">
+                    <p style="margin:0 0 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Moved By</p>
+                    <p style="margin:0; font-size:14px; font-weight:600; color:#334155;">${movedByName || '—'}</p>
                   </td>
                 </tr>
+              </table>
+
+              <!-- Row 4: Assignees -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
                 <tr>
-                  <td width="50%" style="padding:0; vertical-align:top;">
-                    <p style="margin:0 0 2px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Assignees</p>
-                    <p style="margin:0; font-size:14px; font-weight:500; color:#334155;">${assigneeNames || '—'}</p>
-                  </td>
-                  <td width="50%" style="padding:0; vertical-align:top;">
-                    <p style="margin:0 0 2px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Moved By</p>
-                    <p style="margin:0; font-size:14px; font-weight:500; color:#334155;">${movedByName || '—'}</p>
+                  <td style="padding:0; vertical-align:top;">
+                    <p style="margin:0 0 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Assignees</p>
+                    <p style="margin:0; font-size:14px; font-weight:600; color:#334155;">${assigneeNames || '—'}</p>
                   </td>
                 </tr>
               </table>

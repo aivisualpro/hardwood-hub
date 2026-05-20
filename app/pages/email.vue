@@ -121,7 +121,16 @@ function formatDate(d: string) {
 
 const unreadCount = computed(() => messages.value.filter(m => !m.read).length)
 
-onMounted(checkGmail)
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData('email-page', async () => {
+  try {
+    const res = await $fetch<{ connected: boolean, email: string }>('/api/gmail/status')
+    gmailConnected.value = res.connected
+    gmailEmail.value = res.email
+    if (res.connected) await fetchMessages()
+  } catch { /* ignore */ }
+  return true
+})
 </script>
 
 <template>

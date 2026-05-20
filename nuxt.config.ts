@@ -107,6 +107,13 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/components': { redirect: '/components/accordion' },
+    // SWR caching for read-heavy API endpoints — speeds up SSR data fetching
+    '/api/employees': { swr: 30 },
+    '/api/skills/tree': { swr: 60 },
+    '/api/app-settings': { swr: 120 },
+    '/api/dashboard/stats': { swr: 15 },
+    '/api/workspaces': { swr: 60 },
+    '/api/dropdowns': { swr: 60 },
   },
 
   imports: {

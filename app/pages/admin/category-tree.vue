@@ -210,9 +210,8 @@ function layoutNodes() {
   layoutAndFit()
 }
 
-// ─── Fetch data on mount ─────────────────────────────────
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
 async function fetchTree() {
-  loading.value = true
   try {
     const res = await $fetch<{ success: boolean; data: any[] }>('/api/skills/tree')
     rawTree.value = res.data
@@ -221,20 +220,16 @@ async function fetchTree() {
     // Initial unfiltered render
     nodes.value = allNodes.value.map(n => ({ ...n, data: { ...n.data, dimmed: false } }))
     edges.value = [...allEdges.value]
-
-    await nextTick()
-    setTimeout(() => layoutAndFit(), 100)
   }
   catch (e: any) {
     toast.error('Failed to load tree', { description: e?.message })
   }
-  finally {
-    loading.value = false
-  }
 }
+await useAsyncData('category-tree', async () => { await fetchTree(); return true })
 
+// Layout needs DOM — run after mount
 onMounted(() => {
-  fetchTree()
+  nextTick(() => layoutAndFit())
 })
 
 // ─── Category Filter Toggle ─────────────────────────────
@@ -330,11 +325,7 @@ async function handleEdgeDoubleClick(params: any) {
 
 <template>
   <div class="h-[calc(100vh-100px)] w-full relative bg-muted/10 rounded-xl overflow-hidden border border-border/50">
-    <!-- Loading -->
-    <div v-if="loading" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-      <Icon name="i-lucide-loader-2" class="size-8 animate-spin text-primary" />
-      <p class="mt-4 font-medium text-muted-foreground">Building visual tree...</p>
-    </div>
+
 
     <!-- ─── TOP TOOLBAR ────────────────────────────────── -->
     <div class="absolute top-3 left-3 right-3 z-10 flex items-start gap-3">

@@ -40,10 +40,11 @@ async function autoSyncCalendly() {
   }
 }
 
-onMounted(async () => {
-  // Fetch existing data from DB immediately for fast first paint
-  await fetchSubmissions()
-  // Then trigger a background Calendly sync to pull latest
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData('appointments-page', async () => { await fetchSubmissions(); return true })
+
+// Background Calendly sync (not blocking — runs after page renders)
+onMounted(() => {
   autoSyncCalendly()
 })
 

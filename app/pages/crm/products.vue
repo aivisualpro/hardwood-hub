@@ -44,15 +44,13 @@ interface Product {
 }
 
 const items = ref<Product[]>([])
-const isLoading = ref(true)
 const searchQuery = ref('')
 const currentPage = ref(1)
 const totalItems = ref(0)
 const totalPages = ref(1)
 
-// ─── Fetch ───────────────────────────────────────────────
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
 async function fetchProducts(page = 1) {
-  isLoading.value = true
   try {
     const params = new URLSearchParams()
     if (searchQuery.value) params.set('search', searchQuery.value)
@@ -66,8 +64,6 @@ async function fetchProducts(page = 1) {
     totalItems.value = res.pagination?.total || 0
   } catch (err) {
     toast.error('Failed to load products')
-  } finally {
-    isLoading.value = false
   }
 }
 
@@ -81,7 +77,7 @@ watch(searchQuery, () => {
   }, 300)
 })
 
-onMounted(() => fetchProducts())
+await useAsyncData('crm-products', async () => { await fetchProducts(); return true })
 
 // ─── Create / Edit Dialog ────────────────────────────────
 const showFormDialog = ref(false)
@@ -505,17 +501,7 @@ const formSections = [
             </tr>
           </thead>
 
-          <!-- Loading -->
-          <tbody v-if="isLoading">
-            <tr v-for="n in 10" :key="n" class="border-b last:border-b-0">
-              <td v-for="c in 29" :key="c" class="py-3 px-3">
-                <div class="h-4 rounded bg-muted animate-pulse" :class="c === 1 ? 'w-20' : c === 2 ? 'w-40' : 'w-16'" />
-              </td>
-            </tr>
-          </tbody>
-
-          <!-- Empty -->
-          <tbody v-else-if="items.length === 0">
+          <tbody v-if="items.length === 0">
             <tr>
               <td colspan="29" class="py-16 text-center">
                 <div class="flex flex-col items-center gap-3">

@@ -40,7 +40,6 @@ interface Cat {
 
 // ─── State ───────────────────────────────────────────────
 const tree = ref<Cat[]>([])
-const loading = ref(true)
 const selectedCatId = ref<string | null>(null)
 const expandedSubs = ref<Set<string>>(new Set())
 const searchQuery = ref('')
@@ -409,9 +408,8 @@ async function saveBonusRules() {
   }
 }
 
-// ─── Initial load ────────────────────────────────────────
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
 async function fetchTree() {
-  loading.value = true
   try {
     const res = await $fetch<{ success: boolean, data: Cat[] }>('/api/skills/tree')
     tree.value = res.data
@@ -428,7 +426,6 @@ async function fetchTree() {
         const firstCat = res.data[0]
         if (firstCat) {
           selectedCatId.value = firstCat._id
-          // Sub-category accordions are closed by default per user request
         }
       }
     }
@@ -436,10 +433,8 @@ async function fetchTree() {
   catch (e: any) {
     toast.error('Failed to load skills', { description: e?.message })
   }
-  finally { loading.value = false }
 }
-
-onMounted(fetchTree)
+await useAsyncData('admin-skills', async () => { await fetchTree(); return true })
 
 // ─── Optimistic tree helpers ──────────────────────────────
 function findSkill(id: string) {
@@ -697,13 +692,8 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         </button>
       </div>
 
-      <!-- Loading skeleton -->
-      <div v-if="loading" class="p-3 flex flex-col gap-2">
-        <div v-for="i in 5" :key="i" class="h-10 rounded-lg bg-muted animate-pulse" />
-      </div>
-
       <!-- Category list -->
-      <nav v-else class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+      <nav class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
         <!-- Category: EDIT MODE -->
         <div
           v-for="(cat, idx) in tree"
@@ -886,18 +876,8 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
       <!-- Skills content area -->
       <div class="p-3 sm:p-5 flex-1 overflow-y-auto">
 
-        <!-- Loading state -->
-        <div v-if="loading" class="flex flex-col gap-3 sm:gap-4">
-          <div v-for="i in 3" :key="i" class="rounded-xl border border-border/50 overflow-hidden animate-pulse">
-            <div class="h-11 sm:h-12 bg-muted/60" />
-            <div class="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              <div v-for="j in 4" :key="j" class="h-16 sm:h-20 rounded-lg bg-muted/40" />
-            </div>
-          </div>
-        </div>
-
         <!-- No category selected -->
-        <div v-else-if="!selectedCat" class="flex flex-col items-center justify-center h-full gap-3 sm:gap-4 text-center py-16 sm:py-24 px-4">
+        <div v-if="!selectedCat" class="flex flex-col items-center justify-center h-full gap-3 sm:gap-4 text-center py-16 sm:py-24 px-4">
           <div class="size-14 sm:size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
             <Icon name="i-lucide-graduation-cap" class="size-6 sm:size-8 text-primary" />
           </div>

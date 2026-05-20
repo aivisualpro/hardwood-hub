@@ -22,7 +22,6 @@ const activeSigLabel = ref('')
 const tempSigValue = ref('')
 
 async function fetchContract() {
-  loading.value = true
   error.value = ''
   try {
     const res = await $fetch<{ success: boolean, data: any }>(`/api/contracts/sign/${token}`)
@@ -42,8 +41,6 @@ async function fetchContract() {
     generateContractHtml()
   } catch (e: any) {
     error.value = e?.data?.message || e?.message || 'Failed to load contract'
-  } finally {
-    loading.value = false
   }
 }
 
@@ -199,40 +196,14 @@ async function submitSignature() {
   }
 }
 
-onMounted(fetchContract)
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData(`sign-${token}`, async () => { await fetchContract(); return true })
 </script>
 
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
-    <!-- Loading -->
-    <div v-if="loading" class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      <div class="mb-8 flex items-start justify-between gap-4 animate-pulse">
-        <div>
-          <div class="flex items-center gap-2 mb-3">
-            <div class="size-8 rounded-lg bg-slate-200"></div>
-            <div class="h-3 w-32 bg-slate-200 rounded"></div>
-          </div>
-          <div class="h-6 sm:h-8 w-64 sm:w-96 bg-slate-200 rounded mb-3"></div>
-          <div class="h-4 w-48 bg-slate-200 rounded"></div>
-        </div>
-        <div class="h-16 sm:h-20 w-32 sm:w-48 bg-slate-200 rounded"></div>
-      </div>
-      <div class="bg-white/50 rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8 p-6 sm:p-8 animate-pulse">
-        <div class="space-y-4">
-          <div class="h-4 w-full bg-slate-100 rounded"></div>
-          <div class="h-4 w-[90%] bg-slate-100 rounded"></div>
-          <div class="h-4 w-[95%] bg-slate-100 rounded"></div>
-          <div class="h-4 w-[80%] bg-slate-100 rounded"></div>
-          <div class="w-full h-px bg-slate-100 my-6"></div>
-          <div class="h-4 w-full bg-slate-100 rounded"></div>
-          <div class="h-4 w-[85%] bg-slate-100 rounded"></div>
-          <div class="h-4 w-[75%] bg-slate-100 rounded"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- Error -->
-    <div v-else-if="error && !contractData" class="flex items-center justify-center min-h-screen px-4">
+    <div v-if="error && !contractData" class="flex items-center justify-center min-h-screen px-4">
       <div class="max-w-md w-full text-center">
         <div class="size-16 mx-auto mb-4 rounded-2xl bg-red-50 flex items-center justify-center">
           <svg class="size-8 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>

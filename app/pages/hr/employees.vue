@@ -25,7 +25,6 @@ interface Employee {
 
 // ─── State ───────────────────────────────────────────────
 const employees = ref<Employee[]>([])
-const loading = ref(false)
 const saving = ref(false)
 const uploadingImage = ref(false)
 const searchQuery = ref('')
@@ -61,13 +60,30 @@ const filtered = computed(() => {
   return [...list].sort((a, b) => a.employee.localeCompare(b.employee))
 })
 
-// ─── Fetch ────────────────────────────────────────────────
+// ─── Server-first data fetching (blocks navigation until resolved) ────────
+const workspacesList = ref<{ _id: string, name: string }[]>([])
+
+await useAsyncData('employees-page', async () => {
+  const [empRes, wsRes] = await Promise.all([
+    $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
+    $fetch<{ success: boolean, data: any[] }>('/api/workspaces'),
+  ])
+  employees.value = empRes.data.map(emp => {
+    // Clean legacy BigQuery image routes if they still exist in MongoDB records
+    if (emp.profileImage && emp.profileImage.includes('api/bigquery')) {
+      emp.profileImage = ''
+    }
+    return emp
+  })
+  workspacesList.value = wsRes.data
+  return true
+})
+
+// Keep fetchEmployees for manual refresh after create/update/delete
 async function fetchEmployees() {
-  loading.value = true
   try {
     const res = await $fetch<{ success: boolean, data: Employee[] }>('/api/employees')
     employees.value = res.data.map(emp => {
-      // Clean legacy BigQuery image routes if they still exist in MongoDB records
       if (emp.profileImage && emp.profileImage.includes('api/bigquery')) {
         emp.profileImage = ''
       }
@@ -77,20 +93,7 @@ async function fetchEmployees() {
   catch (e: any) {
     notify('Error', e?.message || 'Failed to load employees', 'destructive')
   }
-  finally { loading.value = false }
 }
-
-onMounted(fetchEmployees)
-
-// ─── Fetch Workspaces ─────────────────────────────────────
-const workspacesList = ref<{ _id: string, name: string }[]>([])
-async function fetchWorkspaces() {
-  try {
-    const res = await $fetch<{ success: boolean, data: any[] }>('/api/workspaces')
-    workspacesList.value = res.data
-  } catch {}
-}
-onMounted(fetchWorkspaces)
 
 function workspaceName(id: string) {
   return workspacesList.value.find(w => w._id === id)?.name || ''
@@ -267,17 +270,8 @@ async function toggleStatus(emp: Employee) {
       </Button>
     </div>
 
-    <!-- Loading skeleton -->
-    <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
-      <div v-for="i in 8" :key="i" class="rounded-xl border bg-card p-3 sm:p-4 space-y-2 sm:space-y-3 animate-pulse">
-        <div class="size-12 sm:size-16 rounded-full bg-muted mx-auto" />
-        <div class="h-3 sm:h-4 bg-muted rounded w-3/4 mx-auto" />
-        <div class="h-2.5 sm:h-3 bg-muted rounded w-1/2 mx-auto" />
-      </div>
-    </div>
-
     <!-- Empty state -->
-    <div v-else-if="filtered.length === 0" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
+    <div v-if="filtered.length === 0" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
       <div class="size-14 sm:size-16 rounded-full bg-muted flex items-center justify-center">
         <Icon name="i-lucide-users" class="size-6 sm:size-8 text-muted-foreground" />
       </div>
@@ -363,7 +357,7 @@ async function toggleStatus(emp: Employee) {
     </div>
 
     <!-- Count -->
-    <p v-if="!loading && filtered.length > 0" class="text-[10px] sm:text-xs text-muted-foreground">
+    <p v-if="filtered.length > 0" class="text-[10px] sm:text-xs text-muted-foreground">
       Showing {{ filtered.length }} of {{ employees.length }} employees
     </p>
 

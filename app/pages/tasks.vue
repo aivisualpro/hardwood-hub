@@ -7,6 +7,8 @@ setHeader({ title: 'Tasks', icon: 'i-lucide-kanban', description: 'Manage your p
 
 <template>
   <div class="h-full">
-    <KanbanBoard />
+    <ClientOnly>
+      <KanbanBoard />
+    </ClientOnly>
   </div>
 </template>

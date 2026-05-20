@@ -13,7 +13,6 @@ const currentUserId = computed(() => userCookie.value?._id)
 // If viewing another employee, fetch their profile; otherwise use logged-in user
 const { data: fetchedEmployee } = viewingEmployeeId.value
   ? await useFetch<{ success: boolean, data: any }>(`/api/employees/${viewingEmployeeId.value}`, {
-      lazy: true,
       transform: (res: any) => res.data || null
     })
   : { data: ref(null) }
@@ -37,17 +36,14 @@ const activeTab = ref('summary')
 
 // Data fetching — filter performance records for the target employee
 const { data: recordsData, pending: loadingRecords } = await useFetch('/api/performance', {
-  lazy: true,
   transform: (res: any) => res.data?.filter((r: any) => r.employee === profileUserId.value) || []
 })
 
 const { data: treeData, pending: loadingTree } = await useFetch('/api/skills/tree', {
-  lazy: true,
   transform: (res: any) => res.data || []
 })
 
 const { data: bonusRulesData, pending: loadingRules } = await useFetch('/api/skill-bonus', {
-  lazy: true,
   transform: (res: any) => res.data || []
 })
 
@@ -59,7 +55,7 @@ async function fetchCustomBonuses() {
     customBonuses.value = res.data || []
   } catch { /* ignore */ }
 }
-onMounted(fetchCustomBonuses)
+await useAsyncData('profile-custom-bonuses', async () => { await fetchCustomBonuses(); return true })
 
 // Utilities
 function levelIndex(lvl: string) {

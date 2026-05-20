@@ -601,6 +601,21 @@ function canEditTask(task: Task | null): boolean {
                         </TooltipTrigger>
                         <TooltipContent class="capitalize">{{ t.priority }} priority</TooltipContent>
                       </Tooltip>
+
+                      <!-- Approve button for in-review tasks (visible only to the task creator) -->
+                      <Tooltip v-if="col.id === 'in-review' && !t.approvedBy && (typeof t.createdBy === 'object' ? (t.createdBy as any)?._id : t.createdBy) === userCookie?._id">
+                        <TooltipTrigger as-child>
+                          <button
+                            class="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors cursor-pointer"
+                            @click.stop="approveTask(col.id, t)"
+                          >
+                            <Icon name="lucide:check-circle" class="size-3" />
+                            Approve
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Approve and move to Done</TooltipContent>
+                      </Tooltip>
+
                       <div class="flex items-center gap-1.5">
                         <div v-if="t.assignees?.length" class="flex items-center -space-x-1.5">
                           <Tooltip v-for="a in t.assignees.slice(0, 3)" :key="a._id">

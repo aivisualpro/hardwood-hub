@@ -584,8 +584,10 @@ async function fetchCompanyProfile() {
   } catch { /* ignore */ }
 }
 
-onMounted(async () => {
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData('crm-contracts', async () => {
   await Promise.all([fetchTemplates(), fetchCompanyProfile(), fetchContracts()])
+  return true
 })
 
 function formatDate(d: string) {

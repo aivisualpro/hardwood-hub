@@ -25,7 +25,7 @@ const employees = ref<Employee[]>([])
 const tree = ref<CatNode[]>([])
 const perfRecords = ref<PerfRecord[]>([])
 const globalBonusRules = ref<GlobalBonusRule[]>([])
-const loading = ref(true)
+
 const selectedEmployeeId = ref<string | null>(null)
 const expandedCats = ref<Set<string>>(new Set())
 const expandedSubs = ref<Set<string>>(new Set())
@@ -53,9 +53,8 @@ watch(selectedEmployeeId, (newId) => {
   }
 })
 
-// ─── Fetch all data ──────────────────────────────────────
+// ─── Server-first data fetching (lazy: navigation is instant, data fills in) ──
 async function fetchAll() {
-  loading.value = true
   try {
     const [empRes, treeRes, perfRes, settingsRes, bonusRes] = await Promise.all([
       $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
@@ -84,19 +83,12 @@ async function fetchAll() {
         selectedEmployeeId.value = empRes.data[0]!._id
       }
     }
-    // Expand first category by default (disabled per user request)
-    // if (treeRes.data.length) {
-    //   expandedCats.value.add(treeRes.data[0]!._id)
-    //   const firstSub = treeRes.data[0]!.subCategories[0]
-    //   if (firstSub) expandedSubs.value.add(firstSub._id)
-    // }
   }
   catch (e: any) {
     toast.error('Failed to load data', { description: e?.message })
   }
-  finally { loading.value = false }
 }
-onMounted(fetchAll)
+const { pending: loadingData } = await useAsyncData('employee-performance', async () => { await fetchAll(); return true }, { lazy: true })
 
 // ─── Settings: save minimum progression level ────────────
 async function saveMinLevel(level: string) {
@@ -818,7 +810,7 @@ async function deleteSelected() {
       </div>
 
       <!-- Loading skeleton -->
-      <div v-if="loading" class="p-3 flex flex-col gap-2">
+      <div v-if="loadingData" class="p-3 flex flex-col gap-2">
         <div v-for="i in 6" :key="i" class="flex items-center gap-3 px-3 py-2.5">
           <div class="size-8 rounded-full bg-muted animate-pulse shrink-0" />
           <div class="flex-1 space-y-1.5">
@@ -1062,7 +1054,7 @@ async function deleteSelected() {
       <div class="flex-1 overflow-y-auto p-3 sm:p-5">
 
         <!-- Loading state -->
-        <div v-if="loading" class="flex flex-col gap-4">
+        <div v-if="loadingData" class="flex flex-col gap-4">
           <div v-for="i in 3" :key="i" class="rounded-xl border border-border/50 overflow-hidden animate-pulse">
             <div class="h-12 bg-muted/60" />
             <div class="p-4 space-y-3">

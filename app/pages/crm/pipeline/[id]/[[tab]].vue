@@ -9,7 +9,7 @@ const route = useRoute()
 const customerId = route.params.id as string
 
 const customer = ref<any>(null)
-const isLoadingCustomer = ref(true)
+const isLoadingCustomer = ref(false)
 
 const { setHeader } = usePageHeader()
 
@@ -159,11 +159,20 @@ async function fetchCompanyProfile() {
 
 // `deleteContract` has been moved to CrmContractsTable
 
-
-onMounted(() => {
-  fetchCustomer()
-  fetchTemplates()
-  fetchCompanyProfile()
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData(`pipeline-detail-${customerId}`, async () => {
+  const [custRes, templatesRes, settingsRes] = await Promise.all([
+    $fetch<any>(`/api/customers/${customerId}`),
+    $fetch<{ success: boolean, data: any[] }>('/api/contracts/templates'),
+    $fetch<{ success: boolean, data: Record<string, any> }>('/api/app-settings'),
+  ])
+  if (custRes.success) {
+    customer.value = custRes.data
+    updateHeaderForContext(customer.value, activeTab.value)
+  }
+  templates.value = templatesRes.data || []
+  if (settingsRes.data?.companyProfile) companyProfile.value = settingsRes.data.companyProfile
+  return true
 })
 
 async function handleStatusUpdate(id: string, status: string) {

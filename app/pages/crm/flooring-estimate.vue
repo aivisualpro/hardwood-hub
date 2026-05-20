@@ -22,7 +22,8 @@ const {
   toggleStar,
 } = useCrmSubmissions('flooring-estimate')
 
-onMounted(() => fetchSubmissions())
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData('flooring-estimate-page', async () => { await fetchSubmissions(); return true })
 
 async function handleSync() {
   try {

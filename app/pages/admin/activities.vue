@@ -18,9 +18,8 @@ const searchQuery = ref('')
 
 const actionOptions = ['all', 'create', 'update', 'delete', 'login', 'logout', 'assess', 'import']
 
-// ─── Fetch ──────────────────────────────────────────
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
 async function fetchActivities(page = 1) {
-  loading.value = true
   try {
     const params: Record<string, string> = {
       page: String(page),
@@ -39,14 +38,12 @@ async function fetchActivities(page = 1) {
     filterModules.value = res.filters.modules || []
   } catch (e: any) {
     toast.error('Failed to load activities', { description: e?.message })
-  } finally {
-    loading.value = false
   }
 }
+await useAsyncData('admin-activities', async () => { await fetchActivities(); return true })
 
+// Mark all as read when page is visited (fire-and-forget)
 onMounted(async () => {
-  await fetchActivities()
-  // Mark all as read when page is visited
   try {
     await $fetch('/api/activities/mark-as-read', { method: 'POST' })
   } catch {}
@@ -263,20 +260,8 @@ const stats = computed(() => {
         </Button>
       </div>
 
-      <!-- ─── Loading ─── -->
-      <div v-if="loading" class="space-y-3 sm:space-y-4">
-        <div v-for="i in 6" :key="i" class="rounded-xl border border-border/30 bg-card p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
-          <div class="size-8 sm:size-10 rounded-full bg-muted/40 animate-pulse shrink-0" />
-          <div class="flex-1 space-y-2">
-            <div class="h-3 sm:h-4 w-3/4 bg-muted/40 rounded animate-pulse" />
-            <div class="h-2.5 sm:h-3 w-1/2 bg-muted/30 rounded animate-pulse" />
-          </div>
-          <div class="h-2.5 sm:h-3 w-12 sm:w-16 bg-muted/30 rounded animate-pulse shrink-0" />
-        </div>
-      </div>
-
       <!-- ─── Empty State ─── -->
-      <div v-else-if="activities.length === 0" class="rounded-xl border border-border/50 bg-card p-12 sm:p-24 flex flex-col items-center justify-center text-center">
+      <div v-if="activities.length === 0" class="rounded-xl border border-border/50 bg-card p-12 sm:p-24 flex flex-col items-center justify-center text-center">
         <div class="size-14 sm:size-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 sm:mb-5">
           <Icon name="i-lucide-eye-off" class="size-7 sm:size-10 text-primary" />
         </div>

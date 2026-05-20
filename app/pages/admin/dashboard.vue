@@ -35,7 +35,6 @@ interface DashboardStats {
 }
 
 const stats = ref<DashboardStats | null>(null)
-const loading = ref(true)
 
 // Animated counters
 const counters = ref({
@@ -43,32 +42,24 @@ const counters = ref({
   production: 0, communications: 0, contracts: 0, crm: 0, perfReviews: 0,
 })
 
-async function fetchStats() {
-  loading.value = true
-  try {
-    const res = await $fetch<{ success: boolean; data: DashboardStats }>('/api/dashboard/stats')
-    stats.value = res.data
-    await nextTick()
-    counters.value = {
-      employees: res.data.employees.total,
-      activeEmployees: res.data.employees.active,
-      tasks: res.data.tasks.total,
-      skills: res.data.skills.total,
-      categories: res.data.skills.categories,
-      production: res.data.production.total,
-      communications: res.data.communications.total,
-      contracts: res.data.contracts.total,
-      crm: res.data.crm.total,
-      perfReviews: res.data.performance.total,
-    }
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData('dashboard-stats', async () => {
+  const res = await $fetch<{ success: boolean; data: DashboardStats }>('/api/dashboard/stats')
+  stats.value = res.data
+  counters.value = {
+    employees: res.data.employees.total,
+    activeEmployees: res.data.employees.active,
+    tasks: res.data.tasks.total,
+    skills: res.data.skills.total,
+    categories: res.data.skills.categories,
+    production: res.data.production.total,
+    communications: res.data.communications.total,
+    contracts: res.data.contracts.total,
+    crm: res.data.crm.total,
+    perfReviews: res.data.performance.total,
   }
-  catch (e: any) {
-    toast.error('Failed to load dashboard', { description: e?.message })
-  }
-  finally { loading.value = false }
-}
-
-onMounted(fetchStats)
+  return res.data
+})
 
 // ─── Helpers ──────────────────────────────────────────────
 function statusColor(status: string) {
@@ -233,7 +224,7 @@ const metricCards = computed(() => [
     gradient: 'from-cyan-500/20 to-teal-500/5',
     borderColor: 'border-cyan-500/20',
     iconColor: 'text-cyan-400',
-    link: '/contracts',
+    link: '/crm/contracts',
   },
   {
     label: 'CRM Leads',
@@ -243,7 +234,7 @@ const metricCards = computed(() => [
     gradient: 'from-rose-500/20 to-pink-500/5',
     borderColor: 'border-rose-500/20',
     iconColor: 'text-rose-400',
-    link: '/crm',
+    link: '/crm/pipeline',
   },
 ])
 </script>
@@ -252,21 +243,7 @@ const metricCards = computed(() => [
   <div>
     <div class="w-full flex flex-col gap-4 sm:gap-6 max-w-[100rem] mx-auto">
 
-      <!-- ══════ Loading Skeleton ══════ -->
-      <template v-if="loading">
-        <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
-          <div v-for="i in 6" :key="i" class="h-28 sm:h-32 rounded-xl border bg-card animate-pulse" />
-        </div>
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-3 sm:gap-4">
-          <div class="xl:col-span-8 h-72 rounded-xl border bg-card animate-pulse" />
-          <div class="xl:col-span-4 h-72 rounded-xl border bg-card animate-pulse" />
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-          <div v-for="i in 3" :key="i" class="h-56 rounded-xl border bg-card animate-pulse" />
-        </div>
-      </template>
-
-      <template v-else-if="stats">
+      <template v-if="stats">
         <!-- ══════ METRIC CARDS ══════ -->
         <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
           <NuxtLink

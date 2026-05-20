@@ -39,6 +39,7 @@ export default defineEventHandler(async (event) => {
     const allIds = updates.map(u => u._id)
     const oldTasks: any[] = await Task.find({ _id: { $in: allIds } })
         .populate({ path: 'createdBy', select: '_id employee profileImage' })
+        .populate({ path: 'assignees', select: '_id employee profileImage' })
         .lean()
     const oldStatusMap = new Map(oldTasks.map(t => [t._id.toString(), t]))
 
@@ -77,7 +78,7 @@ export default defineEventHandler(async (event) => {
                 title: oldTask.title,
                 createdByName: oldTask.createdBy.employee,
                 movedByName: changedBy || undefined,
-                assigneeNames: (oldTask.assignees || []).map((a: any) => a.employee || a.name).filter(Boolean).join(', '),
+                assigneeNames: (oldTask.assignees || []).map((a: any) => a.employee).filter(Boolean).join(', '),
                 priority: oldTask.priority,
                 dueDate: oldTask.dueDate,
                 oldStatus: oldTask.status,

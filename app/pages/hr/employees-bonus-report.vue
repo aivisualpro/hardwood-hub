@@ -18,15 +18,14 @@ const tree = ref<CatNode[]>([])
 const perfRecords = ref<PerfRecord[]>([])
 const generalRules = ref<any[]>([])
 const customBonuses = ref<any[]>([])
-const loading = ref(true)
+
 const searchQuery = ref('')
 const expandedRows = ref<Set<string>>(new Set())
 const sortBy = ref<'name' | 'bonus' | 'progress'>('bonus')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
-// ─── Fetch ───────────────────────────────────────────────
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
 async function fetchAll() {
-  loading.value = true
   try {
     const [empRes, treeRes, perfRes, rulesRes, customBonusesRes] = await Promise.all([
       $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
@@ -42,11 +41,9 @@ async function fetchAll() {
     customBonuses.value = customBonusesRes.data
   } catch (e: any) {
     toast.error('Failed to load data', { description: e?.message })
-  } finally {
-    loading.value = false
   }
 }
-onMounted(fetchAll)
+const { pending: loadingData } = await useAsyncData('bonus-report', async () => { await fetchAll(); return true }, { lazy: true })
 
 // ─── Helpers ─────────────────────────────────────────────
 function levelIndex(lvl: string) {
@@ -609,7 +606,7 @@ async function saveCustomBonus() {
       </div>
 
       <!-- ═══════ LOADING ═══════ -->
-      <div v-if="loading" class="space-y-3 sm:space-y-4">
+      <div v-if="loadingData" class="space-y-3 sm:space-y-4">
         <div v-for="i in 5" :key="i" class="h-16 sm:h-20 rounded-xl bg-muted/50 animate-pulse border border-border/30" />
       </div>
 
@@ -1063,7 +1060,7 @@ async function saveCustomBonus() {
       </div>
 
       <!-- ═══════ EMPTY ═══════ -->
-      <div v-else-if="!loading" class="flex flex-col items-center justify-center py-16 sm:py-24 text-center px-4">
+      <div v-else-if="!loadingData" class="flex flex-col items-center justify-center py-16 sm:py-24 text-center px-4">
         <div class="size-16 sm:size-20 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center mb-4 sm:mb-5">
           <Icon name="i-lucide-trophy" class="size-7 sm:size-10 text-amber-500" />
         </div>
@@ -1074,7 +1071,7 @@ async function saveCustomBonus() {
       </div>
 
       <!-- ═══════ LEGEND ═══════ -->
-      <div v-if="!loading && filteredData.length" class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-[9px] sm:text-[10px] text-muted-foreground py-2">
+      <div v-if="!loadingData && filteredData.length" class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-[9px] sm:text-[10px] text-muted-foreground py-2">
         <div class="flex items-center gap-1.5">
           <span class="size-2 sm:size-2.5 rounded-sm bg-emerald-500" />
           Mastered

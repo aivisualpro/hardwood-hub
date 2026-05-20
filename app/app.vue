@@ -72,6 +72,7 @@ defineShortcuts({
   <Body class="antialiased bg-background text-foreground">
     <ConfigProvider :dir="dir">
       <div id="app" vaul-drawer-wrapper class="relative">
+        <NuxtLoadingIndicator color="hsl(var(--primary))" :height="2" :throttle="200" />
         <NuxtLayout>
           <NuxtPage />
         </NuxtLayout>

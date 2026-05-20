@@ -217,19 +217,22 @@ function toggleMultiChip(key: string, value: string) {
 }
 
 // ─── API ──────────────────────────────────────────────
+// ─── Server-first data fetching (blocks navigation until resolved) ──────
+await useAsyncData('project-comms', async () => {
+  const res = await $fetch<{ success: boolean, data: any[] }>('/api/project-communication')
+  records.value = res.data
+  return true
+})
+
+// Keep for manual refresh after create/update/delete
 async function fetchRecords() {
-  loading.value = true
   try {
     const res = await $fetch<{ success: boolean, data: any[] }>('/api/project-communication')
     records.value = res.data
   } catch (e: any) {
     toast.error('Failed to load project communications', { description: e?.message })
-  } finally {
-    loading.value = false
   }
 }
-
-onMounted(fetchRecords)
 
 function openCreate() {
   form.value = emptyForm()
@@ -311,10 +314,7 @@ function formatDate(d: string) {
       </div>
 
       <div class="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
-        <div v-if="loading" class="p-8 sm:p-12 flex justify-center text-muted-foreground gap-3 items-center">
-          <Icon name="i-lucide-loader-2" class="size-6 animate-spin text-primary" /> Loading...
-        </div>
-        <div v-else-if="records.length === 0" class="p-12 sm:p-24 flex flex-col items-center justify-center text-center px-4">
+        <div v-if="records.length === 0" class="p-12 sm:p-24 flex flex-col items-center justify-center text-center px-4">
           <div class="size-16 sm:size-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 sm:mb-5">
             <Icon name="i-lucide-clipboard-list" class="size-7 sm:size-10 text-primary" />
           </div>
