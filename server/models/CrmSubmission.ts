@@ -11,7 +11,7 @@ const CrmSubmissionSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ['appointment', 'fast-quote', 'flooring-estimate', 'subscriber', 'conditional-logic', 'other'],
+      enum: ['appointment', 'fast-quote', 'flooring-estimate', 'conditional-logic', 'other'],
       index: true,
     },
 
@@ -55,7 +55,7 @@ export interface ICrmSubmission {
   gfEntryId: string
   gfFormId: number
   formName: string
-  type: 'appointment' | 'fast-quote' | 'flooring-estimate' | 'subscriber' | 'conditional-logic' | 'other'
+  type: 'appointment' | 'fast-quote' | 'flooring-estimate' | 'conditional-logic' | 'other'
   name: string
   firstName: string
   lastName: string

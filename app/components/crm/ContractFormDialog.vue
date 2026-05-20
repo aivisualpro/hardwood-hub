@@ -143,6 +143,110 @@ function toggleGalleryImage(url: string) {
   }
 }
 
+// ─── Gallery Image Upload (from Contract form → Customer gallery) ─────
+const galleryFileInput = ref<HTMLInputElement | null>(null)
+const isUploadingGallery = ref(false)
+const galleryUploadQueue = ref<any[]>([])
+
+function compressImageForGallery(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = event => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const MAX = 1200
+        let w = img.width, h = img.height
+        if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX } }
+        else { if (h > MAX) { w *= MAX / h; h = MAX } }
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d')?.drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/jpeg', 0.8))
+      }
+      img.onerror = reject
+      img.src = event.target?.result as string
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function handleGalleryUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (!target.files || target.files.length === 0 || !selectedCustomer.value) return
+
+  const files = Array.from(target.files)
+  isUploadingGallery.value = true
+
+  const queueItems = files.map(f => ({ id: Math.random().toString(36).substr(2, 9), file: f, progress: 0 }))
+  galleryUploadQueue.value.push(...queueItems)
+
+  try {
+    const uploadedImages: any[] = []
+
+    for (const item of queueItems) {
+      item.progress = 10
+      try {
+        const dataUrl = await compressImageForGallery(item.file)
+        item.progress = 40
+        const interval = setInterval(() => { if (item.progress < 90) item.progress += 5 }, 300)
+
+        const sigRes = await $fetch<{ signature: string, timestamp: number, cloudName: string, apiKey: string, folder: string }>('/api/upload/cloudinary-signature', {
+          params: { folder: 'hardwood-hub/crm/gallery' }
+        })
+
+        const fd = new FormData()
+        fd.append('file', dataUrl)
+        fd.append('api_key', sigRes.apiKey)
+        fd.append('timestamp', String(sigRes.timestamp))
+        fd.append('signature', sigRes.signature)
+        fd.append('folder', sigRes.folder)
+
+        const clRes = await $fetch<any>(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/auto/upload`, { method: 'POST', body: fd })
+        clearInterval(interval)
+        item.progress = 100
+
+        if (clRes?.secure_url) {
+          const newImg = { url: clRes.secure_url, caption: '', uploadedAt: new Date().toISOString() }
+          uploadedImages.push(newImg)
+        }
+      } catch (e) {
+        console.error('Gallery upload failed:', item.file.name, e)
+        item.progress = -1
+      }
+    }
+
+    if (uploadedImages.length > 0) {
+      // Save to customer gallery
+      const currentGallery = selectedCustomer.value.gallery || []
+      const newGallery = [...currentGallery, ...uploadedImages]
+
+      const updateRes = await $fetch<any>(`/api/customers/${selectedCustomer.value._id}`, {
+        method: 'PUT',
+        body: { gallery: newGallery }
+      })
+
+      if (updateRes.success) {
+        selectedCustomer.value.gallery = updateRes.data.gallery || newGallery
+        // Auto-select the newly uploaded images for the contract
+        for (const img of uploadedImages) {
+          if (!attachedGalleryImages.value.includes(img.url)) {
+            attachedGalleryImages.value.push(img.url)
+          }
+        }
+        toast.success(`Uploaded ${uploadedImages.length} image(s) to gallery`)
+      }
+    }
+
+    setTimeout(() => { galleryUploadQueue.value = [] }, 1000)
+  } catch (err) {
+    toast.error('Failed to upload images')
+  } finally {
+    isUploadingGallery.value = false
+    if (galleryFileInput.value) galleryFileInput.value.value = ''
+  }
+}
+
 async function handlePdfUpload(e: Event) {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
@@ -731,15 +835,28 @@ async function seedChangeOrder() {}
             </div>
 
             <!-- Gallery Image Attachments -->
-            <div v-if="selectedCustomer?.gallery?.length" class="mt-4 p-4 rounded-xl border border-border bg-card relative overflow-hidden">
-              <Label class="text-xs font-bold text-foreground uppercase tracking-wider mb-2 block">
-                Attach Customer Images (Optional)
-              </Label>
+            <div v-if="selectedCustomer" class="mt-4 p-4 rounded-xl border border-border bg-card relative overflow-hidden">
+              <div class="flex items-center justify-between mb-2">
+                <Label class="text-xs font-bold text-foreground uppercase tracking-wider">
+                  Attach Customer Images (Optional)
+                </Label>
+                <button
+                  type="button"
+                  :disabled="isUploadingGallery"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                  :class="isUploadingGallery ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'"
+                  @click="galleryFileInput?.click()"
+                >
+                  <Icon :name="isUploadingGallery ? 'i-lucide-loader-2' : 'i-lucide-upload-cloud'" :class="isUploadingGallery ? 'animate-spin' : ''" class="size-3.5" />
+                  {{ isUploadingGallery ? 'Uploading...' : 'Upload New' }}
+                </button>
+              </div>
+              <input ref="galleryFileInput" type="file" multiple accept="image/*" class="hidden" @change="handleGalleryUpload" />
               <p class="text-[10px] text-muted-foreground mb-3">
-                Select images from the customer's project gallery to append to the contract.
+                Select images from the customer's gallery to append to the contract, or upload new ones.
               </p>
               
-              <div class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+              <div v-if="selectedCustomer.gallery?.length || galleryUploadQueue.length" class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
                 <button
                   v-for="(img, idx) in selectedCustomer.gallery"
                   :key="idx"
@@ -756,6 +873,32 @@ async function seedChangeOrder() {}
                   <div v-else class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Icon name="i-lucide-plus" class="size-6 text-white" />
                   </div>
+                </button>
+                <!-- Upload queue skeletons -->
+                <div
+                  v-for="item in galleryUploadQueue"
+                  :key="item.id"
+                  class="relative size-20 sm:size-24 rounded-lg overflow-hidden shrink-0 border-2 border-primary/30 bg-muted/50 flex items-center justify-center"
+                >
+                  <template v-if="item.progress < 0">
+                    <Icon name="i-lucide-x-circle" class="size-5 text-red-500" />
+                  </template>
+                  <template v-else-if="item.progress === 100">
+                    <Icon name="i-lucide-check-circle-2" class="size-5 text-emerald-500" />
+                  </template>
+                  <template v-else>
+                    <div class="flex flex-col items-center gap-1">
+                      <Icon name="i-lucide-loader-2" class="size-5 text-primary animate-spin" />
+                      <span class="text-[9px] font-bold text-primary">{{ item.progress }}%</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <div v-else class="flex items-center justify-center py-6 border border-dashed border-border/60 rounded-lg bg-muted/10">
+                <button type="button" @click="galleryFileInput?.click()" class="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+                  <Icon name="i-lucide-images" class="size-8 opacity-50" />
+                  <span class="text-[10px] font-bold uppercase tracking-wider">No images yet — Upload some</span>
                 </button>
               </div>
             </div>

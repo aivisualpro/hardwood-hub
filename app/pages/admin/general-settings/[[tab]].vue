@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import draggable from 'vuedraggable'
 
 const { setHeader } = usePageHeader()
 setHeader({ title: 'General Settings', icon: 'i-lucide-settings', description: 'Configure system-wide preferences' })
@@ -374,7 +375,13 @@ const filteredIcons = computed(() => {
   return ICON_LIST.filter(i => i.toLowerCase().includes(q)).slice(0, 100)
 })
 
-const activeDropdown = computed(() => dropdowns.value.find(d => d._id === activeDropdownId.value) ?? null)
+const activeDropdown = computed(() => {
+  const dd = dropdowns.value.find(d => d._id === activeDropdownId.value) ?? null
+  if (dd) {
+    dd.options = [...dd.options].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  }
+  return dd
+})
 
 async function fetchDropdowns() {
   loadingDropdowns.value = true
@@ -450,6 +457,26 @@ function commitEditLabel(dropdownId: string, optId: string) {
     updateOption(dropdownId, optId, { label: editingValue.value.trim(), value: editingValue.value.trim() })
   }
   editingCell.value = null
+}
+
+async function reorderOptions(dropdownId: string) {
+  const dd = dropdowns.value.find(d => d._id === dropdownId)
+  if (!dd) return
+  // Assign sequential order values based on current array position
+  const reordered = dd.options.map((opt, idx) => ({ ...opt, order: idx }))
+  dd.options = reordered
+  try {
+    const res = await $fetch<{ success: boolean, data: DropdownRecord }>('/api/dropdowns', {
+      method: 'PUT',
+      body: { dropdownId, reorderedOptions: reordered },
+    })
+    if (res.data) {
+      const idx = dropdowns.value.findIndex(d => d._id === dropdownId)
+      if (idx !== -1) dropdowns.value[idx] = res.data
+    }
+  } catch (e: any) {
+    toast.error('Failed to save order', { description: e?.message })
+  }
 }
 
 onMounted(() => {
@@ -594,10 +621,10 @@ const ROUTE_CAPS: Record<string, { ops: string[], icon: string }> = {
   '/reports/financial': { ops: ['read'], icon: 'i-lucide-pie-chart' },
   '/admin/general-settings': { ops: ['read', 'update'], icon: 'i-lucide-settings' },
   '/crm/customers': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-contact' },
+  '/crm/products': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-package' },
   '/crm/appointments': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-calendar-check' },
   '/crm/fast-quotes': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-zap' },
   '/crm/flooring-estimate': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-ruler' },
-  '/crm/subscribers': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-mail-check' },
   '/crm/conditional-logic': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-split' },
   '/crm/contracts': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-file-signature' },
   '/external/stain-sign-off': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-stamp' },
@@ -1254,6 +1281,7 @@ const WpIconsList = [
                   <table class="w-full text-sm" style="min-width: 600px">
                     <thead>
                       <tr class="border-b border-border/50 bg-muted/30">
+                        <th class="w-10 px-2 py-3" />
                         <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider w-8">#</th>
                         <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">Label</th>
                         <th class="text-center px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider w-24">Color</th>
@@ -1261,12 +1289,25 @@ const WpIconsList = [
                         <th class="w-16 px-4 py-3" />
                       </tr>
                     </thead>
-                    <tbody>
+                    <draggable
+                      :list="activeDropdown.options"
+                      tag="tbody"
+                      item-key="_id"
+                      handle=".drag-handle"
+                      ghost-class="opacity-30"
+                      drag-class="!bg-primary/10"
+                      @end="reorderOptions(activeDropdown!._id)"
+                    >
+                      <template #item="{ element: opt, index: idx }">
                       <tr
-                        v-for="(opt, idx) in activeDropdown.options"
-                        :key="opt._id"
                         class="group border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
                       >
+                        <!-- Drag Handle -->
+                        <td class="px-2 py-2.5 text-center">
+                          <div class="drag-handle cursor-grab active:cursor-grabbing size-7 rounded flex items-center justify-center hover:bg-muted text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+                            <Icon name="i-lucide-grip-vertical" class="size-4" />
+                          </div>
+                        </td>
                         <!-- Order -->
                         <td class="px-4 py-2.5 text-xs text-muted-foreground font-mono">{{ idx + 1 }}</td>
 
@@ -1385,7 +1426,8 @@ const WpIconsList = [
                           </button>
                         </td>
                       </tr>
-                    </tbody>
+                      </template>
+                    </draggable>
                   </table>
                 </div>
               </div>

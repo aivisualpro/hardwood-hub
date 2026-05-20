@@ -10,6 +10,7 @@ import { Customer } from '../../models/Customer'
 import { CrmSubmission } from '../../models/CrmSubmission'
 import { Contract } from '../../models/Contract'
 import { StainSignOff } from '../../models/StainSignOff'
+import { Product } from '../../models/Product'
 
 export default defineEventHandler(async (event) => {
     await connectDB()
@@ -25,6 +26,7 @@ export default defineEventHandler(async (event) => {
         totalCustomers,
         totalContracts,
         totalStainSignOff,
+        totalProducts,
         totalsByType
     ] = await Promise.all([
         Category.countDocuments(),
@@ -37,6 +39,7 @@ export default defineEventHandler(async (event) => {
         Customer.countDocuments(),
         Contract.countDocuments(),
         StainSignOff.countDocuments(),
+        Product.countDocuments(),
         CrmSubmission.aggregate([
             { $group: { _id: '$type', count: { $sum: 1 } } }
         ])
@@ -56,12 +59,12 @@ export default defineEventHandler(async (event) => {
         '/project-communication': totalProjComm,
         '/daily-production': totalDailyProd,
         '/crm/customers': totalCustomers,
+        '/crm/products': totalProducts,
         '/crm/contracts': totalContracts,
         '/external/stain-sign-off': totalStainSignOff,
         '/crm/appointments': crmCounts['appointment'] || 0,
         '/crm/fast-quotes': crmCounts['fast-quote'] || 0,
         '/crm/flooring-estimate': crmCounts['flooring-estimate'] || 0,
-        '/crm/subscribers': crmCounts['subscriber'] || 0,
         '/crm/conditional-logic': crmCounts['conditional-logic'] || 0,
     }
 

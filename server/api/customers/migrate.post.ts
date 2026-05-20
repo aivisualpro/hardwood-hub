@@ -31,8 +31,8 @@ export default defineEventHandler(async () => {
         zip: sub.zip,
         type: 'lead',
         status: 'new',
-        stage: 'subscribers',
-        tags: ['subscribers'],
+        stage: 'contact made',
+        tags: ['crm-lead'],
         createdAt: sub.createdAt,
       })
       count++
@@ -48,14 +48,14 @@ export default defineEventHandler(async () => {
       if (!existing.state && sub.state) { existing.state = sub.state; modified = true }
       if (!existing.zip && sub.zip) { existing.zip = sub.zip; modified = true }
       
-      if (!existing.tags || !existing.tags.includes('subscribers')) {
+      if (!existing.tags || !existing.tags.includes('crm-lead')) {
         if (!existing.tags) existing.tags = []
-        existing.tags.push('subscribers')
+        existing.tags.push('crm-lead')
         modified = true
       }
       
-      if (!existing.stage || existing.stage !== 'subscribers') {
-        existing.stage = 'subscribers'
+      if (!existing.stage || existing.stage !== 'contact made') {
+        existing.stage = 'contact made'
         modified = true
       }
       

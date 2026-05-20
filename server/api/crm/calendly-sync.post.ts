@@ -54,7 +54,7 @@ export default defineEventHandler(async () => {
               state: parsed.state,
               zip: parsed.zip,
               notes: `Synced from Calendly: ${parsed.formName}. Message: ${parsed.message}`,
-              stage: 'SUBSCRIBERS',
+              stage: 'contact made',
               initialContactDate: parsed.dateSubmitted
             })
           }

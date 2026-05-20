@@ -7,7 +7,7 @@ export interface CrmSubmission {
   gfEntryId: string
   gfFormId: number
   formName: string
-  type: 'appointment' | 'fast-quote' | 'flooring-estimate' | 'subscriber' | 'conditional-logic' | 'other'
+  type: 'appointment' | 'fast-quote' | 'flooring-estimate' | 'conditional-logic' | 'other'
   name: string
   firstName: string
   lastName: string

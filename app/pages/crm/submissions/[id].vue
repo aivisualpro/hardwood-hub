@@ -87,7 +87,6 @@ function typeIcon(type: CrmSubmission['type'] | string) {
     case 'appointment': return 'i-lucide-calendar-check'
     case 'fast-quote': return 'i-lucide-zap'
     case 'flooring-estimate': return 'i-lucide-ruler'
-    case 'subscriber': return 'i-lucide-mail-check'
     case 'conditional-logic': return 'i-lucide-split'
     default: return 'i-lucide-file-text'
   }
@@ -98,7 +97,6 @@ function typeColor(type: CrmSubmission['type'] | string) {
     case 'appointment': return 'bg-sky-500/10 text-sky-600'
     case 'fast-quote': return 'bg-amber-500/10 text-amber-600'
     case 'flooring-estimate': return 'bg-emerald-500/10 text-emerald-600'
-    case 'subscriber': return 'bg-primary/10 text-primary'
     case 'conditional-logic': return 'bg-rose-500/10 text-rose-600'
     default: return 'bg-muted text-muted-foreground'
   }
@@ -219,7 +217,6 @@ onMounted(fetchData)
             'bg-sky-500': item.type === 'appointment',
             'bg-amber-500': item.type === 'fast-quote',
             'bg-emerald-500': item.type === 'flooring-estimate',
-            'bg-primary': item.type === 'subscriber',
             'bg-rose-500': item.type === 'conditional-logic',
           }"
         />

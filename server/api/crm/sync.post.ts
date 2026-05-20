@@ -60,7 +60,7 @@ export default defineEventHandler(async () => {
                    state: parsed.state,
                    zip: parsed.zip,
                    notes: `Synced from Gravity Forms: ${parsed.formName}. Message: ${parsed.message}`,
-                   stage: 'SUBSCRIBERS',
+                   stage: 'contact made',
                    initialContactDate: parsed.dateSubmitted
                 })
              }
@@ -120,7 +120,7 @@ export default defineEventHandler(async () => {
                    state: parsed.state,
                    zip: parsed.zip,
                    notes: `Synced from Calendly: ${parsed.formName}. Message: ${parsed.message}`,
-                   stage: 'SUBSCRIBERS',
+                   stage: 'contact made',
                    initialContactDate: parsed.dateSubmitted
                 })
              }

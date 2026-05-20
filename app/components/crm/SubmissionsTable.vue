@@ -68,7 +68,6 @@ function typeIcon(type: string) {
     case 'appointment': return 'i-lucide-calendar-check'
     case 'fast-quote': return 'i-lucide-zap'
     case 'flooring-estimate': return 'i-lucide-ruler'
-    case 'subscriber': return 'i-lucide-mail-check'
     default: return 'i-lucide-file-text'
   }
 }
@@ -78,7 +77,6 @@ function typeLabel(type: string) {
     case 'appointment': return 'Appointment'
     case 'fast-quote': return 'Fast Quote'
     case 'flooring-estimate': return 'Estimate'
-    case 'subscriber': return 'Subscriber'
     default: return 'Other'
   }
 }
@@ -88,7 +86,6 @@ function typeColor(type: string) {
     case 'appointment': return 'bg-sky-500/15 text-sky-600 dark:text-sky-400'
     case 'fast-quote': return 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
     case 'flooring-estimate': return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-    case 'subscriber': return 'bg-violet-500/15 text-violet-600 dark:text-violet-400'
     default: return 'bg-zinc-500/15 text-zinc-500'
   }
 }
@@ -289,7 +286,6 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
               'bg-sky-500': item.type === 'appointment',
               'bg-amber-500': item.type === 'fast-quote',
               'bg-emerald-500': item.type === 'flooring-estimate',
-              'bg-primary': item.type === 'subscriber',
             }"
           />
 

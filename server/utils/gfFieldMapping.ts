@@ -6,14 +6,14 @@
  *   1 → Get a FAST Quote
  *   6 → Get a Quick Flooring Estimate
  *   4 → Get in Touch
- *   5 → Get in Touch with Conditional Logic (also maps to subscriber)
+ *   5 → Get in Touch with Conditional Logic
  */
 
 export const GF_FORM_MAP: Record<number, { type: string; formName: string }> = {
   3: { type: 'appointment', formName: 'Book an Appointment' },
   1: { type: 'fast-quote', formName: 'Get a FAST Quote' },
   6: { type: 'flooring-estimate', formName: 'Get a Quick Flooring Estimate' },
-  4: { type: 'subscriber', formName: 'Get in Touch' },
+  4: { type: 'other', formName: 'Get in Touch' },
   5: { type: 'conditional-logic', formName: 'Get in Touch with Conditional Logic' },
 }
 

@@ -13,10 +13,19 @@ export default defineEventHandler(async (event) => {
   if (event.method === 'GET') {
     const query = getQuery(event)
     if (query.name) {
-      const dropdown = await Dropdown.findOne({ name: query.name }).lean()
+      const dropdown: any = await Dropdown.findOne({ name: query.name }).lean()
+      if (dropdown?.options) {
+        dropdown.options.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+      }
       return { success: true, data: dropdown }
     }
     const dropdowns = await Dropdown.find().sort({ name: 1 }).lean()
+    // Sort each dropdown's options by order
+    for (const dd of dropdowns) {
+      if (dd.options) {
+        dd.options.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+      }
+    }
     return { success: true, data: dropdowns }
   }
 
@@ -57,6 +66,18 @@ export default defineEventHandler(async (event) => {
         { $set: { name: body.name, options: body.options } },
         { new: true, lean: true }
       )
+      return { success: true, data: result }
+    }
+    // Reorder options (PATCH-style via PUT with reorder flag)
+    if (body.dropdownId && body.reorderedOptions) {
+      const result: any = await Dropdown.findByIdAndUpdate(
+        body.dropdownId,
+        { $set: { options: body.reorderedOptions } },
+        { new: true, lean: true }
+      )
+      if (result?.options) {
+        result.options.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+      }
       return { success: true, data: result }
     }
     throw createError({ statusCode: 400, message: 'Missing _id or dropdownId+optionId' })

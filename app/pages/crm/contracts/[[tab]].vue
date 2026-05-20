@@ -599,7 +599,6 @@ const TYPE_ICONS: Record<string, string> = {
   appointment: 'i-lucide-calendar-check',
   'fast-quote': 'i-lucide-zap',
   'flooring-estimate': 'i-lucide-ruler',
-  subscriber: 'i-lucide-mail-check',
   'conditional-logic': 'i-lucide-split',
   other: 'i-lucide-user',
 }
