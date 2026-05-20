@@ -355,7 +355,8 @@ const filteredCustomers = computed(() => {
   // Filter by selected tab stage
   if (selectedStageFilter.value !== 'all') {
     if (selectedStageFilter.value === 'uncategorized') {
-      list = list.filter(c => !c.status)
+      const knownIds = new Set(STAGES.value.map(s => s.id))
+      list = list.filter(c => !c.status || !knownIds.has(String(c.status)))
     } else {
       list = list.filter(c => c.status && String(c.status) === selectedStageFilter.value)
     }
