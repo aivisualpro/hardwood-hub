@@ -583,7 +583,7 @@ function selectFilter(id: string) {
               draggable="true"
               @dragstart="onRowDragStart($event, c)"
               @dragend="onRowDragEnd"
-              @click="navigateTo(`/crm/customers/${c._id}`)">
+              @click="navigateTo(`/crm/pipeline/${c._id}`)">
             <td class="p-2.5 text-center px-4" @click.stop>
               <input type="checkbox" class="rounded border-border text-primary cursor-pointer" />
             </td>
@@ -793,7 +793,7 @@ function selectFilter(id: string) {
           v-for="c in filteredCustomers" 
           :key="c._id" 
           class="bg-card border border-border/60 rounded-xl p-3 shadow-sm flex flex-col gap-2 relative transition-colors hover:bg-muted/20 cursor-pointer"
-          @click="navigateTo(`/crm/customers/${c._id}`)"
+          @click="navigateTo(`/crm/pipeline/${c._id}`)"
         >
           <div class="flex items-start justify-between gap-2">
             <div class="flex flex-col min-w-0 flex-1 gap-2">
@@ -871,7 +871,7 @@ function selectFilter(id: string) {
                 <div class="text-[10px] text-muted-foreground font-medium flex gap-2">
                   <span>Sent: {{ formatShortDate(c.estimateSentOn) || '—' }}</span>
                 </div>
-                <button class="h-6 px-2.5 rounded border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider transition-colors" @click.stop="navigateTo(`/crm/customers/${c._id}`)">
+                <button class="h-6 px-2.5 rounded border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider transition-colors" @click.stop="navigateTo(`/crm/pipeline/${c._id}`)">
                   View Full
                 </button>
               </div>

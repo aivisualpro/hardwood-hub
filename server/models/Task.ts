@@ -19,11 +19,11 @@ export interface ITask extends Document {
     title: string
     description?: string
     priority?: 'low' | 'medium' | 'high'
-    assignee?: {
+    assignees?: {
         id: string
         name: string
         avatar?: string
-    }
+    }[]
     createdBy?: {
         id: string
         name: string
@@ -59,13 +59,14 @@ const TaskSchema = new Schema(
         title: { type: String, required: true },
         description: { type: String, default: '' },
         priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
-        assignee: {
-            type: {
+        assignees: {
+            type: [{
                 id: { type: String },
                 name: { type: String },
                 avatar: { type: String },
-            },
-            default: null,
+                _id: false,
+            }],
+            default: [],
         },
         createdBy: {
             type: {

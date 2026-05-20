@@ -198,7 +198,7 @@ async function deleteCustomer() {
     const res = await $fetch<any>(`/api/customers/${customerId}`, { method: 'DELETE' })
     if (res.success) {
       toast.success('Customer deleted')
-      navigateTo('/crm/customers')
+      navigateTo('/crm/pipeline')
     }
   } catch (e: any) {
     toast.error('Failed to delete customer')
@@ -331,7 +331,7 @@ function getStageClasses(stageName: string) {
                 :key="tab.id"
                 class="relative flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap rounded-lg"
                 :class="activeTab === tab.id ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30' : 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground'"
-                @click="navigateTo(`/crm/customers/${customerId}/${tab.id}`)"
+                @click="navigateTo(`/crm/pipeline/${customerId}/${tab.id}`)"
               >
                 <Icon :name="tab.icon" class="size-3.5 sm:size-4" />
                 {{ tab.label }}

@@ -35,7 +35,7 @@ async function fetchData() {
     }
   } catch (err) {
     toast.error('Failed to load submission details')
-    router.push('/crm/customers')
+    router.push('/crm/pipeline')
   } finally {
     isLoading.value = false
   }

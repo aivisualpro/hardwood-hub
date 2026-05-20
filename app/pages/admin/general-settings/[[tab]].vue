@@ -620,7 +620,7 @@ const ROUTE_CAPS: Record<string, { ops: string[], icon: string }> = {
   '/reports/sales': { ops: ['read'], icon: 'i-lucide-trending-up' },
   '/reports/financial': { ops: ['read'], icon: 'i-lucide-pie-chart' },
   '/admin/general-settings': { ops: ['read', 'update'], icon: 'i-lucide-settings' },
-  '/crm/customers': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-contact' },
+  '/crm/pipeline': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-contact' },
   '/crm/products': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-package' },
   '/crm/appointments': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-calendar-check' },
   '/crm/fast-quotes': { ops: ['create', 'read', 'update', 'delete'], icon: 'i-lucide-zap' },

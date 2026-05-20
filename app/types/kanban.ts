@@ -18,11 +18,11 @@ export interface Task {
   title: string
   description?: string
   priority?: 'low' | 'medium' | 'high'
-  assignee?: {
+  assignees?: {
     id: string
     name: string
     avatar?: string
-  }
+  }[]
   createdBy?: {
     id: string
     name: string

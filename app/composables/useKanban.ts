@@ -87,7 +87,7 @@ export function useKanban() {
       title: t.title,
       description: t.description,
       priority: t.priority,
-      assignee: t.assignee,
+      assignees: t.assignees || (t.assignee ? [t.assignee] : []),
       createdBy: t.createdBy,
       dueDate: t.dueDate,
       status: t.status,
@@ -153,18 +153,38 @@ export function useKanban() {
   }
 
   // ─── Drag & Drop Reorder ──────────────────────────
-  async function setColumns(next: Column[]) {
-    board.value.columns = next
+  // Snapshot state before drag to compute minimal diff
+  const _snapshot = useState<Record<string, { status: string, order: number }>>('kanban-snapshot', () => ({}))
 
-    // Build bulk update payload
-    const updates: { _id: string, status: string, order: number }[] = []
-    for (const col of next) {
+  function takeSnapshot() {
+    const snap: Record<string, { status: string, order: number }> = {}
+    for (const col of board.value.columns) {
       col.tasks.forEach((t, idx) => {
         if ((t as any)._id) {
-          updates.push({ _id: (t as any)._id, status: col.id, order: idx })
+          snap[(t as any)._id] = { status: col.id, order: idx }
         }
       })
     }
+    _snapshot.value = snap
+  }
+
+  async function setColumns(next: Column[]) {
+    board.value.columns = next
+
+    // Build diff — only tasks that actually changed column or order
+    const updates: { _id: string, status: string, order: number }[] = []
+    for (const col of next) {
+      col.tasks.forEach((t, idx) => {
+        const id = (t as any)._id
+        if (!id) return
+        const prev = _snapshot.value[id]
+        if (!prev || prev.status !== col.id || prev.order !== idx) {
+          updates.push({ _id: id, status: col.id, order: idx })
+        }
+      })
+    }
+
+    if (!updates.length) return
 
     try {
       await $fetch('/api/tasks/reorder', { method: 'POST', body: { updates } })
@@ -269,6 +289,7 @@ export function useKanban() {
     updateTask,
     removeTask,
     setColumns,
+    takeSnapshot,
     persist,
     addSubtask,
     toggleSubtask,

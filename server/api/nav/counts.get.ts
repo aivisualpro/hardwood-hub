@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
         '/tasks': totalTasks,
         '/project-communication': totalProjComm,
         '/daily-production': totalDailyProd,
-        '/crm/customers': totalCustomers,
+        '/crm/pipeline': totalCustomers,
         '/crm/products': totalProducts,
         '/crm/contracts': totalContracts,
         '/external/stain-sign-off': totalStainSignOff,
