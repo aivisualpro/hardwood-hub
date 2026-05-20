@@ -449,7 +449,7 @@ function canEditTask(task: Task | null): boolean {
     </div>
   </Teleport>
 
-  <div class="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 h-[calc(100vh-theme(spacing.24))] px-4 snap-x snap-mandatory sm:snap-none">
+  <div class="flex gap-4 overflow-x-auto overflow-y-hidden h-[calc(100vh-theme(spacing.24))] snap-x snap-mandatory sm:snap-none">
 
     <!-- Loading State -->
     <template v-if="loading">

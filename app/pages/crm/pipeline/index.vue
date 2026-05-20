@@ -532,7 +532,7 @@ watch(() => route.query.status, (val) => {
     />
 
     <!-- Pipeline Headers as Filters -->
-    <div class="flex overflow-x-auto w-full scrollbar-hide text-xs whitespace-nowrap select-none bg-card rounded-xl overflow-hidden border border-border/50 shadow-sm mb-1">
+    <div class="flex overflow-x-auto w-full scrollbar-hide text-xs whitespace-nowrap select-none bg-card rounded-xl overflow-hidden border border-border/50 shadow-sm mb-4">
       <div v-for="(g, idx) in pipelineGroups" :key="g.stage.id"
            class="relative -ml-3 first:ml-0 first:pl-2 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer origin-center"
            :class="[
