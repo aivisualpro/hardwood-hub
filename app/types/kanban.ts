@@ -33,6 +33,10 @@ export interface Task {
   labels?: string[]
   subtasks?: Subtask[]
   comments?: Comment[]
+  approvedBy?: {
+    name: string
+    approvedAt: Date | number | string
+  }
   createdAt: Date | number | string
 }
 

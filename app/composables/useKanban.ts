@@ -94,6 +94,7 @@ export function useKanban() {
       labels: t.labels || [],
       subtasks: t.subtasks || [],
       comments: t.comments || [],
+      approvedBy: t.approvedBy || null,
       createdAt: t.createdAt,
     }
   }
@@ -186,11 +187,8 @@ export function useKanban() {
 
     if (!updates.length) return
 
-    try {
-      await $fetch('/api/tasks/reorder', { method: 'POST', body: { updates } })
-    } catch (e) {
-      console.error('[useKanban] reorder failed', e)
-    }
+    // Throws on 403 (approval gate) so caller can revert
+    await $fetch('/api/tasks/reorder', { method: 'POST', body: { updates } })
   }
 
   // ─── Subtask CRUD ─────────────────────────────────

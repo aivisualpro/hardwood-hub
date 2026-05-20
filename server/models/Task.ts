@@ -35,6 +35,10 @@ export interface ITask extends Document {
     subtasks: ISubtask[]
     comments: IComment[]
     order: number           // for drag-and-drop ordering within a column
+    approvedBy?: {
+        name: string
+        approvedAt: Date
+    }
     createdAt: Date
     updatedAt: Date
 }
@@ -82,6 +86,13 @@ const TaskSchema = new Schema(
         subtasks: { type: [SubtaskSchema], default: [] },
         comments: { type: [CommentSchema], default: [] },
         order: { type: Number, default: 0, index: true },
+        approvedBy: {
+            type: {
+                name: { type: String },
+                approvedAt: { type: Date },
+            },
+            default: null,
+        },
     },
     {
         timestamps: true,

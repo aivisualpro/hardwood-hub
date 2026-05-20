@@ -9,6 +9,7 @@ import {
   parseAbsoluteToLocal,
 } from '@internationalized/date'
 import Draggable from 'vuedraggable'
+import { toast } from 'vue-sonner'
 import { useKanban } from '~/composables/useKanban'
 import CardFooter from '../ui/card/CardFooter.vue'
 
@@ -156,9 +157,35 @@ function onDragStart() {
   takeSnapshot()
 }
 
-function onTaskDrop() {
+async function onTaskDrop() {
   isDragging.value = false
-  nextTick(() => setColumns([...board.value.columns]))
+  try {
+    await nextTick()
+    await setColumns([...board.value.columns])
+  } catch (e: any) {
+    // Approval gate — revert and show toast
+    const msg = e?.data?.message || e?.message || 'Failed to reorder'
+    toast.error(msg)
+    await fetchBoard()
+  }
+}
+
+// ─── Approval ───────────────────────────────────────
+async function approveTask(colId: string, task: Task) {
+  if (!(task as any)._id) return
+  try {
+    const res = await $fetch<any>(`/api/tasks/${(task as any)._id}`, {
+      method: 'PUT',
+      body: { approvedBy: { name: userCookie.value?.employee || 'Unknown', approvedAt: new Date() } },
+    })
+    if (res.data) {
+      // Update local state
+      task.approvedBy = res.data.approvedBy
+      toast.success('Task approved — it can now be moved to Done')
+    }
+  } catch (e: any) {
+    toast.error(e?.data?.message || 'Failed to approve task')
+  }
 }
 
 // ─── Task Detail Popup ──────────────────────────────
@@ -742,6 +769,30 @@ function handleAddComment(colId: string, taskId: string) {
               <Icon name="i-lucide-send" class="size-3.5" />
             </Button>
           </form>
+        </div>
+
+        <!-- Approval Status (only when in-review) -->
+        <div v-if="viewTask.task.status === 'in-review'" class="px-5 py-3 border-t border-border/50">
+          <div v-if="viewTask.task.approvedBy" class="flex items-center gap-2 text-sm">
+            <Icon name="i-lucide-check-circle-2" class="size-4 text-emerald-500" />
+            <span class="text-emerald-600 font-medium">Approved</span>
+            <span class="text-muted-foreground text-xs">by {{ viewTask.task.approvedBy.name }}</span>
+          </div>
+          <div v-else class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 text-sm">
+              <Icon name="i-lucide-clock" class="size-4 text-amber-500" />
+              <span class="text-amber-600 font-medium">Awaiting Approval</span>
+            </div>
+            <Button
+              v-if="userCookie?.employee === viewTask.task.createdBy?.name"
+              size="sm"
+              class="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+              @click="approveTask(viewTask!.colId, viewTask!.task)"
+            >
+              <Icon name="i-lucide-check" class="size-3.5 mr-1.5" />
+              Approve
+            </Button>
+          </div>
         </div>
 
         <!-- Actions Footer -->
