@@ -34,8 +34,9 @@ export interface Task {
   subtasks?: Subtask[]
   comments?: Comment[]
   approvedBy?: {
-    name: string
-    approvedAt: Date | number | string
+    _id: string
+    employee: string
+    profileImage?: string
   }
   createdAt: Date | number | string
 }

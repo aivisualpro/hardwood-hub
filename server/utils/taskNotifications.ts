@@ -8,6 +8,7 @@ interface StatusChangePayload {
   createdByName: string
   movedByName?: string
   assigneeNames?: string
+  approvedByName?: string
   priority?: string
   dueDate?: Date | string | null
   oldStatus: string
@@ -73,7 +74,7 @@ function priorityColor(p: string): string {
  * Non-blocking — errors are logged but never thrown.
  */
 export async function notifyStatusChange(payload: StatusChangePayload) {
-  const { title, createdByName, movedByName, assigneeNames, priority, dueDate, oldStatus, newStatus } = payload
+  const { title, createdByName, assigneeNames, approvedByName, oldStatus, newStatus, movedByName } = payload
 
   const creatorEmail = await resolveCreatorEmail(createdByName)
   if (!creatorEmail) {
@@ -94,7 +95,66 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
   const toLabel = statusLabel(newStatus)
   const toColor = statusColor(newStatus)
 
-  const emailHTML = `<!DOCTYPE html>
+  // ── "TASK DONE" minimal template (only for done status) ──
+  const isDone = newStatus === 'done'
+
+  const emailHTML = isDone ? `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1a1a1a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8fafc;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px; width:100%; background-color:#ffffff; border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Green top bar -->
+          <tr><td style="height:5px; background-color:#10b981;"></td></tr>
+
+          <tr>
+            <td style="padding:36px 36px 32px;">
+
+              <!-- Logo -->
+              ${company.logo ? `<img src="${company.logo}" alt="${companyName}" style="max-height:28px; max-width:120px; object-fit:contain; margin-bottom:28px; display:block;" />` : ''}
+
+              <!-- Row 1: Task Title -->
+              <h1 style="margin:0 0 16px; font-size:22px; font-weight:700; color:#0f172a; line-height:1.3;">${title}</h1>
+
+              <!-- Row 2: TASK DONE badge -->
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:28px;">
+                <tr>
+                  <td style="padding:8px 18px; background-color:#d1fae5; border-radius:8px; font-size:13px; font-weight:800; color:#065f46; letter-spacing:0.1em; text-transform:uppercase;">
+                    ✓ TASK DONE
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Row 3: Completed by (assignees) -->
+              <p style="margin:0 0 12px; font-size:14px; color:#475569; line-height:1.6;">
+                Task has been completed by <strong style="color:#0f172a;">${assigneeNames || movedByName || '—'}</strong>
+              </p>
+
+              <!-- Row 4: Approved by -->
+              ${approvedByName ? `<p style="margin:0; font-size:14px; color:#475569; line-height:1.6;">Approved by <strong style="color:#0f172a;">${approvedByName}</strong></p>` : ''}
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:16px 36px; background-color:#f8fafc; border-top:1px solid #e2e8f0;">
+              <p style="margin:0; font-size:11px; color:#cbd5e1;">This is an automated notification. Please do not reply.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>` : `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -105,97 +165,21 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
     <tr>
       <td align="center" style="padding:40px 20px;">
         <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-
-          <!-- Color Bar -->
           <tr><td style="height:4px; background-color:${toColor};"></td></tr>
-
-          <!-- Content -->
           <tr>
-            <td style="padding:32px 32px 24px;">
-
-              <!-- Logo -->
+            <td style="padding:32px;">
               ${company.logo ? `<img src="${company.logo}" alt="${companyName}" style="max-height:32px; max-width:140px; object-fit:contain; margin-bottom:24px; display:block;" />` : ''}
-
-              <!-- Row 1: Task Title -->
-              <h1 style="margin:0 0 24px; font-size:22px; font-weight:700; color:#0f172a; line-height:1.3;">${title}</h1>
-
-              <!-- Row 2: From → To (Big Fonts) -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px; background-color:#f8fafc; border-radius:10px;">
-                <tr>
-                  <td style="padding:20px 24px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td width="40%" style="vertical-align:middle;">
-                          <p style="margin:0 0 6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8;">From</p>
-                          <p style="margin:0; font-size:22px; font-weight:700; color:#475569;">${fromLabel}</p>
-                        </td>
-                        <td width="20%" style="text-align:center; vertical-align:middle;">
-                          <span style="font-size:24px; color:#cbd5e1;">→</span>
-                        </td>
-                        <td width="40%" style="vertical-align:middle; text-align:right;">
-                          <p style="margin:0 0 6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8;">To</p>
-                          <p style="margin:0; font-size:22px; font-weight:800; color:${toColor};">${toLabel}</p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Divider -->
-              <div style="height:1px; background-color:#e2e8f0; margin-bottom:20px;"></div>
-
-              <!-- Row 3: Due Date, Priority, Moved By (3 columns) -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:16px;">
-                <tr>
-                  <td width="33%" style="padding:0 0 14px; vertical-align:top;">
-                    <p style="margin:0 0 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Due Date</p>
-                    <p style="margin:0; font-size:14px; font-weight:600; color:#334155;">${formatDate(dueDate)}</p>
-                  </td>
-                  <td width="33%" style="padding:0 0 14px; vertical-align:top;">
-                    <p style="margin:0 0 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Priority</p>
-                    <p style="margin:0; font-size:14px; font-weight:600; color:${priorityColor(priority || 'medium')};">${capitalizeFirst(priority || 'Medium')}</p>
-                  </td>
-                  <td width="33%" style="padding:0 0 14px; vertical-align:top;">
-                    <p style="margin:0 0 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Moved By</p>
-                    <p style="margin:0; font-size:14px; font-weight:600; color:#334155;">${movedByName || '—'}</p>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Row 4: Assignees -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
-                <tr>
-                  <td style="padding:0; vertical-align:top;">
-                    <p style="margin:0 0 4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Assignees</p>
-                    <p style="margin:0; font-size:14px; font-weight:600; color:#334155;">${assigneeNames || '—'}</p>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Divider -->
-              <div style="height:1px; background-color:#e2e8f0; margin-bottom:20px;"></div>
-
-              <!-- Message -->
-              <p style="margin:0; font-size:14px; line-height:1.6; color:#475569;">
+              <h1 style="margin:0 0 16px; font-size:20px; font-weight:700; color:#0f172a;">${title}</h1>
+              <p style="margin:0; font-size:14px; color:#475569; line-height:1.6;">
                 ${movedByName ? `<strong>${movedByName}</strong> has moved your task` : 'Your task has been moved'} from <strong>${fromLabel}</strong> to <strong style="color:${toColor};">${toLabel}</strong>.
               </p>
-
             </td>
           </tr>
-
-          <!-- Footer -->
           <tr>
-            <td style="padding:20px 32px; background-color:#f8fafc; border-top:1px solid #e2e8f0;">
-              <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.5;">
-                ${companyName}${company.phone1 ? ` · ${company.phone1}` : ''}${company.email ? ` · ${company.email}` : ''}
-              </p>
-              <p style="margin:4px 0 0; font-size:11px; color:#cbd5e1;">
-                This is an automated notification. Please do not reply.
-              </p>
+            <td style="padding:16px 32px; background-color:#f8fafc; border-top:1px solid #e2e8f0;">
+              <p style="margin:0; font-size:11px; color:#cbd5e1;">This is an automated notification. Please do not reply.</p>
             </td>
           </tr>
-
         </table>
       </td>
     </tr>
@@ -206,7 +190,7 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
   try {
     await sendMail({
       to: creatorEmail,
-      subject: `Task "${title}" moved to ${toLabel}`,
+      subject: isDone ? `Task "${title}" is Done ✓` : `Task "${title}" moved to ${toLabel}`,
       html: emailHTML,
     })
     console.log(`[TaskNotify] Status change email sent to ${creatorEmail} for task "${title}" (${fromLabel} → ${toLabel})`)

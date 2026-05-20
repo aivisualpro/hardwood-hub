@@ -214,7 +214,7 @@ async function approveTask(colId: string, task: Task) {
     const res = await $fetch<any>(`/api/tasks/${(task as any)._id}`, {
       method: 'PUT',
       body: {
-        approvedBy: { name: userCookie.value?.employee || 'Unknown', approvedAt: new Date() },
+        approvedBy: userCookie.value?._id || null,
         status: 'done',
         changedBy: userCookie.value?.employee || undefined,
       },
@@ -982,7 +982,7 @@ function canEditTask(task: Task | null): boolean {
           <div v-if="viewTask.task.approvedBy" class="flex items-center gap-2 text-sm">
             <Icon name="i-lucide-check-circle-2" class="size-4 text-emerald-500" />
             <span class="text-emerald-600 font-medium">Approved</span>
-            <span class="text-muted-foreground text-xs">by {{ viewTask.task.approvedBy.name }}</span>
+            <span class="text-muted-foreground text-xs">by {{ viewTask.task.approvedBy.employee }}</span>
           </div>
           <div v-else class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2 text-sm">

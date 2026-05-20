@@ -78,9 +78,9 @@ async function handleGoogleResponse(response: { credential: string }) {
       body: { credential: response.credential },
     })
 
-    // Store user info in a regular cookie for the UI (profile display, etc.)
+    // Store user info as object — useCookie handles JSON serialization automatically
     const userCookie = useCookie('hardwood_user', { maxAge: 60 * 60 * 24 * 7 })
-    userCookie.value = JSON.stringify(res.data)
+    userCookie.value = res.data
 
     toast.success(`Welcome, ${res.data.employee}!`)
     navigateTo('/my-profile')

@@ -8,6 +8,7 @@ import { notifyStatusChange, notifyComment } from '../../utils/taskNotifications
 const POPULATE_FIELDS = [
     { path: 'assignees', select: '_id employee profileImage' },
     { path: 'createdBy', select: '_id employee profileImage' },
+    { path: 'approvedBy', select: '_id employee profileImage' },
 ]
 
 export default defineEventHandler(async (event) => {

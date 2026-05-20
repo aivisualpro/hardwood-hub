@@ -20,6 +20,7 @@ export default defineEventHandler(async (event) => {
 
     // ── Approval gate: block unapproved tasks from moving to "done" ──
     // Exception: if the person dragging IS the task creator, auto-approve
+    // Exception: if createdBy is null (legacy tasks before cookie fix), auto-approve
     const doneIds = updates.filter(u => u.status === 'done').map(u => u._id)
     if (doneIds.length) {
         const unapproved: any[] = await Task.find({
@@ -29,24 +30,26 @@ export default defineEventHandler(async (event) => {
         }).select('taskId createdBy').lean()
 
         if (unapproved.length) {
-            // Separate tasks the creator can auto-approve vs truly blocked
             const autoApproveIds: string[] = []
             const blockedTasks: any[] = []
 
             for (const t of unapproved) {
-                const creatorId = t.createdBy?.toString?.() || String(t.createdBy)
-                if (changedById && creatorId === changedById) {
+                const creatorId = t.createdBy ? String(t.createdBy) : null
+
+                // Auto-approve if: no creator recorded (legacy task), OR creator matches current user
+                const isCreator = !creatorId || (!!changedById && creatorId === changedById)
+                if (isCreator) {
                     autoApproveIds.push(String(t._id))
                 } else {
                     blockedTasks.push(t)
                 }
             }
 
-            // Auto-approve the creator's own tasks
+            // Auto-approve the creator's own tasks (and legacy tasks with no creator)
             if (autoApproveIds.length) {
                 await Task.updateMany(
                     { _id: { $in: autoApproveIds } },
-                    { $set: { approvedBy: { name: changedBy, approvedAt: new Date() } } },
+                    { $set: { approvedBy: changedById || null } },
                 )
             }
 

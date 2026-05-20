@@ -43,9 +43,10 @@ export interface ITask extends Document {
     comments: IComment[]
     changelog: IChangelog[]
     order: number           // for drag-and-drop ordering within a column
-    approvedBy?: {
-        name: string
-        approvedAt: Date
+    approvedBy?: mongoose.Types.ObjectId | {
+        _id: mongoose.Types.ObjectId
+        employee: string
+        profileImage?: string
     }
     createdAt: Date
     updatedAt: Date
@@ -95,10 +96,8 @@ const TaskSchema = new Schema(
         changelog: { type: [ChangelogSchema], default: [] },
         order: { type: Number, default: 0, index: true },
         approvedBy: {
-            type: {
-                name: { type: String },
-                approvedAt: { type: Date },
-            },
+            type: Schema.Types.ObjectId,
+            ref: 'Employee',
             default: null,
         },
     },
