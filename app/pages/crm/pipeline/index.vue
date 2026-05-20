@@ -369,7 +369,7 @@ const filteredCustomers = computed(() => {
 const STAGES = computed(() => {
   return statusOptions.value.map(opt => ({
     id: String(opt._id),
-    label: opt.label,
+    label: opt.value || opt.label,
     color: opt.color || '#737373',
     icon: opt.icon || '',
   }))
@@ -551,7 +551,7 @@ watch(() => route.query.status, (val) => {
               <!-- INVISIBLE TEXT FORCING EXACT WIDTH -->
               <div class="flex flex-col items-center justify-center pt-0.5 opacity-0 pointer-events-none">
                 <span class="font-bold text-[13px] leading-tight">{{ g.items.length }}</span>
-                <span class="text-[9px] uppercase tracking-wider truncate max-w-[90px]">{{ g.stage.label }}</span>
+                <span class="text-[8px] uppercase tracking-wider leading-[1.1] text-center max-w-[90px] line-clamp-2 whitespace-normal">{{ g.stage.label }}</span>
               </div>
               
               <!-- OUTER BORDER MASK (Clipped) -->
@@ -561,19 +561,19 @@ watch(() => route.query.status, (val) => {
               </div>
 
               <!-- INNER CONTENT (Inset by 2.5px to reveal outer mask) -->
-              <div class="absolute inset-[2.5px] transition-all flex flex-col items-center justify-center pt-0.5 brightness-110 font-bold text-white"
+              <div class="absolute inset-[2.5px] transition-all flex flex-col items-center justify-center pt-0.5 brightness-110"
                    :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'hsl(var(--primary))' }">
-                  <span class="font-bold text-[13px] leading-tight">{{ g.items.length }}</span>
-                  <span class="text-[9px] uppercase tracking-wider opacity-95 truncate max-w-[90px] text-center" :title="g.stage.label">{{ g.stage.label }}</span>
+                  <span class="font-bold text-[13px] leading-tight text-white">{{ g.items.length }}</span>
+                  <span class="text-[8px] uppercase tracking-wider text-center max-w-[90px] leading-[1.1] line-clamp-2 whitespace-normal font-bold text-white" :title="g.stage.label">{{ g.stage.label }}</span>
               </div>
            </div>
 
            <!-- INACTIVE STATE (Standard) -->
-           <div v-else class="flex items-center justify-center h-12 pl-6 pr-6 w-full transition-all duration-300 text-white"
+           <div v-else class="flex items-center justify-center h-12 pl-6 pr-6 w-full transition-all duration-300"
                 :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'hsl(var(--primary))' }">
               <div class="flex flex-col items-center justify-center pt-0.5">
-                <span class="font-bold text-[13px] leading-tight">{{ g.items.length }}</span>
-                <span class="text-[9px] uppercase tracking-wider opacity-95 truncate max-w-[90px] text-center" :title="g.stage.label">{{ g.stage.label }}</span>
+                <span class="font-bold text-[13px] leading-tight text-white">{{ g.items.length }}</span>
+                <span class="text-[8px] uppercase tracking-wider leading-[1.1] text-center max-w-[90px] line-clamp-2 whitespace-normal font-bold text-white" :title="g.stage.label">{{ g.stage.label }}</span>
               </div>
            </div>
       </div>
