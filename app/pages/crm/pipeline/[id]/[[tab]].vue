@@ -211,7 +211,7 @@ async function deleteCustomer() {
 
 const visibleTabs = computed(() => {
   return tabs.filter(tab => {
-    if (tab.id === 'details' || tab.id === 'conditional-logic' || tab.id === 'gallery') return true
+    if (tab.id === 'details' || tab.id === 'gallery') return true
     if (tab.id === 'contracts') return customerContracts.value.length > 0
     if (tab.typeFilter) {
       if (tab.typeFilter === 'gallery') return true
@@ -341,7 +341,7 @@ function getStageClasses(stageName: string) {
                 {{ tab.label }}
                 <!-- Counter -->
                 <div
-                  v-if="tab.id !== 'details' && tab.id !== 'conditional-logic'"
+                  v-if="tab.id !== 'details'"
                   class="ml-1 px-1.5 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold tabular-nums"
                   :class="activeTab === tab.id ? 'bg-background/25 text-primary-foreground' : 'bg-primary/10 text-primary group-hover:bg-primary/20'"
                 >

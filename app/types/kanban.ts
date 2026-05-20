@@ -19,14 +19,14 @@ export interface Task {
   description?: string
   priority?: 'low' | 'medium' | 'high'
   assignees?: {
-    id: string
-    name: string
-    avatar?: string
+    _id: string
+    employee: string
+    profileImage?: string
   }[]
   createdBy?: {
-    id: string
-    name: string
-    avatar?: string
+    _id: string
+    employee: string
+    profileImage?: string
   }
   dueDate?: Date | number | string
   status?: string
@@ -40,7 +40,9 @@ export interface Task {
   createdAt: Date | number | string
 }
 
-export interface NewTask extends Omit<Task, 'id' | 'createdAt'> {
+export interface NewTask extends Omit<Task, 'id' | 'createdAt' | 'assignees' | 'createdBy'> {
+  assignees?: string[] | Task['assignees']
+  createdBy?: string | Task['createdBy']
 }
 
 export interface Column {

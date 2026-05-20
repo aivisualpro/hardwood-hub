@@ -2,16 +2,25 @@
 // DELETE /api/tasks/:id   — delete a task
 import { connectDB } from '../../utils/mongoose'
 import { Task } from '../../models/Task'
-import { notifyTaskInReview } from '../../utils/taskNotifications'
+import { Employee } from '../../models/Employee'
+import { notifyStatusChange } from '../../utils/taskNotifications'
+
+const POPULATE_FIELDS = [
+    { path: 'assignees', select: '_id employee profileImage' },
+    { path: 'createdBy', select: '_id employee profileImage' },
+]
 
 export default defineEventHandler(async (event) => {
     await connectDB()
+    Employee // ensure model registered
     const id = getRouterParam(event, 'id')
 
     if (event.method === 'PUT') {
         const body = await readBody(event)
+        const changedBy = body._changedBy || '' // passed from client
+        delete body._changedBy
 
-        // Fetch old doc first to detect status change
+        // Fetch old doc first to detect changes
         const oldDoc: any = await Task.findById(id).lean()
         if (!oldDoc) throw createError({ statusCode: 404, message: 'Task not found' })
 
@@ -30,23 +39,52 @@ export default defineEventHandler(async (event) => {
             body.approvedBy = null
         }
 
-        const doc: any = await Task.findByIdAndUpdate(id, body, { new: true }).lean()
+        // ── Build changelog entries ──
+        const TRACKED_FIELDS = ['title', 'description', 'priority', 'status', 'dueDate', 'assignees', 'labels']
+        const changelogEntries: any[] = []
+        const now = new Date()
+
+        for (const field of TRACKED_FIELDS) {
+            if (body[field] === undefined) continue
+            const oldVal = oldDoc[field]
+            const newVal = body[field]
+
+            // Stringify for comparison (handles dates, arrays, objects)
+            const oldStr = JSON.stringify(oldVal ?? null)
+            const newStr = JSON.stringify(newVal ?? null)
+            if (oldStr === newStr) continue
+
+            changelogEntries.push({
+                field,
+                oldValue: oldVal,
+                newValue: newVal,
+                changedBy,
+                changedAt: now,
+            })
+        }
+
+        // Update doc — use $set for fields, $push for changelog
+        const updateOps: any = { $set: { ...body } }
+        if (changelogEntries.length) {
+            updateOps.$push = { changelog: { $each: changelogEntries } }
+        }
+
+        const doc: any = await Task.findByIdAndUpdate(id, updateOps, { new: true }).populate(POPULATE_FIELDS).lean()
         if (!doc) throw createError({ statusCode: 404, message: 'Task not found' })
 
-        // If status changed TO "in-review", notify creator
-        if (
-            body.status === 'in-review' &&
-            oldDoc.status !== 'in-review' &&
-            doc.createdBy?.name
-        ) {
-            // Fire-and-forget (non-blocking)
-            notifyTaskInReview({
+        // ── Email on ANY status change ──
+        const statusChanged = body.status && body.status !== oldDoc.status
+        if (statusChanged && doc.createdBy?.employee) {
+            notifyStatusChange({
                 taskId: doc.taskId,
                 title: doc.title,
-                createdByName: doc.createdBy.name,
-                assigneeNames: (doc.assignees || []).map((a: any) => a.name).filter(Boolean).join(', '),
+                createdByName: doc.createdBy.employee,
+                movedByName: changedBy || undefined,
+                assigneeNames: (doc.assignees || []).map((a: any) => a.employee).filter(Boolean).join(', '),
                 priority: doc.priority,
                 dueDate: doc.dueDate,
+                oldStatus: oldDoc.status,
+                newStatus: body.status,
             }).catch(() => {})
         }
 

@@ -94,19 +94,9 @@ export const navMenu: NavMenu[] = [
         link: '/crm/appointments',
       },
       {
-        title: 'Fast Quotes',
-        icon: 'i-lucide-zap',
-        link: '/crm/fast-quotes',
-      },
-      {
         title: 'Estimates',
         icon: 'i-lucide-ruler',
         link: '/crm/flooring-estimate',
-      },
-      {
-        title: 'Conditional Logic',
-        icon: 'i-lucide-split',
-        link: '/crm/conditional-logic',
       },
       {
         title: 'Contracts',

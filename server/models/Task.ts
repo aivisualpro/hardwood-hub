@@ -14,26 +14,35 @@ export interface IComment {
     createdAt: Date
 }
 
+export interface IChangelog {
+    field: string
+    oldValue?: any
+    newValue?: any
+    changedBy: string
+    changedAt: Date
+}
+
 export interface ITask extends Document {
     taskId: string          // human-readable e.g. TASK-001
     title: string
     description?: string
     priority?: 'low' | 'medium' | 'high'
-    assignees?: {
-        id: string
-        name: string
-        avatar?: string
+    assignees?: mongoose.Types.ObjectId[] | {
+        _id: mongoose.Types.ObjectId
+        employee: string
+        profileImage?: string
     }[]
-    createdBy?: {
-        id: string
-        name: string
-        avatar?: string
+    createdBy?: mongoose.Types.ObjectId | {
+        _id: mongoose.Types.ObjectId
+        employee: string
+        profileImage?: string
     }
     dueDate?: Date
     status: 'todo' | 'in-progress' | 'in-review' | 'done'
     labels?: string[]
     subtasks: ISubtask[]
     comments: IComment[]
+    changelog: IChangelog[]
     order: number           // for drag-and-drop ordering within a column
     approvedBy?: {
         name: string
@@ -57,6 +66,14 @@ const CommentSchema = new Schema({
     createdAt: { type: Date, default: Date.now },
 }, { _id: false })
 
+const ChangelogSchema = new Schema({
+    field: { type: String, required: true },
+    oldValue: { type: Schema.Types.Mixed },
+    newValue: { type: Schema.Types.Mixed },
+    changedBy: { type: String, default: '' },
+    changedAt: { type: Date, default: Date.now },
+}, { _id: false })
+
 const TaskSchema = new Schema(
     {
         taskId: { type: String, required: true, unique: true, index: true },
@@ -64,20 +81,12 @@ const TaskSchema = new Schema(
         description: { type: String, default: '' },
         priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
         assignees: {
-            type: [{
-                id: { type: String },
-                name: { type: String },
-                avatar: { type: String },
-                _id: false,
-            }],
+            type: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],
             default: [],
         },
         createdBy: {
-            type: {
-                id: { type: String },
-                name: { type: String },
-                avatar: { type: String },
-            },
+            type: Schema.Types.ObjectId,
+            ref: 'Employee',
             default: null,
         },
         dueDate: { type: Date, default: null },
@@ -85,6 +94,7 @@ const TaskSchema = new Schema(
         labels: { type: [String], default: [] },
         subtasks: { type: [SubtaskSchema], default: [] },
         comments: { type: [CommentSchema], default: [] },
+        changelog: { type: [ChangelogSchema], default: [] },
         order: { type: Number, default: 0, index: true },
         approvedBy: {
             type: {

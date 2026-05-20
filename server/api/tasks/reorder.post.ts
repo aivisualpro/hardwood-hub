@@ -1,14 +1,17 @@
 // POST /api/tasks/reorder — batch update order and status after drag-drop
 import { connectDB } from '../../utils/mongoose'
 import { Task } from '../../models/Task'
-import { notifyTaskInReview } from '../../utils/taskNotifications'
+import { Employee } from '../../models/Employee'
+import { notifyStatusChange } from '../../utils/taskNotifications'
 
 export default defineEventHandler(async (event) => {
     await connectDB()
+    Employee // ensure model registered
 
     const body = await readBody(event)
-    // body.updates = [{ _id, status, order }, ...]
+    // body.updates = [{ _id, status, order }, ...], body._changedBy = string
     const updates: { _id: string, status: string, order: number }[] = body.updates || []
+    const changedBy = body._changedBy || ''
 
     if (!updates.length) {
         throw createError({ statusCode: 400, message: 'No updates provided' })
@@ -19,9 +22,9 @@ export default defineEventHandler(async (event) => {
     if (doneIds.length) {
         const unapproved: any[] = await Task.find({
             _id: { $in: doneIds },
-            status: { $ne: 'done' },       // only those NOT already in done
-            approvedBy: null,               // not approved yet
-        }).lean()
+            approvedBy: null,
+            status: { $ne: 'done' },
+        }).select('taskId').lean()
 
         if (unapproved.length) {
             const names = unapproved.map((t: any) => t.taskId).join(', ')
@@ -32,47 +35,54 @@ export default defineEventHandler(async (event) => {
         }
     }
 
-    // Find tasks that are being moved TO "in-review"
-    const inReviewIds = updates.filter(u => u.status === 'in-review').map(u => u._id)
-
-    // Fetch those tasks BEFORE the bulk update to detect status changes
-    let tasksToNotify: any[] = []
-    if (inReviewIds.length) {
-        const oldTasks: any[] = await Task.find({
-            _id: { $in: inReviewIds },
-            status: { $ne: 'in-review' },  // only those NOT already in-review
-        }).lean()
-        tasksToNotify = oldTasks || []
-    }
+    // Fetch all affected tasks BEFORE the bulk update to detect status changes
+    const allIds = updates.map(u => u._id)
+    const oldTasks: any[] = await Task.find({ _id: { $in: allIds } })
+        .populate({ path: 'createdBy', select: '_id employee profileImage' })
+        .lean()
+    const oldStatusMap = new Map(oldTasks.map(t => [t._id.toString(), t]))
 
     // Build bulk ops — also clear approvedBy when entering in-review
-    const inReviewIdSet = new Set(inReviewIds)
+    const inReviewIds = new Set(updates.filter(u => u.status === 'in-review').map(u => u._id))
+    const now = new Date()
     const ops = updates.map(u => {
         const setFields: any = { status: u.status, order: u.order }
-        // Clear approval when freshly entering in-review
-        if (u.status === 'in-review' && inReviewIdSet.has(u._id)) {
+        if (u.status === 'in-review' && inReviewIds.has(u._id)) {
             setFields.approvedBy = null
         }
+
+        const oldTask = oldStatusMap.get(u._id)
+        const changelogEntry = oldTask && oldTask.status !== u.status
+            ? { field: 'status', oldValue: oldTask.status, newValue: u.status, changedBy, changedAt: now }
+            : null
+
         return {
             updateOne: {
                 filter: { _id: u._id },
-                update: { $set: setFields },
+                update: {
+                    $set: setFields,
+                    ...(changelogEntry ? { $push: { changelog: changelogEntry } } : {}),
+                },
             },
         }
     })
 
-    await Task.bulkWrite(ops)
+    await Task.bulkWrite(ops as any[])
 
-    // Fire-and-forget notifications for tasks that just moved to "in-review"
-    for (const task of tasksToNotify) {
-        if (task.createdBy?.name) {
-            notifyTaskInReview({
-                taskId: task.taskId,
-                title: task.title,
-                createdByName: task.createdBy.name,
-                assigneeNames: (task.assignees || []).map((a: any) => a.name).filter(Boolean).join(', '),
-                priority: task.priority,
-                dueDate: task.dueDate,
+    // Fire-and-forget status change notifications
+    for (const u of updates) {
+        const oldTask = oldStatusMap.get(u._id)
+        if (oldTask && oldTask.status !== u.status && oldTask.createdBy?.employee) {
+            notifyStatusChange({
+                taskId: oldTask.taskId,
+                title: oldTask.title,
+                createdByName: oldTask.createdBy.employee,
+                movedByName: changedBy || undefined,
+                assigneeNames: (oldTask.assignees || []).map((a: any) => a.employee || a.name).filter(Boolean).join(', '),
+                priority: oldTask.priority,
+                dueDate: oldTask.dueDate,
+                oldStatus: oldTask.status,
+                newStatus: u.status,
             }).catch(() => {})
         }
     }

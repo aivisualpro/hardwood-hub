@@ -2,9 +2,17 @@
 // POST /api/tasks          — create a task
 import { connectDB } from '../../utils/mongoose'
 import { Task } from '../../models/Task'
+import { Employee } from '../../models/Employee'
+
+const POPULATE_FIELDS = [
+    { path: 'assignees', select: '_id employee profileImage' },
+    { path: 'createdBy', select: '_id employee profileImage' },
+]
 
 export default defineEventHandler(async (event) => {
     await connectDB()
+    // Ensure Employee model is registered for populate
+    Employee
 
     if (event.method === 'GET') {
         const query = getQuery(event)
@@ -15,7 +23,7 @@ export default defineEventHandler(async (event) => {
         if (status) {
             // Load specific column with pagination
             const [tasks, total] = await Promise.all([
-                Task.find({ status }).sort({ order: 1, createdAt: -1 }).skip(skip).limit(limit).lean<any[]>(),
+                Task.find({ status }).sort({ dueDate: 1, createdAt: -1 }).skip(skip).limit(limit).populate(POPULATE_FIELDS).lean<any[]>(),
                 Task.countDocuments({ status }),
             ])
             return { success: true, data: tasks, total, hasMore: skip + tasks.length < total }
@@ -27,7 +35,7 @@ export default defineEventHandler(async (event) => {
 
         await Promise.all(statuses.map(async (s) => {
             const [tasks, total] = await Promise.all([
-                Task.find({ status: s }).sort({ order: 1, createdAt: -1 }).limit(limit).lean<any[]>(),
+                Task.find({ status: s }).sort({ dueDate: 1, createdAt: -1 }).limit(limit).populate(POPULATE_FIELDS).lean<any[]>(),
                 Task.countDocuments({ status: s }),
             ])
             columns[s] = { tasks, total, hasMore: tasks.length < total }
@@ -66,7 +74,7 @@ export default defineEventHandler(async (event) => {
                     title: body.title,
                     description: body.description || '',
                     priority: body.priority || 'medium',
-                    assignee: body.assignee || null,
+                    assignees: body.assignees || [],
                     createdBy: body.createdBy || null,
                     dueDate: body.dueDate || null,
                     status: body.status || 'todo',
@@ -75,6 +83,8 @@ export default defineEventHandler(async (event) => {
                     comments: body.comments || [],
                     order,
                 })
+                // Populate assignees and createdBy before returning
+                doc = await Task.findById(doc._id).populate(POPULATE_FIELDS).lean()
                 break // success
             } catch (e: any) {
                 // Retry on duplicate key error (code 11000)

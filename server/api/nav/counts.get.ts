@@ -63,9 +63,7 @@ export default defineEventHandler(async (event) => {
         '/crm/contracts': totalContracts,
         '/external/stain-sign-off': totalStainSignOff,
         '/crm/appointments': crmCounts['appointment'] || 0,
-        '/crm/fast-quotes': crmCounts['fast-quote'] || 0,
         '/crm/flooring-estimate': crmCounts['flooring-estimate'] || 0,
-        '/crm/conditional-logic': crmCounts['conditional-logic'] || 0,
     }
 
     return {
