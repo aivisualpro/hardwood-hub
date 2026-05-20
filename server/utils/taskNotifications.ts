@@ -369,3 +369,100 @@ export async function notifyNewTask(payload: NewTaskPayload) {
     console.error(`[TaskNotify] Failed to send new task email`, err)
   }
 }
+
+// ─── Comment Notification ──────────────────────────────────
+
+interface CommentPayload {
+  taskTitle: string
+  commentText: string
+  commentAuthor: string
+  createdById: string
+  assigneeIds: string[]
+}
+
+/**
+ * Send comment notification email.
+ * - If commenter is an assignee → notify creator
+ * - If commenter is the creator → notify all assignees
+ */
+export async function notifyComment(payload: CommentPayload) {
+  const { taskTitle, commentText, commentAuthor, createdById, assigneeIds } = payload
+
+  if (!createdById && !assigneeIds?.length) return
+
+  let targetEmails: string[] = []
+  try {
+    const { Employee } = await import('../models/Employee')
+
+    // Determine who to notify
+    const creator = await Employee.findById(createdById).select('email employee').lean<any>()
+    const isCreator = creator?.employee === commentAuthor
+
+    if (isCreator) {
+      // Creator commented → notify all assignees
+      if (!assigneeIds?.length) return
+      const assignees = await Employee.find({ _id: { $in: assigneeIds } }).select('email').lean<any[]>()
+      targetEmails = assignees.map(a => a.email).filter(Boolean)
+    } else {
+      // Assignee commented → notify creator
+      if (creator?.email) targetEmails = [creator.email]
+    }
+  } catch { return }
+
+  if (!targetEmails.length) return
+
+  const emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1a1a1a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8fafc;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+
+              <!-- Row 1: Task Title -->
+              <h1 style="margin:0 0 16px; font-size:18px; font-weight:700; color:#0f172a; line-height:1.3;">${taskTitle}</h1>
+
+              <!-- Row 2: Commenter Name -->
+              <p style="margin:0 0 12px; font-size:14px; font-weight:600; color:#475569;">${commentAuthor}</p>
+
+              <!-- Row 3: Comment -->
+              <p style="margin:0; font-size:14px; line-height:1.6; color:#334155; white-space:pre-wrap;">${commentText}</p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:16px 32px; background-color:#f8fafc; border-top:1px solid #e2e8f0;">
+              <p style="margin:0; font-size:11px; color:#cbd5e1;">
+                This is an automated notification. Please do not reply.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+
+  try {
+    await sendMail({
+      to: targetEmails.join(', '),
+      subject: `New comment on "${taskTitle}" by ${commentAuthor}`,
+      html: emailHTML,
+    })
+    console.log(`[TaskNotify] Comment email sent to ${targetEmails.join(', ')} for "${taskTitle}"`)
+  } catch (err) {
+    console.error(`[TaskNotify] Failed to send comment email`, err)
+  }
+}

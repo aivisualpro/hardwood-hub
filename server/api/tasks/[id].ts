@@ -3,7 +3,7 @@
 import { connectDB } from '../../utils/mongoose'
 import { Task } from '../../models/Task'
 import { Employee } from '../../models/Employee'
-import { notifyStatusChange } from '../../utils/taskNotifications'
+import { notifyStatusChange, notifyComment } from '../../utils/taskNotifications'
 
 const POPULATE_FIELDS = [
     { path: 'assignees', select: '_id employee profileImage' },
@@ -85,6 +85,20 @@ export default defineEventHandler(async (event) => {
                 oldStatus: oldDoc.status,
                 newStatus: body.status,
             }).catch(() => {})
+        }
+        // ── Email on comment added ──
+        if (body.comments && Array.isArray(body.comments)) {
+            const oldCommentIds = new Set((oldDoc.comments || []).map((c: any) => c.id))
+            const newComments = body.comments.filter((c: any) => !oldCommentIds.has(c.id))
+            for (const cm of newComments) {
+                notifyComment({
+                    taskTitle: doc.title,
+                    commentText: cm.text || '',
+                    commentAuthor: cm.author || 'Unknown',
+                    createdById: oldDoc.createdBy?.toString() || '',
+                    assigneeIds: (oldDoc.assignees || []).map((a: any) => a.toString()),
+                }).catch(() => {})
+            }
         }
 
         return { success: true, data: doc }

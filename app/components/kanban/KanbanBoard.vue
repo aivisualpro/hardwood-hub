@@ -586,8 +586,8 @@ function canEditTask(task: Task | null): boolean {
                             </div>
                           </div>
                           <div class="border-t px-2 py-2">
-                            <form class="flex gap-1.5" @submit.prevent="handleAddComment(col.id, t.id)">
-                              <Input v-model="newCommentText" placeholder="Write a comment..." class="h-7 text-xs" />
+                            <form class="flex gap-1.5 items-end" @submit.prevent="handleAddComment(col.id, t.id)">
+                              <Textarea v-model="newCommentText" placeholder="Write a comment..." class="text-xs min-h-[56px] max-h-[120px] resize-none" rows="2" />
                               <Button type="submit" size="icon" variant="ghost" class="size-7 shrink-0">
                                 <Icon name="lucide:send" class="size-3.5" />
                               </Button>
@@ -954,8 +954,8 @@ function canEditTask(task: Task | null): boolean {
               <p class="text-sm text-muted-foreground leading-relaxed pl-7">{{ cm.text }}</p>
             </div>
           </div>
-          <form class="flex gap-1.5" @submit.prevent="() => { if (newCommentText.trim()) { addComment(viewTask!.colId, viewTask!.task.id, newCommentText.trim(), userCookie?.employee, userCookie?.profileImage); newCommentText = '' } }">
-            <Input v-model="newCommentText" placeholder="Write a comment..." class="h-8 text-xs" data-comment-input />
+          <form class="flex gap-1.5 items-end" @submit.prevent="() => { if (newCommentText.trim()) { addComment(viewTask!.colId, viewTask!.task.id, newCommentText.trim(), userCookie?.employee, userCookie?.profileImage); newCommentText = '' } }">
+            <Textarea v-model="newCommentText" placeholder="Write a comment..." class="text-xs min-h-[64px] max-h-[160px] resize-y" rows="2" data-comment-input />
             <Button type="submit" size="icon" variant="ghost" class="size-8 shrink-0">
               <Icon name="i-lucide-send" class="size-3.5" />
             </Button>
