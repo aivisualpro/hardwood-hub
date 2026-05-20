@@ -191,17 +191,21 @@ function onCustomerUpdated(updatedCustomer: any) {
   updateHeaderForContext(customer.value, activeTab.value)
 }
 
+const showDeleteConfirm = ref(false)
+
 async function deleteCustomer() {
-  if (!confirm('Are you sure you want to delete this customer? This action cannot be undone.')) return
-  
   try {
     const res = await $fetch<any>(`/api/customers/${customerId}`, { method: 'DELETE' })
     if (res.success) {
       toast.success('Customer deleted')
-      navigateTo('/crm/pipeline')
+      // Navigate back to the pipeline tab — preserve status filter if customer had one
+      const statusId = customer.value?.status
+      navigateTo(statusId ? `/crm/pipeline?status=${statusId}` : '/crm/pipeline')
     }
   } catch (e: any) {
     toast.error('Failed to delete customer')
+  } finally {
+    showDeleteConfirm.value = false
   }
 }
 
@@ -314,7 +318,7 @@ function getStageClasses(stageName: string) {
             <Icon name="i-lucide-pencil" class="size-3.5" />
             <span class="hidden sm:inline">Edit</span>
           </button>
-          <button v-if="activeTab !== 'gallery'" @click="deleteCustomer" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all shrink-0" title="Delete Customer">
+          <button v-if="activeTab !== 'gallery'" @click="showDeleteConfirm = true" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all shrink-0" title="Delete Customer">
             <Icon name="i-lucide-trash-2" class="size-3.5" />
             <span class="hidden sm:inline">Delete</span>
           </button>
@@ -699,6 +703,25 @@ function getStageClasses(stageName: string) {
         ref="contractFormDialog"
         @saved="fetchCustomerContracts"
       />
+
+      <!-- Delete Confirmation Dialog -->
+      <AlertDialog :open="showDeleteConfirm" @update:open="v => showDeleteConfirm = v">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this customer? This action cannot be undone and all associated data will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction class="bg-destructive text-destructive-foreground hover:bg-destructive/90" @click="deleteCustomer">
+              <Icon name="i-lucide-trash-2" class="size-3.5 mr-1.5" />
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
     </div>
   </div>

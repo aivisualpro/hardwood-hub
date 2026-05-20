@@ -11,8 +11,53 @@ setHeader({
 const customers = ref<any[]>([])
 const isLoading = ref(true)
 const showCreateModal = ref(false)
-const fileInput = ref<HTMLInputElement | null>(null)
-const isImporting = ref(false)
+
+// ─── Multi-Select ────────────────────────────────────────
+const selectedIds = ref<Set<string>>(new Set())
+const showBulkDeleteConfirm = ref(false)
+const isBulkDeleting = ref(false)
+
+function toggleSelect(id: string) {
+  const s = new Set(selectedIds.value)
+  if (s.has(id)) s.delete(id)
+  else s.add(id)
+  selectedIds.value = s
+}
+
+const isAllSelected = computed(() => {
+  if (!filteredCustomers.value.length) return false
+  return filteredCustomers.value.every(c => selectedIds.value.has(c._id))
+})
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(filteredCustomers.value.map(c => c._id))
+  }
+}
+
+async function bulkDeleteSelected() {
+  isBulkDeleting.value = true
+  const ids = [...selectedIds.value]
+  let deleted = 0
+  try {
+    await Promise.all(ids.map(async (id) => {
+      try {
+        await $fetch(`/api/customers/${id}`, { method: 'DELETE' })
+        deleted++
+      } catch { /* skip failed */ }
+    }))
+    customers.value = customers.value.filter(c => !selectedIds.value.has(c._id))
+    selectedIds.value = new Set()
+    toast.success(`Deleted ${deleted} customer${deleted !== 1 ? 's' : ''}`)
+  } catch {
+    toast.error('Failed to delete some customers')
+  } finally {
+    isBulkDeleting.value = false
+    showBulkDeleteConfirm.value = false
+  }
+}
 
 const isQuickEditMode = ref(false)
 const activeDropdown = ref<string | null>(null)
@@ -213,33 +258,7 @@ async function onStageDrop(e: DragEvent, stageId: string) {
   }
 }
 
-async function handleFileUpload(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
 
-  isImporting.value = true
-  const formData = new FormData()
-  formData.append('file', file)
-
-  try {
-    const res = await $fetch<any>('/api/customers/import', {
-      method: 'POST',
-      body: formData
-    })
-    if (res?.success) {
-      toast.success(`Imported ${res.count} customers`)
-      fetchCustomers()
-    } else {
-      toast.error(res?.error || 'Failed to import customers')
-    }
-  } catch (error) {
-    toast.error('An error occurred during import')
-  } finally {
-    isImporting.value = false
-    if (fileInput.value) fileInput.value.value = ''
-  }
-}
 
 async function fetchCustomers() {
   isLoading.value = true
@@ -313,7 +332,8 @@ function formatShortDate(dateString: string) {
 }
 
 const searchQuery = ref('')
-const selectedStageFilter = ref<string>('all')
+const route = useRoute()
+const selectedStageFilter = ref<string>((route.query.status as string) || 'all')
 
 const filteredCustomers = computed(() => {
   const query = searchQuery.value.toLowerCase()
@@ -451,7 +471,18 @@ function selectFilter(id: string) {
   if (id !== 'all') {
     expandedStages.value[id] = true
   }
+  // Sync URL — use path-based routing
+  if (id === 'all') {
+    navigateTo('/crm/pipeline', { replace: true })
+  } else {
+    navigateTo(`/crm/pipeline?status=${id}`, { replace: true })
+  }
 }
+
+// Sync filter from URL on back/forward navigation
+watch(() => route.query.status, (val) => {
+  selectedStageFilter.value = (val as string) || 'all'
+})
 </script>
 
 <template>
@@ -467,15 +498,15 @@ function selectFilter(id: string) {
             class="w-full h-8 sm:h-9 pl-8 sm:pl-9 pr-4 rounded-lg border border-input bg-background/50 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
           >
         </div>
-        <input type="file" ref="fileInput" accept=".csv" class="hidden" @change="handleFileUpload" />
+        <!-- Bulk Delete (shown when items selected) -->
         <button
-          class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-secondary text-secondary-foreground border border-border text-xs sm:text-sm font-bold hover:bg-secondary/90 transition-all shrink-0"
-          @click="fileInput?.click()"
-          :disabled="isImporting"
+          v-if="selectedIds.size > 0"
+          class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all shrink-0 border border-destructive/30"
+          @click="showBulkDeleteConfirm = true"
         >
-          <Icon name="i-lucide-upload" class="size-3.5" :class="{ 'animate-spin': isImporting }" />
-          <span class="hidden sm:inline" v-if="!isImporting">Import CSV</span>
-          <span class="hidden sm:inline" v-else>Importing...</span>
+          <Icon name="i-lucide-trash-2" class="size-3.5" />
+          <span class="hidden sm:inline">Delete</span>
+          <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-destructive/20 tabular-nums">{{ selectedIds.size }}</span>
         </button>
         <button
           class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
@@ -553,7 +584,7 @@ function selectFilter(id: string) {
       <table class="w-full text-left border-collapse whitespace-nowrap">
         <thead>
           <tr class="border-b bg-card text-muted-foreground text-[10px] font-bold uppercase tracking-wider sticky top-0 z-20">
-            <th class="p-2.5 w-10 text-center"><input type="checkbox" class="rounded border-border text-primary cursor-pointer" /></th>
+            <th class="p-2.5 w-10 text-center"><input type="checkbox" class="rounded border-border text-primary cursor-pointer" :checked="isAllSelected" @change="toggleSelectAll" /></th>
             <th class="p-2.5 min-w-[200px]">Name</th>
             <th class="p-2.5 w-16 min-w-[60px] text-center">Stage</th>
             <th class="p-2.5 min-w-[100px]">Est. Duration</th>
@@ -579,13 +610,16 @@ function selectFilter(id: string) {
         <tbody v-else>
           <tr v-for="c in filteredCustomers" :key="c._id"
               class="border-b border-border/30 last:border-0 text-[13px] transition-colors group/row hover:bg-muted/20 cursor-pointer"
-              :class="dragCustomer?._id === c._id ? 'opacity-40 scale-[0.98] bg-primary/5' : ''"
+              :class="[
+                dragCustomer?._id === c._id ? 'opacity-40 scale-[0.98] bg-primary/5' : '',
+                selectedIds.has(c._id) ? '!bg-primary/5' : '',
+              ]"
               draggable="true"
               @dragstart="onRowDragStart($event, c)"
               @dragend="onRowDragEnd"
               @click="navigateTo(`/crm/pipeline/${c._id}`)">
             <td class="p-2.5 text-center px-4" @click.stop>
-              <input type="checkbox" class="rounded border-border text-primary cursor-pointer" />
+              <input type="checkbox" class="rounded border-border text-primary cursor-pointer" :checked="selectedIds.has(c._id)" @change="toggleSelect(c._id)" />
             </td>
             <td class="p-2.5 max-w-[200px] relative" :class="isQuickEditMode ? 'whitespace-normal' : 'truncate'" @click="isQuickEditMode && $event.stopPropagation()">
               <span class="font-semibold text-foreground/90 truncate flex-1 block">
@@ -879,6 +913,30 @@ function selectFilter(id: string) {
         </div>
       </div>
     </div>
+
+    <!-- Bulk Delete Confirmation -->
+    <AlertDialog :open="showBulkDeleteConfirm" @update:open="v => showBulkDeleteConfirm = v">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {{ selectedIds.size }} Customer{{ selectedIds.size !== 1 ? 's' : '' }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete {{ selectedIds.size }} selected customer{{ selectedIds.size !== 1 ? 's' : '' }}? This action cannot be undone and all associated data will be permanently removed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel :disabled="isBulkDeleting">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            :disabled="isBulkDeleting"
+            @click="bulkDeleteSelected"
+          >
+            <Icon v-if="isBulkDeleting" name="i-lucide-loader-2" class="size-3.5 mr-1.5 animate-spin" />
+            <Icon v-else name="i-lucide-trash-2" class="size-3.5 mr-1.5" />
+            {{ isBulkDeleting ? 'Deleting...' : 'Delete All' }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 </template>
 
 <style scoped>
