@@ -46,7 +46,9 @@ const CustomerSchema = new mongoose.Schema(
   }
 )
 
-// Index for better searching
+// Indexes for pipeline and search performance
+CustomerSchema.index({ status: 1, name: 1 })
+CustomerSchema.index({ createdAt: -1 })
 CustomerSchema.index({ email: 1, phone: 1 })
 
 export interface ICustomer {

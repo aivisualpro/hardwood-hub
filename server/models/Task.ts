@@ -23,7 +23,6 @@ export interface IChangelog {
 }
 
 export interface ITask extends Document {
-    taskId: string          // human-readable e.g. TASK-001
     title: string
     description?: string
     priority?: 'low' | 'medium' | 'high'
@@ -76,7 +75,6 @@ const ChangelogSchema = new Schema({
 
 const TaskSchema = new Schema(
     {
-        taskId: { type: String, required: true, unique: true, index: true },
         title: { type: String, required: true },
         description: { type: String, default: '' },
         priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
@@ -110,7 +108,10 @@ const TaskSchema = new Schema(
     }
 )
 
-// Compound index for efficient column queries
+// Compound indexes for efficient kanban queries
 TaskSchema.index({ status: 1, order: 1 })
+TaskSchema.index({ status: 1, dueDate: 1, createdAt: -1 })
+TaskSchema.index({ assignees: 1 })
+TaskSchema.index({ createdBy: 1 })
 
 export const Task = mongoose.models.Task || mongoose.model<ITask>('Task', TaskSchema)

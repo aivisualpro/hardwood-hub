@@ -82,7 +82,7 @@ export function useKanban() {
   // ─── Map API task to client Task type ─────────────
   function mapTask(t: any): Task {
     return {
-      id: t.taskId,
+      id: t._id,
       _id: t._id,
       title: t.title,
       description: t.description,

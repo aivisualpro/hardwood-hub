@@ -74,7 +74,6 @@ export default defineEventHandler(async (event) => {
         const oldTask = oldStatusMap.get(u._id)
         if (oldTask && oldTask.status !== u.status && oldTask.createdBy?.employee) {
             notifyStatusChange({
-                taskId: oldTask.taskId,
                 title: oldTask.title,
                 createdByName: oldTask.createdBy.employee,
                 movedByName: changedBy || undefined,

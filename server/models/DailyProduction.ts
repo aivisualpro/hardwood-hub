@@ -67,4 +67,9 @@ const DailyProductionSchema = new Schema(
     { timestamps: true }
 )
 
+// Indexes for dashboard and reporting queries
+DailyProductionSchema.index({ createdAt: -1 })
+DailyProductionSchema.index({ employeeName: 1, date: -1 })
+DailyProductionSchema.index({ date: -1 })
+
 export const DailyProduction = mongoose.models.DailyProduction || mongoose.model<IDailyProduction>('DailyProduction', DailyProductionSchema, 'hardwoodDB_DailyProduction')

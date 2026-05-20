@@ -4,7 +4,6 @@
 import { sendMail } from './mailer'
 
 interface StatusChangePayload {
-  taskId: string
   title: string
   createdByName: string
   movedByName?: string
@@ -74,7 +73,7 @@ function priorityColor(p: string): string {
  * Non-blocking — errors are logged but never thrown.
  */
 export async function notifyStatusChange(payload: StatusChangePayload) {
-  const { taskId, title, createdByName, movedByName, assigneeNames, priority, dueDate, oldStatus, newStatus } = payload
+  const { title, createdByName, movedByName, assigneeNames, priority, dueDate, oldStatus, newStatus } = payload
 
   const creatorEmail = await resolveCreatorEmail(createdByName)
   if (!creatorEmail) {
@@ -128,7 +127,7 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
 
               <!-- Title -->
               <h1 style="margin:0 0 8px; font-size:20px; font-weight:700; color:#0f172a; line-height:1.3;">${title}</h1>
-              <p style="margin:0 0 24px; font-size:13px; color:#94a3b8; font-family:'SF Mono', Monaco, monospace;">${taskId}</p>
+              <p style="margin:0 0 24px; font-size:13px; color:#94a3b8;"></p>
 
               <!-- Status Arrow -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px; background-color:#f8fafc; border-radius:8px;">
@@ -213,11 +212,160 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
   try {
     await sendMail({
       to: creatorEmail,
-      subject: `Task "${taskId}" moved to ${toLabel}`,
+      subject: `Task "${title}" moved to ${toLabel}`,
       html: emailHTML,
     })
-    console.log(`[TaskNotify] Status change email sent to ${creatorEmail} for task ${taskId} (${fromLabel} → ${toLabel})`)
+    console.log(`[TaskNotify] Status change email sent to ${creatorEmail} for task "${title}" (${fromLabel} → ${toLabel})`)
   } catch (err) {
     console.error(`[TaskNotify] Failed to send email to ${creatorEmail}`, err)
+  }
+}
+
+// ─── New Task Assignment Notification ──────────────────────
+
+interface NewTaskPayload {
+  title: string
+  description?: string
+  createdByName: string
+  assigneeIds: string[]
+  priority?: string
+  dueDate?: Date | string | null
+  status: string
+}
+
+/**
+ * Send an email to each assignee when a new task is created.
+ * Non-blocking — errors are logged but never thrown.
+ */
+export async function notifyNewTask(payload: NewTaskPayload) {
+  const { title, description, createdByName, assigneeIds, priority, dueDate, status } = payload
+
+  if (!assigneeIds?.length) return
+
+  // Resolve assignee emails
+  let assignees: any[] = []
+  try {
+    const { Employee } = await import('../models/Employee')
+    assignees = await Employee.find({ _id: { $in: assigneeIds } }).select('email employee').lean<any[]>()
+  } catch { return }
+
+  const emails = assignees.map(a => a.email).filter(Boolean)
+  if (!emails.length) return
+
+  // Load company branding
+  let company: any = {}
+  try {
+    const { AppSetting } = await import('../models/AppSetting')
+    const doc: any = await AppSetting.findOne({ key: 'companyProfile' }).lean()
+    company = doc?.value || {}
+  } catch { /* use defaults */ }
+
+  const companyName = company.name || 'Ann Arbor Hardwoods'
+  const statusLbl = statusLabel(status)
+  const statusClr = statusColor(status)
+  const prioClr = priorityColor(priority || 'medium')
+  const assigneeNames = assignees.map(a => a.employee).filter(Boolean).join(', ')
+
+  const emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1a1a1a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8fafc;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+
+          <!-- Color Bar -->
+          <tr><td style="height:4px; background:linear-gradient(90deg, #3b82f6, #8b5cf6);"></td></tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px 32px 24px;">
+
+              <!-- Logo -->
+              ${company.logo ? `<img src="${company.logo}" alt="${companyName}" style="max-height:32px; max-width:140px; object-fit:contain; margin-bottom:24px; display:block;" />` : ''}
+
+              <!-- Badge -->
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:20px;">
+                <tr>
+                  <td style="padding:6px 12px; background-color:#dbeafe; border-radius:6px; font-size:12px; font-weight:600; color:#1d4ed8; letter-spacing:0.04em; text-transform:uppercase;">
+                    NEW TASK ASSIGNED
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Title -->
+              <h1 style="margin:0 0 8px; font-size:20px; font-weight:700; color:#0f172a; line-height:1.3;">${title}</h1>
+              ${description ? `<p style="margin:0 0 20px; font-size:14px; color:#64748b; line-height:1.5;">${description}</p>` : '<div style="margin-bottom:20px;"></div>'}
+
+              <!-- Divider -->
+              <div style="height:1px; background-color:#e2e8f0; margin-bottom:20px;"></div>
+
+              <!-- Details Grid -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
+                <tr>
+                  <td width="50%" style="padding:0 0 14px; vertical-align:top;">
+                    <p style="margin:0 0 2px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Priority</p>
+                    <p style="margin:0; font-size:14px; font-weight:600; color:${prioClr};">${capitalizeFirst(priority || 'Medium')}</p>
+                  </td>
+                  <td width="50%" style="padding:0 0 14px; vertical-align:top;">
+                    <p style="margin:0 0 2px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Due Date</p>
+                    <p style="margin:0; font-size:14px; font-weight:500; color:#334155;">${formatDate(dueDate)}</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="50%" style="padding:0; vertical-align:top;">
+                    <p style="margin:0 0 2px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Status</p>
+                    <p style="margin:0; font-size:14px; font-weight:600; color:${statusClr};">${statusLbl}</p>
+                  </td>
+                  <td width="50%" style="padding:0; vertical-align:top;">
+                    <p style="margin:0 0 2px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Created By</p>
+                    <p style="margin:0; font-size:14px; font-weight:500; color:#334155;">${createdByName || '—'}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <div style="height:1px; background-color:#e2e8f0; margin-bottom:20px;"></div>
+
+              <!-- Message -->
+              <p style="margin:0; font-size:14px; line-height:1.6; color:#475569;">
+                <strong>${createdByName || 'Someone'}</strong> has assigned you a new task: <strong>"${title}"</strong>.
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px; background-color:#f8fafc; border-top:1px solid #e2e8f0;">
+              <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.5;">
+                ${companyName}${company.phone1 ? ` · ${company.phone1}` : ''}${company.email ? ` · ${company.email}` : ''}
+              </p>
+              <p style="margin:4px 0 0; font-size:11px; color:#cbd5e1;">
+                This is an automated notification. Please do not reply.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+
+  try {
+    await sendMail({
+      to: emails.join(', '),
+      subject: `New Task Assigned: "${title}"`,
+      html: emailHTML,
+    })
+    console.log(`[TaskNotify] New task email sent to ${emails.join(', ')} for "${title}"`)
+  } catch (err) {
+    console.error(`[TaskNotify] Failed to send new task email`, err)
   }
 }

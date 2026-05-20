@@ -12,4 +12,10 @@ const EmpSkillPerformanceSchema = new mongoose.Schema(
     { timestamps: true, collection: 'hardwoodDB_EmpSkillPerformance' },
 )
 
+// Indexes for performance queries
+EmpSkillPerformanceSchema.index({ employee: 1, skill: 1 })
+EmpSkillPerformanceSchema.index({ employee: 1, subCategory: 1, skill: 1 })
+EmpSkillPerformanceSchema.index({ category: 1, subCategory: 1 })
+EmpSkillPerformanceSchema.index({ createdAt: -1 })
+
 export const EmpSkillPerformance = mongoose.models.EmpSkillPerformance || mongoose.model('EmpSkillPerformance', EmpSkillPerformanceSchema)

@@ -3,6 +3,7 @@
 import { connectDB } from '../../utils/mongoose'
 import { Task } from '../../models/Task'
 import { Employee } from '../../models/Employee'
+import { notifyNewTask } from '../../utils/taskNotifications'
 
 const POPULATE_FIELDS = [
     { path: 'assignees', select: '_id employee profileImage' },
@@ -47,55 +48,44 @@ export default defineEventHandler(async (event) => {
     if (event.method === 'POST') {
         const body = await readBody(event)
 
-        // Auto-generate taskId — find the highest existing number to avoid duplicates
-        const maxRetries = 3
-        let doc: any = null
+        try {
+            // Get the max order for the target column
+            const maxOrderDoc = await Task.findOne({ status: body.status || 'todo' }).sort({ order: -1 }).select('order').lean<any>()
+            const order = (maxOrderDoc?.order ?? -1) + 1
 
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-            try {
-                const allTasks = await Task.find({}, { taskId: 1 }).lean<any[]>()
-                let maxNum = 0
-                for (const t of allTasks) {
-                    const match = t.taskId?.match(/TASK-(\d+)/)
-                    if (match) {
-                        const num = parseInt(match[1])
-                        if (num > maxNum) maxNum = num
-                    }
-                }
-                const nextNum = maxNum + 1 + attempt // offset by attempt to handle retries
-                const taskId = `TASK-${String(nextNum).padStart(3, '0')}`
+            let doc = await Task.create({
+                title: body.title,
+                description: body.description || '',
+                priority: body.priority || 'medium',
+                assignees: body.assignees || [],
+                createdBy: body.createdBy || null,
+                dueDate: body.dueDate || null,
+                status: body.status || 'todo',
+                labels: body.labels || [],
+                subtasks: body.subtasks || [],
+                comments: body.comments || [],
+                order,
+            })
+            // Populate assignees and createdBy before returning
+            doc = await Task.findById(doc._id).populate(POPULATE_FIELDS).lean()
 
-                // Get the max order for the target column
-                const maxOrderDoc = await Task.findOne({ status: body.status || 'todo' }).sort({ order: -1 }).select('order').lean<any>()
-                const order = (maxOrderDoc?.order ?? -1) + 1
-
-                doc = await Task.create({
-                    taskId,
-                    title: body.title,
-                    description: body.description || '',
-                    priority: body.priority || 'medium',
-                    assignees: body.assignees || [],
-                    createdBy: body.createdBy || null,
-                    dueDate: body.dueDate || null,
-                    status: body.status || 'todo',
-                    labels: body.labels || [],
-                    subtasks: body.subtasks || [],
-                    comments: body.comments || [],
-                    order,
-                })
-                // Populate assignees and createdBy before returning
-                doc = await Task.findById(doc._id).populate(POPULATE_FIELDS).lean()
-                break // success
-            } catch (e: any) {
-                // Retry on duplicate key error (code 11000)
-                if (e?.code === 11000 && attempt < maxRetries - 1) {
-                    continue
-                }
-                throw createError({ statusCode: 500, message: e?.message || 'Failed to create task' })
+            // Fire-and-forget: notify assignees
+            if (doc && body.assignees?.length) {
+                notifyNewTask({
+                    title: doc.title,
+                    description: doc.description,
+                    createdByName: (doc as any).createdBy?.employee || '',
+                    assigneeIds: body.assignees,
+                    priority: doc.priority,
+                    dueDate: doc.dueDate,
+                    status: doc.status,
+                }).catch(() => {})
             }
+        
+            return { success: true, data: doc }
+        } catch (e: any) {
+            throw createError({ statusCode: 500, message: e?.message || 'Failed to create task' })
         }
-
-        return { success: true, data: doc }
     }
 
     throw createError({ statusCode: 405, message: 'Method not allowed' })

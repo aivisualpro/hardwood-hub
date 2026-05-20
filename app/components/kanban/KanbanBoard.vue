@@ -3,10 +3,12 @@ import type { DateValue } from '@internationalized/date'
 import type { UseTimeAgoMessages, UseTimeAgoOptions, UseTimeAgoUnitNamesDefault } from '@vueuse/core'
 import type { Column, NewTask, Task } from '~/types/kanban'
 import {
+  CalendarDate,
   CalendarDateTime,
   DateFormatter,
   getLocalTimeZone,
   parseAbsoluteToLocal,
+  today,
 } from '@internationalized/date'
 import Draggable from 'vuedraggable'
 import { toast } from 'vue-sonner'
@@ -33,7 +35,7 @@ const employees = ref<any[]>([])
 async function fetchEmployees() {
   try {
     const res = await $fetch<any>('/api/employees')
-    employees.value = (res.data || []).filter((e: any) => e.status === 'Active')
+    employees.value = (res.data || []).filter((e: any) => e.status === 'Active').sort((a: any, b: any) => (a.employee || '').localeCompare(b.employee || ''))
   } catch (e) {
     console.error('[KanbanBoard] Failed to fetch employees', e)
   }
@@ -75,7 +77,7 @@ const selectedAssignees = ref<{ _id: string, employee: string, profileImage?: st
 const newTask = reactive<NewTask>({
   title: '',
   description: '',
-  priority: undefined,
+  priority: 'low',
   dueDate: undefined,
   status: '',
   labels: undefined,
@@ -85,6 +87,7 @@ function resetData() {
   dueDate.value = undefined
   dueTime.value = '00:00'
   selectedAssignees.value = []
+  assigneeSearch.value = ''
 }
 watch(() => showModalTask.value.open, (newVal) => {
   if (!newVal) resetData()
@@ -94,11 +97,48 @@ function openNewTask(colId: string) {
   showModalTask.value = { type: 'create', open: true, columnId: colId }
   newTask.title = ''
   newTask.description = ''
-  newTask.priority = undefined
+  newTask.priority = 'low'
   selectedAssignees.value = []
+  // Default due date = tomorrow
+  const tomorrow = today(getLocalTimeZone()).add({ days: 1 })
+  dueDate.value = new CalendarDateTime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0)
+  dueTime.value = '00:00'
+  taskFormTouched.value = false
 }
+
+// ─── Due Date +/- Day Adjustment ──────────────────────────
+const minDueDate = computed(() => today(getLocalTimeZone()))
+
+function adjustDueDate(days: number) {
+  if (!dueDate.value) {
+    const d = today(getLocalTimeZone()).add({ days: Math.max(1, days) })
+    dueDate.value = new CalendarDateTime(d.year, d.month, d.day, 0, 0)
+    return
+  }
+  const adjusted = dueDate.value.add({ days })
+  const min = minDueDate.value
+  // Don't allow due date before today
+  if (adjusted.compare(new CalendarDateTime(min.year, min.month, min.day, 0, 0)) < 0) return
+  dueDate.value = adjusted
+}
+
+// ─── Form Validation ──────────────────────────────────────
+const taskFormTouched = ref(false)
+const taskFormErrors = computed(() => {
+  if (!taskFormTouched.value) return {}
+  const errors: Record<string, string> = {}
+  if (!newTask.title.trim()) errors.title = 'Title is required'
+  if (!newTask.priority) errors.priority = 'Priority is required'
+  if (!selectedAssignees.value.length) errors.assignees = 'At least one assignee is required'
+  if (!dueDate.value) errors.dueDate = 'Due date is required'
+  return errors
+})
+const isTaskFormValid = computed(() => {
+  return !!newTask.title.trim() && !!newTask.priority && selectedAssignees.value.length > 0 && !!dueDate.value
+})
 function createTask() {
-  if (!showModalTask.value.columnId || !newTask.title.trim()) return
+  taskFormTouched.value = true
+  if (!showModalTask.value.columnId || !isTaskFormValid.value) return
   const payload: NewTask = {
     title: newTask.title.trim(),
     description: newTask.description?.trim(),
@@ -106,7 +146,7 @@ function createTask() {
     dueDate: dueDate.value?.toDate(getLocalTimeZone()),
     status: showModalTask.value.columnId,
     labels: newTask.labels,
-    assignees: selectedAssignees.value.length ? selectedAssignees.value.map(a => a._id) : undefined,
+    assignees: selectedAssignees.value.map(a => a._id),
     createdBy: userCookie.value?._id || undefined,
   }
   addTask(showModalTask.value.columnId, payload)
@@ -173,12 +213,24 @@ async function approveTask(colId: string, task: Task) {
   try {
     const res = await $fetch<any>(`/api/tasks/${(task as any)._id}`, {
       method: 'PUT',
-      body: { approvedBy: { name: userCookie.value?.employee || 'Unknown', approvedAt: new Date() } },
+      body: {
+        approvedBy: { name: userCookie.value?.employee || 'Unknown', approvedAt: new Date() },
+        status: 'done',
+        changedBy: userCookie.value?.employee || undefined,
+      },
     })
     if (res.data) {
-      // Update local state
-      task.approvedBy = res.data.approvedBy
-      toast.success('Task approved — it can now be moved to Done')
+      // Move task from current column to Done
+      const fromCol = board.value.columns.find(c => c.id === colId)
+      const toCol = board.value.columns.find(c => c.id === 'done')
+      if (fromCol && toCol) {
+        fromCol.tasks = fromCol.tasks.filter(t => t.id !== task.id)
+        task.approvedBy = res.data.approvedBy
+        task.status = 'done'
+        toCol.tasks.unshift(task)
+      }
+      viewTask.value = null
+      toast.success('Task approved and moved to Done')
     }
   } catch (e: any) {
     toast.error(e?.data?.message || 'Failed to approve task')
@@ -332,10 +384,72 @@ function completedInDaysLabel(createdAt: any): string {
   if (diff === 1) return 'Completed in 1 day'
   return `Completed in ${diff} days`
 }
+
+// ─── Search ────────────────────────────────────────────
+const searchQuery = ref('')
+const assigneeSearch = ref('')
+
+// Filter tasks within each column based on search query
+function filteredTasks(tasks: Task[]): Task[] {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return tasks
+  return tasks.filter(t => {
+    const titleMatch = t.title?.toLowerCase().includes(q)
+    const descMatch = t.description?.toLowerCase().includes(q)
+    const priorityMatch = t.priority?.toLowerCase().includes(q)
+    const assigneeMatch = (t.assignees || []).some((a: any) => a.employee?.toLowerCase().includes(q))
+    const labelMatch = (t.labels || []).some((l: string) => l.toLowerCase().includes(q))
+    const creatorMatch = (t.createdBy as any)?.employee?.toLowerCase().includes(q)
+    return titleMatch || descMatch || priorityMatch || assigneeMatch || labelMatch || creatorMatch
+  })
+}
+
+const totalSearchResults = computed(() => {
+  if (!searchQuery.value.trim()) return 0
+  return board.value.columns.reduce((sum, c) => sum + filteredTasks(c.tasks).length, 0)
+})
+
+const filteredEmployees = computed(() => {
+  const q = assigneeSearch.value.trim().toLowerCase()
+  if (!q) return employees.value
+  return employees.value.filter((e: any) => e.employee?.toLowerCase().includes(q) || e.position?.toLowerCase().includes(q))
+})
+
+// Permission: can current user edit/delete this task?
+function canEditTask(task: Task | null): boolean {
+  if (!task) return false
+  if (isSuperAdmin.value) return true
+  const creatorId = typeof task.createdBy === 'object' ? (task.createdBy as any)?._id : task.createdBy
+  return !!userCookie.value?._id && creatorId === userCookie.value._id
+}
 </script>
 
 <template>
-  <div class="flex gap-2.5 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 h-[calc(100vh-theme(spacing.24))] px-1.5 sm:px-2 snap-x snap-mandatory sm:snap-none">
+  <!-- Teleport search into the main page header toolbar -->
+  <Teleport to="#header-toolbar">
+    <div class="flex items-center gap-2 w-full justify-end">
+      <div class="relative w-full max-w-xs">
+        <Icon name="lucide:search" class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+        <Input
+          v-model="searchQuery"
+          placeholder="Search tasks..."
+          class="pl-8 h-8 text-sm bg-background"
+        />
+        <button
+          v-if="searchQuery"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          @click="searchQuery = ''"
+        >
+          <Icon name="lucide:x" class="size-3.5" />
+        </button>
+      </div>
+      <span v-if="searchQuery" class="text-xs text-muted-foreground whitespace-nowrap">
+        {{ totalSearchResults }} result{{ totalSearchResults !== 1 ? 's' : '' }}
+      </span>
+    </div>
+  </Teleport>
+
+  <div class="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 h-[calc(100vh-theme(spacing.24))] px-4 snap-x snap-mandatory sm:snap-none">
 
     <!-- Loading State -->
     <template v-if="loading">
@@ -368,7 +482,7 @@ function completedInDaysLabel(createdAt: any): string {
                 <Icon :name="columnIcon(col.id)" class="size-3.5 sm:size-4 col-handle cursor-grab" :class="columnColor(col.id)" />
                 <span class="truncate">{{ col.title }}</span>
                 <Badge variant="secondary" class="h-5 min-w-5 px-1.5 font-mono tabular-nums text-[10px]">
-                  {{ columnTotals[col.id] || col.tasks.length }}
+                  {{ searchQuery ? filteredTasks(col.tasks).length : (columnTotals[col.id] || col.tasks.length) }}
                 </Badge>
               </CardTitle>
               <CardAction v-if="col.id === 'todo' && canCreate()" class="flex">
@@ -395,7 +509,7 @@ function completedInDaysLabel(createdAt: any): string {
                 @end="onTaskDrop"
               >
                 <template #item="{ element: t }: { element: Task }">
-                  <div class="rounded-xl border bg-card px-3 py-2.5 shadow-sm hover:bg-accent/50 cursor-pointer transition-colors" @click="openTaskDetail(col.id, t)">
+                  <div v-show="filteredTasks(col.tasks).some(ft => ft.id === t.id)" class="rounded-xl border bg-card px-3 py-2.5 shadow-sm hover:bg-accent/50 cursor-pointer transition-colors" @click="openTaskDetail(col.id, t)">
                     <!-- Row 1: Created By & Created At -->
                     <div class="flex items-center gap-1.5 mb-1.5">
                       <Tooltip v-if="t.createdBy">
@@ -542,95 +656,119 @@ function completedInDaysLabel(createdAt: any): string {
       </DialogHeader>
       <div class="flex flex-col gap-3">
         <div class="grid items-baseline grid-cols-1 md:grid-cols-4 md:[&>label]:col-span-1 *:col-span-3 gap-2 sm:gap-3">
-          <Label>Title</Label>
-          <Input v-model="newTask.title" placeholder="Title" class="h-9 sm:h-10" />
+          <Label>Title <span class="text-red-500">*</span></Label>
+          <div class="flex flex-col gap-0.5">
+            <Input v-model="newTask.title" placeholder="Title" class="h-9 sm:h-10" :class="taskFormErrors.title ? 'border-red-500' : ''" />
+            <span v-if="taskFormErrors.title" class="text-[10px] text-red-500">{{ taskFormErrors.title }}</span>
+          </div>
           <Label>Description</Label>
           <Textarea v-model="newTask.description" placeholder="Description (optional)" rows="3" class="text-sm" />
-          <Label>Priority</Label>
-          <Select v-model="newTask.priority">
-            <SelectTrigger class="w-full h-9 sm:h-10">
-              <SelectValue placeholder="Select a priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-            </SelectContent>
-          </Select>
-          <Label>Assignees</Label>
-          <Popover>
-            <PopoverTrigger as-child>
-              <Button variant="outline" class="w-full justify-start h-auto min-h-9 sm:min-h-10 font-normal py-1.5 flex-wrap gap-1">
-                <template v-if="selectedAssignees.length">
-                  <div v-for="a in selectedAssignees" :key="a._id" class="flex items-center gap-1 bg-muted rounded-full pl-0.5 pr-2 py-0.5">
-                    <Avatar class="size-4">
-                      <AvatarImage :src="a.profileImage || ''" :alt="a.employee" />
-                      <AvatarFallback class="text-[7px]">{{ a.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
-                    </Avatar>
-                    <span class="text-[10px] font-medium">{{ a.employee }}</span>
-                  </div>
-                </template>
-                <template v-else>
-                  <Icon name="lucide:users" class="mr-2 size-4 text-muted-foreground" />
-                  <span class="text-muted-foreground">Select assignees</span>
-                </template>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent class="w-[260px] p-1" align="start">
-              <div class="px-2 py-1.5 border-b mb-1 flex items-center justify-between">
-                <p class="text-xs font-semibold text-muted-foreground">Employees</p>
-                <button v-if="selectedAssignees.length" class="text-[10px] text-muted-foreground hover:text-foreground transition-colors" @click="selectedAssignees = []">
-                  Clear all
-                </button>
-              </div>
-              <div class="max-h-48 overflow-y-auto space-y-0.5">
-                <button
-                  v-for="emp in employees"
-                  :key="emp._id"
-                  class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
-                  :class="selectedAssignees.some(a => a._id === emp._id) ? 'bg-accent' : ''"
-                  @click="selectedAssignees.some(a => a._id === emp._id) ? selectedAssignees = selectedAssignees.filter(a => a._id !== emp._id) : selectedAssignees.push({ _id: emp._id, employee: emp.employee, profileImage: emp.profileImage || '' })"
-                >
-                  <Avatar class="size-5">
-                    <AvatarImage :src="emp.profileImage || ''" :alt="emp.employee" />
-                    <AvatarFallback class="text-[8px]">{{ emp.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
-                  </Avatar>
-                  <div class="flex flex-col items-start flex-1">
-                    <span>{{ emp.employee }}</span>
-                    <span class="text-[10px] text-muted-foreground">{{ emp.position }}</span>
-                  </div>
-                  <Icon v-if="selectedAssignees.some(a => a._id === emp._id)" name="lucide:check" class="size-4 ml-auto text-primary" />
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Label>Due Date</Label>
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-1">
+          <Label>Priority <span class="text-red-500">*</span></Label>
+          <div class="flex flex-col gap-0.5">
+            <Select v-model="newTask.priority">
+              <SelectTrigger class="w-full h-9 sm:h-10" :class="taskFormErrors.priority ? 'border-red-500' : ''">
+                <SelectValue placeholder="Select a priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+            <span v-if="taskFormErrors.priority" class="text-[10px] text-red-500">{{ taskFormErrors.priority }}</span>
+          </div>
+          <Label>Assignees <span class="text-red-500">*</span></Label>
+          <div class="flex flex-col gap-0.5">
             <Popover>
               <PopoverTrigger as-child>
-                <Button
-                  variant="outline"
-                  :class="cn(
-                    'flex-1 justify-start text-left font-normal px-3 h-9 sm:h-10',
-                    !dueDate && 'text-muted-foreground',
-                  )"
-                >
-                  <Icon name="lucide:calendar" class="mr-2" />
-                  {{ dueDate ? df.format(dueDate.toDate(getLocalTimeZone())) : "Pick a date" }}
+                <Button variant="outline" class="w-full justify-start h-auto min-h-9 sm:min-h-10 font-normal py-1.5 flex-wrap gap-1" :class="taskFormErrors.assignees ? 'border-red-500' : ''">
+                  <template v-if="selectedAssignees.length">
+                    <div v-for="a in selectedAssignees" :key="a._id" class="flex items-center gap-1 bg-muted rounded-full pl-0.5 pr-2 py-0.5">
+                      <Avatar class="size-4">
+                        <AvatarImage :src="a.profileImage || ''" :alt="a.employee" />
+                        <AvatarFallback class="text-[7px]">{{ a.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                      </Avatar>
+                      <span class="text-[10px] font-medium">{{ a.employee }}</span>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <Icon name="lucide:users" class="mr-2 size-4 text-muted-foreground" />
+                    <span class="text-muted-foreground">Select assignees</span>
+                  </template>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent class="w-auto p-0">
-                <Calendar v-model="dueDate" initial-focus />
+              <PopoverContent class="w-[260px] p-1" align="start">
+                <div class="px-2 py-1.5 border-b mb-1 flex items-center justify-between">
+                  <p class="text-xs font-semibold text-muted-foreground">Employees</p>
+                  <button v-if="selectedAssignees.length" class="text-[10px] text-muted-foreground hover:text-foreground transition-colors" @click="selectedAssignees = []">
+                    Clear all
+                  </button>
+                </div>
+                <div class="px-1.5 pb-1.5">
+                  <Input v-model="assigneeSearch" placeholder="Search..." class="h-7 text-xs" />
+                </div>
+                <div class="max-h-48 overflow-y-auto space-y-0.5">
+                  <button
+                    v-for="emp in filteredEmployees"
+                    :key="emp._id"
+                    class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
+                    :class="selectedAssignees.some(a => a._id === emp._id) ? 'bg-accent' : ''"
+                    @click="selectedAssignees.some(a => a._id === emp._id) ? selectedAssignees = selectedAssignees.filter(a => a._id !== emp._id) : selectedAssignees.push({ _id: emp._id, employee: emp.employee, profileImage: emp.profileImage || '' })"
+                  >
+                    <Avatar class="size-5">
+                      <AvatarImage :src="emp.profileImage || ''" :alt="emp.employee" />
+                      <AvatarFallback class="text-[8px]">{{ emp.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                    </Avatar>
+                    <div class="flex flex-col items-start flex-1">
+                      <span>{{ emp.employee }}</span>
+                      <span class="text-[10px] text-muted-foreground">{{ emp.position }}</span>
+                    </div>
+                    <Icon v-if="selectedAssignees.some(a => a._id === emp._id)" name="lucide:check" class="size-4 ml-auto text-primary" />
+                  </button>
+                </div>
               </PopoverContent>
             </Popover>
-            <Input
-              id="time-picker"
-              v-model="dueTime"
-              type="time"
-              step="60"
-              default-value="00:00"
-              class="flex-1 bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none h-9 sm:h-10"
-            />
+            <span v-if="taskFormErrors.assignees" class="text-[10px] text-red-500">{{ taskFormErrors.assignees }}</span>
+          </div>
+          <Label>Due Date <span class="text-red-500">*</span></Label>
+          <div class="flex flex-col gap-0.5">
+            <div class="flex items-center gap-1">
+              <Button size="icon" variant="outline" class="size-9 sm:size-10 shrink-0" @click="adjustDueDate(-1)" :disabled="!dueDate || dueDate.compare(new CalendarDateTime(minDueDate.year, minDueDate.month, minDueDate.day, 0, 0)) <= 0">
+                <Icon name="lucide:minus" class="size-4" />
+              </Button>
+              <Popover>
+                <PopoverTrigger as-child>
+                  <Button
+                    variant="outline"
+                    :class="cn(
+                      'flex-1 justify-start text-left font-normal px-3 h-9 sm:h-10',
+                      !dueDate && 'text-muted-foreground',
+                      taskFormErrors.dueDate ? 'border-red-500' : '',
+                    )"
+                  >
+                    <Icon name="lucide:calendar" class="mr-2" />
+                    {{ dueDate ? df.format(dueDate.toDate(getLocalTimeZone())) : "Pick a date" }}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent class="w-auto p-0">
+                  <Calendar v-model="dueDate" :min-value="minDueDate" initial-focus />
+                </PopoverContent>
+              </Popover>
+              <Button size="icon" variant="outline" class="size-9 sm:size-10 shrink-0" @click="adjustDueDate(1)">
+                <Icon name="lucide:plus" class="size-4" />
+              </Button>
+            </div>
+            <div class="flex items-center gap-1">
+              <Input
+                id="time-picker"
+                v-model="dueTime"
+                type="time"
+                step="60"
+                default-value="00:00"
+                class="flex-1 bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none h-9 sm:h-10"
+              />
+            </div>
+            <span v-if="taskFormErrors.dueDate" class="text-[10px] text-red-500">{{ taskFormErrors.dueDate }}</span>
           </div>
         </div>
       </div>
@@ -638,7 +776,7 @@ function completedInDaysLabel(createdAt: any): string {
         <Button variant="secondary" class="w-full sm:w-auto" @click="showModalTask.open = false">
           Cancel
         </Button>
-        <Button class="w-full sm:w-auto" @click="showModalTask.type === 'create' ? createTask() : editTask()">
+        <Button class="w-full sm:w-auto" :disabled="showModalTask.type === 'create' && taskFormTouched && !isTaskFormValid" @click="showModalTask.type === 'create' ? createTask() : editTask()">
           {{ showModalTask.type === 'create' ? 'Create' : 'Update' }}
         </Button>
       </DialogFooter>
@@ -850,11 +988,11 @@ function completedInDaysLabel(createdAt: any): string {
 
         <!-- Actions Footer -->
         <div class="px-5 py-3 border-t border-border/50 flex items-center gap-2">
-          <Button v-if="canUpdate()" size="sm" variant="outline" class="h-8 text-xs" @click="showEditTask(viewTask!.colId, viewTask!.task.id); viewTask = null">
+          <Button v-if="canUpdate() && canEditTask(viewTask?.task)" size="sm" variant="outline" class="h-8 text-xs" @click="showEditTask(viewTask!.colId, viewTask!.task.id); viewTask = null">
             <Icon name="i-lucide-edit-2" class="size-3.5 mr-1.5" />
             Edit
           </Button>
-          <Button v-if="canDelete()" size="sm" variant="outline" class="h-8 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5" @click="removeTask(viewTask!.colId, viewTask!.task.id); viewTask = null">
+          <Button v-if="canDelete() && canEditTask(viewTask?.task)" size="sm" variant="outline" class="h-8 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5" @click="removeTask(viewTask!.colId, viewTask!.task.id); viewTask = null">
             <Icon name="i-lucide-trash-2" class="size-3.5 mr-1.5" />
             Delete
           </Button>

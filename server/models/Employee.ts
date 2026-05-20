@@ -15,4 +15,9 @@ const EmployeeSchema = new mongoose.Schema(
     { timestamps: true, collection: 'hardwoodDB_Employees' },
 )
 
+// Indexes for auth and dashboard queries
+EmployeeSchema.index({ email: 1 })
+EmployeeSchema.index({ status: 1 })
+EmployeeSchema.index({ createdAt: -1 })
+
 export const Employee = mongoose.models.Employee || mongoose.model('Employee', EmployeeSchema)

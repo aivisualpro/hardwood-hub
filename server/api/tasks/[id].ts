@@ -76,7 +76,6 @@ export default defineEventHandler(async (event) => {
         const statusChanged = body.status && body.status !== oldDoc.status
         if (statusChanged && doc.createdBy?.employee) {
             notifyStatusChange({
-                taskId: doc.taskId,
                 title: doc.title,
                 createdByName: doc.createdBy.employee,
                 movedByName: changedBy || undefined,
