@@ -376,14 +376,18 @@ const filteredIcons = computed(() => {
 })
 
 const activeDropdown = computed(() => {
-  const dd = dropdowns.value.find(d => d._id === activeDropdownId.value) ?? null
-  if (!dd) return null
-  // Return a shallow clone with sorted options — never mutate inside a computed
-  return {
-    ...dd,
-    options: [...dd.options].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-  }
+  return dropdowns.value.find(d => d._id === activeDropdownId.value) ?? null
 })
+
+// Sorted copy for display & drag — kept in sync but won't cause infinite loops
+const sortedOptions = ref<DropdownOption[]>([])
+watch(() => activeDropdown.value?.options, (opts) => {
+  if (opts) {
+    sortedOptions.value = [...opts].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  } else {
+    sortedOptions.value = []
+  }
+}, { immediate: true, deep: true })
 
 async function fetchDropdowns() {
   loadingDropdowns.value = true
@@ -464,9 +468,10 @@ function commitEditLabel(dropdownId: string, optId: string) {
 async function reorderOptions(dropdownId: string) {
   const dd = dropdowns.value.find(d => d._id === dropdownId)
   if (!dd) return
-  // Assign sequential order values based on current array position
-  const reordered = dd.options.map((opt, idx) => ({ ...opt, order: idx }))
+  // sortedOptions was already reordered by draggable — write order values & sync back
+  const reordered = sortedOptions.value.map((opt, idx) => ({ ...opt, order: idx }))
   dd.options = reordered
+  sortedOptions.value = reordered
   try {
     const res = await $fetch<{ success: boolean, data: DropdownRecord }>('/api/dropdowns', {
       method: 'PUT',
@@ -1292,7 +1297,7 @@ const WpIconsList = [
                       </tr>
                     </thead>
                     <draggable
-                      :list="activeDropdown.options"
+                      :list="sortedOptions"
                       tag="tbody"
                       item-key="_id"
                       handle=".drag-handle"
