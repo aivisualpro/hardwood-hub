@@ -377,10 +377,12 @@ const filteredIcons = computed(() => {
 
 const activeDropdown = computed(() => {
   const dd = dropdowns.value.find(d => d._id === activeDropdownId.value) ?? null
-  if (dd) {
-    dd.options = [...dd.options].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  if (!dd) return null
+  // Return a shallow clone with sorted options — never mutate inside a computed
+  return {
+    ...dd,
+    options: [...dd.options].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
   }
-  return dd
 })
 
 async function fetchDropdowns() {
