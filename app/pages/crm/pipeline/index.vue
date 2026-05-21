@@ -129,8 +129,14 @@ const statusMap = computed(() => {
 async function fetchStatusDropdown() {
   try {
     const res = await $fetch<any>('/api/dropdowns?name=Customer Status')
-    if (res?.data?.options) {
-      statusOptions.value = res.data.options
+    if (res?.data) {
+      const d = res.data
+      if (Array.isArray(d)) {
+        const match = d.find((dd: any) => dd.name === 'Customer Status')
+        if (match?.options) statusOptions.value = match.options
+      } else if (d.options) {
+        statusOptions.value = d.options
+      }
     }
   } catch (e) {
     console.warn('Failed to load status dropdown', e)
@@ -265,7 +271,17 @@ const { pending: loadingData } = await useAsyncData('pipeline-page', async () =>
     $fetch<any>('/api/employees'),
   ])
   if (custRes?.success) customers.value = custRes.data || []
-  if (statusRes?.data?.options) statusOptions.value = statusRes.data.options
+  // Handle both response shapes: single dropdown object or array of all dropdowns
+  if (statusRes?.data) {
+    const d = statusRes.data
+    if (Array.isArray(d)) {
+      // Full list returned (e.g. from SWR cache) — find the matching dropdown
+      const match = d.find((dd: any) => dd.name === 'Customer Status')
+      if (match?.options) statusOptions.value = match.options
+    } else if (d.options) {
+      statusOptions.value = d.options
+    }
+  }
   if (empRes?.success) employeesList.value = empRes.data || []
   return true
 }, { server: false, lazy: true })

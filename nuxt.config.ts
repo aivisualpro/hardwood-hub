@@ -113,7 +113,8 @@ export default defineNuxtConfig({
     '/api/app-settings': { swr: 120 },
     '/api/dashboard/stats': { swr: 15 },
     '/api/workspaces': { swr: 60 },
-    '/api/dropdowns': { swr: 60 },
+    // NOTE: '/api/dropdowns' SWR removed — Vercel edge cache doesn't vary by
+    // query params, so ?name=X requests got the full-list cached response.
   },
 
   imports: {
