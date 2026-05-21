@@ -15,6 +15,27 @@ const COLUMN_DEFS = [
 
 const PAGE_SIZE = 20
 
+function getObjectIdString(val: any): string | null {
+  if (!val) return null
+  if (typeof val === 'string') return val.trim()
+  if (typeof val === 'object') {
+    if (typeof val.toHexString === 'function') {
+      return val.toHexString().trim()
+    }
+    if (val._id) {
+      return getObjectIdString(val._id)
+    }
+    if (typeof val.toString === 'function') {
+      const str = val.toString().trim()
+      if (str && str.length === 24) return str
+    }
+    if (val.id && typeof val.id === 'string') {
+      return val.id.trim()
+    }
+  }
+  return String(val).trim()
+}
+
 export function useKanban() {
   const board = useState<BoardState>('kanban-board', () => ({
     columns: COLUMN_DEFS.map(c => ({ id: c.id, title: c.title, tasks: [] })),
@@ -88,14 +109,20 @@ export function useKanban() {
       description: t.description,
       priority: t.priority,
       assignees: (t.assignees || []).map((a: any) => {
-        // Already populated Employee doc
-        if (a && typeof a === 'object' && a.employee) {
-          return { _id: a._id?.toString?.() || a._id, employee: a.employee, profileImage: a.profileImage || '' }
+        if (!a) return null
+        // Populated Employee doc
+        if (typeof a === 'object' && a.employee) {
+          return { _id: getObjectIdString(a) || '', employee: a.employee, profileImage: a.profileImage || '' }
         }
-        // Raw ObjectId string (fallback)
-        if (typeof a === 'string') return { _id: a, employee: '', profileImage: '' }
         // Legacy format: { id, name, avatar }
-        if (a?.name) return { _id: a.id || a._id, employee: a.name, profileImage: a.avatar || '' }
+        if (a?.name) {
+          return { _id: getObjectIdString(a) || '', employee: a.name, profileImage: a.avatar || '' }
+        }
+        // Raw ObjectId or string representation
+        const id = getObjectIdString(a)
+        if (id) {
+          return { _id: id, employee: 'Unknown', profileImage: '' }
+        }
         return null
       }).filter(Boolean),
       createdBy: (() => {
@@ -103,14 +130,17 @@ export function useKanban() {
         if (!cb) return undefined
         // Populated Employee doc
         if (typeof cb === 'object' && cb.employee) {
-          return { _id: cb._id?.toString?.() || cb._id, employee: cb.employee, profileImage: cb.profileImage || '' }
+          return { _id: getObjectIdString(cb) || '', employee: cb.employee, profileImage: cb.profileImage || '' }
         }
         // Legacy embedded format
         if (typeof cb === 'object' && (cb as any).name) {
-          return { _id: (cb as any).id || (cb as any)._id || '', employee: (cb as any).name, profileImage: (cb as any).avatar || '' }
+          return { _id: getObjectIdString(cb) || '', employee: (cb as any).name, profileImage: (cb as any).avatar || '' }
         }
-        // Raw ObjectId string
-        if (typeof cb === 'string') return { _id: cb, employee: '', profileImage: '' }
+        // Raw ObjectId or string representation
+        const id = getObjectIdString(cb)
+        if (id) {
+          return { _id: id, employee: 'Unknown', profileImage: '' }
+        }
         return undefined
       })(),
       dueDate: t.dueDate,
@@ -149,13 +179,24 @@ export function useKanban() {
     if (!t || !(t as any)._id) return
 
     // Get current user name for changelog
-    const userCookie = useCookie<{ employee?: string } | null>('hardwood_user')
-    const changedBy = userCookie.value?.employee || ''
+    const userCookie = useCookie<any>('hardwood_user')
+    const currentUser = typeof userCookie.value === 'string' ? (() => {
+      try { return JSON.parse(userCookie.value) } catch { return null }
+    })() : userCookie.value
+
+    const changedBy = currentUser?.employee || ''
 
     // Optimistic
     Object.assign(t, patch)
     try {
-      const res = await $fetch<any>(`/api/tasks/${(t as any)._id}`, { method: 'PUT', body: { ...patch, _changedBy: changedBy } })
+      const res = await $fetch<any>(`/api/tasks/${(t as any)._id}`, {
+        method: 'PUT',
+        body: {
+          ...patch,
+          _changedBy: changedBy,
+          _changedById: currentUser?._id || currentUser?.id || ''
+        }
+      })
       // Apply populated response back (e.g. assignees with employee data)
       if (res?.data) {
         const mapped = mapTask(res.data)
@@ -221,8 +262,19 @@ export function useKanban() {
     if (!updates.length) return
 
     // Throws on 403 (approval gate) so caller can revert
-    const userCookie = useCookie<{ _id?: string, employee?: string } | null>('hardwood_user')
-    await $fetch('/api/tasks/reorder', { method: 'POST', body: { updates, _changedBy: userCookie.value?.employee || '', _changedById: userCookie.value?._id || '' } })
+    const userCookie = useCookie<any>('hardwood_user')
+    const currentUser = typeof userCookie.value === 'string' ? (() => {
+      try { return JSON.parse(userCookie.value) } catch { return null }
+    })() : userCookie.value
+
+    await $fetch('/api/tasks/reorder', {
+      method: 'POST',
+      body: {
+        updates,
+        _changedBy: currentUser?.employee || '',
+        _changedById: currentUser?._id || currentUser?.id || ''
+      }
+    })
   }
 
   // ─── Subtask CRUD ─────────────────────────────────

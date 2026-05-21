@@ -1,15 +1,84 @@
 // PUT    /api/tasks/:id   — update a task (including status change for drag-drop)
 // DELETE /api/tasks/:id   — delete a task
+import mongoose from 'mongoose'
 import { connectDB } from '../../utils/mongoose'
 import { Task } from '../../models/Task'
 import { Employee } from '../../models/Employee'
 import { notifyStatusChange, notifyComment } from '../../utils/taskNotifications'
+import { verifySessionToken } from '../../lib/session'
 
 const POPULATE_FIELDS = [
     { path: 'assignees', select: '_id employee profileImage' },
     { path: 'createdBy', select: '_id employee profileImage' },
     { path: 'approvedBy', select: '_id employee profileImage' },
 ]
+
+function getObjectIdString(val: any): string | null {
+    if (!val) return null
+    if (typeof val === 'string') return val
+    if (typeof val === 'object') {
+        if (typeof val.toHexString === 'function') {
+            return val.toHexString()
+        }
+        if (val._id) {
+            return getObjectIdString(val._id)
+        }
+        if (val.id && typeof val.id === 'string') {
+            return val.id
+        }
+        return String(val)
+    }
+    return String(val)
+}
+
+function resolveChangedById(event: any, body: any): string {
+    let session = (event.context as any).session
+    if (!session) {
+        const token = getCookie(event, 'hardwood_session')
+        if (token) {
+            session = verifySessionToken(token)
+        }
+    }
+    if (session?.id) return session.id
+
+    if (body?._changedById) return body._changedById
+
+    // Fallback to hardwood_user cookie
+    const userCookieStr = getCookie(event, 'hardwood_user')
+    if (userCookieStr) {
+        try {
+            let cleanStr = userCookieStr
+            if (cleanStr.startsWith('j:')) {
+                cleanStr = cleanStr.slice(2)
+            }
+            const userObj = JSON.parse(decodeURIComponent(cleanStr))
+            const id = userObj?._id || userObj?.id
+            if (id) return String(id)
+        } catch {}
+    }
+
+    return ''
+}
+
+function resolveChangedBy(event: any, body: any): string {
+    if (body?._changedBy) return body._changedBy
+
+    // Fallback to hardwood_user cookie
+    const userCookieStr = getCookie(event, 'hardwood_user')
+    if (userCookieStr) {
+        try {
+            let cleanStr = userCookieStr
+            if (cleanStr.startsWith('j:')) {
+                cleanStr = cleanStr.slice(2)
+            }
+            const userObj = JSON.parse(decodeURIComponent(cleanStr))
+            if (userObj?.employee) return String(userObj.employee)
+            if (userObj?.name) return String(userObj.name)
+        } catch {}
+    }
+
+    return ''
+}
 
 export default defineEventHandler(async (event) => {
     await connectDB()
@@ -18,8 +87,32 @@ export default defineEventHandler(async (event) => {
 
     if (event.method === 'PUT') {
         const body = await readBody(event)
-        const changedBy = body._changedBy || '' // passed from client
+
+        const changedById = resolveChangedById(event, body)
+        let changedBy = resolveChangedBy(event, body)
+
+        console.log('[tasks PUT id] Request for task id:', id)
+        console.log('[tasks PUT id] body:', body)
+        console.log('[tasks PUT id] changedById:', changedById)
+        console.log('[tasks PUT id] changedBy:', changedBy)
+
+        if (changedById && !changedBy) {
+            const emp = await Employee.findById(changedById).lean<any>()
+            if (emp) {
+                changedBy = emp.employee || ''
+            }
+        }
         delete body._changedBy
+        delete body._changedById
+
+        if (body.approvedBy !== undefined) {
+            const approvedByIdStr = getObjectIdString(body.approvedBy)
+            if (approvedByIdStr && approvedByIdStr.length === 24) {
+                body.approvedBy = new mongoose.Types.ObjectId(approvedByIdStr)
+            } else {
+                body.approvedBy = null
+            }
+        }
 
         // Fetch old doc first to detect changes
         const oldDoc: any = await Task.findById(id).lean()
@@ -27,11 +120,44 @@ export default defineEventHandler(async (event) => {
 
         // ── Approval gate: cannot move to "done" without approval ──
         if (body.status === 'done' && oldDoc.status !== 'done') {
-            if (!oldDoc.approvedBy) {
+            const creatorId = getObjectIdString(oldDoc.createdBy)
+            const oldApprovedById = getObjectIdString(oldDoc.approvedBy)
+
+            // Let's resolve if the user is a Super Admin
+            let isSuperAdmin = false
+            if (changedById) {
+                const emp = await Employee.findById(changedById).lean<any>()
+                if (emp?.position === 'Super Admin') {
+                    isSuperAdmin = true
+                }
+            }
+
+            const isCreator = !creatorId || (!!changedById && creatorId.trim().toLowerCase() === changedById.trim().toLowerCase())
+
+            console.log('[tasks PUT id] creatorId:', creatorId)
+            console.log('[tasks PUT id] oldApprovedById:', oldApprovedById)
+            console.log('[tasks PUT id] isCreator:', isCreator)
+            console.log('[tasks PUT id] isSuperAdmin:', isSuperAdmin)
+
+            // A task can be moved to Done if:
+            // 1. It is already approved.
+            // 2. OR the current user is the creator.
+            // 3. OR the current user is a Super Admin.
+            const isAllowed = !!oldApprovedById || isCreator || isSuperAdmin
+
+            console.log('[tasks PUT id] final isAllowed evaluated:', isAllowed)
+
+            if (!isAllowed) {
                 throw createError({
                     statusCode: 403,
                     message: 'Task must be approved by the creator before it can be moved to Done',
                 })
+            }
+
+            // If allowed and not already approved, auto-approve it using the logged-in user
+            if (!oldApprovedById) {
+                const approverIdStr = changedById || creatorId
+                body.approvedBy = approverIdStr ? new mongoose.Types.ObjectId(approverIdStr) : null
             }
         }
 
@@ -81,6 +207,7 @@ export default defineEventHandler(async (event) => {
                 createdByName: doc.createdBy.employee,
                 movedByName: changedBy || undefined,
                 assigneeNames: (doc.assignees || []).map((a: any) => a.employee).filter(Boolean).join(', '),
+                approvedByName: doc.approvedBy?.employee || undefined,
                 priority: doc.priority,
                 dueDate: doc.dueDate,
                 oldStatus: oldDoc.status,

@@ -104,55 +104,24 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body style="margin:0; padding:0; background-color:#f8fafc; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1a1a1a;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8fafc;">
-    <tr>
-      <td align="center" style="padding:40px 20px;">
-        <table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px; width:100%; background-color:#ffffff; border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+<body style="margin:0; padding:24px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1a1a1a; background-color:#ffffff;">
+  <div style="max-width:520px; margin:0 auto; padding:20px; border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+    <!-- Row 1: Task Title -->
+    <div style="font-size:20px; font-weight:700; color:#0f172a; margin-bottom:12px; line-height:1.3;">${title}</div>
 
-          <!-- Green top bar -->
-          <tr><td style="height:5px; background-color:#10b981;"></td></tr>
+    <!-- Row 2: TASK DONE -->
+    <div style="font-size:14px; font-weight:800; color:#10b981; margin-bottom:16px; letter-spacing:0.05em;">✓ TASK DONE</div>
 
-          <tr>
-            <td style="padding:36px 36px 32px;">
+    <!-- Row 3: Completed by (Assignees) -->
+    <div style="font-size:14px; color:#475569; margin-bottom:12px; line-height:1.5;">
+      Task has been completed by <strong style="color:#0f172a;">${assigneeNames || movedByName || '—'}</strong>
+    </div>
 
-              <!-- Logo -->
-              ${company.logo ? `<img src="${company.logo}" alt="${companyName}" style="max-height:28px; max-width:120px; object-fit:contain; margin-bottom:28px; display:block;" />` : ''}
-
-              <!-- Row 1: Task Title -->
-              <h1 style="margin:0 0 16px; font-size:22px; font-weight:700; color:#0f172a; line-height:1.3;">${title}</h1>
-
-              <!-- Row 2: TASK DONE badge -->
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:28px;">
-                <tr>
-                  <td style="padding:8px 18px; background-color:#d1fae5; border-radius:8px; font-size:13px; font-weight:800; color:#065f46; letter-spacing:0.1em; text-transform:uppercase;">
-                    ✓ TASK DONE
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Row 3: Completed by (assignees) -->
-              <p style="margin:0 0 12px; font-size:14px; color:#475569; line-height:1.6;">
-                Task has been completed by <strong style="color:#0f172a;">${assigneeNames || movedByName || '—'}</strong>
-              </p>
-
-              <!-- Row 4: Approved by -->
-              ${approvedByName ? `<p style="margin:0; font-size:14px; color:#475569; line-height:1.6;">Approved by <strong style="color:#0f172a;">${approvedByName}</strong></p>` : ''}
-
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding:16px 36px; background-color:#f8fafc; border-top:1px solid #e2e8f0;">
-              <p style="margin:0; font-size:11px; color:#cbd5e1;">This is an automated notification. Please do not reply.</p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
+    <!-- Row 4: Approved by -->
+    <div style="font-size:14px; color:#475569; line-height:1.5;">
+      Approved by <strong style="color:#0f172a;">${approvedByName || '—'}</strong>
+    </div>
+  </div>
 </body>
 </html>` : `<!DOCTYPE html>
 <html>

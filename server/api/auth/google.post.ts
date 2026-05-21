@@ -60,10 +60,13 @@ export default defineEventHandler(async (event) => {
     // 3. Create session token
     const sessionToken = createSessionToken(String(employee._id), employee.email)
 
+    const host = event.node.req.headers.host || ''
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1')
+
     // 4. Set secure HTTP-only cookie
     setCookie(event, 'hardwood_session', sessionToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.NODE_ENV === 'production' && !isLocalhost,
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60, // 7 days
         path: '/',

@@ -24,11 +24,35 @@ const {
 } = useKanban()
 
 // Get current user for comments
-const userCookie = useCookie<{ _id: string, employee: string, profileImage: string, position?: string } | null>('hardwood_user')
-const isSuperAdmin = computed(() => userCookie.value?.position === 'Super Admin')
+const userCookie = useCookie<any>('hardwood_user')
+const currentUser = computed(() => {
+  if (!userCookie.value) return null
+  if (typeof userCookie.value === 'string') {
+    try {
+      return JSON.parse(userCookie.value)
+    } catch {
+      return null
+    }
+  }
+  return userCookie.value
+})
+const isSuperAdmin = computed(() => currentUser.value?.position === 'Super Admin')
 
 // Permissions
 const { canCreate, canUpdate, canDelete } = usePermissions('/tasks')
+
+const canCreateTasks = computed(() => {
+  if (isSuperAdmin.value) return true
+  return canCreate()
+})
+const canUpdateTasks = computed(() => {
+  if (isSuperAdmin.value) return true
+  return canUpdate()
+})
+const canDeleteTasks = computed(() => {
+  if (isSuperAdmin.value) return true
+  return canDelete()
+})
 
 // Fetch employees for assignee dropdown
 const employees = ref<any[]>([])
@@ -147,7 +171,7 @@ function createTask() {
     status: showModalTask.value.columnId,
     labels: newTask.labels,
     assignees: selectedAssignees.value.map(a => a._id),
-    createdBy: userCookie.value?._id || undefined,
+    createdBy: currentUser.value?._id || undefined,
   }
   addTask(showModalTask.value.columnId, payload)
   showModalTask.value.open = false
@@ -214,9 +238,10 @@ async function approveTask(colId: string, task: Task) {
     const res = await $fetch<any>(`/api/tasks/${(task as any)._id}`, {
       method: 'PUT',
       body: {
-        approvedBy: userCookie.value?._id || null,
+        approvedBy: currentUser.value?._id || null,
         status: 'done',
-        changedBy: userCookie.value?.employee || undefined,
+        _changedBy: currentUser.value?.employee || undefined,
+        _changedById: currentUser.value?._id || currentUser.value?.id || '',
       },
     })
     if (res.data) {
@@ -328,7 +353,7 @@ const OPTIONS: UseTimeAgoOptions<false, UseTimeAgoUnitNamesDefault> = {
 
 function handleAddComment(colId: string, taskId: string) {
   if (newCommentText.value.trim()) {
-    addComment(colId, taskId, newCommentText.value.trim(), userCookie.value?.employee, userCookie.value?.profileImage)
+    addComment(colId, taskId, newCommentText.value.trim(), currentUser.value?.employee, currentUser.value?.profileImage)
     newCommentText.value = ''
   }
 }
@@ -415,12 +440,32 @@ const filteredEmployees = computed(() => {
   return employees.value.filter((e: any) => e.employee?.toLowerCase().includes(q) || e.position?.toLowerCase().includes(q))
 })
 
+function isTaskCreator(task: Task | null): boolean {
+  if (!task) return false
+  if (!currentUser.value) return false
+
+  // 1. Compare by ID
+  const creatorId = typeof task.createdBy === 'object' ? (task.createdBy as any)?._id || (task.createdBy as any)?.id : task.createdBy
+  const currentUserId = currentUser.value?._id || currentUser.value?.id
+  if (creatorId && currentUserId && String(creatorId).trim() === String(currentUserId).trim()) {
+    return true
+  }
+
+  // 2. Compare by Employee Name (fallback/legacy/robustness)
+  const creatorName = typeof task.createdBy === 'object' ? (task.createdBy as any)?.employee || (task.createdBy as any)?.name : null
+  const currentUserName = currentUser.value?.employee || currentUser.value?.name
+  if (creatorName && currentUserName && String(creatorName).trim().toLowerCase() === String(currentUserName).trim().toLowerCase()) {
+    return true
+  }
+
+  return false
+}
+
 // Permission: can current user edit/delete this task?
 function canEditTask(task: Task | null): boolean {
   if (!task) return false
   if (isSuperAdmin.value) return true
-  const creatorId = typeof task.createdBy === 'object' ? (task.createdBy as any)?._id : task.createdBy
-  return !!userCookie.value?._id && creatorId === userCookie.value._id
+  return isTaskCreator(task)
 }
 </script>
 
@@ -469,9 +514,10 @@ function canEditTask(task: Task | null): boolean {
         v-model="board.columns"
         class="flex gap-2.5 sm:gap-4 w-full h-full"
         item-key="id"
-        :animation="100"
+        :animation="200"
         handle=".col-handle"
-        ghost-class="opacity-50"
+        ghost-class="opacity-40"
+        :disabled="!!searchQuery"
         @start="onDragStart"
         @end="onTaskDrop"
       >
@@ -485,7 +531,7 @@ function canEditTask(task: Task | null): boolean {
                   {{ searchQuery ? filteredTasks(col.tasks).length : (columnTotals[col.id] || col.tasks.length) }}
                 </Badge>
               </CardTitle>
-              <CardAction v-if="col.id === 'todo' && canCreate()" class="flex">
+              <CardAction v-if="col.id === 'todo' && canCreateTasks" class="flex">
                 <Button size="icon-sm" variant="ghost" class="size-7 sm:size-7 text-muted-foreground" @click="openNewTask(col.id)">
                   <Icon name="lucide:plus" />
                 </Button>
@@ -499,12 +545,12 @@ function canEditTask(task: Task | null): boolean {
               <!-- Tasks within the column -->
               <Draggable
                 v-model="col.tasks"
-                :group="canUpdate() ? { name: 'kanban-tasks', pull: true, put: true } : { name: 'kanban-tasks', pull: false, put: false }"
+                :group="canUpdateTasks ? { name: 'kanban-tasks', pull: true, put: true } : { name: 'kanban-tasks', pull: false, put: false }"
                 item-key="id"
-                :animation="100"
-                class="flex flex-col gap-1.5 sm:gap-2 min-h-[24px] p-0.5"
+                :animation="150"
+                class="flex flex-col gap-1.5 sm:gap-2 min-h-[200px] p-0.5"
                 ghost-class="opacity-50"
-                :disabled="!canUpdate()"
+                :disabled="!canUpdateTasks || !!searchQuery"
                 @start="onDragStart"
                 @end="onTaskDrop"
               >
@@ -603,7 +649,7 @@ function canEditTask(task: Task | null): boolean {
                       </Tooltip>
 
                       <!-- Approve button for in-review tasks (visible only to the task creator) -->
-                      <Tooltip v-if="col.id === 'in-review' && !t.approvedBy && (typeof t.createdBy === 'object' ? (t.createdBy as any)?._id : t.createdBy) === userCookie?._id">
+                      <Tooltip v-if="col.id === 'in-review' && !t.approvedBy && isTaskCreator(t)">
                         <TooltipTrigger as-child>
                           <button
                             class="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors cursor-pointer"
@@ -648,7 +694,7 @@ function canEditTask(task: Task | null): boolean {
               </div>
             </CardContent>
 
-            <CardFooter v-if="col.id === 'todo' && canCreate()" class="px-1.5 sm:px-2 mt-auto shrink-0">
+            <CardFooter v-if="col.id === 'todo' && canCreateTasks" class="px-1.5 sm:px-2 mt-auto shrink-0">
               <Button size="sm" variant="ghost" class="text-muted-foreground w-full justify-start text-xs sm:text-sm h-8 sm:h-9" @click="openNewTask(col.id)">
                 <Icon name="lucide:plus" />
                 Add Task
@@ -875,7 +921,7 @@ function canEditTask(task: Task | null): boolean {
           <div>
             <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Status</p>
             <Select
-              v-if="isSuperAdmin || userCookie?.employee === viewTask.task.createdBy?.employee"
+              v-if="isSuperAdmin || isTaskCreator(viewTask.task)"
               :model-value="viewTask.task.status || 'todo'"
               @update:model-value="(val: any) => { if (viewTask) { updateTask(viewTask.colId, viewTask.task.id, { status: val }); viewTask.task.status = val; } }"
             >
@@ -969,7 +1015,7 @@ function canEditTask(task: Task | null): boolean {
               <p class="text-sm text-muted-foreground leading-relaxed pl-7">{{ cm.text }}</p>
             </div>
           </div>
-          <form class="flex gap-1.5 items-end" @submit.prevent="() => { if (newCommentText.trim()) { addComment(viewTask!.colId, viewTask!.task.id, newCommentText.trim(), userCookie?.employee, userCookie?.profileImage); newCommentText = '' } }">
+          <form class="flex gap-1.5 items-end" @submit.prevent="() => { if (newCommentText.trim()) { addComment(viewTask!.colId, viewTask!.task.id, newCommentText.trim(), currentUser?.employee, currentUser?.profileImage); newCommentText = '' } }">
             <Textarea v-model="newCommentText" placeholder="Write a comment..." class="text-xs min-h-[64px] max-h-[160px] resize-y" rows="2" data-comment-input />
             <Button type="submit" size="icon" variant="ghost" class="size-8 shrink-0">
               <Icon name="i-lucide-send" class="size-3.5" />
@@ -990,7 +1036,7 @@ function canEditTask(task: Task | null): boolean {
               <span class="text-amber-600 font-medium">Awaiting Approval</span>
             </div>
             <Button
-              v-if="isSuperAdmin || userCookie?.employee === viewTask.task.createdBy?.employee"
+              v-if="isTaskCreator(viewTask.task)"
               size="sm"
               class="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
               @click="approveTask(viewTask!.colId, viewTask!.task)"
@@ -1003,11 +1049,11 @@ function canEditTask(task: Task | null): boolean {
 
         <!-- Actions Footer -->
         <div class="px-5 py-3 border-t border-border/50 flex items-center gap-2">
-          <Button v-if="canUpdate() && canEditTask(viewTask?.task)" size="sm" variant="outline" class="h-8 text-xs" @click="showEditTask(viewTask!.colId, viewTask!.task.id); viewTask = null">
+          <Button v-if="canUpdateTasks && canEditTask(viewTask?.task)" size="sm" variant="outline" class="h-8 text-xs" @click="showEditTask(viewTask!.colId, viewTask!.task.id); viewTask = null">
             <Icon name="i-lucide-edit-2" class="size-3.5 mr-1.5" />
             Edit
           </Button>
-          <Button v-if="canDelete() && canEditTask(viewTask?.task)" size="sm" variant="outline" class="h-8 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5" @click="removeTask(viewTask!.colId, viewTask!.task.id); viewTask = null">
+          <Button v-if="canDeleteTasks && canEditTask(viewTask?.task)" size="sm" variant="outline" class="h-8 text-xs text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/5" @click="removeTask(viewTask!.colId, viewTask!.task.id); viewTask = null">
             <Icon name="i-lucide-trash-2" class="size-3.5 mr-1.5" />
             Delete
           </Button>
