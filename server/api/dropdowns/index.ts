@@ -12,12 +12,23 @@ export default defineEventHandler(async (event) => {
 
   if (event.method === 'GET') {
     const query = getQuery(event)
+
+    // Stringify ObjectId fields in options so they survive Nitro JSON serialization on Vercel
+    const serializeDropdown = (dd: any) => {
+      if (!dd) return dd
+      return {
+        ...dd,
+        _id: String(dd._id),
+        options: (dd.options || []).map((o: any) => ({ ...o, _id: String(o._id) })),
+      }
+    }
+
     if (query.name) {
       const dropdown: any = await Dropdown.findOne({ name: query.name }).lean()
       if (dropdown?.options) {
         dropdown.options.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
       }
-      return { success: true, data: dropdown }
+      return { success: true, data: serializeDropdown(dropdown) }
     }
     const dropdowns = await Dropdown.find().sort({ name: 1 }).lean()
     // Sort each dropdown's options by order
@@ -26,7 +37,7 @@ export default defineEventHandler(async (event) => {
         dd.options.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
       }
     }
-    return { success: true, data: dropdowns }
+    return { success: true, data: dropdowns.map(serializeDropdown) }
   }
 
   if (event.method === 'POST') {

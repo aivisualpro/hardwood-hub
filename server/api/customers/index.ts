@@ -12,7 +12,14 @@ export default defineEventHandler(async (event) => {
       .select('-gallery -relatedContacts -notes')
       .sort({ createdAt: -1 })
       .lean()
-    return { success: true, data: customers }
+    // Stringify ObjectId fields so they survive Nitro's JSON serialization on Vercel
+    // (raw BSON ObjectIds serialize to nested objects instead of hex strings in production)
+    const serialized = customers.map((c: any) => ({
+      ...c,
+      _id: String(c._id),
+      status: c.status ? String(c.status) : null,
+    }))
+    return { success: true, data: serialized }
   }
 
   if (method === 'POST') {
