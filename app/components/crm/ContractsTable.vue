@@ -27,6 +27,11 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+// Strip company prefix for display only — data is never modified
+function displayTitle(title: string): string {
+  return (title || '').replace(/^Ann Arbor Hardwoods\s+/i, '').trim()
+}
+
 // ─── Actions ─────────────────────────────────────────────
 
 async function deleteContract(id: string, status?: string) {
@@ -206,7 +211,7 @@ async function downloadPDF(ct: any) {
                 <span class="text-xs font-mono font-bold text-primary">{{ ct.contractNumber }}</span>
               </td>
               <td class="px-4 py-3">
-                <span class="text-sm font-semibold">{{ ct.title }}</span>
+                <span class="text-sm font-semibold">{{ displayTitle(ct.title) }}</span>
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
@@ -376,7 +381,7 @@ async function downloadPDF(ct: any) {
                   </HoverCardContent>
                 </HoverCard>
               </div>
-              <span class="text-sm font-bold text-foreground leading-tight truncate">{{ ct.title }}</span>
+              <span class="text-sm font-bold text-foreground leading-tight truncate">{{ displayTitle(ct.title) }}</span>
             </div>
             <div class="text-right flex flex-col items-end shrink-0 pt-0.5">
               <span class="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">Created</span>
@@ -436,7 +441,7 @@ async function downloadPDF(ct: any) {
             Send Contract via Email
           </h2>
           <p class="text-sm text-muted-foreground mt-1">
-            Send <strong>{{ sendEmailContract?.title }}</strong> to client for electronic signature.
+            Send <strong>{{ displayTitle(sendEmailContract?.title) }}</strong> to client for electronic signature.
           </p>
         </div>
 

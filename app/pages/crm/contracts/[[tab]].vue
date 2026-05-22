@@ -215,8 +215,8 @@ interface ContractRecord {
 }
 
 // ─── Templates State ─────────────────────────────────────
-const templates = ref<ContractTemplate[]>([])
-const loadingTemplates = ref(true)
+const templates = useState<ContractTemplate[]>('crm-templates', () => [])
+const loadingTemplates = ref(false)
 const selectedTemplate = ref<ContractTemplate | null>(null)
 const showEditor = ref(false)
 
@@ -545,8 +545,8 @@ function insertVariable(key: string) {
 }
 
 // ─── Contracts List State ────────────────────────────────
-const contracts = ref<ContractRecord[]>([])
-const loadingContracts = ref(true)
+const contracts = useState<ContractRecord[]>('crm-contracts', () => [])
+const loadingContracts = ref(false)
 const searchQuery = ref('')
 
 async function fetchContracts() {
@@ -585,7 +585,7 @@ async function fetchCompanyProfile() {
 }
 
 // ─── Server-first data fetching (blocks navigation until resolved) ──────
-await useAsyncData('crm-contracts', async () => {
+await useAsyncData('crm-contracts-page', async () => {
   await Promise.all([fetchTemplates(), fetchCompanyProfile(), fetchContracts()])
   return true
 })

@@ -1,5 +1,6 @@
 import { connectDB } from '../../utils/mongoose'
 import { DailyProduction } from '../../models/DailyProduction'
+import { verifySessionToken } from '../../lib/session'
 
 export default defineEventHandler(async (event) => {
     await connectDB()
@@ -10,8 +11,14 @@ export default defineEventHandler(async (event) => {
     }
 
     if (event.method === 'POST') {
+        const token = getCookie(event, 'hardwood_session')
+        const session = token ? verifySessionToken(token) : null
+
         const body = await readBody(event)
-        const doc = await DailyProduction.create(body)
+        const doc = await DailyProduction.create({
+            ...body,
+            createdBy: session?.id ?? null,
+        })
         return { success: true, data: doc }
     }
 

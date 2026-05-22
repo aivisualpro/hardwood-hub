@@ -1,75 +1,87 @@
-import mongoose, { Schema, Document } from 'mongoose'
+import mongoose, { Schema, Document, Types } from 'mongoose'
 
+// ─── Sub-schemas ──────────────────────────────────────────
+const WorkBlockSchema = new Schema(
+    {
+        category: { type: String, default: null },
+        subtype: { type: String, default: null },
+        hours: { type: Number, default: null },
+        sqft: { type: Number, default: null },
+        edgeLf: { type: Number, default: null },
+        trimLf: { type: Number, default: null },
+        count: { type: Number, default: null },
+        equipment: { type: [String], default: [] },
+        gritsBig: { type: [Number], default: [] },
+        gritsEdger: { type: [Number], default: [] },
+        shoeDisposition: { type: String, default: null },
+        shoeCount: { type: Number, default: null },
+    },
+    { _id: false }
+)
+
+const NpItemSchema = new Schema(
+    {
+        type: { type: String, required: true },
+        minutes: { type: Number, default: 0 },
+        detail: { type: Schema.Types.Mixed, default: {} },
+    },
+    { _id: false }
+)
+
+// ─── Main document interface ──────────────────────────────
 export interface IDailyProduction extends Document {
     date?: string
-    employeeName?: string
-    jobClient?: string
-    wereYouOnTime?: string
-    didYouLeaveTheJobForAnythingOtherThanLunch?: string
-    totalMinutesOffSiteNotIncludingLunch?: number | null
-    reasonForLeaving?: string
-    totalMinutesLate?: number | null
-    whatWorkDidYouPerformTodaySelectAllThatApply?: string[]
-    block1Category?: string
-    productionHours?: number | null
-    squareFeetCompleted?: number | null
-    linearFeetCompleted?: number | null
-    count?: number | null
-    didYouDoASecondTypeOfWorkToday?: string
-    block2Category?: string
-    productionHoursBlock2?: number | null
-    squareFeetCompletedBlock2?: number | null
-    linearFeetCompletedBlock2?: number | null
-    countBlock2?: number | null
-    didYouDoAThirdTypeOfWorkToday?: string
-    block3Category?: string
-    productionHoursBlock3?: number | null
-    squareFeetCompletedBlock3?: number | null
-    linearFeetCompletedBlock3?: number | null
-    countBlock3?: number | null
-    anyBlockersThatSlowedYouDownToday?: string
-    issuesWithTheFormMissingDataThatNeedsToBeCaptured?: string
-    createdBy?: string
+    emp?: Types.ObjectId
+    job?: Types.ObjectId
+    ontime?: boolean
+    blocks?: {
+        category?: string
+        subtype?: string
+        hours?: number
+        sqft?: number
+        edgeLf?: number
+        trimLf?: number
+        count?: number
+        equipment?: string[]
+        gritsBig?: number[]
+        gritsEdger?: number[]
+        shoeDisposition?: string
+        shoeCount?: number
+    }[]
+    np_items?: {
+        type: string
+        minutes?: number
+        detail?: Record<string, any>
+    }[]
+    np_total_mins?: number
+    blockers?: string[]
+    notes?: string
+    submitted?: Date
+    createdBy?: Types.ObjectId
 }
 
+// ─── Schema ───────────────────────────────────────────────
 const DailyProductionSchema = new Schema(
     {
         date: { type: String, default: null },
-        employeeName: { type: String, default: null },
-        jobClient: { type: String, default: null },
-        wereYouOnTime: { type: String, default: null },
-        didYouLeaveTheJobForAnythingOtherThanLunch: { type: String, default: null },
-        totalMinutesOffSiteNotIncludingLunch: { type: Number, default: null },
-        reasonForLeaving: { type: String, default: null },
-        totalMinutesLate: { type: Number, default: null },
-        whatWorkDidYouPerformTodaySelectAllThatApply: { type: [String], default: [] },
-        block1Category: { type: String, default: null },
-        productionHours: { type: Number, default: null },
-        squareFeetCompleted: { type: Number, default: null },
-        linearFeetCompleted: { type: Number, default: null },
-        count: { type: Number, default: null },
-        didYouDoASecondTypeOfWorkToday: { type: String, default: null },
-        block2Category: { type: String, default: null },
-        productionHoursBlock2: { type: Number, default: null },
-        squareFeetCompletedBlock2: { type: Number, default: null },
-        linearFeetCompletedBlock2: { type: Number, default: null },
-        countBlock2: { type: Number, default: null },
-        didYouDoAThirdTypeOfWorkToday: { type: String, default: null },
-        block3Category: { type: String, default: null },
-        productionHoursBlock3: { type: Number, default: null },
-        squareFeetCompletedBlock3: { type: Number, default: null },
-        linearFeetCompletedBlock3: { type: Number, default: null },
-        countBlock3: { type: Number, default: null },
-        anyBlockersThatSlowedYouDownToday: { type: String, default: null },
-        issuesWithTheFormMissingDataThatNeedsToBeCaptured: { type: String, default: null },
-        createdBy: { type: String, default: null },
+        emp: { type: Schema.Types.ObjectId, ref: 'Employee', default: null },
+        job: { type: Schema.Types.ObjectId, ref: 'CrmSubmission', default: null },
+        ontime: { type: Boolean, default: null },
+        blocks: { type: [WorkBlockSchema], default: [] },
+        np_items: { type: [NpItemSchema], default: [] },
+        np_total_mins: { type: Number, default: 0 },
+        blockers: { type: [String], default: [] },
+        notes: { type: String, default: null },
+        submitted: { type: Date, default: null },
+        createdBy: { type: Schema.Types.ObjectId, ref: 'Employee', default: null },
     },
     { timestamps: true }
 )
 
 // Indexes for dashboard and reporting queries
 DailyProductionSchema.index({ createdAt: -1 })
-DailyProductionSchema.index({ employeeName: 1, date: -1 })
+DailyProductionSchema.index({ emp: 1, date: -1 })
 DailyProductionSchema.index({ date: -1 })
+DailyProductionSchema.index({ createdBy: 1 })
 
 export const DailyProduction = mongoose.models.DailyProduction || mongoose.model<IDailyProduction>('DailyProduction', DailyProductionSchema, 'hardwoodDB_DailyProduction')
