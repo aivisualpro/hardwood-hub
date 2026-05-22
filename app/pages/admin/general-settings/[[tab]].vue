@@ -489,10 +489,9 @@ async function reorderOptions(dropdownId: string) {
 }
 
 // ─── Client-only data fetch (server: false avoids SSR cookie context loss) ──
-await useAsyncData('general-settings', async () => {
-  await Promise.all([fetchRecords(), fetchWorkspaces(), fetchCompanyProfile(), fetchDropdowns()])
-  return true
-}, { server: false, lazy: true })
+onMounted(() => {
+  Promise.all([fetchRecords(), fetchWorkspaces(), fetchCompanyProfile(), fetchDropdowns()])
+})
 
 // ─── Open modals ─────────────────────────────────────────
 function openCreate() {

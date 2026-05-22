@@ -92,7 +92,7 @@ async function fetchAll() {
     loadingData.value = false
   }
 }
-await useAsyncData('employee-performance', async () => { await fetchAll(); return true }, { server: false, lazy: true })
+onMounted(() => { fetchAll() })
 
 // ─── Settings: save minimum progression level ────────────
 async function saveMinLevel(level: string) {

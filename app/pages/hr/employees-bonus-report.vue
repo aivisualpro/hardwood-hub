@@ -47,7 +47,7 @@ async function fetchAll() {
     loadingData.value = false
   }
 }
-await useAsyncData('bonus-report', async () => { await fetchAll(); return true }, { server: false, lazy: true })
+onMounted(() => { fetchAll() })
 
 // ─── Helpers ─────────────────────────────────────────────
 function levelIndex(lvl: string) {

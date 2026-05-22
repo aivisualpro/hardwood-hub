@@ -64,28 +64,25 @@ const filtered = computed(() => {
 const workspacesList = ref<{ _id: string, name: string }[]>([])
 const loading = ref(true)
 
-await useAsyncData('employees-page', async () => {
+onMounted(() => {
   loading.value = true
-  try {
-    const [empRes, wsRes] = await Promise.all([
-      $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
-      $fetch<{ success: boolean, data: any[] }>('/api/workspaces'),
-    ])
+  Promise.all([
+    $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
+    $fetch<{ success: boolean, data: any[] }>('/api/workspaces'),
+  ]).then(([empRes, wsRes]) => {
     employees.value = empRes.data.map(emp => {
-      // Clean legacy BigQuery image routes if they still exist in MongoDB records
       if (emp.profileImage && emp.profileImage.includes('api/bigquery')) {
         emp.profileImage = ''
       }
       return emp
     })
     workspacesList.value = wsRes.data
-  } catch (e: any) {
+  }).catch((e: any) => {
     notify('Error', e?.message || 'Failed to load employees', 'destructive')
-  } finally {
+  }).finally(() => {
     loading.value = false
-  }
-  return true
-}, { server: false, lazy: true })
+  })
+})
 
 // Keep fetchEmployees for manual refresh after create/update/delete
 async function fetchEmployees() {
