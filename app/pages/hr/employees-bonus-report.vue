@@ -25,7 +25,9 @@ const sortBy = ref<'name' | 'bonus' | 'progress'>('bonus')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
 // ─── Server-first data fetching (blocks navigation until resolved) ──────
+const loadingData = ref(true)
 async function fetchAll() {
+  loadingData.value = true
   try {
     const [empRes, treeRes, perfRes, rulesRes, customBonusesRes] = await Promise.all([
       $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
@@ -41,9 +43,11 @@ async function fetchAll() {
     customBonuses.value = customBonusesRes.data
   } catch (e: any) {
     toast.error('Failed to load data', { description: e?.message })
+  } finally {
+    loadingData.value = false
   }
 }
-const { pending: loadingData } = await useAsyncData('bonus-report', async () => { await fetchAll(); return true }, { lazy: true })
+await useAsyncData('bonus-report', async () => { await fetchAll(); return true }, { server: false, lazy: true })
 
 // ─── Helpers ─────────────────────────────────────────────
 function levelIndex(lvl: string) {

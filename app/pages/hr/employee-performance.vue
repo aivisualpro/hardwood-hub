@@ -54,7 +54,9 @@ watch(selectedEmployeeId, (newId) => {
 })
 
 // ─── Server-first data fetching (lazy: navigation is instant, data fills in) ──
+const loadingData = ref(true)
 async function fetchAll() {
+  loadingData.value = true
   try {
     const [empRes, treeRes, perfRes, settingsRes, bonusRes] = await Promise.all([
       $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
@@ -86,9 +88,11 @@ async function fetchAll() {
   }
   catch (e: any) {
     toast.error('Failed to load data', { description: e?.message })
+  } finally {
+    loadingData.value = false
   }
 }
-const { pending: loadingData } = await useAsyncData('employee-performance', async () => { await fetchAll(); return true }, { lazy: true })
+await useAsyncData('employee-performance', async () => { await fetchAll(); return true }, { server: false, lazy: true })
 
 // ─── Settings: save minimum progression level ────────────
 async function saveMinLevel(level: string) {

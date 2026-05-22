@@ -546,7 +546,7 @@ function insertVariable(key: string) {
 
 // ─── Contracts List State ────────────────────────────────
 const contracts = useState<ContractRecord[]>('crm-contracts', () => [])
-const loadingContracts = ref(false)
+const loadingContracts = ref(true)
 const searchQuery = ref('')
 
 async function fetchContracts() {

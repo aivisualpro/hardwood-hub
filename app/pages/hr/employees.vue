@@ -62,22 +62,30 @@ const filtered = computed(() => {
 
 // ─── Server-first data fetching (blocks navigation until resolved) ────────
 const workspacesList = ref<{ _id: string, name: string }[]>([])
+const loading = ref(true)
 
 await useAsyncData('employees-page', async () => {
-  const [empRes, wsRes] = await Promise.all([
-    $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
-    $fetch<{ success: boolean, data: any[] }>('/api/workspaces'),
-  ])
-  employees.value = empRes.data.map(emp => {
-    // Clean legacy BigQuery image routes if they still exist in MongoDB records
-    if (emp.profileImage && emp.profileImage.includes('api/bigquery')) {
-      emp.profileImage = ''
-    }
-    return emp
-  })
-  workspacesList.value = wsRes.data
+  loading.value = true
+  try {
+    const [empRes, wsRes] = await Promise.all([
+      $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
+      $fetch<{ success: boolean, data: any[] }>('/api/workspaces'),
+    ])
+    employees.value = empRes.data.map(emp => {
+      // Clean legacy BigQuery image routes if they still exist in MongoDB records
+      if (emp.profileImage && emp.profileImage.includes('api/bigquery')) {
+        emp.profileImage = ''
+      }
+      return emp
+    })
+    workspacesList.value = wsRes.data
+  } catch (e: any) {
+    notify('Error', e?.message || 'Failed to load employees', 'destructive')
+  } finally {
+    loading.value = false
+  }
   return true
-})
+}, { server: false, lazy: true })
 
 // Keep fetchEmployees for manual refresh after create/update/delete
 async function fetchEmployees() {
@@ -271,7 +279,7 @@ async function toggleStatus(emp: Employee) {
     </div>
 
     <!-- Empty state -->
-    <div v-if="filtered.length === 0" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
+    <div v-if="filtered.length === 0 && !loading" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
       <div class="size-14 sm:size-16 rounded-full bg-muted flex items-center justify-center">
         <Icon name="i-lucide-users" class="size-6 sm:size-8 text-muted-foreground" />
       </div>

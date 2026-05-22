@@ -777,7 +777,7 @@ const WpIconsList = [
         <template v-if="activeTab === 'skill-bonus'">
 
           <!-- Empty state -->
-          <div v-if="records.length === 0" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
+          <div v-if="records.length === 0 && !loading" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
             <div class="size-14 sm:size-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center">
               <Icon name="i-lucide-trophy" class="size-6 sm:size-8 text-amber-400" />
             </div>

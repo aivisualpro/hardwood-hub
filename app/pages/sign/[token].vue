@@ -307,14 +307,18 @@ if (import.meta.client && _asyncData.value && !contractData.value) {
               <div class="h-28 w-full flex items-end relative -mb-1">
                  <img v-if="contractData.company?.signature" :src="contractData.company.signature" class="max-h-28 max-w-xs object-contain object-left-bottom z-10 block mr-auto ml-0" />
               </div>
-              <div class="w-full flex items-start gap-10">
-                 <!-- Contractor's Signature: line + label left-aligned -->
-                 <div class="flex-1 border-t-[1.5px] border-slate-900 pt-2">
-                    <p class="text-sm font-bold text-slate-900 font-sans">Contractor's Signature</p>
+              <div class="w-full flex items-start justify-between">
+                 <!-- Contractor's Signature: 60px from left -->
+                 <div class="pl-[60px]">
+                    <div class="border-t-[1.5px] border-slate-900 pt-2 min-w-[200px]">
+                       <p class="text-sm font-bold text-slate-900 font-sans">Contractor's Signature</p>
+                    </div>
                  </div>
-                 <!-- Date: narrow line + label right-aligned -->
-                 <div class="w-44 border-t-[1.5px] border-slate-900 pt-2 text-right">
-                    <div class="text-sm font-medium text-slate-800 tabular-nums">Date: {{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) }}</div>
+                 <!-- Date: 60px from right -->
+                 <div class="pr-[60px]">
+                    <div class="border-t-[1.5px] border-slate-900 pt-2 text-right min-w-[150px]">
+                       <div class="text-sm font-bold text-slate-900 font-sans">Date: {{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) }}</div>
+                    </div>
                  </div>
               </div>
            </div>
