@@ -197,7 +197,28 @@ async function submitSignature() {
 }
 
 // ─── Server-first data fetching (blocks navigation until resolved) ──────
-await useAsyncData(`sign-${token}`, async () => { await fetchContract(); return true })
+// IMPORTANT: contractData is a local ref, so we must return it from useAsyncData
+// so Nuxt can rehydrate it on the client side (otherwise the client sees null
+// because useAsyncData dedupes and skips re-running fetchContract on hydration).
+const { data: _asyncData } = await useAsyncData(`sign-${token}`, async () => {
+  await fetchContract()
+  return {
+    contractData: contractData.value,
+    signed: signed.value,
+    error: error.value,
+    clientValues: clientValues.value,
+    renderedContractHtml: renderedContractHtml.value,
+  }
+})
+
+// On client hydration, restore state from the SSR payload
+if (import.meta.client && _asyncData.value && !contractData.value) {
+  contractData.value = _asyncData.value.contractData
+  signed.value = _asyncData.value.signed
+  if (_asyncData.value.error) error.value = _asyncData.value.error
+  clientValues.value = _asyncData.value.clientValues || {}
+  renderedContractHtml.value = _asyncData.value.renderedContractHtml || ''
+}
 </script>
 
 <template>
@@ -281,14 +302,20 @@ await useAsyncData(`sign-${token}`, async () => { await fetchContract(); return 
 
 
         <!-- Contractor Signature -->
-        <div class="px-6 sm:px-10 pb-12 pt-4 flex justify-end">
-           <div class="w-full sm:w-2/3 flex flex-col items-start relative">
+        <div class="px-6 sm:px-10 pb-12 pt-4">
+           <div class="w-full flex flex-col items-start relative">
               <div class="h-28 w-full flex items-end relative -mb-1">
-                 <img v-if="contractData.company?.signature" :src="contractData.company.signature" class="max-h-28 max-w-xs object-contain object-left-bottom z-10 block" />
+                 <img v-if="contractData.company?.signature" :src="contractData.company.signature" class="max-h-28 max-w-xs object-contain object-left-bottom z-10 block mr-auto ml-0" />
               </div>
-              <div class="border-t-[1.5px] border-slate-900 w-full pt-2 flex justify-between">
-                 <p class="text-sm font-bold text-slate-900 font-sans">Contractor's Signature</p>
-                 <div class="text-sm font-medium text-slate-800 tabular-nums">Date: {{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) }}</div>
+              <div class="w-full flex items-start gap-10">
+                 <!-- Contractor's Signature: line + label left-aligned -->
+                 <div class="flex-1 border-t-[1.5px] border-slate-900 pt-2">
+                    <p class="text-sm font-bold text-slate-900 font-sans">Contractor's Signature</p>
+                 </div>
+                 <!-- Date: narrow line + label right-aligned -->
+                 <div class="w-44 border-t-[1.5px] border-slate-900 pt-2 text-right">
+                    <div class="text-sm font-medium text-slate-800 tabular-nums">Date: {{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) }}</div>
+                 </div>
               </div>
            </div>
         </div>
