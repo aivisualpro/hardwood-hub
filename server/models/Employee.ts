@@ -11,6 +11,13 @@ const EmployeeSchema = new mongoose.Schema(
         basePay: { type: Number, default: 0 }, // Base pay in USD
         gmailTokens: { type: String, default: '' }, // AES-256 encrypted OAuth2 tokens
         gmailEmail: { type: String, default: '' }, // Connected Gmail address
+        // Google Calendar (separate OAuth2 connection)
+        calendarTokens: { type: String, default: '' },   // AES-256 encrypted OAuth2 tokens
+        calendarEmail: { type: String, default: '' },     // Connected Google account
+        calendarSyncToken: { type: String, default: '' }, // For incremental sync
+        calendarChannelId: { type: String, default: '' }, // Push notification channel ID
+        calendarResourceId: { type: String, default: '' },// Push notification resource ID
+        calendarChannelExpiry: { type: Date },            // When push channel expires
     },
     { timestamps: true, collection: 'hardwoodDB_Employees' },
 )

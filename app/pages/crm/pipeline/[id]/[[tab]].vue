@@ -321,421 +321,405 @@ function getStageStyle(): Record<string, string> {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="max-w-7xl mx-auto space-y-6 pb-20">
     <div v-if="isLoadingCustomer" class="space-y-4">
       <div class="h-24 bg-muted/40 rounded-xl animate-pulse" />
     </div>
     
-    <div v-else-if="customer" class="space-y-6">
-      
+    <template v-else-if="customer">
       <Teleport to="#header-toolbar">
         <div class="flex items-center gap-2">
-          <!-- The CrmCustomerGallery handles dynamic header button injections via its own Teleport too! -->
-          <button v-if="activeTab !== 'gallery'" @click="showEditCustomer = true" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20" title="Edit Customer">
+          <button @click="showEditCustomer = true" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20" title="Edit Customer">
             <Icon name="i-lucide-pencil" class="size-3.5" />
             <span class="hidden sm:inline">Edit</span>
           </button>
-          <button v-if="activeTab !== 'gallery'" @click="showDeleteConfirm = true" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all shrink-0" title="Delete Customer">
+          <button @click="showDeleteConfirm = true" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all shrink-0" title="Delete Customer">
             <Icon name="i-lucide-trash-2" class="size-3.5" />
             <span class="hidden sm:inline">Delete</span>
           </button>
         </div>
       </Teleport>
 
-      <!-- Tabs and Tables -->
-      <div class="flex flex-col gap-4 -mt-4 lg:-mt-6">
-        <div class="sticky top-(--header-height) z-30 bg-background/95 backdrop-blur-sm -mx-4 lg:-mx-6 px-4 lg:px-6 pt-4 lg:pt-6 border-b">
-          <div class="flex items-center justify-start pb-1 overflow-x-auto no-scrollbar">
-            <div class="flex items-center gap-0.5 min-w-max">
-              <button
-                v-for="tab in visibleTabs"
-                :key="tab.id"
-                class="relative flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap rounded-lg"
-                :class="activeTab === tab.id ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30' : 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground'"
-                @click="navigateTo(`/crm/pipeline/${customerId}/${tab.id}`)"
-              >
-                <Icon :name="tab.icon" class="size-3.5 sm:size-4" />
-                {{ tab.label }}
-                <!-- Counter -->
-                <div
-                  v-if="tab.id !== 'details'"
-                  class="ml-1 px-1.5 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold tabular-nums"
-                  :class="activeTab === tab.id ? 'bg-background/25 text-primary-foreground' : 'bg-primary/10 text-primary group-hover:bg-primary/20'"
-                >
-                  {{ tab.id === 'contracts' ? customerContracts.length : (tab.id === 'gallery' ? (customer.gallery?.length || 0) : allSubmissions.filter(s => s.type === tab.typeFilter).length) }}
-                </div>
-              </button>
+      <!-- Page Header & Hero Section -->
+      <div class="relative overflow-hidden rounded-3xl border bg-card p-8 lg:p-10 shadow-sm transition-all duration-300 hover:shadow-md">
+        <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full blur-[80px] opacity-20 pointer-events-none bg-primary" />
+
+        <div class="relative flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div class="flex items-start gap-6">
+            <div class="w-20 h-20 rounded-2xl flex items-center justify-center relative ring-1 ring-border shadow-inner bg-primary/10 text-primary">
+              <Icon name="i-lucide-user" class="size-10" />
             </div>
-          </div>
-        </div>
-        
-        <!-- Details View -->
-        <div v-if="activeTab === 'details'" class="relative space-y-6">
-          <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-            <div class="xl:col-span-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 bg-card p-6 rounded-xl border border-border/50 shadow-sm shadow-black/5">
-            <!-- Basic Info -->
-            <div class="space-y-4">
-              <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Name / Company</h4>
-                <div class="flex items-center gap-2">
-                  <p class="font-medium text-foreground truncate">{{ customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || '—' }}</p>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3">
+                <h1 class="text-3xl font-bold tracking-tight text-foreground font-display">
+                  {{ customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown' }}
+                </h1>
+              </div>
+              <div class="flex items-center gap-3 flex-wrap">
+                <!-- Status Badge -->
+                <div class="relative" :class="activeDropdown === 'stage' ? 'z-50' : ''">
+                  <button @click.stop="activeDropdown = activeDropdown === 'stage' ? null : 'stage'" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider hover:opacity-80 transition-colors border" :style="getStageStyle()" :class="!resolveStatus(customer) ? 'bg-muted text-muted-foreground border-border' : ''">
+                    <Icon name="i-lucide-check-circle-2" class="size-3.5" />
+                    {{ getStatusLabel() }}
+                    <Icon name="i-lucide-chevron-down" class="size-3 opacity-70" />
+                  </button>
                   
-                  <!-- Status Combobox -->
-                  <div class="relative shrink-0" :class="activeDropdown === 'stage' ? 'z-50' : ''">
-                    <button @click.stop="activeDropdown = activeDropdown === 'stage' ? null : 'stage'" class="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider hover:opacity-80 transition-colors shadow-sm shadow-black/5 border" :style="getStageStyle()" :class="!resolveStatus(customer) ? 'bg-muted text-muted-foreground border-border' : ''">
-                      {{ getStatusLabel() }}
-                      <Icon name="i-lucide-chevron-down" class="size-3 ml-0.5 opacity-70" />
-                    </button>
-                    
-                    <div v-if="activeDropdown === 'stage'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
-                    <div v-if="activeDropdown === 'stage'" class="absolute left-0 mt-1 top-full w-[200px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
-                       <div class="p-2 border-b border-border/50">
-                         <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search status..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop />
-                       </div>
-                       <div class="max-h-[200px] overflow-y-auto py-1.5">
-                          <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
-                             <div class="size-2 rounded-full shadow-inner" :style="st.color ? { backgroundColor: st.color } : {}" />
-                             <span class="truncate">{{ st.label }}</span>
-                          </button>
-                       </div>
+                  <div v-if="activeDropdown === 'stage'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+                  <div v-if="activeDropdown === 'stage'" class="absolute left-0 mt-1 top-full w-[200px] bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div class="p-2 border-b border-border/50">
+                      <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search status..." class="w-full bg-background border border-border/50 rounded filter-none px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop />
+                    </div>
+                    <div class="max-h-[200px] overflow-y-auto py-1.5">
+                      <button v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(st.id)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
+                        <div class="size-2 rounded-full shadow-inner" :style="st.color ? { backgroundColor: st.color } : {}" />
+                        <span class="truncate">{{ st.label }}</span>
+                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Contact</h4>
-                <p class="font-medium text-sm text-foreground" v-if="customer.email">{{ customer.email }}</p>
-                <p class="font-medium text-sm text-foreground" v-if="customer.phone">{{ customer.phone }}</p>
-                <p class="text-sm text-muted-foreground" v-if="!customer.email && !customer.phone">—</p>
-              </div>
-              <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Tags</h4>
-                <div class="flex flex-wrap gap-1">
-                  <span v-for="tag in customer.tags" :key="tag" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-foreground border">{{ tag }}</span>
-                  <span v-if="!customer.tags?.length" class="text-sm text-muted-foreground">—</span>
-                </div>
-              </div>
-            </div>
 
-            <!-- Project & Sales Details -->
-            <div class="space-y-4">
-              <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Sales Info</h4>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <p class="text-xs text-muted-foreground">Assigned To</p>
-                    <p class="font-medium text-sm">{{ customer.assignedTo || '—' }}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="pt-2 border-t border-border/40">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Project Info</h4>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <p class="text-xs text-muted-foreground">Project Manager</p>
-                    <p class="font-medium text-sm">{{ customer.projectAssignedTo || '—' }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">Duration</p>
-                    <p class="font-medium text-sm">{{ customer.estimatedProjectDuration || '—' }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">Total Estimate</p>
-                    <p class="font-medium text-sm">
-                      {{ customer.totalEstimate ? '$' + customer.totalEstimate.toLocaleString() : '—' }}
-                    </p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">Views</p>
-                    <p class="font-medium text-sm">{{ customer.totalTrackedViews || '0' }}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="pt-2 border-t border-border/40">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Location</h4>
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="col-span-2">
-                    <p class="text-xs text-muted-foreground">Address</p>
-                    <p class="font-medium text-sm text-foreground">{{ customer.address || '—' }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">City</p>
-                    <p class="font-medium text-sm text-foreground">{{ customer.city || '—' }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">State</p>
-                    <p class="font-medium text-sm text-foreground">{{ customer.state || '—' }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">Zip Code</p>
-                    <p class="font-medium text-sm text-foreground">{{ customer.zip || '—' }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Timeline & Dates -->
-            <div class="space-y-4">
-              <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Key Dates</h4>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <p class="text-xs text-muted-foreground">Initial Contact</p>
-                    <p class="text-sm font-medium">{{ customer.initialContactDate ? new Date(customer.initialContactDate).toLocaleDateString() : '—' }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">Estimate Sent</p>
-                    <p class="text-sm font-medium">{{ customer.estimateSentOn ? new Date(customer.estimateSentOn).toLocaleDateString() : '—' }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">Last Follow-up</p>
-                    <p class="text-sm font-medium">{{ customer.lastFollowUpSentOn ? new Date(customer.lastFollowUpSentOn).toLocaleDateString() : '—' }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">Approved On</p>
-                    <p class="text-sm font-medium">{{ customer.dateApproved ? new Date(customer.dateApproved).toLocaleDateString() : '—' }}</p>
-                  </div>
-                  <div>
-                    <p class="text-xs text-muted-foreground">Wood Ordered</p>
-                    <p class="text-sm font-medium">{{ customer.woodOrderDate ? new Date(customer.woodOrderDate).toLocaleDateString() : '—' }}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="pt-2 border-t border-border/40">
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">System Added</h4>
-                    <p class="text-sm text-muted-foreground">{{ customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : '—' }}</p>
-                  </div>
-                  <div>
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Last Updated</h4>
-                    <p class="text-sm text-muted-foreground">{{ customer.updatedAt ? new Date(customer.updatedAt).toLocaleDateString() : '—' }}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="pt-2 border-t border-border/40">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Notes</h4>
-                <p class="text-sm text-foreground whitespace-pre-wrap">{{ customer.notes || '—' }}</p>
+                <span v-if="customer.email" class="text-sm text-muted-foreground font-medium">
+                  {{ customer.email }}
+                </span>
               </div>
             </div>
           </div>
-          <div class="xl:col-span-4 h-[calc(100vh-220px)] sticky top-[calc(var(--header-height)+80px)]">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Main Content (Left) -->
+        <div class="lg:col-span-2 space-y-8">
+
+          <!-- Customer Details Card -->
+          <div class="bg-card rounded-3xl border p-8 space-y-6 shadow-sm">
+            <h3 class="text-lg font-bold flex items-center gap-2 font-display">
+              <Icon name="i-lucide-info" class="size-5 text-primary" />
+              Customer Details
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-4">
+                <div>
+                  <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Assigned To</p>
+                  <p class="text-sm font-bold text-foreground">{{ customer.assignedTo || '—' }}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Project Manager</p>
+                  <p class="text-sm font-bold text-foreground">{{ customer.projectAssignedTo || '—' }}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Duration</p>
+                    <p class="text-sm font-bold text-foreground">{{ customer.estimatedProjectDuration || '—' }}</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Views</p>
+                    <p class="text-sm font-bold text-foreground">{{ customer.totalTrackedViews || '0' }}</p>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <div>
+                  <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Total Estimate</p>
+                  <p class="text-2xl font-black tabular-nums tracking-tight text-foreground">
+                    {{ customer.totalEstimate ? '$' + customer.totalEstimate.toLocaleString() : '—' }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Tags</p>
+                  <div class="flex flex-wrap gap-1">
+                    <span v-for="tag in customer.tags" :key="tag" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-foreground border">{{ tag }}</span>
+                    <span v-if="!customer.tags?.length" class="text-sm text-muted-foreground">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Key Dates Card -->
+          <div class="bg-card rounded-3xl border p-8 space-y-6 shadow-sm">
+            <h3 class="text-lg font-bold flex items-center gap-2 font-display">
+              <Icon name="i-lucide-calendar" class="size-5 text-indigo-500" />
+              Key Dates
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Initial Contact</p>
+                <p class="text-sm font-medium">{{ customer.initialContactDate ? new Date(customer.initialContactDate).toLocaleDateString() : '—' }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Estimate Sent</p>
+                <p class="text-sm font-medium">{{ customer.estimateSentOn ? new Date(customer.estimateSentOn).toLocaleDateString() : '—' }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Last Follow-up</p>
+                <p class="text-sm font-medium">{{ customer.lastFollowUpSentOn ? new Date(customer.lastFollowUpSentOn).toLocaleDateString() : '—' }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Approved On</p>
+                <p class="text-sm font-medium">{{ customer.dateApproved ? new Date(customer.dateApproved).toLocaleDateString() : '—' }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Wood Ordered</p>
+                <p class="text-sm font-medium">{{ customer.woodOrderDate ? new Date(customer.woodOrderDate).toLocaleDateString() : '—' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes Card -->
+          <div class="bg-card rounded-3xl border p-8 space-y-4 shadow-sm border-amber-500/10">
+            <h3 class="text-lg font-bold flex items-center gap-2 font-display">
+              <Icon name="i-lucide-notebook-pen" class="size-5 text-amber-500" />
+              Notes
+            </h3>
+            <div class="bg-muted/20 p-6 rounded-2xl text-sm leading-relaxed text-foreground/80 font-medium border border-dashed border-border/50 whitespace-pre-wrap min-h-[80px]">
+              {{ customer.notes || 'No notes added yet.' }}
+            </div>
+          </div>
+
+          <!-- Gallery Section -->
+          <div v-if="customer.gallery?.length > 0" class="bg-card rounded-3xl border p-8 space-y-6 shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold flex items-center gap-2 font-display">
+                <Icon name="i-lucide-images" class="size-5 text-indigo-500" />
+                Project Gallery
+              </h3>
+              <p class="text-xs text-muted-foreground font-medium bg-muted px-2.5 py-1 rounded-lg">
+                {{ customer.gallery.length }} photos
+              </p>
+            </div>
+            <CrmCustomerGallery :customer="customer" @updated="onCustomerUpdated" />
+          </div>
+
+          <!-- Contracts Section -->
+          <div class="bg-card rounded-3xl border overflow-hidden shadow-sm">
+            <div class="p-8 border-b bg-muted/10 flex items-center justify-between">
+              <h3 class="text-lg font-bold flex items-center gap-2 font-display">
+                <Icon name="i-lucide-file-signature" class="size-5 text-emerald-500" />
+                Contracts
+              </h3>
+              <button @click="contractFormDialog?.openForCustomer(customer)" class="inline-flex items-center justify-center gap-2 h-8 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shadow-sm">
+                <Icon name="i-lucide-plus" class="size-3.5" />
+                New Contract
+              </button>
+            </div>
+            <div class="p-6">
+              <div v-if="loadingContracts" class="space-y-4">
+                <div v-for="i in 3" :key="i" class="h-16 bg-muted/40 rounded-xl animate-pulse" />
+              </div>
+              <div v-else-if="customerContracts.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
+                <Icon name="i-lucide-file-signature" class="size-8 text-muted-foreground mb-4" />
+                <p class="text-sm text-muted-foreground">No contracts on file yet.</p>
+              </div>
+              <CrmContractsTable 
+                v-else
+                :contracts="customerContracts" 
+                :templates="templates" 
+                :companyProfile="companyProfile"
+                :isLoading="loadingContracts"
+                @refresh="fetchCustomerContracts"
+                @edit="ct => contractFormDialog?.openEditContract(ct)"
+              />
+            </div>
+          </div>
+
+          <!-- Technical Metadata -->
+          <div class="bg-muted/20 rounded-3xl p-8 border border-dashed grid grid-cols-2 md:grid-cols-4 gap-6 text-[11px] text-muted-foreground font-mono">
+            <div>
+              <p class="font-bold text-foreground/30 uppercase tracking-widest mb-1">System Added</p>
+              <p>{{ customer.createdAt ? new Date(customer.createdAt).toLocaleDateString() : '—' }}</p>
+            </div>
+            <div>
+              <p class="font-bold text-foreground/30 uppercase tracking-widest mb-1">Last Updated</p>
+              <p>{{ customer.updatedAt ? new Date(customer.updatedAt).toLocaleDateString() : '—' }}</p>
+            </div>
+            <div>
+              <p class="font-bold text-foreground/30 uppercase tracking-widest mb-1">Customer ID</p>
+              <p class="truncate">{{ customerId }}</p>
+            </div>
+            <div>
+              <p class="font-bold text-foreground/30 uppercase tracking-widest mb-1">Source</p>
+              <p>{{ customer.source || 'Direct' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar (Right) -->
+        <div class="space-y-8">
+          <!-- Contact Information Card -->
+          <div class="bg-card rounded-3xl border p-8 space-y-6 shadow-sm ring-1 ring-primary/5">
+            <h3 class="text-lg font-bold font-display flex items-center gap-2">
+              <Icon name="i-lucide-contact" class="size-5 text-primary" />
+              Contact Information
+            </h3>
+            
+            <div class="space-y-4">
+              <div class="group block p-4 rounded-2xl bg-muted/30 border border-transparent hover:border-primary/20 hover:bg-primary/5 transition-all">
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Email Address</p>
+                <div class="flex items-center justify-between">
+                  <a v-if="customer.email" :href="`mailto:${customer.email}`" class="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate pr-2">
+                    {{ customer.email }}
+                  </a>
+                  <span v-else class="text-sm text-muted-foreground">—</span>
+                  <button v-if="customer.email" class="p-2 rounded-xl bg-background shadow-sm hover:bg-primary hover:text-white transition-all opacity-0 group-hover:opacity-100">
+                    <Icon name="i-lucide-mail" class="size-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div class="group block p-4 rounded-2xl bg-muted/30 border border-transparent hover:border-emerald-500/20 hover:bg-emerald-500/5 transition-all">
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Phone Number</p>
+                <div class="flex items-center justify-between">
+                  <a v-if="customer.phone" :href="`tel:${customer.phone}`" class="text-sm font-bold text-foreground group-hover:text-emerald-600 transition-colors">
+                    {{ customer.phone }}
+                  </a>
+                  <span v-else class="text-sm text-muted-foreground">—</span>
+                  <button v-if="customer.phone" class="p-2 rounded-xl bg-background shadow-sm hover:bg-emerald-600 hover:text-white transition-all opacity-0 group-hover:opacity-100">
+                    <Icon name="i-lucide-phone" class="size-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div class="block p-4 rounded-2xl bg-muted/10 border border-transparent">
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Primary Address</p>
+                <div class="flex items-start gap-3">
+                  <div class="mt-1 p-2 rounded-lg bg-background border shadow-sm shrink-0">
+                    <Icon name="i-lucide-map-pin" class="size-4 text-rose-500" />
+                  </div>
+                  <p class="text-sm text-foreground/80 font-medium leading-tight">
+                    {{ [customer.address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ') || 'No address provided' }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Related Contacts -->
+          <div class="bg-card rounded-3xl border shadow-sm overflow-hidden min-h-[400px]">
             <CrmCustomerRelatedContacts :customer="customer" @updated="onCustomerUpdated" />
           </div>
         </div>
-        </div>
-
-        <!-- Gallery View -->
-        <div v-else-if="activeTab === 'gallery'" class="relative">
-          <CrmCustomerGallery :customer="customer" @updated="onCustomerUpdated" />
-        </div>
-
-        <!-- Contracts View -->
-        <div v-else-if="activeTab === 'contracts'" class="relative">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="font-bold text-lg">Contracts</h3>
-            <button @click="contractFormDialog?.openForCustomer(customer)" class="inline-flex items-center justify-center gap-2 h-8 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shadow-sm">
-              <Icon name="i-lucide-plus" class="size-3.5" />
-              New Contract
-            </button>
-          </div>
-
-          <div v-if="loadingContracts" class="space-y-4">
-            <div v-for="i in 3" :key="i" class="h-16 bg-muted/40 rounded-xl animate-pulse" />
-          </div>
-          <div v-else-if="customerContracts.length === 0" class="flex flex-col items-center justify-center py-12 text-center border bg-card rounded-xl border-dashed">
-            <Icon name="i-lucide-file-signature" class="size-8 text-muted-foreground mb-4" />
-            <h3 class="font-bold text-lg mb-1">No contracts found</h3>
-            <p class="text-sm text-muted-foreground mb-4">This customer has no active contracts on file.</p>
-          </div>
-          <CrmContractsTable 
-            v-else
-            :contracts="customerContracts" 
-            :templates="templates" 
-            :companyProfile="companyProfile"
-            :isLoading="loadingContracts"
-            @refresh="fetchCustomerContracts"
-            @edit="ct => contractFormDialog?.openEditContract(ct)"
-          />
-        </div>
-
-        <!-- Appointments View -->
-        <div v-else-if="activeTab === 'appointments'" class="relative space-y-4">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="font-bold text-lg">Appointments</h3>
-            <!-- View Actions (List vs Calendar) -->
-            <div class="bg-muted p-0.5 hidden sm:flex rounded-lg items-center shadow-inner border border-input/50 h-8 sm:h-9">
-              <button 
-                @click="aptViewMode = 'calendar'"
-                class="px-2.5 h-full rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all"
-                :class="aptViewMode === 'calendar' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
-              >
-                <Icon name="i-lucide-calendar" class="size-3.5" />
-                <span class="sr-only">Calendar</span>
-              </button>
-              <button 
-                @click="aptViewMode = 'list'"
-                class="px-2.5 h-full rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all"
-                :class="aptViewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
-              >
-                <Icon name="i-lucide-list" class="size-3.5" />
-                <span class="sr-only">List</span>
-              </button>
-            </div>
-          </div>
-
-          <CrmCalendarView 
-            v-if="aptViewMode === 'calendar'"
-            :items="customerSubmissions" 
-            :is-loading="loadingSubmissionsForTab" 
-            @update-status="handleStatusUpdate"
-            @select="openAptDetails"
-            class="min-h-[600px] mb-8"
-          />
-          <CrmSubmissionsTable
-            v-else
-            :items="customerSubmissions"
-            :is-loading="loadingSubmissionsForTab"
-            :show-type-column="false"
-            type="appointment"
-            empty-icon="i-lucide-calendar-check"
-            empty-title="No appointment requests yet"
-            empty-description="This customer hasn't booked any meetings yet"
-            @toggle-star="handleToggleStar"
-            @update-status="handleStatusUpdate"
-          />
-        </div>
-
-        <!-- Table view of generic submissions for the other tabs -->
-        <div v-else class="relative">
-          <CrmSubmissionsTable
-            :items="customerSubmissions"
-            :is-loading="loadingSubmissionsForTab"
-            :show-type-column="false"
-            class="sticky-header"
-            :is-embedded="true"
-            :empty-icon="tabs.find(t => t.id === activeTab)?.icon"
-            :empty-title="`No ${tabs.find(t => t.id === activeTab)?.label} found`"
-            empty-description="This customer hasn't submitted this type of form yet."
-            @toggle-star="handleToggleStar"
-            @update-status="handleStatusUpdate"
-          />
-        </div>
       </div>
+    </template>
       
-      <!-- Appointment Detail Slideover -->
-      <Sheet v-model:open="showAptDetail">
-        <SheetContent class="sm:max-w-xl overflow-y-auto w-full p-6 sm:p-8">
-          <SheetHeader v-if="selectedApt">
-            <div class="flex items-center gap-3 mb-1">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ring-1 ring-primary/10">
-                <Icon name="i-lucide-calendar" class="size-6 text-primary" />
-              </div>
-              <div>
-                <SheetTitle class="text-lg">{{ selectedApt.name || 'Unknown Contact' }}</SheetTitle>
-                <SheetDescription>Calendly Appointment</SheetDescription>
-              </div>
+    <!-- Appointment Detail Slideover -->
+    <Sheet v-model:open="showAptDetail">
+      <SheetContent class="sm:max-w-xl overflow-y-auto w-full p-6 sm:p-8">
+        <SheetHeader v-if="selectedApt">
+          <div class="flex items-center gap-3 mb-1">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ring-1 ring-primary/10">
+              <Icon name="i-lucide-calendar" class="size-6 text-primary" />
             </div>
-          </SheetHeader>
-
-          <div v-if="selectedApt" class="mt-6 space-y-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div v-if="selectedApt.email" class="flex items-center gap-2 text-sm">
-                <Icon name="i-lucide-mail" class="size-4 text-muted-foreground shrink-0" />
-                <a :href="`mailto:${selectedApt.email}`" class="text-primary hover:underline truncate">{{ selectedApt.email }}</a>
-              </div>
-              <div v-if="selectedApt.phone" class="flex items-center gap-2 text-sm">
-                <Icon name="i-lucide-phone" class="size-4 text-muted-foreground shrink-0" />
-                <a :href="`tel:${selectedApt.phone}`" class="text-primary hover:underline">{{ selectedApt.phone }}</a>
-              </div>
-              <div v-if="selectedApt.fields?.meetingScheduled" class="flex items-center gap-2 text-sm col-span-1 sm:col-span-2 mt-2 p-3 bg-muted/40 rounded-xl border">
-                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 shrink-0" />
-                <div class="flex flex-col">
-                  <span class="font-bold text-foreground">Scheduled for:</span>
-                  <span class="text-muted-foreground">{{ formatDate(selectedApt.fields.meetingScheduled.startTime) }}</span>
-                </div>
-              </div>
+            <div>
+              <SheetTitle class="text-lg">{{ selectedApt.name || 'Unknown Contact' }}</SheetTitle>
+              <SheetDescription>Calendly Appointment</SheetDescription>
             </div>
+          </div>
+        </SheetHeader>
 
-            <Separator />
-            
-            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-              <span
-                class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium capitalize w-fit"
-                :class="selectedApt.status === 'completed' ? 'bg-emerald-500/15 text-emerald-600' : 'bg-sky-500/15 text-sky-600'"
-              >
-                Status: {{ selectedApt.status }}
-              </span>
-              <span class="text-xs text-muted-foreground sm:ml-auto">
-                Booked {{ formatDate(selectedApt.dateSubmitted) }}
-              </span>
+        <div v-if="selectedApt" class="mt-6 space-y-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div v-if="selectedApt.email" class="flex items-center gap-2 text-sm">
+              <Icon name="i-lucide-mail" class="size-4 text-muted-foreground shrink-0" />
+              <a :href="`mailto:${selectedApt.email}`" class="text-primary hover:underline truncate">{{ selectedApt.email }}</a>
             </div>
-
-            <div v-if="selectedApt.message" class="space-y-2">
-              <h4 class="text-sm font-medium text-foreground">Message / Notes</h4>
-              <div class="rounded-lg bg-muted/30 p-4 text-sm text-foreground/80 leading-relaxed border border-border/50 whitespace-pre-wrap">
-                {{ selectedApt.message }}
-              </div>
+            <div v-if="selectedApt.phone" class="flex items-center gap-2 text-sm">
+              <Icon name="i-lucide-phone" class="size-4 text-muted-foreground shrink-0" />
+              <a :href="`tel:${selectedApt.phone}`" class="text-primary hover:underline">{{ selectedApt.phone }}</a>
             </div>
-
-            <div v-if="selectedApt.fields && Object.keys(selectedApt.fields).length > 0" class="space-y-2">
-              <h4 class="text-sm font-medium text-foreground">Additional Details</h4>
-              <div class="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/50">
-                <div
-                  v-for="(entry, index) in Object.entries(selectedApt.fields).filter(([k]) => k !== 'meetingScheduled')"
-                  :key="entry[0]"
-                  class="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 px-4 py-3 bg-card text-sm"
-                >
-                  <span class="text-muted-foreground font-medium sm:min-w-[150px] sm:max-w-[180px] shrink-0">{{ entry[0] }}</span>
-                  <span class="text-foreground whitespace-pre-wrap break-words leading-relaxed">{{ entry[1] || '—' }}</span>
-                </div>
-              </div>
-              
-              <div v-if="selectedApt.fields.meetingScheduled" class="mt-4 flex flex-col sm:flex-row gap-3 pb-8">
-                <a v-if="selectedApt.fields.meetingScheduled.rescheduleUrl" :href="selectedApt.fields.meetingScheduled.rescheduleUrl" target="_blank" class="px-4 py-2.5 rounded-lg bg-orange-500/10 text-orange-600 font-bold text-sm sm:text-xs ring-1 ring-orange-500/20 hover:bg-orange-500/20 transition-all flex items-center justify-center flex-1">
-                  Reschedule Link
-                </a>
-                <a v-if="selectedApt.fields.meetingScheduled.cancelUrl" :href="selectedApt.fields.meetingScheduled.cancelUrl" target="_blank" class="px-4 py-2.5 rounded-lg bg-red-500/10 text-red-600 font-bold text-sm sm:text-xs ring-1 ring-red-500/20 hover:bg-red-500/20 transition-all flex items-center justify-center flex-1">
-                  Cancel Link
-                </a>
+            <div v-if="selectedApt.fields?.meetingScheduled" class="flex items-center gap-2 text-sm col-span-1 sm:col-span-2 mt-2 p-3 bg-muted/40 rounded-xl border">
+              <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 shrink-0" />
+              <div class="flex flex-col">
+                <span class="font-bold text-foreground">Scheduled for:</span>
+                <span class="text-muted-foreground">{{ formatDate(selectedApt.fields.meetingScheduled.startTime) }}</span>
               </div>
             </div>
           </div>
-        </SheetContent>
-      </Sheet>
-      
-      <!-- Edit Custom Dialog -->
-      <CrmCustomerFormDialog 
-        v-model="showEditCustomer"
-        :customer="customer"
-        @saved="onCustomerUpdated"
-      />
-      
-      <!-- Create Contract UI specifically instantiated for this active context -->
-      <CrmContractFormDialog
-        ref="contractFormDialog"
-        @saved="fetchCustomerContracts"
-      />
 
-      <!-- Delete Confirmation Dialog -->
-      <AlertDialog :open="showDeleteConfirm" @update:open="v => showDeleteConfirm = v">
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Customer</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this customer? This action cannot be undone and all associated data will be permanently removed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction class="bg-destructive text-destructive-foreground hover:bg-destructive/90" @click="deleteCustomer">
-              <Icon name="i-lucide-trash-2" class="size-3.5 mr-1.5" />
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <Separator />
+          
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <span
+              class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium capitalize w-fit"
+              :class="selectedApt.status === 'completed' ? 'bg-emerald-500/15 text-emerald-600' : 'bg-sky-500/15 text-sky-600'"
+            >
+              Status: {{ selectedApt.status }}
+            </span>
+            <span class="text-xs text-muted-foreground sm:ml-auto">
+              Booked {{ formatDate(selectedApt.dateSubmitted) }}
+            </span>
+          </div>
+
+          <div v-if="selectedApt.message" class="space-y-2">
+            <h4 class="text-sm font-medium text-foreground">Message / Notes</h4>
+            <div class="rounded-lg bg-muted/30 p-4 text-sm text-foreground/80 leading-relaxed border border-border/50 whitespace-pre-wrap">
+              {{ selectedApt.message }}
+            </div>
+          </div>
+
+          <div v-if="selectedApt.fields && Object.keys(selectedApt.fields).length > 0" class="space-y-2">
+            <h4 class="text-sm font-medium text-foreground">Additional Details</h4>
+            <div class="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/50">
+              <div
+                v-for="(entry, index) in Object.entries(selectedApt.fields).filter(([k]) => k !== 'meetingScheduled')"
+                :key="entry[0]"
+                class="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 px-4 py-3 bg-card text-sm"
+              >
+                <span class="text-muted-foreground font-medium sm:min-w-[150px] sm:max-w-[180px] shrink-0">{{ entry[0] }}</span>
+                <span class="text-foreground whitespace-pre-wrap break-words leading-relaxed">{{ entry[1] || '—' }}</span>
+              </div>
+            </div>
+            
+            <div v-if="selectedApt.fields.meetingScheduled" class="mt-4 flex flex-col sm:flex-row gap-3 pb-8">
+              <a v-if="selectedApt.fields.meetingScheduled.rescheduleUrl" :href="selectedApt.fields.meetingScheduled.rescheduleUrl" target="_blank" class="px-4 py-2.5 rounded-lg bg-orange-500/10 text-orange-600 font-bold text-sm sm:text-xs ring-1 ring-orange-500/20 hover:bg-orange-500/20 transition-all flex items-center justify-center flex-1">
+                Reschedule Link
+              </a>
+              <a v-if="selectedApt.fields.meetingScheduled.cancelUrl" :href="selectedApt.fields.meetingScheduled.cancelUrl" target="_blank" class="px-4 py-2.5 rounded-lg bg-red-500/10 text-red-600 font-bold text-sm sm:text-xs ring-1 ring-red-500/20 hover:bg-red-500/20 transition-all flex items-center justify-center flex-1">
+                Cancel Link
+              </a>
+            </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+    
+    <!-- Edit Custom Dialog -->
+    <CrmCustomerFormDialog 
+      v-model="showEditCustomer"
+      :customer="customer"
+      @saved="onCustomerUpdated"
+    />
+    
+    <!-- Create Contract UI -->
+    <CrmContractFormDialog
+      ref="contractFormDialog"
+      @saved="fetchCustomerContracts"
+    />
+
+    <!-- Delete Confirmation Dialog -->
+    <AlertDialog :open="showDeleteConfirm" @update:open="v => showDeleteConfirm = v">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this customer? This action cannot be undone and all associated data will be permanently removed.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction class="bg-destructive text-destructive-foreground hover:bg-destructive/90" @click="deleteCustomer">
+            <Icon name="i-lucide-trash-2" class="size-3.5 mr-1.5" />
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
       
-    </div>
   </div>
 </template>
+
+<style scoped>
+.font-display {
+  font-family: 'Outfit', sans-serif;
+}
+</style>

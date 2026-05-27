@@ -43,7 +43,14 @@ const tree = ref<Cat[]>([])
 const selectedCatId = ref<string | null>(null)
 const expandedSubs = ref<Set<string>>(new Set())
 const searchQuery = ref('')
+const categorySearch = ref('')
 const showMobileSidebar = ref(false)
+
+const filteredTree = computed(() => {
+  const q = categorySearch.value.toLowerCase().trim()
+  if (!q) return tree.value
+  return tree.value.filter(c => c.name.toLowerCase().includes(q))
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -55,7 +62,7 @@ watch(selectedCatId, (newId) => {
       if (route.query.category !== cat.name) {
         router.replace({ query: { ...route.query, category: cat.name } })
       }
-      setHeader({ title: `Skills — ${cat.name}`, icon: 'i-lucide-graduation-cap', description: 'Manage skill categories and competencies' })
+      setHeader({ title: cat.name, icon: 'i-lucide-graduation-cap', description: 'Manage skill categories and competencies' })
     }
   }
 })
@@ -657,7 +664,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 }
 </script>
 <template>
-  <div class="flex gap-0 -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden">
+  <div class="flex gap-4 h-[calc(100vh-theme(spacing.16))] overflow-hidden">
 
     <!-- ══════════════════════ MOBILE SIDEBAR OVERLAY ══════════════════════ -->
     <Transition
@@ -684,10 +691,18 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         'fixed md:relative inset-y-0 left-0 md:inset-auto'
       ]"
     >
-      <!-- Header -->
-      <div class="px-4 py-3.5 sm:py-4 border-b border-border/60 flex items-center justify-between">
-        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Categories</p>
-        <button class="md:hidden size-7 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground" @click="showMobileSidebar = false">
+      <!-- Header with search -->
+      <div class="h-[52px] px-3 border-b border-border/60 flex items-center gap-2">
+        <div class="relative flex-1">
+          <Icon name="i-lucide-search" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5" />
+          <input
+            v-model="categorySearch"
+            type="text"
+            placeholder="Search Categories"
+            class="w-full h-8 pl-8 pr-3 rounded-lg border border-input bg-muted/50 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+          />
+        </div>
+        <button class="md:hidden size-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground shrink-0" @click="showMobileSidebar = false">
           <Icon name="i-lucide-x" class="size-4" />
         </button>
       </div>
@@ -696,7 +711,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
       <nav class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
         <!-- Category: EDIT MODE -->
         <div
-          v-for="(cat, idx) in tree"
+          v-for="(cat, idx) in filteredTree"
           :key="cat._id"
           class="group w-full rounded-lg transition-all duration-150 relative"
         >
@@ -778,7 +793,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
     <main class="flex-1 flex flex-col min-h-0 h-full">
 
       <!-- Top toolbar -->
-      <div class="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 border-b border-border/60 bg-background/80 backdrop-blur-sm">
+      <div class="flex items-center gap-2 sm:gap-3 h-[52px] border-b border-border/60 bg-background/80 backdrop-blur-sm mb-4">
         <!-- Mobile sidebar toggle -->
         <button
           class="md:hidden size-8 rounded-lg border border-border/50 flex items-center justify-center hover:bg-muted text-muted-foreground shrink-0"
@@ -790,7 +805,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         <!-- Category pill -->
         <div
           v-if="selectedCat"
-          class="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border text-xs sm:text-sm font-medium bg-gradient-to-r shrink-0"
+          class="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 h-8 rounded-full border text-xs sm:text-sm font-medium bg-gradient-to-r shrink-0"
           :class="catGradient(selectedCatIndex)"
         >
           <span class="size-1.5 sm:size-2 rounded-full" :class="catDot(selectedCatIndex)" />
@@ -800,7 +815,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         <!-- Search -->
         <div class="relative flex-1 max-w-[180px] sm:max-w-xs">
           <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5 sm:size-4" />
-          <Input v-model="searchQuery" placeholder="Search…" class="pl-8 sm:pl-9 h-8 sm:h-9 bg-muted/50 border-border/50 text-xs sm:text-sm" />
+          <Input v-model="searchQuery" placeholder="Search…" class="pl-8 sm:pl-9 h-8 bg-muted/50 border-border/50 text-xs sm:text-sm" />
         </div>
 
         <!-- Add Sub Category button -->
@@ -808,7 +823,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           v-if="canCreate() && selectedCat"
           size="sm"
           variant="outline"
-          class="shrink-0 gap-1 sm:gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3"
+          class="shrink-0 gap-1 sm:gap-1.5 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary text-xs sm:text-sm h-8 px-2 sm:px-3"
           @click="openCreateSubCat"
         >
           <Icon name="i-lucide-plus" class="size-3 sm:size-3.5" />
@@ -821,7 +836,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           v-if="canUpdate() && selectedCat && !selectedCat.info"
           size="sm"
           variant="outline"
-          class="shrink-0 gap-1 sm:gap-1.5 border-dashed border-primary/40 text-primary hover:bg-primary/5 hover:text-primary text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 ml-1"
+          class="shrink-0 gap-1 sm:gap-1.5 border-dashed border-primary/40 text-primary hover:bg-primary/5 hover:text-primary text-xs sm:text-sm h-8 px-2 sm:px-3 ml-1"
           @click="openCatInfo(selectedCat)"
           title="Upload Category PDF"
         >
@@ -835,7 +850,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           v-if="selectedCat && selectedCat.info"
           size="sm"
           variant="default"
-          class="shrink-0 gap-1 sm:gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 ml-1"
+          class="shrink-0 gap-1 sm:gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm text-xs sm:text-sm h-8 px-2 sm:px-3 ml-1"
           @click="openCatInfo(selectedCat)"
           title="View PDF Document"
         >
@@ -849,7 +864,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           v-if="canDelete() && selectedCat && selectedCat.subCategories.length === 0"
           size="sm"
           variant="outline"
-          class="shrink-0 gap-1 sm:gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3 ml-1"
+          class="shrink-0 gap-1 sm:gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive text-xs sm:text-sm h-8 px-2 sm:px-3 ml-1"
           @click="deleteCat(selectedCat._id)"
           title="Delete Category"
         >
@@ -874,7 +889,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
       </div>
 
       <!-- Skills content area -->
-      <div class="p-3 sm:p-5 flex-1 overflow-y-auto">
+      <div class="flex-1 overflow-y-auto">
 
         <!-- No category selected -->
         <div v-if="!selectedCat" class="flex flex-col items-center justify-center h-full gap-3 sm:gap-4 text-center py-16 sm:py-24 px-4">

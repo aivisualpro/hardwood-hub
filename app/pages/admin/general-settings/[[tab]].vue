@@ -237,6 +237,7 @@ const tabs = [
   { id: 'workspaces', label: 'Workspaces', icon: 'i-lucide-network' },
   { id: 'company', label: 'Company', icon: 'i-lucide-building-2' },
   { id: 'dropdowns', label: 'Dropdowns', icon: 'i-lucide-list' },
+  { id: 'integrations', label: 'Integrations', icon: 'i-lucide-plug' },
 ]
 
 // ─── Fetch ───────────────────────────────────────────────
@@ -265,7 +266,7 @@ async function fetchWorkspaces() {
 }
 
 // ─── Dropdowns State ─────────────────────────────────────
-interface DropdownOption { _id: string; label: string; value: string; color: string; icon: string; order: number }
+interface DropdownOption { _id: string; label: string; value: string; color: string; icon: string; order: number; category: string }
 interface DropdownRecord { _id: string; name: string; options: DropdownOption[] }
 const dropdowns = ref<DropdownRecord[]>([])
 const loadingDropdowns = ref(true)
@@ -274,6 +275,25 @@ const editingCell = ref<{ optId: string; field: string } | null>(null)
 const editingValue = ref('')
 const addingOption = ref(false)
 const newOptionLabel = ref('')
+const newOptionCategory = ref('')
+const showCreateDropdown = ref(false)
+const newDropdownName = ref('')
+const savingDropdown = ref(false)
+const dropdownSearch = ref('')
+
+const filteredDropdowns = computed(() => {
+  const q = dropdownSearch.value.trim().toLowerCase()
+  if (!q) return dropdowns.value
+  return dropdowns.value.filter(d => d.name.toLowerCase().includes(q))
+})
+
+const optionSearch = ref('')
+
+const filteredSortedOptions = computed(() => {
+  const q = optionSearch.value.trim().toLowerCase()
+  if (!q) return sortedOptions.value
+  return sortedOptions.value.filter(o => o.label.toLowerCase().includes(q))
+})
 
 const COLOR_PALETTE = [
   '#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#22c55e','#10b981','#14b8a6','#06b6d4','#0ea5e9',
@@ -417,11 +437,33 @@ async function updateOption(dropdownId: string, optionId: string, patch: Record<
   }
 }
 
+// Category options: if the active dropdown has options with 'category', look up
+// the matching categories dropdown. e.g. "Daily Production Sub Types" → "Daily Production Categories"
+const categoryLookupDropdown = computed(() => {
+  const ad = activeDropdown.value
+  if (!ad) return null
+  // Check if any option in this dropdown has a category
+  const hasCategory = ad.options.some(o => !!o.category)
+  if (!hasCategory && ad.name !== 'Daily Production Sub Types') return null
+  // Find the categories dropdown
+  return dropdowns.value.find(d => d.name === 'Daily Production Categories') ?? null
+})
+
+const categoryOptions = computed(() => {
+  const dd = categoryLookupDropdown.value
+  if (!dd) return []
+  return [...dd.options].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+})
+
+const showCategoryColumn = computed(() => {
+  return categoryLookupDropdown.value !== null
+})
+
 async function addOption(dropdownId: string) {
   if (!newOptionLabel.value.trim()) return
   const dd = dropdowns.value.find(d => d._id === dropdownId)
   if (!dd) return
-  const newOpt = { label: newOptionLabel.value.trim(), value: newOptionLabel.value.trim(), color: '', icon: '', order: dd.options.length }
+  const newOpt = { label: newOptionLabel.value.trim(), value: newOptionLabel.value.trim(), color: '', icon: '', order: dd.options.length, category: newOptionCategory.value || '' }
   try {
     const res = await $fetch<{ success: boolean, data: DropdownRecord }>('/api/dropdowns', {
       method: 'POST',
@@ -432,6 +474,7 @@ async function addOption(dropdownId: string) {
       if (idx !== -1) dropdowns.value[idx] = res.data
     }
     newOptionLabel.value = ''
+    newOptionCategory.value = ''
     addingOption.value = false
     toast.success('Option added')
   } catch (e: any) {
@@ -488,9 +531,131 @@ async function reorderOptions(dropdownId: string) {
   }
 }
 
+async function createDropdown() {
+  if (!newDropdownName.value.trim()) return toast.error('Dropdown name is required')
+  savingDropdown.value = true
+  try {
+    const res = await $fetch<{ success: boolean, data: DropdownRecord }>('/api/dropdowns', {
+      method: 'POST',
+      body: { name: newDropdownName.value.trim(), options: [] },
+    })
+    if (res.data) {
+      dropdowns.value.push({ ...res.data, _id: String(res.data._id), options: res.data.options || [] })
+    }
+    newDropdownName.value = ''
+    showCreateDropdown.value = false
+    toast.success('Dropdown created')
+  } catch (e: any) {
+    toast.error('Failed to create dropdown', { description: e?.message })
+  } finally {
+    savingDropdown.value = false
+  }
+}
+
+async function deleteDropdown(id: string) {
+  try {
+    await $fetch<{ success: boolean }>('/api/dropdowns', {
+      method: 'DELETE',
+      body: { _id: id },
+    })
+    dropdowns.value = dropdowns.value.filter(d => d._id !== id)
+    if (activeDropdownId.value === id) activeDropdownId.value = null
+    toast.success('Dropdown deleted')
+  } catch (e: any) {
+    toast.error('Delete failed', { description: e?.message })
+  }
+}
+
+// ─── Google Calendar Integration State ───────────────────
+const calendarStatus = ref<{ connected: boolean; email: string; watchActive: boolean; watchExpiry: string | null }>({
+  connected: false, email: '', watchActive: false, watchExpiry: null,
+})
+const loadingCalendar = ref(true)
+const connectingCalendar = ref(false)
+const syncingCalendar = ref(false)
+
+async function fetchCalendarStatus() {
+  try {
+    const res = await $fetch<{ success: boolean; data: any }>('/api/google-calendar/status')
+    calendarStatus.value = res.data
+  } catch (e: any) {
+    console.error('[Calendar Status]', e?.message)
+  } finally {
+    loadingCalendar.value = false
+  }
+}
+
+async function connectCalendar() {
+  connectingCalendar.value = true
+  try {
+    const res = await $fetch<{ success: boolean; url: string }>('/api/google-calendar/auth-url')
+    if (res.url) window.location.href = res.url
+  } catch (e: any) {
+    toast.error('Failed to start Calendar connection', { description: e?.message })
+    connectingCalendar.value = false
+  }
+}
+
+async function disconnectCalendar() {
+  try {
+    await $fetch('/api/google-calendar/disconnect', { method: 'POST' })
+    calendarStatus.value = { connected: false, email: '', watchActive: false, watchExpiry: null }
+    toast.success('Google Calendar disconnected')
+  } catch (e: any) {
+    toast.error('Failed to disconnect', { description: e?.message })
+  }
+}
+
+async function syncCalendar() {
+  syncingCalendar.value = true
+  try {
+    const res = await $fetch<{ success: boolean; data: any }>('/api/google-calendar/sync', { method: 'POST' })
+    toast.success(`Synced ${res.data?.eventCount || 0} events`)
+    await fetchCalendarStatus()
+  } catch (e: any) {
+    toast.error('Sync failed', { description: e?.message })
+  } finally {
+    syncingCalendar.value = false
+  }
+}
+
 // ─── Client-only data fetch (server: false avoids SSR cookie context loss) ──
+// Track which tabs have already been fetched
+const fetchedTabs = new Set<string>()
+
+async function fetchTabData(tab: string) {
+  if (fetchedTabs.has(tab)) return
+  fetchedTabs.add(tab)
+  switch (tab) {
+    case 'skill-bonus': return fetchRecords()
+    case 'workspaces': return fetchWorkspaces()
+    case 'company': return fetchCompanyProfile()
+    case 'dropdowns': return fetchDropdowns()
+    case 'integrations': return fetchCalendarStatus()
+  }
+}
+
+watch(() => activeTab.value, (tab) => {
+  if (tab) fetchTabData(tab)
+})
+
 onMounted(() => {
-  Promise.all([fetchRecords(), fetchWorkspaces(), fetchCompanyProfile(), fetchDropdowns()])
+  // Only load the current tab's data
+  fetchTabData(activeTab.value)
+
+  // Check for calendar connection callback params
+  const url = new URL(window.location.href)
+  if (url.searchParams.get('calendarConnected') === 'true') {
+    toast.success('Google Calendar connected successfully!')
+    url.searchParams.delete('calendarConnected')
+    window.history.replaceState({}, '', url.toString())
+  }
+  const calError = url.searchParams.get('calendarError')
+  if (calError) {
+    toast.error('Calendar connection failed', { description: calError })
+    url.searchParams.delete('calendarError')
+    window.history.replaceState({}, '', url.toString())
+  }
 })
 
 // ─── Open modals ─────────────────────────────────────────
@@ -734,20 +899,18 @@ const WpIconsList = [
 ]
 </script>
 <template>
-  <div class="flex flex-col -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden bg-background">
+  <div class="flex flex-col -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden bg-background p-4 gap-2">
 
-    <!-- Top Navigation Header -->
-    <div class="shrink-0 border-b border-border/60 bg-muted/10 px-4 sm:px-6 flex flex-col justify-end pt-4 h-20">
-      <div class="flex items-center justify-between mb-0 h-full pb-0">
+    <div class="shrink-0 flex items-center justify-between">
         <!-- Tabs -->
-        <div class="flex items-center gap-6 overflow-x-auto h-full">
+        <div class="flex items-center gap-0.5 p-1 rounded-lg border border-border/50 bg-muted/30">
           <button
             v-for="tab in tabs"
             :key="tab.id"
-            class="flex items-center gap-2 h-full pb-4 border-b-2 text-sm font-semibold transition-colors whitespace-nowrap outline-none"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-semibold transition-colors whitespace-nowrap outline-none"
             :class="activeTab === tab.id
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border/60'"
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'"
             @click="navigateTo(`/admin/general-settings/${tab.id}`)"
           >
             <Icon :name="tab.icon" class="size-4" />
@@ -755,22 +918,50 @@ const WpIconsList = [
           </button>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="flex items-center gap-3 pb-3">
-          <Button v-if="activeTab === 'skill-bonus'" size="sm" class="h-9 px-3" @click="openCreate">
+        <div class="flex items-center gap-3">
+          <!-- Search (dropdowns tab) -->
+          <div v-if="activeTab === 'dropdowns'" class="relative">
+            <Icon name="i-lucide-search" class="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              v-if="activeDropdownId"
+              v-model="optionSearch"
+              type="text"
+              placeholder="Search options…"
+              class="h-8 w-48 rounded-md border border-border/50 bg-muted/30 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
+            />
+            <input
+              v-else
+              v-model="dropdownSearch"
+              type="text"
+              placeholder="Search dropdowns…"
+              class="h-8 w-48 rounded-md border border-border/50 bg-muted/30 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
+            />
+          </div>
+          <!-- Back button when inside a dropdown -->
+          <Button v-if="activeTab === 'dropdowns' && activeDropdownId" size="sm" variant="ghost" class="h-8 px-2" @click="activeDropdownId = null; addingOption = false">
+            <Icon name="i-lucide-arrow-left" class="size-4" />
+          </Button>
+          <Button v-if="activeTab === 'skill-bonus'" size="sm" class="h-8 px-3" @click="openCreate">
             <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
             Add Rule
           </Button>
-          <Button v-if="activeTab === 'workspaces'" size="sm" class="h-9 px-3" @click="openWpCreate">
+          <Button v-if="activeTab === 'workspaces'" size="sm" class="h-8 px-3" @click="openWpCreate">
             <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
             Add Workspace
           </Button>
+          <Button v-if="activeTab === 'dropdowns' && !activeDropdownId" size="sm" class="h-8 px-3" @click="showCreateDropdown = true; newDropdownName = ''">
+            <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
+            Add Dropdown
+          </Button>
+          <Button v-if="activeTab === 'dropdowns' && activeDropdownId" size="sm" class="h-8 px-3" @click="addingOption = true; newOptionLabel = ''">
+            <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
+            Add Option
+          </Button>
         </div>
-      </div>
     </div>
 
     <!-- Content area -->
-    <main class="flex-1 flex flex-col min-h-0 h-full overflow-y-auto p-4 sm:p-6 bg-muted/5">
+    <main class="flex-1 flex flex-col min-h-0 h-full overflow-y-auto">
 
         <!-- ═══════ SKILL BONUS TAB ═══════ -->
         <template v-if="activeTab === 'skill-bonus'">
@@ -1204,14 +1395,18 @@ const WpIconsList = [
               <Icon name="i-lucide-list" class="size-8 text-primary" />
             </div>
             <h3 class="text-lg font-semibold">No Dropdowns</h3>
-            <p class="text-sm text-muted-foreground max-w-sm">No dropdown configurations found. Seed from the API to get started.</p>
+            <p class="text-sm text-muted-foreground max-w-sm">No dropdown configurations found. Create one to get started.</p>
+            <Button size="sm" @click="showCreateDropdown = true; newDropdownName = ''">
+              <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
+              Create First Dropdown
+            </Button>
           </div>
 
           <div v-else class="space-y-4">
             <!-- Dropdown Cards Grid -->
             <div v-if="!activeDropdownId" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div
-                v-for="dd in dropdowns"
+                v-for="dd in filteredDropdowns"
                 :key="dd._id"
                 class="rounded-xl border border-border/50 bg-card p-5 group hover:border-primary/30 hover:shadow-md transition-all cursor-pointer"
                 @click="activeDropdownId = dd._id"
@@ -1219,11 +1414,20 @@ const WpIconsList = [
                 <div class="flex items-center gap-3 mb-3">
                   <div class="size-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
                     <Icon name="i-lucide-list" class="size-5 text-primary" />
-                  </div>
+              </div>
+                <div class="flex items-center justify-between">
                   <div>
                     <h3 class="font-bold text-sm">{{ dd.name }}</h3>
                     <p class="text-[10px] text-muted-foreground">{{ dd.options.length }} options</p>
                   </div>
+                  <button
+                    class="size-7 rounded-lg flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                    @click.stop="deleteDropdown(dd._id)"
+                    title="Delete dropdown"
+                  >
+                    <Icon name="i-lucide-trash-2" class="size-3.5" />
+                  </button>
+                </div>
                 </div>
                 <div class="flex flex-wrap gap-1">
                   <span
@@ -1244,22 +1448,6 @@ const WpIconsList = [
 
             <!-- Expanded Dropdown Options Table -->
             <div v-if="activeDropdown" class="space-y-4">
-              <div class="flex items-center gap-3">
-                <button
-                  class="size-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground transition-colors"
-                  @click="activeDropdownId = null; addingOption = false"
-                >
-                  <Icon name="i-lucide-arrow-left" class="size-4" />
-                </button>
-                <h2 class="text-base font-bold">{{ activeDropdown.name }}</h2>
-                <span class="text-xs text-muted-foreground">{{ activeDropdown.options.length }} options</span>
-                <div class="ml-auto">
-                  <Button size="sm" class="h-8 px-3" @click="addingOption = true; newOptionLabel = ''">
-                    <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
-                    Add Option
-                  </Button>
-                </div>
-              </div>
 
               <!-- Add new option row -->
               <div v-if="addingOption" class="flex items-center gap-2 px-4 py-3 rounded-xl border border-primary/30 bg-primary/5">
@@ -1270,6 +1458,14 @@ const WpIconsList = [
                   @keydown.enter="addOption(activeDropdown!._id)"
                   @keydown.escape="addingOption = false"
                 />
+                <Select v-if="showCategoryColumn" v-model="newOptionCategory">
+                  <SelectTrigger class="h-8 w-[180px] text-xs">
+                    <SelectValue placeholder="Category..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="cat in categoryOptions" :key="cat._id" :value="cat.value">{{ cat.label }}</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button size="sm" class="h-8" @click="addOption(activeDropdown!._id)">Add</Button>
                 <Button size="sm" variant="ghost" class="h-8" @click="addingOption = false">Cancel</Button>
               </div>
@@ -1277,19 +1473,20 @@ const WpIconsList = [
               <!-- Options Table -->
               <div class="rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
                 <div class="overflow-x-auto">
-                  <table class="w-full text-sm" style="min-width: 600px">
+                  <table class="w-full text-sm" style="min-width: 780px">
                     <thead>
                       <tr class="border-b border-border/50 bg-muted/30">
                         <th class="w-10 px-2 py-3" />
                         <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider w-8">#</th>
                         <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">Label</th>
+                        <th v-if="showCategoryColumn" class="text-left px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider w-[180px]">Category</th>
                         <th class="text-center px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider w-24">Color</th>
                         <th class="text-center px-4 py-3 font-semibold text-muted-foreground text-[10px] uppercase tracking-wider w-24">Icon</th>
                         <th class="w-16 px-4 py-3" />
                       </tr>
                     </thead>
                     <draggable
-                      :list="sortedOptions"
+                      :list="filteredSortedOptions"
                       tag="tbody"
                       item-key="_id"
                       handle=".drag-handle"
@@ -1339,6 +1536,18 @@ const WpIconsList = [
                             </span>
                             <Icon name="i-lucide-pencil" class="size-3 text-muted-foreground/0 group-hover/label:text-muted-foreground transition-colors" />
                           </div>
+                        </td>
+
+                        <!-- Category selector (only for dropdowns that use categories) -->
+                        <td v-if="showCategoryColumn" class="px-4 py-2.5">
+                          <Select :model-value="opt.category || ''" @update:model-value="(v) => updateOption(activeDropdown!._id, opt._id, { category: String(v) })">
+                            <SelectTrigger class="h-7 text-[11px] w-full">
+                              <SelectValue :placeholder="'Select...'" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem v-for="cat in categoryOptions" :key="cat._id" :value="cat.value">{{ cat.label }}</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </td>
 
                         <!-- Color picker -->
@@ -1430,6 +1639,97 @@ const WpIconsList = [
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ═══════ INTEGRATIONS TAB ═══════ -->
+        <template v-else-if="activeTab === 'integrations'">
+          <div class="space-y-6">
+            <!-- Google Calendar Card -->
+            <div class="rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
+              <div class="flex items-center gap-4 px-6 py-5 border-b border-border/30">
+                <div class="size-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
+                  <Icon name="i-lucide-calendar" class="size-6 text-blue-500" />
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-base font-bold">Google Calendar</h3>
+                  <p class="text-xs text-muted-foreground mt-0.5">2-way sync your Google Calendar events</p>
+                </div>
+                <div v-if="loadingCalendar" class="flex items-center gap-2">
+                  <Icon name="i-lucide-loader-2" class="size-4 animate-spin text-muted-foreground" />
+                  <span class="text-xs text-muted-foreground">Loading...</span>
+                </div>
+                <template v-else-if="calendarStatus.connected">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                      <span class="size-1.5 rounded-full bg-emerald-500" />
+                      Connected
+                    </span>
+                  </div>
+                </template>
+                <template v-else>
+                  <Button size="sm" class="h-9 gap-2" :disabled="connectingCalendar" @click="connectCalendar">
+                    <Icon v-if="connectingCalendar" name="i-lucide-loader-2" class="size-3.5 animate-spin" />
+                    <Icon v-else name="i-lucide-link" class="size-3.5" />
+                    Connect
+                  </Button>
+                </template>
+              </div>
+
+              <div v-if="calendarStatus.connected" class="px-6 py-5 space-y-4">
+                <!-- Connected Info -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div class="flex flex-col gap-1">
+                    <span class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Account</span>
+                    <span class="text-sm font-medium">{{ calendarStatus.email }}</span>
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <span class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Push Notifications</span>
+                    <span v-if="calendarStatus.watchActive" class="text-sm font-medium text-emerald-600 flex items-center gap-1.5">
+                      <Icon name="i-lucide-check-circle" class="size-3.5" />
+                      Active
+                    </span>
+                    <span v-else class="text-sm font-medium text-amber-600 flex items-center gap-1.5">
+                      <Icon name="i-lucide-alert-circle" class="size-3.5" />
+                      Inactive — Click "Sync Now" to activate
+                    </span>
+                  </div>
+                  <div v-if="calendarStatus.watchExpiry" class="flex flex-col gap-1">
+                    <span class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Watch Expires</span>
+                    <span class="text-sm font-medium">{{ new Date(calendarStatus.watchExpiry).toLocaleDateString() }}</span>
+                  </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-3 pt-2 border-t border-border/30">
+                  <Button size="sm" variant="outline" class="h-9 gap-2" :disabled="syncingCalendar" @click="syncCalendar">
+                    <Icon :name="syncingCalendar ? 'i-lucide-loader-2' : 'i-lucide-refresh-cw'" :class="syncingCalendar ? 'size-3.5 animate-spin' : 'size-3.5'" />
+                    {{ syncingCalendar ? 'Syncing...' : 'Sync Now' }}
+                  </Button>
+                  <NuxtLink to="/crm/calendar" class="inline-flex items-center gap-2 h-9 px-4 text-sm font-medium rounded-md border border-border/50 hover:bg-muted/50 transition-colors">
+                    <Icon name="i-lucide-external-link" class="size-3.5" />
+                    Open Calendar
+                  </NuxtLink>
+                  <div class="ml-auto">
+                    <Button size="sm" variant="ghost" class="h-9 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10" @click="disconnectCalendar">
+                      <Icon name="i-lucide-unlink" class="size-3.5" />
+                      Disconnect
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else-if="!loadingCalendar" class="px-6 py-8 text-center">
+                <p class="text-sm text-muted-foreground">Connect your Google Calendar to sync appointments and events in real-time.</p>
+                <p class="text-xs text-muted-foreground/60 mt-2">You'll be redirected to Google to grant calendar access.</p>
+              </div>
+            </div>
+
+            <!-- Future integrations placeholder -->
+            <div class="rounded-xl border border-dashed border-border/50 bg-muted/20 px-6 py-8 text-center">
+              <Icon name="i-lucide-puzzle" class="size-8 text-muted-foreground/30 mx-auto mb-3" />
+              <p class="text-sm font-medium text-muted-foreground/50">More integrations coming soon</p>
             </div>
           </div>
         </template>
@@ -1625,6 +1925,36 @@ const WpIconsList = [
           <Button :disabled="savingWp" @click="saveWorkspace">
             <Icon v-if="savingWp" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
             {{ editingWpId ? 'Save Configuration' : 'Create Workspace' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- ═══════ CREATE DROPDOWN MODAL ═══════ -->
+    <Dialog v-model:open="showCreateDropdown">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create Dropdown</DialogTitle>
+          <DialogDescription>
+            Add a new dropdown configuration. You can add options after creating it.
+          </DialogDescription>
+        </DialogHeader>
+        <div class="flex flex-col gap-4 py-3">
+          <div class="flex flex-col gap-1.5">
+            <Label for="dd-name">Dropdown Name</Label>
+            <Input
+              id="dd-name"
+              v-model="newDropdownName"
+              placeholder="e.g. Lead Source, Priority Level..."
+              @keydown.enter="createDropdown"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="showCreateDropdown = false">Cancel</Button>
+          <Button :disabled="savingDropdown || !newDropdownName.trim()" @click="createDropdown">
+            <Icon v-if="savingDropdown" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+            Create Dropdown
           </Button>
         </DialogFooter>
       </DialogContent>

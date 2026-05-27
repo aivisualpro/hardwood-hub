@@ -13,6 +13,8 @@ const PUBLIC_PREFIXES = [
     '/api/contracts/sign/', // public contract signing portal
     '/api/public/',        // any future public APIs
     '/api/gmail/callback', // Google OAuth2 redirect (no session cookie)
+    '/api/google-calendar/callback', // Google Calendar OAuth2 redirect
+    '/api/google-calendar/webhook',  // Google Calendar push notifications
 ]
 
 // Exact paths that are also public

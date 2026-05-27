@@ -10,18 +10,18 @@ import { Dropdown } from '../../models/Dropdown'
 export default defineEventHandler(async (event) => {
   await connectDB()
 
+  // Stringify ObjectId fields so they survive Nitro JSON serialization on Vercel
+  const serializeDropdown = (dd: any) => {
+    if (!dd) return dd
+    return {
+      ...dd,
+      _id: String(dd._id),
+      options: (dd.options || []).map((o: any) => ({ ...o, _id: String(o._id) })),
+    }
+  }
+
   if (event.method === 'GET') {
     const query = getQuery(event)
-
-    // Stringify ObjectId fields in options so they survive Nitro JSON serialization on Vercel
-    const serializeDropdown = (dd: any) => {
-      if (!dd) return dd
-      return {
-        ...dd,
-        _id: String(dd._id),
-        options: (dd.options || []).map((o: any) => ({ ...o, _id: String(o._id) })),
-      }
-    }
 
     if (query.name) {
       const dropdown: any = await Dropdown.findOne({ name: query.name }).lean()
@@ -31,7 +31,6 @@ export default defineEventHandler(async (event) => {
       return { success: true, data: serializeDropdown(dropdown) }
     }
     const dropdowns = await Dropdown.find().sort({ name: 1 }).lean()
-    // Sort each dropdown's options by order
     for (const dd of dropdowns) {
       if (dd.options) {
         dd.options.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
@@ -52,7 +51,7 @@ export default defineEventHandler(async (event) => {
       { upsert: true, new: true, lean: true }
     )
 
-    return { success: true, data: result }
+    return { success: true, data: serializeDropdown(result) }
   }
 
   if (event.method === 'PUT') {
@@ -68,7 +67,7 @@ export default defineEventHandler(async (event) => {
         { $set: setFields }
       )
       const updated = await Dropdown.findById(body.dropdownId).lean()
-      return { success: true, data: updated }
+      return { success: true, data: serializeDropdown(updated) }
     }
     // Full dropdown update
     if (body._id) {
@@ -77,7 +76,7 @@ export default defineEventHandler(async (event) => {
         { $set: { name: body.name, options: body.options } },
         { new: true, lean: true }
       )
-      return { success: true, data: result }
+      return { success: true, data: serializeDropdown(result) }
     }
     // Reorder options (PATCH-style via PUT with reorder flag)
     if (body.dropdownId && body.reorderedOptions) {
@@ -89,7 +88,7 @@ export default defineEventHandler(async (event) => {
       if (result?.options) {
         result.options.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
       }
-      return { success: true, data: result }
+      return { success: true, data: serializeDropdown(result) }
     }
     throw createError({ statusCode: 400, message: 'Missing _id or dropdownId+optionId' })
   }
@@ -103,7 +102,7 @@ export default defineEventHandler(async (event) => {
         { $pull: { options: { _id: body.optionId } } }
       )
       const updated = await Dropdown.findById(body.dropdownId).lean()
-      return { success: true, data: updated }
+      return { success: true, data: serializeDropdown(updated) }
     }
     // Delete entire dropdown
     if (body._id) {

@@ -6,6 +6,7 @@ const DropdownOptionSchema = new mongoose.Schema({
   color: { type: String, default: '' },
   icon: { type: String, default: '' },
   order: { type: Number, default: 0 },
+  category: { type: String, default: '' },
 })
 
 const DropdownSchema = new mongoose.Schema(

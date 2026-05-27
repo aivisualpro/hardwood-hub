@@ -18,11 +18,27 @@ async function loadEmployees() {
     const res = await $fetch<{ success: boolean; data: any[] }>('/api/employees')
     const allowed = ['crew member', 'supervisor']
     employees.value = (res.data || [])
-      .filter((e: any) => allowed.includes(String(e.position || '').toLowerCase()))
+      .filter((e: any) => allowed.includes(String(e.position || '').toLowerCase()) || String(e.employee || '').toLowerCase() === 'michael cornaire')
       .map((e: any) => ({ _id: String(e._id), employee: e.employee }))
       .sort((a: any, b: any) => a.employee.localeCompare(b.employee))
   } catch (e: any) {
     console.error('[Daily Production] Failed to load employees:', e?.message)
+  }
+}
+
+// Subtype options loaded from DB dropdown
+interface SubtypeOption { _id: string; label: string; value: string; color: string; icon: string; order: number; category: string }
+const subtypeOptions = ref<SubtypeOption[]>([])
+
+async function loadSubtypes() {
+  try {
+    const res = await $fetch<{ success: boolean; data: any }>('/api/dropdowns?name=Daily Production Sub Types')
+    if (res.data?.options) {
+      subtypeOptions.value = (res.data.options as SubtypeOption[])
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    }
+  } catch (e: any) {
+    console.error('[Daily Production] Failed to load subtypes:', e?.message)
   }
 }
 
@@ -83,7 +99,28 @@ const CATEGORY_SUBTYPES: Record<string, string[]> = {
   'Admin / Other': ['Estimates', 'Material pickup', 'Dump run', 'Jobsite cleaning'],
 }
 
-const CATEGORIES = Object.keys(CATEGORY_SUBTYPES)
+// Categories from DB (falls back to hardcoded keys)
+interface CategoryOption { _id: string; label: string; value: string; color: string; icon: string; order: number }
+const dbCategoryOptions = ref<CategoryOption[]>([])
+
+async function loadCategories() {
+  try {
+    const res = await $fetch<{ success: boolean; data: any }>('/api/dropdowns?name=Daily Production Categories')
+    if (res.data?.options) {
+      dbCategoryOptions.value = (res.data.options as CategoryOption[])
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    }
+  } catch (e: any) {
+    console.error('[Daily Production] Failed to load categories:', e?.message)
+  }
+}
+
+const CATEGORIES = computed(() => {
+  if (dbCategoryOptions.value.length > 0) {
+    return dbCategoryOptions.value.map(o => o.value)
+  }
+  return Object.keys(CATEGORY_SUBTYPES)
+})
 
 const SANDING_EQUIPMENT = ['Big machine', 'Edger', 'Screen / buff'] as const
 const GRITS = [36, 60, 80, 100, 120] as const
@@ -200,8 +237,9 @@ function npd(type: string): Record<string, any> {
 }
 
 // ─── Computed ─────────────────────────────────────────────
-function getSubtypes(category: string): string[] {
-  return CATEGORY_SUBTYPES[category] || []
+function getSubtypes(category: string): SubtypeOption[] {
+  if (!category) return []
+  return subtypeOptions.value.filter(o => o.category === category)
 }
 
 function isSanding(block: WorkBlock) {
@@ -679,7 +717,7 @@ async function updateRecord() {
 
 // Load dropdown data client-side only (avoids SSR 401 — cookie only available in browser)
 onMounted(async () => {
-  await Promise.all([loadEmployees(), loadClients()])
+  await Promise.all([loadEmployees(), loadClients(), loadSubtypes(), loadCategories()])
 })
 </script>
 
@@ -943,11 +981,18 @@ onMounted(async () => {
                       <SelectValue :placeholder="block.category ? 'Select subtype' : 'Pick category first'" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem v-for="s in getSubtypes(block.category)" :key="s" :value="s">{{ s }}</SelectItem>
+                      <SelectItem v-for="s in getSubtypes(block.category)" :key="s._id" :value="s.value">
+                        <span class="flex items-center gap-2">
+                          <span v-if="s.color" class="size-2 rounded-full shrink-0" :style="{ backgroundColor: s.color }" />
+                          <Icon v-if="s.icon" :name="s.icon" class="size-3.5 shrink-0" />
+                          {{ s.label }}
+                        </span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
 
               <!-- Sanding: Equipment checkboxes -->
               <template v-if="isSanding(block)">
@@ -1574,11 +1619,18 @@ onMounted(async () => {
                         <Select v-model="block.subtype" :disabled="!block.category">
                           <SelectTrigger class="h-11"><SelectValue :placeholder="block.category ? 'Select subtype' : 'Pick category first'" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem v-for="s in getSubtypes(block.category)" :key="s" :value="s">{{ s }}</SelectItem>
+                            <SelectItem v-for="s in getSubtypes(block.category)" :key="s._id" :value="s.value">
+                              <span class="flex items-center gap-2">
+                                <span v-if="s.color" class="size-2 rounded-full shrink-0" :style="{ backgroundColor: s.color }" />
+                                <Icon v-if="s.icon" :name="s.icon" class="size-3.5 shrink-0" />
+                                {{ s.label }}
+                              </span>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
+
 
                     <!-- Sanding Details -->
                     <template v-if="isSanding(block)">
