@@ -6,6 +6,7 @@ const props = defineProps<{
   templates: any[]
   companyProfile: any
   isLoading?: boolean
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -30,6 +31,11 @@ function formatDate(d: string) {
 // Strip company prefix for display only — data is never modified
 function displayTitle(title: string): string {
   return (title || '').replace(/^Ann Arbor Hardwoods\s+/i, '').trim()
+}
+
+// Strip "Ann Arbor Hardwoods Contractor" prefix from template name
+function displayTemplateName(name: string): string {
+  return (name || '').replace(/^Ann Arbor Hardwoods\s+Contractor\s*/i, '').replace(/^Ann Arbor Hardwoods\s*/i, '').trim() || name || '—'
 }
 
 // ─── Actions ─────────────────────────────────────────────
@@ -191,10 +197,10 @@ async function downloadPDF(ct: any) {
           <thead>
             <tr class="border-b bg-muted/30">
               <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contract #</th>
-              <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</th>
-              <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Customer</th>
-              <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email</th>
-              <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Phone</th>
+              <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</th>
+              <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Customer</th>
+              <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email</th>
+              <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Phone</th>
               <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Template</th>
               <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
               <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Created</th>
@@ -210,10 +216,10 @@ async function downloadPDF(ct: any) {
               <td class="px-4 py-3">
                 <span class="text-xs font-mono font-bold text-primary">{{ ct.contractNumber }}</span>
               </td>
-              <td class="px-4 py-3">
+              <td v-if="!compact" class="px-4 py-3">
                 <span class="text-sm font-semibold">{{ displayTitle(ct.title) }}</span>
               </td>
-              <td class="px-4 py-3">
+              <td v-if="!compact" class="px-4 py-3">
                 <div class="flex items-center gap-2">
                   <div class="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Icon name="i-lucide-user" class="size-3.5 text-primary" />
@@ -221,14 +227,14 @@ async function downloadPDF(ct: any) {
                   <span class="text-xs font-semibold">{{ ct.customerName || '—' }}</span>
                 </div>
               </td>
-              <td class="px-4 py-3">
+              <td v-if="!compact" class="px-4 py-3">
                 <span class="text-xs font-medium">{{ ct.customerEmail || '—' }}</span>
               </td>
-              <td class="px-4 py-3">
+              <td v-if="!compact" class="px-4 py-3">
                 <span class="text-xs text-muted-foreground">{{ ct.customerPhone || '—' }}</span>
               </td>
               <td class="px-4 py-3">
-                <span class="text-xs text-muted-foreground">{{ ct.templateName || '—' }}</span>
+                <span class="text-xs text-muted-foreground">{{ compact ? displayTemplateName(ct.templateName) : (ct.templateName || '—') }}</span>
               </td>
               <td class="px-4 py-3">
                 <HoverCard :open-delay="100" :close-delay="100">

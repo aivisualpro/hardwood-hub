@@ -102,7 +102,7 @@ async function submit() {
   
   isLoading.value = true
   try {
-    const url = props.customer ? `/api/customers/${props.customer._id}` : '/api/customers'
+    const url = props.customer ? `/api/pipeline/${props.customer._id}` : '/api/pipeline'
     const method = props.customer ? 'PUT' : 'POST'
     
     const nameParts = form.value.name ? form.value.name.split(' ') : []

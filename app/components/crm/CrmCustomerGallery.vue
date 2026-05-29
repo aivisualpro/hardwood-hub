@@ -124,7 +124,7 @@ async function handleFileSubmit(event: Event) {
       const currentGallery = props.customer.gallery || []
       const newGallery = [...currentGallery, ...uploadedImages]
       
-      const updateRes = await $fetch<any>(`/api/customers/${props.customer._id}`, {
+      const updateRes = await $fetch<any>(`/api/pipeline/${props.customer._id}`, {
         method: 'PUT',
         body: { gallery: newGallery }
       })
@@ -174,7 +174,7 @@ async function confirmDelete() {
     const currentGallery = [...(props.customer.gallery || [])]
     currentGallery.splice(info.index, 1)
     try {
-      const res = await $fetch<any>(`/api/customers/${props.customer._id}`, { method: 'PUT', body: { gallery: currentGallery } })
+      const res = await $fetch<any>(`/api/pipeline/${props.customer._id}`, { method: 'PUT', body: { gallery: currentGallery } })
       if (res.success) {
         emit('updated', res.data)
         toast.success('Image removed')
@@ -186,7 +186,7 @@ async function confirmDelete() {
     const currentGallery = [...(props.customer.gallery || [])]
     for (const idx of sortedIndices) currentGallery.splice(idx, 1)
     try {
-      const res = await $fetch<any>(`/api/customers/${props.customer._id}`, { method: 'PUT', body: { gallery: currentGallery } })
+      const res = await $fetch<any>(`/api/pipeline/${props.customer._id}`, { method: 'PUT', body: { gallery: currentGallery } })
       if (res.success) {
         const count = sortedIndices.length
         emit('updated', res.data)
@@ -209,7 +209,7 @@ async function updateCaption() {
   currentGallery[selectedImage.value.index].caption = selectedImage.value.caption
   
   try {
-    const res = await $fetch<any>(`/api/customers/${props.customer._id}`, {
+    const res = await $fetch<any>(`/api/pipeline/${props.customer._id}`, {
       method: 'PUT',
       body: { gallery: currentGallery }
     })

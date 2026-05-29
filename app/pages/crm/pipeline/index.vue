@@ -43,7 +43,7 @@ async function bulkDeleteSelected() {
   try {
     await Promise.all(ids.map(async (id) => {
       try {
-        await $fetch(`/api/customers/${id}`, { method: 'DELETE' })
+        await $fetch(`/api/pipeline/${id}`, { method: 'DELETE' })
         deleted++
       } catch { /* skip failed */ }
     }))
@@ -71,7 +71,7 @@ function toggleAssignee(customer: any, field: string, email: string) {
   const val = arr.join(',')
   customer[field] = val
   
-  $fetch(`/api/customers/${customer._id}`, {
+  $fetch(`/api/pipeline/${customer._id}`, {
     method: 'PUT',
     body: { [field]: val }
   }).catch(() => toast.error('Failed to save assignment'))
@@ -83,7 +83,7 @@ function removeAssignee(customer: any, field: string, email: string) {
   const val = arr.join(',')
   customer[field] = val
   
-  $fetch(`/api/customers/${customer._id}`, {
+  $fetch(`/api/pipeline/${customer._id}`, {
     method: 'PUT',
     body: { [field]: val }
   }).catch(() => toast.error('Failed to remove assignment'))
@@ -102,7 +102,7 @@ async function handleQuickUpdate(customer: any, field: string, event: Event) {
   customer[field] = val
 
   try {
-    const res = await $fetch<any>(`/api/customers/${customer._id}`, {
+    const res = await $fetch<any>(`/api/pipeline/${customer._id}`, {
       method: 'PUT',
       body: { [field]: val }
     })
@@ -175,7 +175,7 @@ async function handleStageSelect(customer: any, optionId: string) {
   activeDropdown.value = null
   
   try {
-    const res = await $fetch<any>(`/api/customers/${customer._id}`, {
+    const res = await $fetch<any>(`/api/pipeline/${customer._id}`, {
       method: 'PUT',
       body: { status: optionId }
     })
@@ -253,7 +253,7 @@ async function onStageDrop(e: DragEvent, stageId: string) {
   const label = resolved?.label || 'status'
 
   try {
-    await $fetch<any>(`/api/customers/${customer._id}`, {
+    await $fetch<any>(`/api/pipeline/${customer._id}`, {
       method: 'PUT',
       body: { status: stageId }
     })
@@ -266,7 +266,7 @@ async function onStageDrop(e: DragEvent, stageId: string) {
 // ─── Client-only data fetch (server: false avoids SSR cookie context loss) ──
 const { pending: loadingData } = await useAsyncData('pipeline-page', async () => {
   const [custRes, statusRes, empRes] = await Promise.all([
-    $fetch<any>('/api/customers'),
+    $fetch<any>('/api/pipeline'),
     $fetch<any>('/api/dropdowns?name=Customer Status'),
     $fetch<any>('/api/employees'),
   ])
@@ -289,7 +289,7 @@ const { pending: loadingData } = await useAsyncData('pipeline-page', async () =>
 // Keep for manual refresh
 async function fetchCustomers() {
   try {
-    const res = await $fetch<any>('/api/customers')
+    const res = await $fetch<any>('/api/pipeline')
     if (res?.success) {
       customers.value = res.data || []
     }

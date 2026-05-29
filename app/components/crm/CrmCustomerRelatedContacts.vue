@@ -114,7 +114,7 @@ async function saveContact() {
       updatedContacts.push(cleanedContact)
     }
 
-    const res = await $fetch<any>(`/api/customers/${customerId.value}`, {
+    const res = await $fetch<any>(`/api/pipeline/${customerId.value}`, {
       method: 'PUT',
       body: { relatedContacts: updatedContacts }
     })
@@ -140,7 +140,7 @@ async function deleteContact(index: number) {
     const updatedContacts = props.customer.relatedContacts ? [...props.customer.relatedContacts] : []
     updatedContacts.splice(index, 1)
 
-    const res = await $fetch<any>(`/api/customers/${customerId.value}`, {
+    const res = await $fetch<any>(`/api/pipeline/${customerId.value}`, {
       method: 'PUT',
       body: { relatedContacts: updatedContacts }
     })

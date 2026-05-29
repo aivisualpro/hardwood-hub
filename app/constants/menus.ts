@@ -73,6 +73,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-clipboard-list',
         link: '/daily-production',
       },
+      {
+        title: 'Stain Sign Off',
+        icon: 'i-lucide-stamp',
+        link: '/stain-sign-off',
+      },
     ],
   },
   {

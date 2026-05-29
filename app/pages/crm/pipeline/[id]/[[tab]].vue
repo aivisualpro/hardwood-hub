@@ -72,7 +72,7 @@ const companyProfile = ref<any>({})
 // ─── Fetch all page data ────────────────────────────────────────────────────
 async function loadPageData() {
   const [custRes, templatesRes, settingsRes, dropdownRes] = await Promise.all([
-    $fetch<any>(`/api/customers/${customerId}`),
+    $fetch<any>(`/api/pipeline/${customerId}`),
     $fetch<{ success: boolean; data: any[] }>('/api/contracts/templates'),
     $fetch<{ success: boolean; data: Record<string, any> }>('/api/app-settings'),
     $fetch<any>('/api/dropdowns?name=Customer Status').catch(() => null),
@@ -86,6 +86,8 @@ async function loadPageData() {
     updateHeader(customer.value)
     fetchAllData(customer.value.email, customer.value.phone)
     fetchCustomerContracts()
+    fetchRelatedStainSignOffs()
+    fetchRelatedDailyProduction()
   }
 }
 
@@ -136,7 +138,7 @@ async function handleStageSelect(optionId: string) {
   customer.value.status = optionId
   activeDropdown.value  = null
   try {
-    const res = await $fetch<any>(`/api/customers/${customerId}`, { method: 'PUT', body: { status: optionId } })
+    const res = await $fetch<any>(`/api/pipeline/${customerId}`, { method: 'PUT', body: { status: optionId } })
     if (res.success) toast.success('Status updated')
     else toast.error('Failed to update status')
   } catch { toast.error('Error updating status') }
@@ -156,7 +158,7 @@ function onCustomerUpdated(updatedCustomer: any) {
 
 async function deleteCustomer() {
   try {
-    const res = await $fetch<any>(`/api/customers/${customerId}`, { method: 'DELETE' })
+    const res = await $fetch<any>(`/api/pipeline/${customerId}`, { method: 'DELETE' })
     if (res.success) {
       toast.success('Customer deleted')
       const statusId = customer.value?.status
@@ -179,6 +181,67 @@ function submissionStatusClass(status: string) {
     archived:     'bg-muted text-muted-foreground',
   }
   return m[status] || 'bg-muted text-muted-foreground'
+}
+
+// ─── Related Stain Sign Offs ───────────────────────────────────────────────
+const relatedStainSignOffs = ref<any[]>([])
+const loadingStainSignOffs = ref(false)
+
+async function fetchRelatedStainSignOffs() {
+  if (!customer.value?.name) { relatedStainSignOffs.value = []; return }
+  loadingStainSignOffs.value = true
+  try {
+    const res = await $fetch<{ success: boolean; data: any[] }>('/api/stain-sign-off')
+    const name = customer.value.name.toLowerCase()
+    relatedStainSignOffs.value = (res.data || []).filter(
+      (r: any) => r.clientName && r.clientName.toLowerCase() === name
+    )
+  } catch {
+    console.error('Failed to load stain sign-offs')
+  } finally {
+    loadingStainSignOffs.value = false
+  }
+}
+
+// ─── Related Daily Production ──────────────────────────────────────────────
+const relatedDailyProduction = ref<any[]>([])
+const loadingDailyProduction = ref(false)
+
+async function fetchRelatedDailyProduction() {
+  if (!customer.value?.name) { relatedDailyProduction.value = []; return }
+  loadingDailyProduction.value = true
+  try {
+    // 1. Get CrmSubmission IDs that match the customer name
+    const clientsRes = await $fetch<{ success: boolean; data: any[] }>('/api/crm/clients-list')
+    const matchingIds = (clientsRes.data || [])
+      .filter((c: any) => c.name.toLowerCase() === customer.value.name.toLowerCase())
+      .map((c: any) => c._id)
+
+    if (matchingIds.length === 0) {
+      relatedDailyProduction.value = []
+      return
+    }
+
+    // 2. Get daily production records and filter by matching job IDs
+    const prodRes = await $fetch<{ success: boolean; data: any[] }>('/api/daily-production')
+    relatedDailyProduction.value = (prodRes.data || []).filter(
+      (r: any) => r.job && matchingIds.includes(String(r.job))
+    )
+  } catch {
+    console.error('Failed to load daily production')
+  } finally {
+    loadingDailyProduction.value = false
+  }
+}
+
+function formatStainColors(colors: string[]) {
+  if (!colors?.length) return '—'
+  return colors.slice(0, 3).join(', ') + (colors.length > 3 ? ` +${colors.length - 3}` : '')
+}
+
+function totalSqft(blocks: any[]) {
+  if (!blocks?.length) return 0
+  return blocks.reduce((sum: number, b: any) => sum + (b.sqft || 0), 0)
 }
 </script>
 
@@ -443,9 +506,90 @@ function submissionStatusClass(status: string) {
               :templates="templates"
               :companyProfile="companyProfile"
               :isLoading="loadingContracts"
+              :compact="true"
               @refresh="fetchCustomerContracts"
               @edit="ct => contractFormDialog?.openEditContract(ct)"
             />
+          </div>
+        </div>
+
+        <!-- Related Stain Sign Offs -->
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+          <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <Icon name="i-lucide-stamp" class="size-4 text-amber-500 shrink-0" />
+              <h3 class="text-sm font-bold text-foreground">Stain Sign Offs</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <span v-if="relatedStainSignOffs.length" class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{{ relatedStainSignOffs.length }}</span>
+              <NuxtLink v-if="customer" to="/stain-sign-off" class="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold hover:bg-primary/90 transition-all">
+                <Icon name="i-lucide-plus" class="size-3" />
+                New
+              </NuxtLink>
+            </div>
+          </div>
+          <div v-if="loadingStainSignOffs" class="flex-1 px-5 py-4 space-y-2">
+            <div v-for="i in 2" :key="i" class="h-10 bg-muted/30 rounded-lg animate-pulse" />
+          </div>
+          <div v-else-if="relatedStainSignOffs.length === 0" class="flex-1 flex flex-col items-center justify-center py-8 text-center">
+            <Icon name="i-lucide-stamp" class="size-6 text-muted-foreground/30 mx-auto mb-2" />
+            <p class="text-xs text-muted-foreground">No stain sign-offs</p>
+          </div>
+          <div v-else class="divide-y divide-border/50">
+            <NuxtLink v-for="item in relatedStainSignOffs" :key="item._id" to="/stain-sign-off" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+              <div class="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                <Icon name="i-lucide-stamp" class="size-3.5 text-amber-500" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-foreground truncate">{{ item.clientName || '—' }}</p>
+                <p class="text-[10px] text-muted-foreground">{{ formatStainColors(item.stainColorAdditive) }}</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span v-if="item.isSigned" class="inline-flex size-5 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  <Icon name="i-lucide-check" class="size-2.5" />
+                </span>
+                <span class="text-[10px] text-muted-foreground">{{ formatDate(item.createdAt) }}</span>
+              </div>
+            </NuxtLink>
+          </div>
+        </div>
+
+        <!-- Related Daily Production -->
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+          <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <Icon name="i-lucide-clipboard-list" class="size-4 text-teal-500 shrink-0" />
+              <h3 class="text-sm font-bold text-foreground">Daily Production</h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <span v-if="relatedDailyProduction.length" class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{{ relatedDailyProduction.length }}</span>
+              <NuxtLink v-if="customer" to="/daily-production" class="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold hover:bg-primary/90 transition-all">
+                <Icon name="i-lucide-plus" class="size-3" />
+                New
+              </NuxtLink>
+            </div>
+          </div>
+          <div v-if="loadingDailyProduction" class="flex-1 px-5 py-4 space-y-2">
+            <div v-for="i in 2" :key="i" class="h-10 bg-muted/30 rounded-lg animate-pulse" />
+          </div>
+          <div v-else-if="relatedDailyProduction.length === 0" class="flex-1 flex flex-col items-center justify-center py-8 text-center">
+            <Icon name="i-lucide-clipboard-list" class="size-6 text-muted-foreground/30 mx-auto mb-2" />
+            <p class="text-xs text-muted-foreground">No production records</p>
+          </div>
+          <div v-else class="divide-y divide-border/50">
+            <NuxtLink v-for="item in relatedDailyProduction" :key="item._id" to="/daily-production" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+              <div class="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
+                <Icon name="i-lucide-calendar-days" class="size-3.5 text-teal-500" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-foreground">{{ item.date || formatDate(item.createdAt) }}</p>
+                <p class="text-[10px] text-muted-foreground">
+                  {{ item.blocks?.length || 0 }} work blocks · {{ totalSqft(item.blocks).toLocaleString() }} sqft
+                </p>
+              </div>
+              <span v-if="item.submitted" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">Submitted</span>
+              <span v-else class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">Draft</span>
+            </NuxtLink>
           </div>
         </div>
       </div>

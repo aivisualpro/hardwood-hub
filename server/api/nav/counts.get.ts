@@ -6,7 +6,7 @@ import { Employee } from '../../models/Employee'
 import { Task } from '../../models/Task'
 import { ProjectCommunication } from '../../models/ProjectCommunication'
 import { DailyProduction } from '../../models/DailyProduction'
-import { Customer } from '../../models/Customer'
+import { Pipeline } from '../../models/Pipeline'
 import { CrmSubmission } from '../../models/CrmSubmission'
 import { Contract } from '../../models/Contract'
 import { StainSignOff } from '../../models/StainSignOff'
@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
         Task.countDocuments(),
         ProjectCommunication.countDocuments(),
         DailyProduction.countDocuments(),
-        Customer.countDocuments(),
+        Pipeline.countDocuments(),
         Contract.countDocuments(),
         StainSignOff.countDocuments(),
         Product.countDocuments(),

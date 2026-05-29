@@ -70,7 +70,7 @@ const selectedCustomer = ref<any | null>(null)
 async function fetchCustomers() {
   loadingCustomers.value = true
   try {
-    const res = await $fetch<{ success: boolean, data: any[] }>('/api/customers', {
+    const res = await $fetch<{ success: boolean, data: any[] }>('/api/pipeline', {
       params: { limit: 100, search: customerSearch.value || undefined },
     })
     customers.value = res.data || []
@@ -125,7 +125,7 @@ const attachedGalleryImages = ref<string[]>([])
 
 async function loadCustomerGallery(id: string) {
   try {
-    const res = await $fetch<any>(`/api/customers/${id}`)
+    const res = await $fetch<any>(`/api/pipeline/${id}`)
     if (res.success && res.data?.gallery) {
       if (selectedCustomer.value) {
         selectedCustomer.value.gallery = res.data.gallery
@@ -221,7 +221,7 @@ async function handleGalleryUpload(event: Event) {
       const currentGallery = selectedCustomer.value.gallery || []
       const newGallery = [...currentGallery, ...uploadedImages]
 
-      const updateRes = await $fetch<any>(`/api/customers/${selectedCustomer.value._id}`, {
+      const updateRes = await $fetch<any>(`/api/pipeline/${selectedCustomer.value._id}`, {
         method: 'PUT',
         body: { gallery: newGallery }
       })
