@@ -3,9 +3,9 @@ import { toast } from 'vue-sonner'
 
 const { setHeader } = usePageHeader()
 setHeader({
-  title: 'Customers',
-  icon: 'i-lucide-users',
-  description: 'Manage all unified customers and leads',
+  title: 'Pipeline',
+  icon: 'i-lucide-kanban',
+  description: 'Manage all projects and leads',
 })
 
 const customers = ref<any[]>([])
@@ -264,9 +264,9 @@ async function onStageDrop(e: DragEvent, stageId: string) {
 }
 
 // ─── Client-only data fetch (server: false avoids SSR cookie context loss) ──
-const { pending: loadingData } = await useAsyncData('pipeline-page', async () => {
+const { pending: loadingData } = useAsyncData('pipeline-page', async () => {
   const [custRes, statusRes, empRes] = await Promise.all([
-    $fetch<any>('/api/pipeline'),
+    $fetch<any>('/api/pipeline?limit=1000'),
     $fetch<any>('/api/dropdowns?name=Customer Status'),
     $fetch<any>('/api/employees'),
   ])
@@ -289,7 +289,7 @@ const { pending: loadingData } = await useAsyncData('pipeline-page', async () =>
 // Keep for manual refresh
 async function fetchCustomers() {
   try {
-    const res = await $fetch<any>('/api/pipeline')
+    const res = await $fetch<any>('/api/pipeline?limit=1000')
     if (res?.success) {
       customers.value = res.data || []
     }
@@ -362,6 +362,10 @@ const filteredCustomers = computed(() => {
     list = list.filter(c => {
       const name = getStatusName(c)
       return c.name?.toLowerCase().includes(query) || 
+        c.customerName?.toLowerCase().includes(query) ||
+        c.projectName?.toLowerCase().includes(query) ||
+        c.firstName?.toLowerCase().includes(query) ||
+        c.lastName?.toLowerCase().includes(query) ||
         c.email?.toLowerCase().includes(query) || 
         c.phone?.toLowerCase().includes(query) ||
         name?.toLowerCase().includes(query)
@@ -508,14 +512,14 @@ watch(() => route.query.status, (val) => {
 <template>
   <div class="h-[calc(100dvh-var(--content-offset))] flex flex-col space-y-4 -mb-4 sm:-mb-6">
     <ClientOnly>
-    <Teleport to="#header-toolbar">
+    <Teleport defer to="#header-toolbar">
       <div class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">
         <div class="relative flex-1">
           <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground" />
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Search customers..."
+            placeholder="Search by customer, project, email, phone..."
             class="w-full h-8 sm:h-9 pl-8 sm:pl-9 pr-4 rounded-lg border border-input bg-background/50 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
           >
         </div>

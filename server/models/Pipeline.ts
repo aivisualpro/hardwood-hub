@@ -5,6 +5,7 @@ const PipelineSchema = new mongoose.Schema(
     name: { type: String, default: '' },
     projectName: { type: String, default: '' },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', default: null },
+    customerName: { type: String, default: '' },
     firstName: { type: String, default: '' },
     lastName: { type: String, default: '' },
     email: { type: String, default: '', index: true },

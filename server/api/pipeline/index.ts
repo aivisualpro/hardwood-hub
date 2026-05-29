@@ -14,13 +14,14 @@ export default defineEventHandler(async (event) => {
     const query = getQuery(event)
     const customerId = query.customerId as string | undefined
     const search = query.search as string | undefined
-    const limit = Math.min(200, Math.max(1, Number(query.limit) || 200))
+    const limit = Math.min(1000, Math.max(1, Number(query.limit) || 1000))
 
     const filter: Record<string, any> = {}
     if (customerId) filter.customerId = customerId
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
+        { customerName: { $regex: search, $options: 'i' } },
         { projectName: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { phone: { $regex: search, $options: 'i' } },
