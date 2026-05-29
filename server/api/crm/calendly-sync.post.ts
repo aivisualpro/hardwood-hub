@@ -7,6 +7,7 @@
 import { connectDB } from '../../utils/mongoose'
 import { CrmSubmission } from '../../models/CrmSubmission'
 import { Customer } from '../../models/Customer'
+import { Pipeline } from '../../models/Pipeline'
 import { fetchCalendlyAppointments } from '../../utils/calendly'
 
 export default defineEventHandler(async () => {
@@ -35,28 +36,34 @@ export default defineEventHandler(async () => {
       if (result.upsertedCount > 0) {
         totalNew++
 
-        // Migrate unique new CRM submissions into the main Customer collection
+        // Migrate unique new CRM submissions into both Customer and Pipeline collections
         if (parsed.email || parsed.phone) {
           const query: any[] = []
           if (parsed.email) query.push({ email: parsed.email })
           if (parsed.phone) query.push({ phone: parsed.phone })
 
-          const exists = await Customer.exists({ $or: query })
-          if (!exists) {
-            await Customer.create({
-              name: parsed.name,
-              firstName: parsed.firstName,
-              lastName: parsed.lastName,
-              email: parsed.email,
-              phone: parsed.phone,
-              address: parsed.address,
-              city: parsed.city,
-              state: parsed.state,
-              zip: parsed.zip,
-              notes: `Synced from Calendly: ${parsed.formName}. Message: ${parsed.message}`,
-              stage: 'contact made',
-              initialContactDate: parsed.dateSubmitted
-            })
+          const customerData = {
+            name: parsed.name,
+            firstName: parsed.firstName,
+            lastName: parsed.lastName,
+            email: parsed.email,
+            phone: parsed.phone,
+            address: parsed.address,
+            city: parsed.city,
+            state: parsed.state,
+            zip: parsed.zip,
+            notes: `Synced from Calendly: ${parsed.formName}. Message: ${parsed.message}`,
+            stage: 'contact made',
+            initialContactDate: parsed.dateSubmitted
+          }
+
+          const existsInCustomer = await Customer.exists({ $or: query })
+          if (!existsInCustomer) {
+            await Customer.create(customerData)
+          }
+          const existsInPipeline = await Pipeline.exists({ $or: query })
+          if (!existsInPipeline) {
+            await Pipeline.create(customerData)
           }
         }
       } else if (result.modifiedCount > 0) {
