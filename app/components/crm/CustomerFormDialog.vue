@@ -13,6 +13,7 @@ const emit = defineEmits<{
 
 const form = ref({
   name: '',
+  projectName: '',
   firstName: '',
   lastName: '',
   email: '',
@@ -43,6 +44,7 @@ watch(() => props.modelValue, (isOpen) => {
     if (props.customer) {
       form.value = { 
         name: props.customer.name || '',
+        projectName: props.customer.projectName || '',
         firstName: props.customer.firstName || '',
         lastName: props.customer.lastName || '',
         email: props.customer.email || '',
@@ -68,6 +70,7 @@ watch(() => props.modelValue, (isOpen) => {
     } else {
       form.value = {
         name: '',
+        projectName: '',
         firstName: '',
         lastName: '',
         email: '',
@@ -269,6 +272,11 @@ function toggleEmployee(emp: string) {
           <div class="space-y-2 col-span-2">
             <Label>Company / Display Name</Label>
             <Input v-model="form.name" placeholder="Acme Corp" />
+          </div>
+
+          <div class="space-y-2 col-span-2">
+            <Label>Project Name</Label>
+            <Input v-model="form.projectName" placeholder="e.g. Kitchen Remodel" />
           </div>
           
           <div class="space-y-2">

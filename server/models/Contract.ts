@@ -7,6 +7,7 @@ const ContractSchema = new mongoose.Schema(
 
         // Link to customer (CRM Submission)
         customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'CrmSubmission', required: true },
+        projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Pipeline', default: null },
         customerName: { type: String, default: '' },
         customerEmail: { type: String, default: '' },
         customerPhone: { type: String, default: '' },

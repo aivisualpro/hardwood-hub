@@ -84,6 +84,11 @@ export const navMenu: NavMenu[] = [
     heading: 'CRM',
     items: [
       {
+        title: 'Customers',
+        icon: 'i-lucide-users',
+        link: '/crm/customers',
+      },
+      {
         title: 'Pipeline',
         icon: 'i-lucide-contact',
         link: '/crm/pipeline',

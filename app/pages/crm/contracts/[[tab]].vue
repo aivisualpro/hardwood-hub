@@ -584,11 +584,10 @@ async function fetchCompanyProfile() {
   } catch { /* ignore */ }
 }
 
-// ─── Server-first data fetching (blocks navigation until resolved) ──────
-await useAsyncData('crm-contracts-page', async () => {
-  await Promise.all([fetchTemplates(), fetchCompanyProfile(), fetchContracts()])
-  return true
-})
+// ─── Client-side data fetching (avoids hydration mismatches with useState) ──────
+if (import.meta.client) {
+  Promise.all([fetchTemplates(), fetchCompanyProfile(), fetchContracts()])
+}
 
 function formatDate(d: string) {
   if (!d) return '—'

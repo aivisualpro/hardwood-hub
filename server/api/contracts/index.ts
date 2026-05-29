@@ -4,6 +4,7 @@
  */
 import { connectDB } from '../../utils/mongoose'
 import { Contract } from '../../models/Contract'
+import { Pipeline } from '../../models/Pipeline'
 
 export default defineEventHandler(async (event) => {
     await connectDB()
@@ -37,6 +38,26 @@ export default defineEventHandler(async (event) => {
                 .lean(),
             Contract.countDocuments(filter),
         ])
+
+        // Enrich with projectName from Pipeline collection
+        const projectIds = data
+            .filter((c: any) => c.projectId)
+            .map((c: any) => c.projectId)
+        
+        if (projectIds.length > 0) {
+            const projects = await Pipeline.find(
+                { _id: { $in: projectIds } },
+                { projectName: 1, name: 1 }
+            ).lean()
+            const projectMap = new Map(projects.map((p: any) => [String(p._id), p]))
+            
+            for (const ct of data as any[]) {
+                if (ct.projectId) {
+                    const proj = projectMap.get(String(ct.projectId))
+                    ct.projectName = proj?.projectName || proj?.name || ''
+                }
+            }
+        }
 
         return {
             success: true,

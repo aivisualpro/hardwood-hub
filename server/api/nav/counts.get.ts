@@ -7,6 +7,7 @@ import { Task } from '../../models/Task'
 import { ProjectCommunication } from '../../models/ProjectCommunication'
 import { DailyProduction } from '../../models/DailyProduction'
 import { Pipeline } from '../../models/Pipeline'
+import { Customer } from '../../models/Customer'
 import { CrmSubmission } from '../../models/CrmSubmission'
 import { Contract } from '../../models/Contract'
 import { StainSignOff } from '../../models/StainSignOff'
@@ -24,6 +25,7 @@ export default defineEventHandler(async (event) => {
         totalProjComm,
         totalDailyProd,
         totalCustomers,
+        totalClients,
         totalContracts,
         totalStainSignOff,
         totalProducts,
@@ -37,6 +39,7 @@ export default defineEventHandler(async (event) => {
         ProjectCommunication.countDocuments(),
         DailyProduction.countDocuments(),
         Pipeline.countDocuments(),
+        Customer.countDocuments(),
         Contract.countDocuments(),
         StainSignOff.countDocuments(),
         Product.countDocuments(),
@@ -59,6 +62,7 @@ export default defineEventHandler(async (event) => {
         '/project-communication': totalProjComm,
         '/daily-production': totalDailyProd,
         '/crm/pipeline': totalCustomers,
+        '/crm/customers': totalClients,
         '/crm/products': totalProducts,
         '/crm/contracts': totalContracts,
         '/external/stain-sign-off': totalStainSignOff,

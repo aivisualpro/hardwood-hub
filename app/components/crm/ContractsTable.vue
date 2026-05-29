@@ -197,11 +197,11 @@ async function downloadPDF(ct: any) {
           <thead>
             <tr class="border-b bg-muted/30">
               <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contract #</th>
-              <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</th>
               <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Customer</th>
+              <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Project</th>
+              <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</th>
               <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email</th>
               <th v-if="!compact" class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Phone</th>
-              <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Template</th>
               <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
               <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Created</th>
               <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-32 text-right" />
@@ -217,9 +217,6 @@ async function downloadPDF(ct: any) {
                 <span class="text-xs font-mono font-bold text-primary">{{ ct.contractNumber }}</span>
               </td>
               <td v-if="!compact" class="px-4 py-3">
-                <span class="text-sm font-semibold">{{ displayTitle(ct.title) }}</span>
-              </td>
-              <td v-if="!compact" class="px-4 py-3">
                 <div class="flex items-center gap-2">
                   <div class="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Icon name="i-lucide-user" class="size-3.5 text-primary" />
@@ -228,13 +225,16 @@ async function downloadPDF(ct: any) {
                 </div>
               </td>
               <td v-if="!compact" class="px-4 py-3">
+                <span class="text-xs font-medium text-foreground/80">{{ ct.projectName || '—' }}</span>
+              </td>
+              <td v-if="!compact" class="px-4 py-3">
+                <span class="text-sm font-semibold">{{ displayTitle(ct.title) }}</span>
+              </td>
+              <td v-if="!compact" class="px-4 py-3">
                 <span class="text-xs font-medium">{{ ct.customerEmail || '—' }}</span>
               </td>
               <td v-if="!compact" class="px-4 py-3">
                 <span class="text-xs text-muted-foreground">{{ ct.customerPhone || '—' }}</span>
-              </td>
-              <td class="px-4 py-3">
-                <span class="text-xs text-muted-foreground">{{ compact ? displayTemplateName(ct.templateName) : (ct.templateName || '—') }}</span>
               </td>
               <td class="px-4 py-3">
                 <HoverCard :open-delay="100" :close-delay="100">

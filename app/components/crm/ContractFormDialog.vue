@@ -58,7 +58,7 @@ watch(showCreateModal, (val) => {
 // ─── Create/Edit Contract Modal ───────────────────────────────
 
 const editingContractId = ref<string | null>(null)
-const createStep = ref(1) // 1=customer, 2=template, 3=variables+confirm
+const createStep = ref(1) // 1=customer, 2=project, 3=template, 4=variables+confirm
 const savingContract = ref(false)
 
 // Step 1: Customer selection
@@ -70,8 +70,8 @@ const selectedCustomer = ref<any | null>(null)
 async function fetchCustomers() {
   loadingCustomers.value = true
   try {
-    const res = await $fetch<{ success: boolean, data: any[] }>('/api/pipeline', {
-      params: { limit: 100, search: customerSearch.value || undefined },
+    const res = await $fetch<{ success: boolean, data: any[] }>('/api/customers', {
+      params: { limit: 200, search: customerSearch.value || undefined },
     })
     customers.value = res.data || []
   } catch (e: any) {
@@ -80,6 +80,36 @@ async function fetchCustomers() {
     loadingCustomers.value = false
   }
 }
+
+// Step 2: Project selection (from pipeline, filtered by customerId)
+const projects = ref<any[]>([])
+const loadingProjects = ref(false)
+const projectSearch = ref('')
+const selectedProject = ref<any | null>(null)
+
+async function fetchProjects(custId: string) {
+  loadingProjects.value = true
+  try {
+    const res = await $fetch<{ success: boolean, data: any[] }>('/api/pipeline', {
+      params: { limit: 200, customerId: custId },
+    })
+    projects.value = res.data || []
+  } catch (e: any) {
+    toast.error('Failed to load projects')
+  } finally {
+    loadingProjects.value = false
+  }
+}
+
+const filteredProjects = computed(() => {
+  if (!projectSearch.value) return projects.value
+  const q = projectSearch.value.toLowerCase()
+  return projects.value.filter(p =>
+    p.name?.toLowerCase().includes(q)
+    || p.projectName?.toLowerCase().includes(q)
+    || p.email?.toLowerCase().includes(q),
+  )
+})
 
 const filteredCustomers = computed(() => {
   if (!customerSearch.value) return customers.value
@@ -303,8 +333,16 @@ async function handlePdfUpload(e: Event) {
 
 function selectCustomer(c: any) {
   selectedCustomer.value = c
+  selectedProject.value = null
+  projectSearch.value = ''
   createStep.value = 2
-  if (!c.gallery) loadCustomerGallery(c._id)
+  fetchProjects(c._id)
+}
+
+function selectProject(p: any) {
+  selectedProject.value = p
+  createStep.value = 3
+  if (!p.gallery) loadCustomerGallery(p._id)
 }
 
 function selectModalTemplate(t: any) {
@@ -333,7 +371,7 @@ function selectModalTemplate(t: any) {
     variableValues.value[clientKey] = selectedCustomer.value.name || `${selectedCustomer.value.firstName || ''} ${selectedCustomer.value.lastName || ''}`.trim() || ''
   }
   contractTitle.value = `${t.name} — ${selectedCustomer.value?.name || 'Customer'}`
-  createStep.value = 3
+  createStep.value = 4
 }
 
 function openCreateModal() {
@@ -341,10 +379,12 @@ function openCreateModal() {
   editingContractId.value = null
   createStep.value = 1
   selectedCustomer.value = null
+  selectedProject.value = null
   selectedModalTemplate.value = null
   variableValues.value = {}
   contractTitle.value = ''
   customerSearch.value = ''
+  projectSearch.value = ''
   customerSignature.value = ''
   customerSignatureDate.value = ''
   attachedPdf.value = ''
@@ -378,7 +418,7 @@ async function openEditContract(ct: any) {
       variables: Object.keys(fullCt.variableValues || {}).map(k => ({ key: k, label: k, type: 'text' }))
     } as any
     
-    createStep.value = 3
+    createStep.value = 4
     showCreateModal.value = true
   } catch (err: any) {
     toast.error('Failed to load contract details', { description: err?.message })
@@ -412,6 +452,7 @@ async function saveContract() {
     const payload = {
       title: contractTitle.value,
       customerId: c._id,
+      projectId: selectedProject.value?._id || c._id,
       customerName: c.name,
       customerEmail: c.email,
       customerPhone: c.phone,
@@ -450,8 +491,9 @@ async function saveContract() {
 function openForCustomer(customer: any) {
   internalOpen.value = true
   editingContractId.value = null
-  createStep.value = 2
+  createStep.value = 3
   selectedCustomer.value = customer
+  selectedProject.value = customer
   selectedModalTemplate.value = null
   variableValues.value = {}
   contractTitle.value = ''
@@ -485,7 +527,7 @@ async function seedChangeOrder() {}
             <div>
               <DialogTitle class="text-base font-bold">{{ editingContractId ? 'Edit Contract' : 'Create New Contract' }}</DialogTitle>
               <DialogDescription class="text-xs text-muted-foreground mt-0.5">
-                {{ createStep === 1 ? 'Select a customer from your CRM' : createStep === 2 ? 'Choose a contract template' : 'Fill in the contract details' }}
+                {{ createStep === 1 ? 'Select a customer from your CRM' : createStep === 2 ? 'Select a project for this customer' : createStep === 3 ? 'Choose a contract template' : 'Fill in the contract details' }}
               </DialogDescription>
             </div>
           </div>
@@ -495,8 +537,9 @@ async function seedChangeOrder() {}
             <button
               v-for="step in [
                 { n: 1, label: 'Customer', icon: 'i-lucide-user' },
-                { n: 2, label: 'Template', icon: 'i-lucide-layout-template' },
-                { n: 3, label: 'Details', icon: 'i-lucide-file-edit' },
+                { n: 2, label: 'Project', icon: 'i-lucide-folder-kanban' },
+                { n: 3, label: 'Template', icon: 'i-lucide-layout-template' },
+                { n: 4, label: 'Details', icon: 'i-lucide-file-edit' },
               ]"
               :key="step.n"
               class="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
@@ -583,7 +626,7 @@ async function seedChangeOrder() {}
             </div>
           </div>
 
-          <!-- ─── Step 2: Template Selection ─── -->
+          <!-- ─── Step 2: Project Selection ─── -->
           <div v-else-if="createStep === 2" class="p-6">
             <!-- Selected Customer Summary -->
             <div v-if="selectedCustomer" class="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 mb-5">
@@ -595,6 +638,90 @@ async function seedChangeOrder() {}
                 <p class="text-xs text-foreground font-semibold">{{ selectedCustomer.name }}</p>
               </div>
               <button class="text-[10px] text-emerald-600 font-semibold hover:underline" @click="createStep = 1">Change</button>
+            </div>
+
+            <div class="relative mb-4">
+              <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <input
+                v-model="projectSearch"
+                type="text"
+                placeholder="Search projects by name..."
+                class="w-full h-10 pl-10 pr-4 rounded-lg border bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background transition-all"
+              >
+            </div>
+
+            <div v-if="loadingProjects" class="space-y-2">
+              <div v-for="i in 3" :key="i" class="h-16 bg-muted/40 rounded-lg animate-pulse" />
+            </div>
+
+            <div v-else-if="filteredProjects.length === 0" class="text-center py-12">
+              <Icon name="i-lucide-folder-kanban" class="size-10 text-muted-foreground/20 mx-auto mb-3" />
+              <p class="text-sm font-semibold text-muted-foreground">No projects found for this customer</p>
+              <p class="text-xs text-muted-foreground/70 mt-1">Create a project in the Pipeline first</p>
+            </div>
+
+            <div v-else class="space-y-1.5 max-h-[50vh] overflow-y-auto pr-1">
+              <button
+                v-for="p in filteredProjects"
+                :key="p._id"
+                class="w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left group"
+                :class="selectedProject?._id === p._id
+                  ? 'border-primary/40 bg-primary/5 shadow-md shadow-primary/10'
+                  : 'border-border/40 bg-card hover:border-primary/20 hover:bg-muted/30'"
+                @click="selectProject(p)"
+              >
+                <div class="size-10 rounded-lg flex items-center justify-center shrink-0"
+                  :class="selectedProject?._id === p._id ? 'bg-primary/20' : 'bg-muted'"
+                >
+                  <Icon name="i-lucide-folder-kanban" class="size-4" :class="selectedProject?._id === p._id ? 'text-primary' : 'text-muted-foreground'" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold truncate" :class="selectedProject?._id === p._id ? 'text-primary' : ''">
+                    {{ p.projectName || p.name || 'Untitled Project' }}
+                  </p>
+                  <div class="flex items-center gap-3 mt-0.5">
+                    <span v-if="p.projectName && p.name" class="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                      <Icon name="i-lucide-user" class="size-2.5 shrink-0" />
+                      {{ p.name }}
+                    </span>
+                    <span v-if="p.email" class="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                      <Icon name="i-lucide-mail" class="size-2.5 shrink-0" />
+                      {{ p.email }}
+                    </span>
+                  </div>
+                </div>
+                <div class="shrink-0">
+                  <span v-if="p.status" class="px-2 py-0.5 rounded-full text-[9px] font-bold capitalize" :class="selectedProject?._id === p._id ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'">
+                    {{ p.status }}
+                  </span>
+                </div>
+                <Icon name="i-lucide-chevron-right" class="size-4 text-muted-foreground/40 shrink-0 group-hover:text-primary transition-colors" />
+              </button>
+            </div>
+          </div>
+
+          <!-- ─── Step 3: Template Selection ─── -->
+          <div v-else-if="createStep === 3" class="p-6">
+            <!-- Selected Customer & Project Summary -->
+            <div v-if="selectedCustomer" class="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 mb-3">
+              <div class="size-8 rounded-md bg-emerald-500/15 flex items-center justify-center">
+                <Icon name="i-lucide-check" class="size-4 text-emerald-500" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400">Customer</p>
+                <p class="text-xs text-foreground font-semibold">{{ selectedCustomer.name }}</p>
+              </div>
+              <button class="text-[10px] text-emerald-600 font-semibold hover:underline" @click="createStep = 1">Change</button>
+            </div>
+            <div v-if="selectedProject" class="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 mb-5">
+              <div class="size-8 rounded-md bg-emerald-500/15 flex items-center justify-center">
+                <Icon name="i-lucide-check" class="size-4 text-emerald-500" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400">Project</p>
+                <p class="text-xs text-foreground font-semibold">{{ selectedProject.projectName || selectedProject.name }}</p>
+              </div>
+              <button class="text-[10px] text-emerald-600 font-semibold hover:underline" @click="createStep = 2">Change</button>
             </div>
 
             <div v-if="loadingTemplates" class="space-y-2">
@@ -682,8 +809,8 @@ async function seedChangeOrder() {}
             </div>
           </div>
 
-          <!-- ─── Step 3: Variable Form + Confirm ─── -->
-          <div v-else-if="createStep === 3" class="p-6">
+          <!-- ─── Step 4: Variable Form + Confirm ─── -->
+          <div v-else-if="createStep === 4" class="p-6">
             <!-- Selections Summary -->
             <div class="flex flex-col sm:flex-row items-stretch gap-3 mb-6 bg-muted/20 p-1.5 rounded-xl border border-border/50">
               <div class="flex-1 flex items-center gap-3 p-3 rounded-lg bg-background shadow-sm border border-border/30">
@@ -693,6 +820,15 @@ async function seedChangeOrder() {}
                 <div class="min-w-0">
                   <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">Customer</p>
                   <p class="text-xs font-bold truncate text-foreground">{{ selectedCustomer?.name }}</p>
+                </div>
+              </div>
+              <div class="flex-1 flex items-center gap-3 p-3 rounded-lg bg-background shadow-sm border border-border/30">
+                <div class="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Icon name="i-lucide-folder-kanban" class="size-4 text-primary" />
+                </div>
+                <div class="min-w-0">
+                  <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">Project</p>
+                  <p class="text-xs font-bold truncate text-foreground">{{ selectedProject?.projectName || selectedProject?.name }}</p>
                 </div>
               </div>
               <div class="flex-1 flex items-center gap-3 p-3 rounded-lg bg-background shadow-sm border border-border/30">

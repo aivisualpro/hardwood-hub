@@ -3,6 +3,8 @@ import mongoose from 'mongoose'
 const PipelineSchema = new mongoose.Schema(
   {
     name: { type: String, default: '' },
+    projectName: { type: String, default: '' },
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', default: null },
     firstName: { type: String, default: '' },
     lastName: { type: String, default: '' },
     email: { type: String, default: '', index: true },
@@ -54,6 +56,8 @@ PipelineSchema.index({ email: 1, phone: 1 })
 export interface IPipeline {
   _id?: any
   name: string
+  projectName?: string
+  customerId?: any
   firstName: string
   lastName: string
   email: string

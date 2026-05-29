@@ -615,7 +615,8 @@ watch(() => route.query.status, (val) => {
         <thead>
           <tr class="border-b bg-card text-muted-foreground text-[10px] font-bold uppercase tracking-wider sticky top-0 z-20">
             <th class="p-2.5 w-10 text-center"><input type="checkbox" class="rounded border-border text-primary cursor-pointer" :checked="isAllSelected" @change="toggleSelectAll" /></th>
-            <th class="p-2.5 min-w-[200px]">Name</th>
+            <th class="p-2.5 min-w-[200px]">Customer</th>
+            <th class="p-2.5 min-w-[160px]">Project Name</th>
             <th class="p-2.5 w-16 min-w-[60px] text-center">Stage</th>
             <th class="p-2.5 min-w-[100px]">Est. Duration</th>
             <th class="p-2.5 min-w-[120px]">Total Estimate</th>
@@ -649,6 +650,14 @@ watch(() => route.query.status, (val) => {
                 <input v-if="isQuickEditMode" v-model="c.name" @change="handleQuickUpdate(c, 'name', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
                 <template v-else>
                   {{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}
+                </template>
+              </span>
+            </td>
+            <td class="p-2.5 max-w-[160px]" :class="isQuickEditMode ? 'whitespace-normal' : 'truncate'" @click="isQuickEditMode && $event.stopPropagation()">
+              <span class="text-foreground/80 truncate flex-1 block">
+                <input v-if="isQuickEditMode" v-model="c.projectName" @change="handleQuickUpdate(c, 'projectName', $event)" class="w-full bg-background border border-border/50 rounded px-2 py-1.5 focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="Project name..." />
+                <template v-else>
+                  {{ c.projectName || '—' }}
                 </template>
               </span>
             </td>
@@ -852,6 +861,7 @@ watch(() => route.query.status, (val) => {
             <div class="flex flex-col min-w-0 flex-1 gap-2">
               <div class="flex flex-col gap-1 min-w-0">
                 <span class="text-sm font-bold text-foreground truncate">{{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown' }}</span>
+                <span v-if="c.projectName" class="text-[11px] text-primary/80 font-semibold truncate block w-full">{{ c.projectName }}</span>
                 <span class="text-[11px] text-muted-foreground truncate block w-full">{{ c.email || c.phone || '—' }}</span>
               </div>
               <!-- Stage Combobox Mobile -->
