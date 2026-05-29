@@ -259,7 +259,6 @@ async function toggleStatus(emp: Employee) {
 </script>
 
 <template>
-  <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
   <div class="w-full flex flex-col gap-4 sm:gap-6 p-3 sm:p-6">
 
     <!-- Header bar -->
@@ -488,6 +487,5 @@ async function toggleStatus(emp: Employee) {
       </AlertDialogContent>
     </AlertDialog>
 
-  </div>
   </div>
 </template>

@@ -512,8 +512,7 @@ async function saveCustomBonus() {
 </script>
 
 <template>
-  <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
-    <div class="space-y-4 sm:space-y-6">
+  <div class="space-y-4 sm:space-y-6">
 
       <!-- ═══════ SUMMARY CARDS ═══════ -->
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
@@ -1253,5 +1252,4 @@ async function saveCustomBonus() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </div>
 </template>

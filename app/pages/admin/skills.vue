@@ -664,7 +664,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 }
 </script>
 <template>
-  <div class="flex gap-4 h-[calc(100vh-theme(spacing.16))] overflow-hidden">
+  <div class="flex gap-4 h-[calc(100dvh-var(--content-offset))] overflow-hidden">
 
     <!-- ══════════════════════ MOBILE SIDEBAR OVERLAY ══════════════════════ -->
     <Transition

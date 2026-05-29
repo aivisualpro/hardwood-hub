@@ -24,7 +24,7 @@ watch(dir, (newDir) => {
 useHead({
   meta: [
     { charset: 'utf-8' },
-    { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+    { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
     { key: 'theme-color', name: 'theme-color', content: color },
   ],
   link: [
@@ -40,7 +40,7 @@ useHead({
     dir: computed(() => dir.value),
   },
   bodyAttrs: {
-    class: computed(() => `color-${theme.value?.color || 'default'} theme-${theme.value?.type || 'default'}`),
+    class: computed(() => `antialiased bg-background text-foreground color-${theme.value?.color || 'default'} theme-${theme.value?.type || 'default'}`),
   },
 })
 
@@ -69,16 +69,14 @@ defineShortcuts({
 </script>
 
 <template>
-  <Body class="antialiased bg-background text-foreground">
-    <ConfigProvider :dir="dir">
-      <div id="app" vaul-drawer-wrapper class="relative">
-        <NuxtLoadingIndicator color="hsl(var(--primary))" :height="2" :throttle="200" />
-        <NuxtLayout>
-          <NuxtPage />
-        </NuxtLayout>
-      </div>
+  <ConfigProvider :dir="dir">
+    <div id="app" vaul-drawer-wrapper class="relative h-dvh overflow-hidden">
+      <NuxtLoadingIndicator color="hsl(var(--primary))" :height="2" :throttle="200" />
+      <NuxtLayout>
+        <NuxtPage />
+      </NuxtLayout>
+    </div>
 
-      <Toaster :theme="colorMode.preference as any || 'system'" />
-    </ConfigProvider>
-  </Body>
+    <Toaster :theme="colorMode.preference as any || 'system'" />
+  </ConfigProvider>
 </template>

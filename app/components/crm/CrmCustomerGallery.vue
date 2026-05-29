@@ -149,25 +149,51 @@ async function handleFileSubmit(event: Event) {
   }
 }
 
-async function removeImage(index: number | string) {
-  if (!confirm('Are you sure you want to delete this image?')) return
-  
-  const numIndex = Number(index)
-  const currentGallery = [...(props.customer.gallery || [])]
-  currentGallery.splice(numIndex, 1)
-  
-  try {
-    const res = await $fetch<any>(`/api/customers/${props.customer._id}`, {
-      method: 'PUT',
-      body: { gallery: currentGallery }
-    })
-    if (res.success) {
-      emit('updated', res.data)
-      toast.success('Image removed')
-      if (showLightbox.value) showLightbox.value = false
-    }
-  } catch (error) {
-    toast.error('Failed to remove image')
+// ─── Delete confirmation dialog ────────────────────────────────────────────
+const showDeleteDialog = ref(false)
+const deleteInfo = ref<{ type: 'single'; index: number } | { type: 'bulk' } | null>(null)
+
+function removeImage(index: number | string) {
+  deleteInfo.value = { type: 'single', index: Number(index) }
+  showDeleteDialog.value = true
+}
+
+function removeSelectedImages() {
+  if (selectedIndices.value.size === 0) return
+  deleteInfo.value = { type: 'bulk' }
+  showDeleteDialog.value = true
+}
+
+async function confirmDelete() {
+  const info = deleteInfo.value
+  showDeleteDialog.value = false
+  deleteInfo.value = null
+  if (!info) return
+
+  if (info.type === 'single') {
+    const currentGallery = [...(props.customer.gallery || [])]
+    currentGallery.splice(info.index, 1)
+    try {
+      const res = await $fetch<any>(`/api/customers/${props.customer._id}`, { method: 'PUT', body: { gallery: currentGallery } })
+      if (res.success) {
+        emit('updated', res.data)
+        toast.success('Image removed')
+        if (showLightbox.value) showLightbox.value = false
+      }
+    } catch { toast.error('Failed to remove image') }
+  } else {
+    const sortedIndices = Array.from(selectedIndices.value).sort((a, b) => b - a)
+    const currentGallery = [...(props.customer.gallery || [])]
+    for (const idx of sortedIndices) currentGallery.splice(idx, 1)
+    try {
+      const res = await $fetch<any>(`/api/customers/${props.customer._id}`, { method: 'PUT', body: { gallery: currentGallery } })
+      if (res.success) {
+        const count = sortedIndices.length
+        emit('updated', res.data)
+        toast.success(`${count} image${count !== 1 ? 's' : ''} removed`)
+        toggleSelectionMode()
+      }
+    } catch { toast.error('Failed to remove images') }
   }
 }
 
@@ -217,30 +243,6 @@ function toggleSelection(idx: number | string) {
   }
 }
 
-async function removeSelectedImages() {
-  if (selectedIndices.value.size === 0) return
-  if (!confirm(`Are you sure you want to delete ${selectedIndices.value.size} images?`)) return
-  
-  const sortedIndices = Array.from(selectedIndices.value).sort((a, b) => b - a)
-  const currentGallery = [...(props.customer.gallery || [])]
-  for (const idx of sortedIndices) {
-    currentGallery.splice(idx, 1)
-  }
-  
-  try {
-    const res = await $fetch<any>(`/api/customers/${props.customer._id}`, {
-      method: 'PUT',
-      body: { gallery: currentGallery }
-    })
-    if (res.success) {
-      emit('updated', res.data)
-      toast.success(`${selectedIndices.value.size} images removed`)
-      toggleSelectionMode()
-    }
-  } catch (error) {
-    toast.error('Failed to remove images')
-  }
-}
 
 function handleImageClick(img: any, idx: number | string) {
   if (selectionMode.value) {
@@ -249,55 +251,21 @@ function handleImageClick(img: any, idx: number | string) {
     openLightbox(img, idx)
   }
 }
+
+// ─── Expose state + methods for parent card header buttons ─────────────────
+defineExpose({
+  selectionMode,
+  selectedIndices,
+  isUploading,
+  toggleSelectionMode,
+  removeSelectedImages,
+  triggerUpload,
+})
 </script>
 
 <template>
   <div class="h-full w-full">
-    <Teleport to="#header-toolbar">
-      <div class="flex items-center gap-2">
-         <template v-if="customer?.gallery?.length > 0">
-           <button 
-             v-if="!selectionMode"
-             @click="toggleSelectionMode" 
-             class="inline-flex items-center justify-center h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-muted text-foreground text-xs sm:text-sm font-bold hover:bg-muted/80 transition-all shrink-0"
-           >
-             Select
-           </button>
-           <template v-else>
-             <button 
-               @click="removeSelectedImages" 
-               class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive text-destructive-foreground text-xs sm:text-sm font-bold hover:bg-destructive/90 transition-all shadow-sm shadow-destructive/20 shrink-0 select-none"
-               :disabled="selectedIndices.size === 0"
-             >
-               <Icon name="i-lucide-trash-2" class="size-3.5" />
-               <span class="hidden sm:inline">Delete ({{ selectedIndices.size }})</span>
-             </button>
-             <button 
-               @click="toggleSelectionMode" 
-               class="inline-flex items-center justify-center h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-background border border-border text-foreground text-xs sm:text-sm font-bold hover:bg-muted transition-all shrink-0"
-             >
-               Cancel
-             </button>
-           </template>
-         </template>
 
-         <button 
-           v-if="!selectionMode"
-           @click="triggerUpload" 
-           :disabled="isUploading"
-           class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shadow-sm shadow-primary/20 shrink-0 disabled:opacity-50"
-         >
-           <template v-if="isUploading">
-             <Icon name="i-lucide-loader-2" class="size-3.5 sm:size-4 animate-spin" />
-             <span class="hidden sm:inline">Uploading...</span>
-           </template>
-           <template v-else>
-             <Icon name="i-lucide-upload-cloud" class="size-3.5 sm:size-4" />
-             <span class="hidden sm:inline">Upload Images</span>
-           </template>
-         </button>
-      </div>
-    </Teleport>
 
     <!-- Hidden File Input -->
     <input 
@@ -448,5 +416,33 @@ function handleImageClick(img: any, idx: number | string) {
         </div>
       </DialogContent>
     </Dialog>
+
+    <!-- ── Delete Confirmation Dialog ──────────────────────────────────── -->
+    <AlertDialog v-model:open="showDeleteDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {{ deleteInfo?.type === 'bulk' ? `Delete ${selectedIndices.size} Images?` : 'Delete Image?' }}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ deleteInfo?.type === 'bulk'
+              ? `This will permanently delete ${selectedIndices.size} selected image${selectedIndices.size !== 1 ? 's' : ''} from the gallery. This action cannot be undone.`
+              : 'This will permanently delete the image from the gallery. This action cannot be undone.'
+            }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-white hover:bg-destructive/90"
+            @click="confirmDelete"
+          >
+            <Icon name="i-lucide-trash-2" class="size-3.5 mr-1.5" />
+            {{ deleteInfo?.type === 'bulk' ? `Delete ${selectedIndices.size} Images` : 'Delete Image' }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
   </div>
 </template>

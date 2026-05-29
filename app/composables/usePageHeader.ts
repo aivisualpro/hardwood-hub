@@ -6,6 +6,7 @@ interface PageHeaderState {
   description?: string
   descriptionKey?: TranslationKey
   icon?: string
+  _explicit: boolean
 }
 
 interface SetHeaderOpts {
@@ -23,6 +24,7 @@ export function usePageHeader() {
     description: '',
     descriptionKey: undefined,
     icon: '',
+    _explicit: false,
   }))
 
   function setHeader(opts: SetHeaderOpts) {
@@ -31,6 +33,7 @@ export function usePageHeader() {
     headerState.value.description = opts.description || ''
     headerState.value.descriptionKey = opts.descriptionKey
     headerState.value.icon = opts.icon || ''
+    headerState.value._explicit = true
   }
 
   function clearHeader() {
@@ -39,11 +42,18 @@ export function usePageHeader() {
     headerState.value.description = ''
     headerState.value.descriptionKey = undefined
     headerState.value.icon = ''
+    headerState.value._explicit = false
+  }
+
+  /** Reset the _explicit flag without clearing content (used before route change) */
+  function markPending() {
+    headerState.value._explicit = false
   }
 
   return {
     headerState: readonly(headerState),
     setHeader,
     clearHeader,
+    markPending,
   }
 }

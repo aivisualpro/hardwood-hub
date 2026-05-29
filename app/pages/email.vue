@@ -134,7 +134,7 @@ await useAsyncData('email-page', async () => {
 </script>
 
 <template>
-  <div class="h-[calc(100vh-theme(spacing.16))] flex overflow-hidden -m-4 lg:-m-6">
+  <div class="h-[calc(100dvh-var(--content-offset))] flex overflow-hidden -m-4 lg:-m-6">
 
     <!-- Not Connected State -->
     <div v-if="!gmailConnected" class="flex-1 flex items-center justify-center p-8">

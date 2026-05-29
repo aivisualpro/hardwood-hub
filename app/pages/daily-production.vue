@@ -722,7 +722,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="relative h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
+  <div class="relative">
     <div class="max-w-[420px] mx-auto px-3 pb-20">
 
       <!-- ═══════ TAB BAR ═══════ -->

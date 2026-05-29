@@ -506,7 +506,7 @@ watch(() => route.query.status, (val) => {
 </script>
 
 <template>
-  <div class="h-[calc(100vh-theme(spacing.20))] sm:h-[calc(100vh-theme(spacing.24))] flex flex-col space-y-4 -mb-4 sm:-mb-6">
+  <div class="h-[calc(100dvh-var(--content-offset))] flex flex-col space-y-4 -mb-4 sm:-mb-6">
     <ClientOnly>
     <Teleport to="#header-toolbar">
       <div class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">

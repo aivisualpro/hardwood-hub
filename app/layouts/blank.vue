@@ -1,22 +1,21 @@
 <script setup lang="ts">
 useHead({
-  htmlAttrs: { style: 'height: auto !important; overflow: auto !important; min-height: 100vh;' },
-  bodyAttrs: { style: 'height: auto !important; overflow: auto !important; min-height: 100vh;' }
+  htmlAttrs: { class: 'blank-layout' },
+  bodyAttrs: { class: 'blank-layout' }
 })
 </script>
 
 <template>
-  <div>
+  <div class="min-h-dvh">
     <slot />
   </div>
 </template>
 
 <style>
-/* Absolute nuclear option to ensure the blank layout ALWAYS permits scrolling even during Nuxt routing transitions */
-html, body, #__nuxt, #app {
+html.blank-layout, body.blank-layout, html.blank-layout #__nuxt, html.blank-layout #app {
   height: auto !important;
-  min-height: 100vh !important;
+  min-height: 100dvh !important;
   overflow: auto !important;
+  overscroll-behavior: auto !important;
 }
 </style>
-

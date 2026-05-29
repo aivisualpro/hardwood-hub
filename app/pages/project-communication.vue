@@ -300,7 +300,7 @@ function formatDate(d: string) {
 </script>
 
 <template>
-  <div class="h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
+  <div>
 
     <!-- ═════════ LIST VIEW ═════════ -->
     <div v-if="activeTab === 'list'" class="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">

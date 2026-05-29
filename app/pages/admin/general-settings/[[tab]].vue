@@ -899,7 +899,7 @@ const WpIconsList = [
 ]
 </script>
 <template>
-  <div class="flex flex-col -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden bg-background p-4 gap-2">
+  <div class="flex flex-col -m-4 lg:-m-6 h-[calc(100dvh-var(--content-offset))] overflow-hidden bg-background p-4 gap-2">
 
     <div class="shrink-0 flex items-center justify-between">
         <!-- Tabs -->

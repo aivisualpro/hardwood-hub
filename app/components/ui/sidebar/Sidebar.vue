@@ -46,7 +46,7 @@ const { direction } = useAppSettings()
         <SheetTitle>Sidebar</SheetTitle>
         <SheetDescription>Displays the mobile sidebar.</SheetDescription>
       </SheetHeader>
-      <div class="flex h-full w-full flex-col" :dir="direction">
+      <div class="flex h-full w-full flex-col overflow-y-auto" :dir="direction">
         <slot />
       </div>
     </SheetContent>

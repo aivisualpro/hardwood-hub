@@ -530,7 +530,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="px-3 py-4 sm:px-5 sm:py-6 space-y-5 sm:space-y-8 max-w-7xl mx-auto h-[calc(100vh-theme(spacing.16))] overflow-y-auto">
+  <div class="px-3 py-4 sm:px-5 sm:py-6 space-y-5 sm:space-y-8 max-w-7xl mx-auto">
     <!-- Back button when viewing another employee -->
     <button
       v-if="isViewingOther"

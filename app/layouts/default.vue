@@ -1,8 +1,4 @@
 <script setup lang="ts">
-useHead({
-  htmlAttrs: { class: 'h-screen overflow-hidden' },
-  bodyAttrs: { class: 'h-screen overflow-hidden' }
-})
 </script>
 
 <template>
@@ -10,15 +6,14 @@ useHead({
     <LayoutAppSidebar />
     <SidebarInset>
       <LayoutHeader />
-      <div class="flex flex-col flex-1 min-h-0">
-        <div class="@container/main p-4 grow">
-          <slot />
-        </div>
+      <div
+        class="@container/main flex-1 min-h-0 overflow-y-auto overscroll-contain
+               p-4 lg:p-6
+               [scrollbar-gutter:stable]
+               pb-[max(1rem,env(safe-area-inset-bottom))]"
+      >
+        <slot />
       </div>
     </SidebarInset>
   </SidebarProvider>
 </template>
-
-<style scoped>
-
-</style>

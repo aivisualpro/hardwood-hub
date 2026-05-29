@@ -157,20 +157,11 @@ async function deleteContact(index: number) {
     isLoading.value = false
   }
 }
+defineExpose({ openAdd, isEditing })
 </script>
 
 <template>
-  <div class="bg-card p-6 rounded-xl border border-border/50 shadow-sm shadow-black/5 flex flex-col h-full space-y-6">
-    <div class="flex items-center justify-between">
-      <h3 class="font-bold text-lg flex items-center gap-2">
-        <Icon name="i-lucide-users" class="size-5 text-primary" />
-        Related Contacts
-      </h3>
-      <button v-if="!isEditing" @click="openAdd" class="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-bold">
-        <Icon name="i-lucide-plus" class="size-4" />
-        Add Contact
-      </button>
-    </div>
+  <div class="flex flex-col h-full space-y-4">
 
     <div v-if="isEditing" class="bg-muted/30 border border-border/50 rounded-xl p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
       <div class="grid grid-cols-2 gap-4">
@@ -306,11 +297,7 @@ async function deleteContact(index: number) {
         <Icon name="i-lucide-users" class="size-6" />
       </div>
       <p class="font-bold text-base mb-1">No related contacts</p>
-      <p class="text-xs text-muted-foreground mb-4 max-w-[200px]">Add associated contacts like property managers or assistants here.</p>
-      <button @click="openAdd" class="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all text-sm font-bold">
-        <Icon name="i-lucide-plus" class="size-4" />
-        Add First Contact
-      </button>
+      <p class="text-xs text-muted-foreground max-w-[200px]">Add associated contacts like property managers or assistants here.</p>
     </div>
 
   </div>

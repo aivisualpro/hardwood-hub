@@ -1,23 +1,31 @@
 <script setup lang="ts">
 const route = useRoute()
-const { headerState, clearHeader } = usePageHeader()
+const { headerState, clearHeader, markPending } = usePageHeader()
 const { t } = useLocale()
 
 const currentHeader = computed(() => unref(headerState))
 
-// Clear header state on route change so pages without setHeader() don't show stale info
-watch(() => route.fullPath, () => {
-  // We use a small delay or a smarter check if needed, but for now clear it
-  clearHeader()
+// Clear header state on route change — but only if the new page didn't call setHeader()
+// during setup. We wait a tick so the new page's setHeader() runs first.
+watch(() => route.fullPath, async () => {
+  // Reset the explicit flag before the new page mounts
+  markPending()
+  await nextTick()
+  // If no setHeader was called by the new page, clear stale header info
+  if (!headerState.value._explicit) clearHeader()
 })
 
 // Derive fallback title from route when no explicit title is set
+// Skip raw MongoDB ObjectIDs (24-char hex) so they never flash in the header
+const isMongoId = (s: string) => /^[0-9a-f]{24}$/i.test(s)
+
 const fallbackTitle = computed(() => {
   if (route.fullPath === '/')
     return t('nav.dashboard')
   const segments = route.fullPath.split('/').filter(s => s !== '')
-  const last = segments[segments.length - 1] || ''
-  return last
+  // Walk backwards to find the first segment that isn't a raw ID
+  const meaningfulSegment = [...segments].reverse().find(s => !isMongoId(s)) || segments[segments.length - 1] || ''
+  return meaningfulSegment
     .replace(/-/g, ' ')
     .split(' ')
     .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())

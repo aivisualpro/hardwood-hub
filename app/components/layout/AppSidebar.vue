@@ -16,7 +16,9 @@ function getHeading(nav: { heading: string, headingKey?: string }) {
   return nav.headingKey ? t(nav.headingKey as TranslationKey) : nav.heading
 }
 
-const { data: workspacesRes } = await useFetch('/api/workspaces', { key: 'workspaces-list' })
+const userCookie = useCookie<{ employee: string, email: string, position: string, profileImage: string, workspace?: string } | null>('hardwood_user')
+
+const { data: workspacesRes } = await useFetch('/api/workspaces', { key: 'workspaces-list', immediate: !!userCookie.value })
 const allTeams = computed(() => workspacesRes.value?.data || [])
 
 const activeTeamId = useCookie<string>('active_workspace_id')
@@ -38,7 +40,7 @@ function isAllowed(link?: string) {
 }
 
 // Nav Counts
-const { data: navCountsRes, refresh: refreshNavCounts } = await useFetch<any>('/api/nav/counts')
+const { data: navCountsRes, refresh: refreshNavCounts } = await useFetch<any>('/api/nav/counts', { immediate: !!userCookie.value })
 const navCounts = computed<Record<string, number>>(() => navCountsRes.value?.data || {})
 
 // Poll for updates every 60 seconds
@@ -93,7 +95,7 @@ const filteredNavMenuBottom = computed(() => {
   }).filter((item: any) => isAllowed(item.link))
 })
 
-const userCookie = useCookie<{ employee: string, email: string, position: string, profileImage: string, workspace?: string } | null>('hardwood_user')
+
 
 // Filter workspaces: if the user has a workspace assigned, only show that one
 const userTeams = computed(() => {

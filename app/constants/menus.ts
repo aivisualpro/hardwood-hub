@@ -99,9 +99,9 @@ export const navMenu: NavMenu[] = [
         link: '/crm/calendar',
       },
       {
-        title: 'Estimates',
+        title: 'Quotes',
         icon: 'i-lucide-ruler',
-        link: '/crm/flooring-estimate',
+        link: '/crm/quotes',
       },
       {
         title: 'Contracts',

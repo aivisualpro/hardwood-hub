@@ -664,7 +664,7 @@ async function copyLink() {
 </script>
 
 <template>
-  <div class="h-[calc(100vh-theme(spacing.16))]" :class="activeTab === 'list' ? 'overflow-y-auto' : 'overflow-hidden'">
+  <div :class="activeTab === 'list' ? '' : 'h-[calc(100dvh-var(--content-offset))] overflow-hidden'">
     <!-- ═════════ LIST VIEW ═════════ -->
     <div v-if="activeTab === 'list'" class="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <!-- Header -->
@@ -860,7 +860,7 @@ async function copyLink() {
     </div>
 
     <!-- ═════════ FORM VIEW ═════════ -->
-    <div v-else ref="scrollContainer" class="max-w-4xl mx-auto pb-12 h-[calc(100vh-theme(spacing.16))] overflow-y-auto scroll-smooth">
+    <div v-else ref="scrollContainer" class="max-w-4xl mx-auto pb-12 h-[calc(100dvh-var(--content-offset))] overflow-y-auto scroll-smooth">
       <!-- Sticky Masthead -->
       <div class="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border/50">
         <div class="px-3 sm:px-6 py-3 sm:py-5 flex items-center gap-3 sm:gap-5">

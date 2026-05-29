@@ -778,7 +778,7 @@ async function deleteSelected() {
 }
 </script>
 <template>
-  <div class="flex gap-0 -m-4 lg:-m-6 h-[calc(100vh-theme(spacing.16))] overflow-hidden">
+  <div class="flex gap-0 -m-4 lg:-m-6 h-[calc(100dvh-var(--content-offset))] overflow-hidden">
 
     <!-- Mobile sidebar overlay -->
     <Transition
