@@ -1,13 +1,16 @@
+import { Customer } from '../../models/Customer'
+import { Dropdown } from '../../models/Dropdown'
 /**
  * POST /api/dropdowns/seed-customer-status
  * One-time migration: extracts unique stage values from Customers
  * and seeds the "Customer Status" dropdown in hardwoodDB_Dropdowns.
+ * Admin-only — requires Super Admin or Admin position.
  */
 import { connectDB } from '../../utils/mongoose'
-import { Customer } from '../../models/Customer'
-import { Dropdown } from '../../models/Dropdown'
+import { requireAdmin } from '../../utils/requireRole'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  requireAdmin(event)
   await connectDB()
 
   // 1. Get all unique stage values from Customers
@@ -32,7 +35,7 @@ export default defineEventHandler(async () => {
         options,
       },
     },
-    { upsert: true, new: true, lean: true }
+    { upsert: true, new: true, lean: true },
   )
 
   return {

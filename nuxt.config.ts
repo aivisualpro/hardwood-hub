@@ -50,10 +50,14 @@ export default defineNuxtConfig({
     rollupConfig: {
       onwarn(warning: any, warn: any) {
         // Suppress puppeteer-core ESM decorator rewriting noise
-        if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('puppeteer')) return
-        if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('nitropack')) return
-        if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('nitro')) return
-        if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('virtual:#imports')) return
+        if (warning.code === 'THIS_IS_UNDEFINED' && warning.id?.includes('puppeteer'))
+          return
+        if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('nitropack'))
+          return
+        if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('nitro'))
+          return
+        if (warning.code === 'CIRCULAR_DEPENDENCY' && warning.message?.includes('virtual:#imports'))
+          return
         warn(warning)
       },
     },
@@ -129,10 +133,12 @@ export default defineNuxtConfig({
     cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
     cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
     googleClientId: process.env.GOOGLE_CLIENT_ID,
-    sessionSecret: process.env.SESSION_SECRET || 'hardwood-hub-default-secret-change-in-production',
+    // SESSION_SECRET is read directly from process.env in server/lib/session.ts.
+    // It intentionally has NO fallback — the server will throw on startup if unset.
+    sessionSecret: process.env.SESSION_SECRET,
     calendlyAccessToken: process.env.CALENDLY_ACCESS_TOKEN,
     calendlyUrl: process.env.CALENDLY_URL,
-    
+
     // Vertex AI / Google Cloud
     googleCloudProjectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
     googleCloudLocation: process.env.GOOGLE_CLOUD_LOCATION,

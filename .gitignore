@@ -30,3 +30,20 @@ logs
 # ── Calendly API exports / test data (may contain real PII) ──────────────────
 /.calendly-*.json
 /calendly-*.json
+
+# ── One-off scratch / debug / seed scripts (never commit) ────────────────────
+/scratch*.{js,mjs,ts,py,cjs}
+/scratch-*.{js,mjs,ts}
+/inspect*.{ts,js,cjs}
+/inspect_*.ts
+/test_*.{ts,js,mjs,cjs}
+/test-*.{ts,js,mjs}
+/simulate_*.ts
+/check_db*.ts
+/find_*.ts
+/query_*.{js,ts}
+/migrate-*.{ts,js,mjs}
+/scripts/migrate-*.mjs
+/server/scripts/
+*.backup
+*.bak

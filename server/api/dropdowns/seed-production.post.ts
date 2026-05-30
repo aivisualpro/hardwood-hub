@@ -1,12 +1,14 @@
+import { Dropdown } from '../../models/Dropdown'
 /**
- * GET /api/dropdowns/seed-production
+ * POST /api/dropdowns/seed-production
  * One-time seed: creates "Daily Production Categories" and
  * "Daily Production Sub Types" (with category field on each option).
  *
  * Safe to re-run — uses upsert on name.
+ * Admin-only — requires Super Admin or Admin position.
  */
 import { connectDB } from '../../utils/mongoose'
-import { Dropdown } from '../../models/Dropdown'
+import { requireAdmin } from '../../utils/requireRole'
 
 const CATEGORY_SUBTYPES: Record<string, string[]> = {
   'Demo': ['Carpet removal', 'Hardwood removal — nailed', 'Hardwood removal — glued', 'Floating floor removal', 'Tile removal', 'Vinyl removal', 'Subfloor removal', 'Stair demo', 'Trim removal', 'Misc demo'],
@@ -29,7 +31,8 @@ const CATEGORY_SUBTYPES: Record<string, string[]> = {
   'Admin / Other': ['Estimates', 'Material pickup', 'Dump run', 'Jobsite cleaning'],
 }
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  requireAdmin(event)
   await connectDB()
 
   // 1. Seed "Daily Production Categories"
@@ -45,7 +48,7 @@ export default defineEventHandler(async () => {
   await Dropdown.findOneAndUpdate(
     { name: 'Daily Production Categories' },
     { $set: { name: 'Daily Production Categories', options: categoryOptions } },
-    { upsert: true, new: true }
+    { upsert: true, new: true },
   )
 
   // 2. Seed "Daily Production Sub Types" with category on each option
@@ -67,7 +70,7 @@ export default defineEventHandler(async () => {
   await Dropdown.findOneAndUpdate(
     { name: 'Daily Production Sub Types' },
     { $set: { name: 'Daily Production Sub Types', options: subtypeOptions } },
-    { upsert: true, new: true }
+    { upsert: true, new: true },
   )
 
   return {
