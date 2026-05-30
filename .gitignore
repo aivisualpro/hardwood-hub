@@ -26,3 +26,7 @@ logs
 # Vercel
 .vercel
 .output
+
+# ── Calendly API exports / test data (may contain real PII) ──────────────────
+/.calendly-*.json
+/calendly-*.json
