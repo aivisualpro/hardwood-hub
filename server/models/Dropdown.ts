@@ -17,8 +17,8 @@ const DropdownSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: 'hardwoodDB_Dropdowns',
-  }
+  },
 )
 
-export const Dropdown =
-  mongoose.models.Dropdown || mongoose.model('Dropdown', DropdownSchema)
+export const Dropdown
+  = mongoose.models.Dropdown || mongoose.model('Dropdown', DropdownSchema)

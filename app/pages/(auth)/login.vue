@@ -7,15 +7,13 @@ definePageMeta({
 <template>
   <LayoutAuth reverse>
     <div class="flex flex-col items-center justify-center h-full gap-8">
-
       <!-- Card container -->
       <div class="w-full rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm shadow-xl p-8 space-y-6">
-
         <!-- Header -->
         <div class="text-center space-y-2">
           <div class="flex items-center justify-center mb-4">
             <div class="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-lg shadow-primary/5">
-              <img src="/hardwood logo.png" alt="Hardwood Hub" class="size-10 rounded-lg" />
+              <img src="/hardwood logo.png" alt="Hardwood Hub" class="size-10 rounded-lg">
             </div>
           </div>
           <h1 class="text-2xl font-bold tracking-tight">

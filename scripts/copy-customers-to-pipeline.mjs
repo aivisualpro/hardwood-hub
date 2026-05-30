@@ -19,7 +19,7 @@ console.log('✅  Connected to MongoDB')
 
 const db = mongoose.connection.db
 
-const srcCollection  = db.collection('hardwoodDB_Customers')
+const srcCollection = db.collection('hardwoodDB_Customers')
 const destCollection = db.collection('hardwoodDB_pipeline')
 
 // 1. Read every document from the source collection (raw BSON)
@@ -35,7 +35,7 @@ if (allDocs.length === 0) {
 // 2. Check which _ids already exist in destination
 const existingIds = new Set(
   (await destCollection.find({}, { projection: { _id: 1 } }).toArray())
-    .map(d => d._id.toString())
+    .map(d => d._id.toString()),
 )
 console.log(`📌  ${existingIds.size} documents already in hardwoodDB_pipeline`)
 

@@ -32,7 +32,8 @@ export async function compressImageUrl(
     }
 
     // Skip non-http URLs
-    if (!url.startsWith('http')) return url
+    if (!url.startsWith('http'))
+      return url
 
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 10000)
@@ -58,7 +59,8 @@ export async function compressImageUrl(
     if (format === 'png') {
       pipeline = pipeline.png({ quality, compressionLevel: 9 })
       mime = 'image/png'
-    } else {
+    }
+    else {
       pipeline = pipeline.jpeg({ quality, mozjpeg: true })
       mime = 'image/jpeg'
     }
@@ -70,7 +72,8 @@ export async function compressImageUrl(
 
     const b64 = outputBuffer.toString('base64')
     return `data:${mime};base64,${b64}`
-  } catch (err: any) {
+  }
+  catch (err: any) {
     console.error(`[img-compress] FAILED for ${url.substring(0, 80)}: ${err?.message}`)
     return url
   }
@@ -85,9 +88,10 @@ async function compressBase64DataUri(
 ): Promise<string> {
   try {
     const match = dataUri.match(/^data:image\/[^;]+;base64,(.+)$/)
-    if (!match) return dataUri
+    if (!match)
+      return dataUri
 
-    const inputBuffer = Buffer.from(match[1], 'base64')
+    const inputBuffer = Buffer.from(match[1]!, 'base64')
     const inputSize = inputBuffer.length
 
     let pipeline = sharp(inputBuffer).resize({
@@ -99,7 +103,8 @@ async function compressBase64DataUri(
     if (opts.format === 'png') {
       pipeline = pipeline.png({ quality: opts.quality, compressionLevel: 9 })
       mime = 'image/png'
-    } else {
+    }
+    else {
       pipeline = pipeline.jpeg({ quality: opts.quality, mozjpeg: true })
       mime = 'image/jpeg'
     }
@@ -107,7 +112,8 @@ async function compressBase64DataUri(
     const outputBuffer = await pipeline.toBuffer()
     console.log(`[img-compress] data-uri | ${(inputSize / 1024).toFixed(0)}KB → ${(outputBuffer.length / 1024).toFixed(0)}KB`)
     return `data:${mime};base64,${outputBuffer.toString('base64')}`
-  } catch (err: any) {
+  }
+  catch (err: any) {
     console.error(`[img-compress] data-uri FAILED: ${err?.message}`)
     return dataUri
   }
@@ -128,7 +134,7 @@ export async function compressImagesInHtml(
   let match: RegExpExecArray | null
 
   while ((match = srcRegex.exec(html)) !== null) {
-    const url = match[1]
+    const url = match[1] as string
     if (!urls.has(url)) {
       urls.set(url, url) // placeholder
     }
@@ -136,7 +142,8 @@ export async function compressImagesInHtml(
 
   console.log(`[img-compress] Found ${urls.size} unique images in HTML (${(html.length / 1024).toFixed(0)}KB HTML)`)
 
-  if (urls.size === 0) return html
+  if (urls.size === 0)
+    return html
 
   // Compress all images in parallel (max concurrency 6)
   const entries = [...urls.keys()]
@@ -170,12 +177,14 @@ export async function compressImagesInHtml(
   let result = html
   let replacedCount = 0
   for (const [originalUrl, compressedUri] of urls) {
-    if (compressedUri === originalUrl) continue // skip failed compressions
+    if (compressedUri === originalUrl)
+      continue // skip failed compressions
     // Escape special regex chars in the URL
     const escaped = originalUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const before = result.length
     result = result.replace(new RegExp(escaped, 'g'), compressedUri)
-    if (result.length !== before) replacedCount++
+    if (result.length !== before)
+      replacedCount++
   }
 
   console.log(`[img-compress] Replaced ${replacedCount}/${urls.size} images. HTML: ${(html.length / 1024).toFixed(0)}KB → ${(result.length / 1024).toFixed(0)}KB`)

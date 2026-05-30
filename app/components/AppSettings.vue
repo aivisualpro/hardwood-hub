@@ -121,7 +121,9 @@ function handleChangeLanguage(lang: LocaleCode) {
             >
               <span class="text-base leading-none">{{ lang.flag }}</span>
               <span>{{ lang.label }}</span>
-              <Badge v-if="lang.default" variant="secondary" class="ml-auto text-[10px] h-4 px-1">{{ t('customizer.default') }}</Badge>
+              <Badge v-if="lang.default" variant="secondary" class="ml-auto text-[10px] h-4 px-1">
+                {{ t('customizer.default') }}
+              </Badge>
             </Button>
           </div>
         </div>

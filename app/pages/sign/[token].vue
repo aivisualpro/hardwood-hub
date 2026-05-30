@@ -26,7 +26,7 @@ async function fetchContract() {
   try {
     const res = await $fetch<{ success: boolean, data: any }>(`/api/contracts/sign/${token}`)
     contractData.value = res.data
-    
+
     // Initialize client values if variables exist
     if (res.data.clientVariables) {
       for (const v of res.data.clientVariables) {
@@ -39,7 +39,8 @@ async function fetchContract() {
     }
 
     generateContractHtml()
-  } catch (e: any) {
+  }
+  catch (e: any) {
     error.value = e?.data?.message || e?.message || 'Failed to load contract'
   }
 }
@@ -70,14 +71,16 @@ function generateContractHtml() {
       const currentSig = clientValues.value[v.key]
       if (currentSig && currentSig.startsWith('data:image')) {
         replacement = `<img src="${currentSig}" class="inline-sig-image" data-var-key="${v.key}" data-var-label="${label}" alt="${label} Signature" title="Click to resign" />`
-      } else {
+      }
+      else {
         const reqClass = v.required ? 'required-sig' : ''
         replacement = `<button type="button" class="inline-sig-button ${reqClass}" data-var-key="${v.key}" data-var-label="${label}">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1.5"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
           Click to sign ${v.required ? '*' : ''}
         </button>`
       }
-    } else if (v.type === 'select') {
+    }
+    else if (v.type === 'select') {
       const val = clientValues.value[v.key] || ''
       const req = v.required ? 'required' : ''
       const optionsHtml = (v.options || []).map((opt: string) => {
@@ -85,11 +88,13 @@ function generateContractHtml() {
         return `<option value="${opt.replace(/"/g, '&quot;')}" ${isSelected}>${opt}</option>`
       }).join('')
       replacement = `<span class="inline-field-wrapper"><select class="inline-client-field appearance-none pr-8 bg-no-repeat" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2310b981%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-position: right 0.5rem center; background-size: 0.65em auto;" data-var-key="${v.key}" ${req}><option value="" disabled ${!val ? 'selected' : ''}>Select ${label}...</option>${optionsHtml}</select></span>`
-    } else if (v.type === 'textarea') {
+    }
+    else if (v.type === 'textarea') {
       const val = (clientValues.value[v.key] || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       const req = v.required ? 'required' : ''
       replacement = `<span class="inline-field-wrapper !block my-2 w-full max-w-lg"><textarea class="inline-client-field w-full min-h-[80px] resize-y" data-var-key="${v.key}" placeholder="${label}" ${req}>${val}</textarea></span>`
-    } else {
+    }
+    else {
       const inputType = v.type === 'date' ? 'date' : v.type === 'number' ? 'number' : 'text'
       const prefix = v.type === 'currency' ? '<span class="inline-field-prefix">$</span>' : ''
       const placeholder = v.type === 'date' ? '' : label
@@ -136,45 +141,46 @@ function saveInlineSignature() {
 }
 
 async function submitSignature() {
-  if (!signature.value) return
-  
+  if (!signature.value)
+    return
+
   // Validate required client variables
   if (contractData.value?.clientVariables) {
     const missingFields: string[] = []
     const missingKeys: string[] = []
-    
+
     for (const v of contractData.value.clientVariables) {
       if (v.required && !clientValues.value[v.key]) {
         missingFields.push(v.label || v.key)
         missingKeys.push(v.key)
       }
     }
-    
+
     if (missingFields.length > 0) {
       toast.error('Missing Required Fields', {
-        description: `Please fill out the following fields:\n• ${missingFields.join('\n• ')}`
+        description: `Please fill out the following fields:\n• ${missingFields.join('\n• ')}`,
       })
-      
+
       // Trigger animations
-      const inputs = document.querySelectorAll('.inline-client-field, .inline-sig-button');
-      inputs.forEach(el => {
-        const key = el.getAttribute('data-var-key');
+      const inputs = document.querySelectorAll('.inline-client-field, .inline-sig-button')
+      inputs.forEach((el) => {
+        const key = el.getAttribute('data-var-key')
         if (key && missingKeys.includes(key)) {
-          el.classList.remove('error-shake');
+          el.classList.remove('error-shake')
           // Trigger reflow to restart animation
-          void (el as HTMLElement).offsetWidth;
-          el.classList.add('error-shake');
+          void (el as HTMLElement).offsetWidth
+          el.classList.add('error-shake')
         }
-      });
-      
+      })
+
       // Scroll to the first missing field
       setTimeout(() => {
-        const firstMissing = document.querySelector('.error-shake');
+        const firstMissing = document.querySelector('.error-shake')
         if (firstMissing) {
-          firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          firstMissing.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
-      }, 50);
-      
+      }, 50)
+
       return
     }
   }
@@ -183,15 +189,17 @@ async function submitSignature() {
   try {
     await $fetch(`/api/contracts/sign/${token}`, {
       method: 'POST',
-      body: { 
+      body: {
         signature: signature.value,
-        clientValues: clientValues.value
+        clientValues: clientValues.value,
       },
     })
     signed.value = true
-  } catch (e: any) {
+  }
+  catch (e: any) {
     error.value = e?.data?.message || 'Failed to submit signature'
-  } finally {
+  }
+  finally {
     submitting.value = false
   }
 }
@@ -215,7 +223,8 @@ const { data: _asyncData } = await useAsyncData(`sign-${token}`, async () => {
 if (import.meta.client && _asyncData.value && !contractData.value) {
   contractData.value = _asyncData.value.contractData
   signed.value = _asyncData.value.signed
-  if (_asyncData.value.error) error.value = _asyncData.value.error
+  if (_asyncData.value.error)
+    error.value = _asyncData.value.error
   clientValues.value = _asyncData.value.clientValues || {}
   renderedContractHtml.value = _asyncData.value.renderedContractHtml || ''
 }
@@ -227,10 +236,14 @@ if (import.meta.client && _asyncData.value && !contractData.value) {
     <div v-if="error && !contractData" class="flex items-center justify-center min-h-screen px-4">
       <div class="max-w-md w-full text-center">
         <div class="size-16 mx-auto mb-4 rounded-2xl bg-red-50 flex items-center justify-center">
-          <svg class="size-8 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <svg class="size-8 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
         </div>
-        <h1 class="text-xl font-bold text-slate-900 mb-2">Unable to Load Contract</h1>
-        <p class="text-sm text-slate-500">{{ error }}</p>
+        <h1 class="text-xl font-bold text-slate-900 mb-2">
+          Unable to Load Contract
+        </h1>
+        <p class="text-sm text-slate-500">
+          {{ error }}
+        </p>
       </div>
     </div>
 
@@ -238,90 +251,112 @@ if (import.meta.client && _asyncData.value && !contractData.value) {
     <div v-else-if="signed" class="flex items-center justify-center min-h-screen px-4">
       <div class="max-w-md w-full text-center">
         <div class="size-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-500/25">
-          <svg class="size-10 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg class="size-10 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
         </div>
-        <h1 class="text-2xl font-bold text-slate-900 mb-2">Contract Signed!</h1>
+        <h1 class="text-2xl font-bold text-slate-900 mb-2">
+          Contract Signed!
+        </h1>
         <p class="text-sm text-slate-500 mb-6">
-          Thank you, <strong>{{ contractData?.customerName }}</strong>. Your signature has been recorded for 
+          Thank you, <strong>{{ contractData?.customerName }}</strong>. Your signature has been recorded for
           <strong>{{ contractData?.title }}</strong>.
         </p>
-        <p class="text-xs text-slate-400">You may close this page.</p>
+        <p class="text-xs text-slate-400">
+          You may close this page.
+        </p>
       </div>
     </div>
 
     <!-- Contract View + Signing -->
     <div v-else-if="contractData" class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-
       <!-- Document View -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-        
         <!-- Letterhead Header -->
         <div class="p-6 sm:p-10 border-b-2 border-emerald-900 flex flex-col sm:flex-row justify-between items-start gap-8 bg-white">
           <div class="shrink-0 flex items-center self-stretch h-28">
             <template v-if="contractData.company?.logo">
-              <img :src="contractData.company.logo" alt="Company Logo" class="max-h-28 max-w-[320px] object-contain object-left" />
+              <img :src="contractData.company.logo" alt="Company Logo" class="max-h-28 max-w-[320px] object-contain object-left">
             </template>
             <template v-else>
-              <h1 class="text-3xl font-black text-slate-900" :style="{ color: contractData.company?.brandColor || '#065f46' }">{{ contractData.company?.name || 'Company Name' }}</h1>
+              <h1 class="text-3xl font-black text-slate-900" :style="{ color: contractData.company?.brandColor || '#065f46' }">
+                {{ contractData.company?.name || 'Company Name' }}
+              </h1>
             </template>
           </div>
-          
+
           <div class="text-right text-[13px] text-amber-900/80 leading-relaxed font-bold font-sans self-center">
             <div class="text-lg font-black mb-1" :style="{ color: contractData.company?.brandColor || '#84cc16' }">
               {{ contractData.company?.name || 'Company Name' }}
             </div>
             <div>{{ contractData.company?.address || 'Address' }}</div>
             <div>{{ contractData.company?.city || 'City' }}, {{ contractData.company?.state || 'State' }} {{ contractData.company?.zip || 'Zip' }}</div>
-            <div v-if="contractData.company?.phone1 || contractData.company?.phone">Phone: {{ contractData.company?.phone1 || contractData.company?.phone }}</div>
-            <div v-if="contractData.company?.phone2">Phone: {{ contractData.company?.phone2 }}</div>
-            <div class="text-amber-900/90">{{ contractData.company?.website?.replace(/^https?:\/\//, '') || 'Website' }}</div>
-            <div class="text-amber-900/90">{{ contractData.company?.email || 'Email' }}</div>
-            <div v-if="contractData.company?.licenseNumber">Builder's License Number: {{ contractData.company?.licenseNumber }}</div>
+            <div v-if="contractData.company?.phone1 || contractData.company?.phone">
+              Phone: {{ contractData.company?.phone1 || contractData.company?.phone }}
+            </div>
+            <div v-if="contractData.company?.phone2">
+              Phone: {{ contractData.company?.phone2 }}
+            </div>
+            <div class="text-amber-900/90">
+              {{ contractData.company?.website?.replace(/^https?:\/\//, '') || 'Website' }}
+            </div>
+            <div class="text-amber-900/90">
+              {{ contractData.company?.email || 'Email' }}
+            </div>
+            <div v-if="contractData.company?.licenseNumber">
+              Builder's License Number: {{ contractData.company?.licenseNumber }}
+            </div>
           </div>
         </div>
 
         <!-- Contract Title -->
         <div class="px-6 sm:px-10 pt-8 pb-4 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
           <div>
-            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ contractData.title }}</h2>
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              {{ contractData.title }}
+            </h2>
           </div>
           <div class="text-right shrink-0">
-             <div class="inline-flex px-3 py-1 bg-emerald-100 text-emerald-800 rounded font-bold uppercase tracking-wider text-[10px] mb-2">Contract For Signature</div>
-             <p class="text-sm font-bold text-slate-500">Document #{{ contractData.contractNumber }}</p>
+            <div class="inline-flex px-3 py-1 bg-emerald-100 text-emerald-800 rounded font-bold uppercase tracking-wider text-[10px] mb-2">
+              Contract For Signature
+            </div>
+            <p class="text-sm font-bold text-slate-500">
+              Document #{{ contractData.contractNumber }}
+            </p>
           </div>
         </div>
 
         <!-- Contract Content — client variables rendered INLINE -->
         <div
           class="contract-content px-6 sm:px-10 pb-8 text-slate-800 font-medium"
-          v-html="renderedContractHtml"
           @input="onContractInput"
           @click="onContractClick"
+          v-html="renderedContractHtml"
         />
-
-
 
         <!-- Contractor Signature -->
         <div class="px-6 sm:px-10 pb-12 pt-4">
-           <div class="w-full flex flex-col items-start relative">
-              <div class="h-28 w-full flex items-end relative -mb-1">
-                 <img v-if="contractData.company?.signature" :src="contractData.company.signature" class="max-h-28 max-w-xs object-contain object-left-bottom z-10 block mr-auto ml-0" />
+          <div class="w-full flex flex-col items-start relative">
+            <div class="h-28 w-full flex items-end relative -mb-1">
+              <img v-if="contractData.company?.signature" :src="contractData.company.signature" class="max-h-28 max-w-xs object-contain object-left-bottom z-10 block mr-auto ml-0">
+            </div>
+            <div class="w-full flex items-start justify-between">
+              <!-- Contractor's Signature: 60px from left -->
+              <div class="pl-[60px]">
+                <div class="border-t-[1.5px] border-slate-900 pt-2 min-w-[200px]">
+                  <p class="text-sm font-bold text-slate-900 font-sans">
+                    Contractor's Signature
+                  </p>
+                </div>
               </div>
-              <div class="w-full flex items-start justify-between">
-                 <!-- Contractor's Signature: 60px from left -->
-                 <div class="pl-[60px]">
-                    <div class="border-t-[1.5px] border-slate-900 pt-2 min-w-[200px]">
-                       <p class="text-sm font-bold text-slate-900 font-sans">Contractor's Signature</p>
-                    </div>
-                 </div>
-                 <!-- Date: 60px from right -->
-                 <div class="pr-[60px]">
-                    <div class="border-t-[1.5px] border-slate-900 pt-2 text-right min-w-[150px]">
-                       <div class="text-sm font-bold text-slate-900 font-sans">Date: {{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}) }}</div>
-                    </div>
-                 </div>
+              <!-- Date: 60px from right -->
+              <div class="pr-[60px]">
+                <div class="border-t-[1.5px] border-slate-900 pt-2 text-right min-w-[150px]">
+                  <div class="text-sm font-bold text-slate-900 font-sans">
+                    Date: {{ new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
+                  </div>
+                </div>
               </div>
-           </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -329,10 +364,12 @@ if (import.meta.client && _asyncData.value && !contractData.value) {
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 sm:px-8 py-5 border-b border-slate-100 bg-slate-50/50">
           <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-            <svg class="size-5 text-emerald-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+            <svg class="size-5 text-emerald-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>
             Please Sign Below
           </h2>
-          <p class="text-xs text-slate-500 mt-1">Draw your signature in the box below to sign this contract.</p>
+          <p class="text-xs text-slate-500 mt-1">
+            Draw your signature in the box below to sign this contract.
+          </p>
         </div>
         <div class="p-6 sm:p-8">
           <SignaturePad v-model="signature" class="w-full bg-white border-2 border-dashed border-slate-200 rounded-xl" style="min-height: 160px;" />
@@ -346,8 +383,8 @@ if (import.meta.client && _asyncData.value && !contractData.value) {
               :class="signature ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02]' : 'bg-slate-100 text-slate-400'"
               @click="submitSignature"
             >
-              <svg v-if="submitting" class="size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              <svg v-else class="size-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <svg v-if="submitting" class="size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+              <svg v-else class="size-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
               {{ submitting ? 'Submitting...' : 'Submit Signature' }}
             </button>
           </div>
@@ -367,17 +404,21 @@ if (import.meta.client && _asyncData.value && !contractData.value) {
       <div v-if="isSigModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
           <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h3 class="font-bold text-slate-900">Sign: {{ activeSigLabel }}</h3>
-            <button @click="isSigModalOpen = false" class="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors">
-              <svg class="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <h3 class="font-bold text-slate-900">
+              Sign: {{ activeSigLabel }}
+            </h3>
+            <button class="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition-colors" @click="isSigModalOpen = false">
+              <svg class="size-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
           <div class="p-6">
             <SignaturePad v-model="tempSigValue" class="w-full bg-white border-2 border-dashed border-slate-200 rounded-xl" style="height: 200px;" />
           </div>
           <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-            <button @click="isSigModalOpen = false" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-lg transition-colors">Cancel</button>
-            <button @click="saveInlineSignature" class="px-5 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors" :disabled="!tempSigValue">
+            <button class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-lg transition-colors" @click="isSigModalOpen = false">
+              Cancel
+            </button>
+            <button class="px-5 py-2 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors" :disabled="!tempSigValue" @click="saveInlineSignature">
               Save Signature
             </button>
           </div>

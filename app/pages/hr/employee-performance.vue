@@ -5,17 +5,27 @@ const { setHeader } = usePageHeader()
 setHeader({ title: 'Employee Performance', icon: 'i-lucide-bar-chart-3', description: 'Track and manage employee skill assessments' })
 
 // ─── Types ───────────────────────────────────────────────
-interface Employee { _id: string; employee: string; profileImage: string }
-interface SkillNode { _id: string; name: string; isRequired: boolean; category: string; subCategory: string; info?: string }
-interface BonusRule { skillSet: string; reviewedTimes: number; supervisorCheck: string; bonusAmount: number }
-interface GlobalBonusRule { _id: string; skillSet: string; reviewedTimes: number; supervisorCheck: string; bonusAmount: number }
-interface SubCatNode { _id: string; name: string; category: string; predecessor: string; predecessorName: string; bonusRules: BonusRule[]; skills: SkillNode[] }
-interface CatNode { _id: string; name: string; color: string; subCategories: SubCatNode[]; info?: string }
+interface Employee { _id: string, employee: string, profileImage: string }
+interface SkillNode { _id: string, name: string, isRequired: boolean, category: string, subCategory: string, info?: string }
+interface BonusRule { skillSet: string, reviewedTimes: number, supervisorCheck: string, bonusAmount: number }
+interface GlobalBonusRule { _id: string, skillSet: string, reviewedTimes: number, supervisorCheck: string, bonusAmount: number }
+interface SubCatNode { _id: string, name: string, category: string, predecessor: string, predecessorName: string, bonusRules: BonusRule[], skills: SkillNode[] }
+interface CatNode { _id: string, name: string, color: string, subCategories: SubCatNode[], info?: string }
 interface PerfRecord {
-  _id: string; employee: string; employeeName: string; employeeImage: string
-  category: string; categoryName: string; subCategory: string; subCategoryName: string
-  skill: string; skillName: string; currentSkillLevel: string
-  createdAt: string; createdBy: string; createdByName: string
+  _id: string
+  employee: string
+  employeeName: string
+  employeeImage: string
+  category: string
+  categoryName: string
+  subCategory: string
+  subCategoryName: string
+  skill: string
+  skillName: string
+  currentSkillLevel: string
+  createdAt: string
+  createdBy: string
+  createdByName: string
 }
 
 const LEVEL_STEPS = ['Needs Improvement', 'Proficient', 'Mastered'] as const
@@ -78,17 +88,20 @@ async function fetchAll() {
         const found = empRes.data.find(e => e._id === queryEmp || e.employee === queryEmp)
         if (found) {
           selectedEmployeeId.value = found._id
-        } else {
+        }
+        else {
           selectedEmployeeId.value = empRes.data[0]!._id
         }
-      } else {
+      }
+      else {
         selectedEmployeeId.value = empRes.data[0]!._id
       }
     }
   }
   catch (e: any) {
     toast.error('Failed to load data', { description: e?.message })
-  } finally {
+  }
+  finally {
     loadingData.value = false
   }
 }
@@ -123,7 +136,7 @@ const highestPerfMap = computed(() => {
     if (r.employee === selectedEmployeeId.value) {
       const existing = map.get(r.skill)
       if (!existing || levelIndex(r.currentSkillLevel) > levelIndex(existing.currentSkillLevel)) {
-         map.set(r.skill, r)
+        map.set(r.skill, r)
       }
     }
   }
@@ -168,7 +181,8 @@ const allRecordsForSkill = computed(() => {
   const map = new Map<string, PerfRecord[]>()
   for (const r of perfRecords.value) {
     if (r.employee === selectedEmployeeId.value) {
-      if (!map.has(r.skill)) map.set(r.skill, [])
+      if (!map.has(r.skill))
+        map.set(r.skill, [])
       map.get(r.skill)!.push(r)
     }
   }
@@ -189,9 +203,11 @@ function getMyLevelDate(skillId: string, level: string): string | null {
 // Helper: check if the current user's Proficient was on a prior date (enabling Mastered)
 // Super Admin bypasses this restriction entirely
 function canMarkMastered(skillId: string): boolean {
-  if (isSuperAdmin.value) return true
+  if (isSuperAdmin.value)
+    return true
   const proficientDate = getMyLevelDate(skillId, 'Proficient')
-  if (!proficientDate) return false
+  if (!proficientDate)
+    return false
   // Compare dates (not times)
   const profDateStr = new Date(proficientDate).toISOString().slice(0, 10)
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -200,9 +216,12 @@ function canMarkMastered(skillId: string): boolean {
 
 // Helper: get the reason why Mastered is disabled
 function getMasteredDisabledReason(skillId: string): string {
-  if (isSuperAdmin.value) return '' // Super Admin bypasses all restrictions
-  if (!hasMyLevel(skillId, 'Proficient')) return 'Must be marked as Proficient first'
-  if (!canMarkMastered(skillId)) return 'Can mark Mastered starting tomorrow'
+  if (isSuperAdmin.value)
+    return '' // Super Admin bypasses all restrictions
+  if (!hasMyLevel(skillId, 'Proficient'))
+    return 'Must be marked as Proficient first'
+  if (!canMarkMastered(skillId))
+    return 'Can mark Mastered starting tomorrow'
   return ''
 }
 
@@ -210,7 +229,8 @@ function getMasteredDisabledReason(skillId: string): string {
 const empAssessedCount = computed(() => {
   const map = new Map<string, Set<string>>()
   for (const r of perfRecords.value) {
-    if (!map.has(r.employee)) map.set(r.employee, new Set())
+    if (!map.has(r.employee))
+      map.set(r.employee, new Set())
     map.get(r.employee)!.add(r.skill)
   }
   const countMap = new Map<string, number>()
@@ -231,7 +251,8 @@ const totalSkills = computed(() =>
 // If the sub has its own bonusRules, use those exclusively.
 // Otherwise, fall back to globalBonusRules.
 function getApplicableRules(sub: SubCatNode): BonusRule[] {
-  if (sub.bonusRules && sub.bonusRules.length > 0) return sub.bonusRules
+  if (sub.bonusRules && sub.bonusRules.length > 0)
+    return sub.bonusRules
   return globalBonusRules.value as BonusRule[]
 }
 
@@ -243,9 +264,10 @@ function isLevelMet(skillId: string, level: string, sub: SubCatNode): boolean {
 
   // Get all records for this skill+level from ALL reviewers for the selected employee
   const records = perfRecords.value.filter(
-    r => r.employee === selectedEmployeeId.value && r.skill === skillId && r.currentSkillLevel === level
+    r => r.employee === selectedEmployeeId.value && r.skill === skillId && r.currentSkillLevel === level,
   )
-  if (records.length === 0) return false
+  if (records.length === 0)
+    return false
 
   if (!rule) {
     // No rule defined for this level → any record counts as met
@@ -256,7 +278,8 @@ function isLevelMet(skillId: string, level: string, sub: SubCatNode): boolean {
   if (rule.supervisorCheck === 'Unique') {
     const uniqueSupervisors = new Set(records.map(r => r.createdBy))
     return uniqueSupervisors.size >= rule.reviewedTimes
-  } else {
+  }
+  else {
     // "Any" — just needs the required number of reviews (can be same supervisor)
     return records.length >= rule.reviewedTimes
   }
@@ -269,8 +292,10 @@ function getHighestMetLevel(skillId: string, sub: SubCatNode): string | null {
   // Walk from highest to lowest, return first met level
   for (let i = visibleLevels.length - 1; i >= 0; i--) {
     const level = visibleLevels[i]!
-    if (level === 'Needs Improvement') continue // NI doesn't count toward completion
-    if (isLevelMet(skillId, level, sub)) return level
+    if (level === 'Needs Improvement')
+      continue // NI doesn't count toward completion
+    if (isLevelMet(skillId, level, sub))
+      return level
   }
   return null
 }
@@ -282,24 +307,29 @@ function getHighestMetLevel(skillId: string, sub: SubCatNode): string | null {
 //   Proficient met = 1.0
 function skillCompletionWeight(sk: SkillNode, sub: SubCatNode): number {
   const visibleLevels = getVisibleLevels(sub)
-  if (visibleLevels.length <= 1) return 0
+  if (visibleLevels.length <= 1)
+    return 0
 
   const highestMet = getHighestMetLevel(sk._id, sub)
-  if (!highestMet) return 0
+  if (!highestMet)
+    return 0
 
   const metPos = LEVEL_STEPS.indexOf(highestMet as any)
-  if (metPos <= 0) return 0
+  if (metPos <= 0)
+    return 0
 
   const targetLevel = visibleLevels[visibleLevels.length - 1]!
   const targetPos = LEVEL_STEPS.indexOf(targetLevel as any)
-  if (targetPos <= 0) return 0
+  if (targetPos <= 0)
+    return 0
 
   return Math.min(metPos / targetPos, 1)
 }
 
 // Weighted percentage for a sub-category (0..100)
 function subCompletionPct(sub: SubCatNode): number {
-  if (!sub.skills.length) return 0
+  if (!sub.skills.length)
+    return 0
   const totalWeight = sub.skills.reduce((sum, sk) => sum + skillCompletionWeight(sk, sub), 0)
   return Math.round((totalWeight / sub.skills.length) * 100)
 }
@@ -307,7 +337,8 @@ function subCompletionPct(sub: SubCatNode): number {
 // Weighted percentage for a category (0..100)
 function catCompletionPct(cat: CatNode): number {
   const allSkills = cat.subCategories.flatMap(sub => sub.skills.map(sk => ({ sk, sub })))
-  if (!allSkills.length) return 0
+  if (!allSkills.length)
+    return 0
   const totalWeight = allSkills.reduce((sum, { sk, sub }) => sum + skillCompletionWeight(sk, sub), 0)
   return Math.round((totalWeight / allSkills.length) * 100)
 }
@@ -318,9 +349,12 @@ const overallStats = computed(() => {
     for (const sub of cat.subCategories) {
       for (const sk of sub.skills) {
         const rec = highestPerfMap.value.get(sk._id)
-        if (!rec) c.unreviewed++
-        else if (rec.currentSkillLevel === 'Mastered') c.mastered++
-        else if (rec.currentSkillLevel === 'Proficient') c.proficient++
+        if (!rec)
+          c.unreviewed++
+        else if (rec.currentSkillLevel === 'Mastered')
+          c.mastered++
+        else if (rec.currentSkillLevel === 'Proficient')
+          c.proficient++
         else c.needs++
       }
     }
@@ -329,7 +363,8 @@ const overallStats = computed(() => {
 })
 
 const overallPct = computed(() => {
-  if (!totalSkills.value) return 0
+  if (!totalSkills.value)
+    return 0
   let totalWeight = 0
   for (const cat of tree.value) {
     for (const sub of cat.subCategories) {
@@ -342,19 +377,28 @@ const overallPct = computed(() => {
 })
 function getSkillStatus(skillId: string) {
   const rec = highestPerfMap.value.get(skillId)
-  if (!rec) return 'unreviewed'
-  if (rec.currentSkillLevel === 'Mastered') return 'mastered'
-  if (rec.currentSkillLevel === 'Proficient') return 'proficient'
+  if (!rec)
+    return 'unreviewed'
+  if (rec.currentSkillLevel === 'Mastered')
+    return 'mastered'
+  if (rec.currentSkillLevel === 'Proficient')
+    return 'proficient'
   return 'needs'
 }
 const statusBarColors: Record<string, string> = {
-  mastered: 'bg-emerald-500', proficient: 'bg-blue-500', needs: 'bg-amber-500', unreviewed: 'bg-zinc-700',
+  mastered: 'bg-emerald-500',
+  proficient: 'bg-blue-500',
+  needs: 'bg-amber-500',
+  unreviewed: 'bg-zinc-700',
 }
 function subCatStatsCalc(sub: any) {
-  let m = 0, p = 0, n = 0
+  let m = 0; let p = 0; let n = 0
   for (const sk of sub.skills) {
     const s = getSkillStatus(sk._id)
-    if (s === 'mastered') m++; else if (s === 'proficient') p++; else if (s === 'needs') n++
+    if (s === 'mastered')
+      m++; else if (s === 'proficient')
+      p++; else if (s === 'needs')
+      n++
   }
   return { total: sub.skills.length, mastered: m, proficient: p, needs: n, reviewed: m + p + n }
 }
@@ -366,25 +410,30 @@ const manuallyUnlocked = ref<Set<string>>(new Set())
 function levelMeetsThreshold(level: string): boolean {
   const stepIdx = LEVEL_STEPS.indexOf(level as any)
   const threshIdx = LEVEL_STEPS.indexOf(minProgressionLevel.value as any)
-  if (stepIdx === -1 || threshIdx === -1) return false
+  if (stepIdx === -1 || threshIdx === -1)
+    return false
   return stepIdx >= threshIdx
 }
 
 function isSubCatLocked(sub: SubCatNode): boolean {
   // Super Admin manual unlock override (scoped per employee)
   const unlockKey = `${selectedEmployeeId.value}::${sub._id}`
-  if (manuallyUnlocked.value.has(unlockKey)) return false
-  if (!sub.predecessor) return false // no predecessor = unlocked
+  if (manuallyUnlocked.value.has(unlockKey))
+    return false
+  if (!sub.predecessor)
+    return false // no predecessor = unlocked
   // Find predecessor sub-category
   const predSub = tree.value
     .flatMap(c => c.subCategories)
     .find(s => s._id === sub.predecessor)
-  if (!predSub) return false // predecessor not found = unlocked
+  if (!predSub)
+    return false // predecessor not found = unlocked
   // Check all required skills in predecessor
   const requiredSkills = predSub.skills.filter(sk => sk.isRequired)
-  if (requiredSkills.length === 0) return false // no required skills = unlocked
+  if (requiredSkills.length === 0)
+    return false // no required skills = unlocked
   // All required skills must meet the threshold
-  return !requiredSkills.every(sk => {
+  return !requiredSkills.every((sk) => {
     const rec = highestPerfMap.value.get(sk._id)
     return rec && levelMeetsThreshold(rec.currentSkillLevel)
   })
@@ -392,36 +441,43 @@ function isSubCatLocked(sub: SubCatNode): boolean {
 
 // Check if a sub-category is naturally locked (ignoring manual overrides)
 function isSubCatNaturallyLocked(sub: SubCatNode): boolean {
-  if (!sub.predecessor) return false
+  if (!sub.predecessor)
+    return false
   const predSub = tree.value
     .flatMap(c => c.subCategories)
     .find(s => s._id === sub.predecessor)
-  if (!predSub) return false
+  if (!predSub)
+    return false
   const requiredSkills = predSub.skills.filter(sk => sk.isRequired)
-  if (requiredSkills.length === 0) return false
-  return !requiredSkills.every(sk => {
+  if (requiredSkills.length === 0)
+    return false
+  return !requiredSkills.every((sk) => {
     const rec = highestPerfMap.value.get(sk._id)
     return rec && levelMeetsThreshold(rec.currentSkillLevel)
   })
 }
 
 function toggleManualUnlock(sub: SubCatNode) {
-  if (!isSuperAdmin.value) return
+  if (!isSuperAdmin.value)
+    return
   const unlockKey = `${selectedEmployeeId.value}::${sub._id}`
   if (manuallyUnlocked.value.has(unlockKey)) {
     manuallyUnlocked.value.delete(unlockKey)
-  } else {
+  }
+  else {
     manuallyUnlocked.value.add(unlockKey)
     toast.success('Sub-category unlocked', { description: `"${sub.name}" manually unlocked by Super Admin`, duration: 3000 })
   }
 }
 
-function predecessorProgress(sub: SubCatNode): { met: number; total: number; predName: string } {
-  if (!sub.predecessor) return { met: 0, total: 0, predName: '' }
+function predecessorProgress(sub: SubCatNode): { met: number, total: number, predName: string } {
+  if (!sub.predecessor)
+    return { met: 0, total: 0, predName: '' }
   const predSub = tree.value.flatMap(c => c.subCategories).find(s => s._id === sub.predecessor)
-  if (!predSub) return { met: 0, total: 0, predName: '' }
+  if (!predSub)
+    return { met: 0, total: 0, predName: '' }
   const required = predSub.skills.filter(sk => sk.isRequired)
-  const met = required.filter(sk => {
+  const met = required.filter((sk) => {
     const rec = highestPerfMap.value.get(sk._id)
     return rec && levelMeetsThreshold(rec.currentSkillLevel)
   }).length
@@ -431,7 +487,8 @@ function predecessorProgress(sub: SubCatNode): { met: number; total: number; pre
 // ─── Search filter ───────────────────────────────────────
 const filteredTree = computed(() => {
   const q = searchQuery.value.toLowerCase()
-  if (!q) return tree.value
+  if (!q)
+    return tree.value
   return tree.value
     .map(cat => ({
       ...cat,
@@ -449,7 +506,8 @@ const filteredTree = computed(() => {
 const filteredRecords = computed(() => {
   const empRecords = perfRecords.value.filter(r => r.employee === selectedEmployeeId.value)
   const q = searchQuery.value.toLowerCase()
-  if (!q) return empRecords
+  if (!q)
+    return empRecords
   return empRecords.filter(r =>
     r.categoryName.toLowerCase().includes(q)
     || r.subCategoryName.toLowerCase().includes(q)
@@ -459,11 +517,13 @@ const filteredRecords = computed(() => {
 
 // ─── Accordion toggles ──────────────────────────────────
 function toggleCat(id: string) {
-  if (expandedCats.value.has(id)) expandedCats.value.delete(id)
+  if (expandedCats.value.has(id))
+    expandedCats.value.delete(id)
   else expandedCats.value.add(id)
 }
 function toggleSub(id: string) {
-  if (expandedSubs.value.has(id)) expandedSubs.value.delete(id)
+  if (expandedSubs.value.has(id))
+    expandedSubs.value.delete(id)
   else expandedSubs.value.add(id)
 }
 
@@ -474,23 +534,32 @@ function levelIndex(lvl: string) {
 }
 
 function levelColor(lvl: string) {
-  if (lvl === 'Mastered') return 'bg-emerald-600 text-white border-emerald-700'
-  if (lvl === 'Proficient') return 'bg-blue-600 text-white border-blue-700'
-  if (lvl === 'Needs Improvement') return 'bg-amber-600 text-white border-amber-700'
+  if (lvl === 'Mastered')
+    return 'bg-emerald-600 text-white border-emerald-700'
+  if (lvl === 'Proficient')
+    return 'bg-blue-600 text-white border-blue-700'
+  if (lvl === 'Needs Improvement')
+    return 'bg-amber-600 text-white border-amber-700'
   return 'bg-muted/60 text-muted-foreground border-border/40'
 }
 
 function levelDot(lvl: string) {
-  if (lvl === 'Mastered') return 'bg-emerald-500'
-  if (lvl === 'Proficient') return 'bg-blue-500'
-  if (lvl === 'Needs Improvement') return 'bg-amber-500'
+  if (lvl === 'Mastered')
+    return 'bg-emerald-500'
+  if (lvl === 'Proficient')
+    return 'bg-blue-500'
+  if (lvl === 'Needs Improvement')
+    return 'bg-amber-500'
   return 'bg-muted-foreground/40'
 }
 
 function levelBarColor(lvl: string) {
-  if (lvl === 'Mastered') return 'bg-emerald-500'
-  if (lvl === 'Proficient') return 'bg-blue-500'
-  if (lvl === 'Needs Improvement') return 'bg-amber-500'
+  if (lvl === 'Mastered')
+    return 'bg-emerald-500'
+  if (lvl === 'Proficient')
+    return 'bg-blue-500'
+  if (lvl === 'Needs Improvement')
+    return 'bg-amber-500'
   return 'bg-muted-foreground'
 }
 
@@ -499,7 +568,8 @@ function levelBarColor(lvl: string) {
 // "Needs Improvement" + that rule's level (hide the other).
 function getVisibleLevels(sub: SubCatNode): readonly string[] {
   const rules = sub.bonusRules || []
-  if (rules.length === 0) return LEVEL_STEPS // no override → show all 3
+  if (rules.length === 0)
+    return LEVEL_STEPS // no override → show all 3
 
   const uniqueSkillSets = new Set(rules.map(r => r.skillSet))
 
@@ -514,7 +584,8 @@ function getVisibleLevels(sub: SubCatNode): readonly string[] {
 }
 
 function formatDate(d: string) {
-  if (!d) return '—'
+  if (!d)
+    return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
@@ -531,9 +602,11 @@ function pal(idx: number) { return catPalette[idx % catPalette.length]! }
 
 // ─── Mark skill level (progression-aware optimistic upsert) ────────────────
 async function markSkill(skill: SkillNode, level: string, catId: string, silent = false) {
-  if (!selectedEmployeeId.value) return false
+  if (!selectedEmployeeId.value)
+    return false
   if (!currentUserId.value) {
-    if (!silent) toast.error('You must be logged in to review')
+    if (!silent)
+      toast.error('You must be logged in to review')
     return false
   }
   const empId = selectedEmployeeId.value
@@ -542,11 +615,13 @@ async function markSkill(skill: SkillNode, level: string, catId: string, silent 
   // ─── Client-side progression guards (Super Admin bypasses) ─────
   if (level === 'Mastered' && !isSuperAdmin.value) {
     if (!hasMyLevel(skill._id, 'Proficient')) {
-      if (!silent) toast.error('Cannot mark as Mastered', { description: 'Must be marked as Proficient first.' })
+      if (!silent)
+        toast.error('Cannot mark as Mastered', { description: 'Must be marked as Proficient first.' })
       return false
     }
     if (!canMarkMastered(skill._id)) {
-      if (!silent) toast.error('Cannot mark as Mastered today', { description: 'Proficient was marked today. Mastered can be selected starting tomorrow.' })
+      if (!silent)
+        toast.error('Cannot mark as Mastered today', { description: 'Proficient was marked today. Mastered can be selected starting tomorrow.' })
       return false
     }
   }
@@ -564,7 +639,8 @@ async function markSkill(skill: SkillNode, level: string, catId: string, silent 
   if (existingLevelRec) {
     // Don't allow removing a level if a higher level depends on it
     if (level === 'Proficient' && hasMyLevel(skill._id, 'Mastered')) {
-      if (!silent) toast.error('Cannot remove Proficient', { description: 'Mastered depends on it. Remove Mastered first.' })
+      if (!silent)
+        toast.error('Cannot remove Proficient', { description: 'Mastered depends on it. Remove Mastered first.' })
       return false
     }
     // Delete this specific record
@@ -574,7 +650,7 @@ async function markSkill(skill: SkillNode, level: string, catId: string, silent 
 
   // Optimistic: find existing record for same employee+skill+createdBy+level
   const existingRecordIndex = perfRecords.value.findIndex(
-    r => r.employee === empId && r.skill === skill._id && r.createdBy === myId && r.currentSkillLevel === level
+    r => r.employee === empId && r.skill === skill._id && r.createdBy === myId && r.currentSkillLevel === level,
   )
   const existing = existingRecordIndex !== -1 ? perfRecords.value[existingRecordIndex] : null
 
@@ -615,11 +691,13 @@ async function markSkill(skill: SkillNode, level: string, catId: string, silent 
     if (!existing && res.data?._id) {
       const temp = perfRecords.value.find(
         r => r.skill === skill._id && r.employee === empId && r.createdBy === myId
-          && r.currentSkillLevel === level && r._id.startsWith('temp-')
+          && r.currentSkillLevel === level && r._id.startsWith('temp-'),
       )
-      if (temp) temp._id = String(res.data._id)
+      if (temp)
+        temp._id = String(res.data._id)
     }
-    if (!silent) toast.success(`Marked as ${level}`, { description: skill.name, duration: 2000 })
+    if (!silent)
+      toast.success(`Marked as ${level}`, { description: skill.name, duration: 2000 })
     return true
   }
   catch (e: any) {
@@ -627,11 +705,13 @@ async function markSkill(skill: SkillNode, level: string, catId: string, silent 
     if (!existing) {
       const idx = perfRecords.value.findIndex(
         r => r.skill === skill._id && r.employee === empId && r.createdBy === myId
-          && r.currentSkillLevel === level && r._id.startsWith('temp-')
+          && r.currentSkillLevel === level && r._id.startsWith('temp-'),
       )
-      if (idx !== -1) perfRecords.value.splice(idx, 1)
+      if (idx !== -1)
+        perfRecords.value.splice(idx, 1)
     }
-    if (!silent) toast.error('Failed to save', { description: e?.data?.message || e?.message })
+    if (!silent)
+      toast.error('Failed to save', { description: e?.data?.message || e?.message })
     return false
   }
 }
@@ -639,42 +719,48 @@ async function markSkill(skill: SkillNode, level: string, catId: string, silent 
 // ─── Delete record ───────────────────────────────────────
 async function deleteRecord(id: string, silent = false) {
   const idx = perfRecords.value.findIndex(r => r._id === id)
-  if (idx === -1) return
+  if (idx === -1)
+    return
   const snapshot = perfRecords.value[idx]!
   perfRecords.value.splice(idx, 1)
   try {
     await $fetch(`/api/performance/${id}`, { method: 'DELETE' })
-    if (!silent) toast.success('Assessment removed', { duration: 2000 })
+    if (!silent)
+      toast.success('Assessment removed', { duration: 2000 })
   }
   catch (e: any) {
     perfRecords.value.splice(idx, 0, snapshot)
-    if (!silent) toast.error('Delete failed', { description: e?.message })
+    if (!silent)
+      toast.error('Delete failed', { description: e?.message })
   }
 }
 
 async function markAllInSub(sub: SubCatNode, level: string, catId: string) {
-  if (isSubCatLocked(sub)) return;
-  if (!selectedEmployeeId.value) return;
+  if (isSubCatLocked(sub))
+    return
+  if (!selectedEmployeeId.value)
+    return
   if (!currentUserId.value) {
-    toast.error('You must be logged in to review');
-    return;
+    toast.error('You must be logged in to review')
+    return
   }
 
-  const skillsToMark = sub.skills.filter(sk => !hasMyLevel(sk._id, level));
+  const skillsToMark = sub.skills.filter(sk => !hasMyLevel(sk._id, level))
   if (skillsToMark.length === 0) {
-    toast.info(`All skills already marked as ${level}`);
-    return;
+    toast.info(`All skills already marked as ${level}`)
+    return
   }
 
-  toast.info(`Marking ${skillsToMark.length} skills as ${level}...`);
-  let successCount = 0;
+  toast.info(`Marking ${skillsToMark.length} skills as ${level}...`)
+  let successCount = 0
   for (const sk of skillsToMark) {
-    const res = await markSkill(sk, level, catId, true);
-    if (res !== false) successCount++;
+    const res = await markSkill(sk, level, catId, true)
+    if (res !== false)
+      successCount++
   }
-  
+
   if (successCount > 0) {
-    toast.success(`Successfully marked ${successCount} skills as ${level}`);
+    toast.success(`Successfully marked ${successCount} skills as ${level}`)
   }
 }
 
@@ -684,7 +770,8 @@ const activeCatPdfUrl = ref('')
 const activeCatName = ref('')
 
 function openCatPdf(cat: CatNode) {
-  if (!cat.info) return
+  if (!cat.info)
+    return
   activeCatPdfUrl.value = cat.info
   activeCatName.value = cat.name
   showCatPdfModal.value = true
@@ -695,7 +782,8 @@ const activeSkillInfoText = ref('')
 const activeSkillName = ref('')
 
 function openSkillInfoView(sk: SkillNode) {
-  if (!sk.info) return
+  if (!sk.info)
+    return
   activeSkillInfoText.value = sk.info
   activeSkillName.value = sk.name
   showSkillInfoModal.value = true
@@ -709,7 +797,8 @@ const activeSubRulesIsCustom = ref(false)
 
 function openSubRulesInfo(sub: SubCatNode) {
   const rules = getApplicableRules(sub)
-  if (!rules.length) return
+  if (!rules.length)
+    return
   activeSubRulesName.value = sub.name
   activeSubRules.value = rules as BonusRule[]
   activeSubRulesIsCustom.value = !!(sub.bonusRules && sub.bonusRules.length > 0)
@@ -734,7 +823,8 @@ const someSelected = computed(() =>
 function toggleSelectAll() {
   if (allSelected.value) {
     selectedIds.value.clear()
-  } else {
+  }
+  else {
     for (const r of filteredRecords.value) {
       selectedIds.value.add(r._id)
     }
@@ -742,16 +832,18 @@ function toggleSelectAll() {
 }
 
 function toggleSelect(id: string) {
-  if (selectedIds.value.has(id)) selectedIds.value.delete(id)
+  if (selectedIds.value.has(id))
+    selectedIds.value.delete(id)
   else selectedIds.value.add(id)
 }
 
 async function deleteSelected() {
   const ids = [...selectedIds.value]
-  if (ids.length === 0) return
+  if (ids.length === 0)
+    return
 
   // Snapshot for revert
-  const snapshots = ids.map(id => {
+  const snapshots = ids.map((id) => {
     const idx = perfRecords.value.findIndex(r => r._id === id)
     return { idx, record: perfRecords.value[idx]! }
   }).filter(s => s.record)
@@ -759,7 +851,8 @@ async function deleteSelected() {
   // Optimistic: remove all selected
   for (const id of ids) {
     const idx = perfRecords.value.findIndex(r => r._id === id)
-    if (idx !== -1) perfRecords.value.splice(idx, 1)
+    if (idx !== -1)
+      perfRecords.value.splice(idx, 1)
   }
   selectedIds.value.clear()
 
@@ -777,9 +870,9 @@ async function deleteSelected() {
   }
 }
 </script>
+
 <template>
   <div class="flex gap-0 -m-4 lg:-m-6 h-[calc(100dvh-var(--content-offset))] overflow-hidden">
-
     <!-- Mobile sidebar overlay -->
     <Transition
       enter-active-class="transition-opacity duration-200"
@@ -798,16 +891,16 @@ async function deleteSelected() {
 
     <!-- ══════════════════════ LEFT PANEL: Employee sidebar ══════════════════════ -->
     <aside
-      class="shrink-0 border-r border-border/60 bg-background flex flex-col h-full transition-transform duration-200 z-50"
+      class="shrink-0 border-r border-border/60 bg-background flex flex-col h-full transition-transform duration-200 z-50 w-56 md:w-64 fixed md:relative inset-y-0 left-0 md:inset-auto"
       :class="[
-        'w-56 md:w-64',
         showMobileSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-        'fixed md:relative inset-y-0 left-0 md:inset-auto'
       ]"
     >
       <!-- Header -->
       <div class="px-4 py-3.5 sm:py-4 border-b border-border/60 flex items-center justify-between">
-        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">Employees</p>
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
+          Employees
+        </p>
         <button class="md:hidden size-7 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground" @click="showMobileSidebar = false">
           <Icon name="i-lucide-x" class="size-4" />
         </button>
@@ -840,7 +933,7 @@ async function deleteSelected() {
             :src="emp.profileImage"
             :alt="emp.employee"
             class="size-7 sm:size-8 rounded-full object-cover ring-1 ring-border shrink-0"
-          />
+          >
           <div
             v-else
             class="size-7 sm:size-8 rounded-full bg-muted flex items-center justify-center ring-1 ring-border shrink-0 text-[10px] sm:text-xs font-bold"
@@ -848,7 +941,9 @@ async function deleteSelected() {
             {{ emp.employee.charAt(0).toUpperCase() }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-xs sm:text-sm font-medium truncate">{{ emp.employee }}</p>
+            <p class="text-xs sm:text-sm font-medium truncate">
+              {{ emp.employee }}
+            </p>
             <p class="text-[9px] sm:text-[10px] text-muted-foreground/70">
               {{ empAssessedCount.get(emp._id) ?? 0 }} / {{ totalSkills }} skills
             </p>
@@ -868,17 +963,17 @@ async function deleteSelected() {
           <div class="size-10 rounded-full bg-muted flex items-center justify-center">
             <Icon name="i-lucide-users" class="size-5 text-muted-foreground" />
           </div>
-          <p class="text-xs text-muted-foreground">No employees found</p>
+          <p class="text-xs text-muted-foreground">
+            No employees found
+          </p>
         </div>
       </nav>
     </aside>
 
     <!-- ══════════════════════ RIGHT PANEL ══════════════════════ -->
     <main class="flex-1 flex flex-col min-h-0 h-full">
-
       <!-- Top toolbar -->
       <div class="relative z-50 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-3 sm:px-5 py-2 sm:py-1.5 border-b border-border/60 bg-background/80 backdrop-blur-sm shrink-0">
-
         <!-- Mobile: Employee banner with big avatar -->
         <div class="flex items-center gap-3 sm:hidden">
           <button
@@ -888,13 +983,17 @@ async function deleteSelected() {
             <Icon name="i-lucide-panel-left" class="size-5" />
           </button>
           <div v-if="selectedEmployee" class="flex items-center gap-3 flex-1 min-w-0" @click="showMobileSidebar = true">
-            <img v-if="selectedEmployee.profileImage" :src="selectedEmployee.profileImage" :alt="selectedEmployee.employee" class="size-10 rounded-full object-cover ring-2 ring-primary/30" />
+            <img v-if="selectedEmployee.profileImage" :src="selectedEmployee.profileImage" :alt="selectedEmployee.employee" class="size-10 rounded-full object-cover ring-2 ring-primary/30">
             <div v-else class="size-10 rounded-full bg-primary/15 flex items-center justify-center ring-2 ring-primary/30 text-base font-bold text-primary">
               {{ selectedEmployee.employee.charAt(0).toUpperCase() }}
             </div>
             <div class="min-w-0">
-              <p class="text-sm font-semibold truncate">{{ selectedEmployee.employee }}</p>
-              <p class="text-[10px] text-muted-foreground">Tap to switch employee</p>
+              <p class="text-sm font-semibold truncate">
+                {{ selectedEmployee.employee }}
+              </p>
+              <p class="text-[10px] text-muted-foreground">
+                Tap to switch employee
+              </p>
             </div>
           </div>
         </div>
@@ -914,7 +1013,7 @@ async function deleteSelected() {
             v-if="selectedEmployee"
             class="flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium bg-gradient-to-r from-primary/15 to-primary/5 border-primary/25 shrink-0"
           >
-            <img v-if="selectedEmployee.profileImage" :src="selectedEmployee.profileImage" :alt="selectedEmployee.employee" class="size-5 rounded-full object-cover" />
+            <img v-if="selectedEmployee.profileImage" :src="selectedEmployee.profileImage" :alt="selectedEmployee.employee" class="size-5 rounded-full object-cover">
             <div v-else class="size-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
               {{ selectedEmployee.employee.charAt(0).toUpperCase() }}
             </div>
@@ -957,63 +1056,67 @@ async function deleteSelected() {
             >
               <Icon name="i-lucide-settings-2" class="size-3.5" />
               Settings
-          </button>
+            </button>
 
-          <!-- Settings popover -->
-          <Transition
-            enter-active-class="transition-all duration-150 ease-out"
-            enter-from-class="opacity-0 scale-95 -translate-y-1"
-            enter-to-class="opacity-100 scale-100 translate-y-0"
-            leave-active-class="transition-all duration-100 ease-in"
-            leave-from-class="opacity-100 scale-100 translate-y-0"
-            leave-to-class="opacity-0 scale-95 -translate-y-1"
-          >
-            <div
-              v-if="showSettings"
-              class="absolute right-0 top-full mt-2 z-50 w-72 sm:w-80 rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
+            <!-- Settings popover -->
+            <Transition
+              enter-active-class="transition-all duration-150 ease-out"
+              enter-from-class="opacity-0 scale-95 -translate-y-1"
+              enter-to-class="opacity-100 scale-100 translate-y-0"
+              leave-active-class="transition-all duration-100 ease-in"
+              leave-from-class="opacity-100 scale-100 translate-y-0"
+              leave-to-class="opacity-0 scale-95 -translate-y-1"
             >
-              <div class="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border/50 bg-muted/20">
-                <p class="text-xs sm:text-sm font-semibold">Progression Settings</p>
-                <p class="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">
-                  Configure prerequisite requirements
-                </p>
-              </div>
-              <div class="p-3 sm:p-4 space-y-3">
-                <div>
-                  <p class="text-[10px] sm:text-xs font-medium mb-2">Minimum level to unlock next sub-category</p>
-                  <p class="text-[9px] sm:text-[10px] text-muted-foreground mb-3">
-                    Employees must achieve at least this level in all <strong>required skills</strong> of a predecessor sub-category before the next one unlocks.
+              <div
+                v-if="showSettings"
+                class="absolute right-0 top-full mt-2 z-50 w-72 sm:w-80 rounded-xl border border-border bg-popover shadow-xl overflow-hidden"
+              >
+                <div class="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border/50 bg-muted/20">
+                  <p class="text-xs sm:text-sm font-semibold">
+                    Progression Settings
                   </p>
-                  <div class="flex flex-col gap-1.5">
-                    <button
-                      v-for="level in LEVEL_STEPS"
-                      :key="level"
-                      class="flex items-center gap-2.5 sm:gap-3 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border text-[10px] sm:text-xs font-medium transition-all"
-                      :class="minProgressionLevel === level
-                        ? 'border-primary/40 bg-primary/10 text-primary ring-1 ring-primary/20'
-                        : 'border-border/40 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
-                      @click="saveMinLevel(level)"
-                    >
-                      <span class="size-2 rounded-full" :class="levelDot(level)" />
-                      {{ level }}
-                      <Icon
-                        v-if="minProgressionLevel === level"
-                        name="i-lucide-check"
-                        class="size-3 sm:size-3.5 ml-auto text-primary"
-                      />
-                    </button>
+                  <p class="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">
+                    Configure prerequisite requirements
+                  </p>
+                </div>
+                <div class="p-3 sm:p-4 space-y-3">
+                  <div>
+                    <p class="text-[10px] sm:text-xs font-medium mb-2">
+                      Minimum level to unlock next sub-category
+                    </p>
+                    <p class="text-[9px] sm:text-[10px] text-muted-foreground mb-3">
+                      Employees must achieve at least this level in all <strong>required skills</strong> of a predecessor sub-category before the next one unlocks.
+                    </p>
+                    <div class="flex flex-col gap-1.5">
+                      <button
+                        v-for="level in LEVEL_STEPS"
+                        :key="level"
+                        class="flex items-center gap-2.5 sm:gap-3 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border text-[10px] sm:text-xs font-medium transition-all"
+                        :class="minProgressionLevel === level
+                          ? 'border-primary/40 bg-primary/10 text-primary ring-1 ring-primary/20'
+                          : 'border-border/40 bg-muted/20 text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
+                        @click="saveMinLevel(level)"
+                      >
+                        <span class="size-2 rounded-full" :class="levelDot(level)" />
+                        {{ level }}
+                        <Icon
+                          v-if="minProgressionLevel === level"
+                          name="i-lucide-check"
+                          class="size-3 sm:size-3.5 ml-auto text-primary"
+                        />
+                      </button>
+                    </div>
                   </div>
                 </div>
+                <div class="px-3 sm:px-4 py-2 sm:py-2.5 border-t border-border/50 bg-muted/10 flex justify-end">
+                  <button
+                    class="text-[10px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    @click="showSettings = false"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
-              <div class="px-3 sm:px-4 py-2 sm:py-2.5 border-t border-border/50 bg-muted/10 flex justify-end">
-                <button
-                  class="text-[10px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  @click="showSettings = false"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
             </Transition>
           </div>
         </div>
@@ -1056,7 +1159,6 @@ async function deleteSelected() {
 
       <!-- Content area -->
       <div class="flex-1 overflow-y-auto p-3 sm:p-5">
-
         <!-- Loading state -->
         <div v-if="loadingData" class="flex flex-col gap-4">
           <div v-for="i in 3" :key="i" class="rounded-xl border border-border/50 overflow-hidden animate-pulse">
@@ -1072,8 +1174,12 @@ async function deleteSelected() {
           <div class="size-14 sm:size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
             <Icon name="i-lucide-bar-chart-3" class="size-6 sm:size-8 text-primary" />
           </div>
-          <h3 class="text-base sm:text-lg font-semibold">Select an employee</h3>
-          <p class="text-xs sm:text-sm text-muted-foreground max-w-xs">Choose an employee from the left panel to manage their skill assessments.</p>
+          <h3 class="text-base sm:text-lg font-semibold">
+            Select an employee
+          </h3>
+          <p class="text-xs sm:text-sm text-muted-foreground max-w-xs">
+            Choose an employee from the left panel to manage their skill assessments.
+          </p>
           <Button variant="outline" size="sm" class="md:hidden" @click="showMobileSidebar = true">
             <Icon name="i-lucide-panel-left" class="mr-1.5 size-3.5" />
             Open Employee List
@@ -1085,8 +1191,12 @@ async function deleteSelected() {
           <!-- No search results -->
           <div v-if="filteredTree.length === 0 && searchQuery" class="flex flex-col items-center justify-center py-24 gap-3">
             <Icon name="i-lucide-search-x" class="size-10 text-muted-foreground" />
-            <p class="text-sm text-muted-foreground">No skills match "<strong>{{ searchQuery }}</strong>"</p>
-            <Button variant="ghost" size="sm" @click="searchQuery = ''">Clear search</Button>
+            <p class="text-sm text-muted-foreground">
+              No skills match "<strong>{{ searchQuery }}</strong>"
+            </p>
+            <Button variant="ghost" size="sm" @click="searchQuery = ''">
+              Clear search
+            </Button>
           </div>
 
           <!-- Signal-style Overall Stats Hero Card -->
@@ -1098,17 +1208,27 @@ async function deleteSelected() {
                   <Icon name="i-lucide-activity" class="size-6 sm:size-7 text-emerald-500" />
                 </div>
                 <div>
-                  <p class="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider">Overall Skill Completion</p>
+                  <p class="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                    Overall Skill Completion
+                  </p>
                   <p class="text-2xl sm:text-3xl font-black leading-none mt-0.5" :class="overallPct >= 80 ? 'text-emerald-500' : overallPct >= 50 ? 'text-blue-500' : 'text-amber-500'">
                     {{ overallPct }}%
                   </p>
                 </div>
               </div>
               <div class="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
-                <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-emerald-500" /> Mastered ({{ overallStats.mastered }})</div>
-                <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-blue-500" /> Proficient ({{ overallStats.proficient }})</div>
-                <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-amber-500" /> Needs Imp. ({{ overallStats.needs }})</div>
-                <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-zinc-700" /> Unreviewed ({{ overallStats.unreviewed }})</div>
+                <div class="flex items-center gap-1.5">
+                  <span class="size-2.5 rounded-sm bg-emerald-500" /> Mastered ({{ overallStats.mastered }})
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="size-2.5 rounded-sm bg-blue-500" /> Proficient ({{ overallStats.proficient }})
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="size-2.5 rounded-sm bg-amber-500" /> Needs Imp. ({{ overallStats.needs }})
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="size-2.5 rounded-sm bg-zinc-700" /> Unreviewed ({{ overallStats.unreviewed }})
+                </div>
               </div>
             </div>
           </div>
@@ -1143,7 +1263,7 @@ async function deleteSelected() {
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-semibold flex items-center gap-1.5" :class="pal(catIdx).text">
                     {{ cat.name }}
-                    <button v-if="cat.info" @click.stop="openCatPdf(cat)" class="hover:text-primary hover:bg-primary/10 text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-1.5 rounded-md" title="View PDF">
+                    <button v-if="cat.info" class="hover:text-primary hover:bg-primary/10 text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-1.5 rounded-md" title="View PDF" @click.stop="openCatPdf(cat)">
                       <Icon name="i-lucide-file-text" class="size-4 sm:size-5" />
                     </button>
                   </p>
@@ -1232,7 +1352,9 @@ async function deleteSelected() {
                       </div>
 
                       <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium">{{ sub.name }}</p>
+                        <p class="text-sm font-medium">
+                          {{ sub.name }}
+                        </p>
                         <!-- Predecessor info -->
                         <div v-if="sub.predecessor && isSubCatLocked(sub)" class="flex items-center gap-1.5 mt-1">
                           <Icon name="i-lucide-shield-alert" class="size-3 text-amber-400 shrink-0" />
@@ -1258,9 +1380,9 @@ async function deleteSelected() {
 
                       <!-- Bonus rules info icon -->
                       <button
-                        @click.stop="openSubRulesInfo(sub)"
                         class="hover:text-primary hover:bg-primary/10 text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-1.5 rounded-md"
                         title="View Bonus Rules"
+                        @click.stop="openSubRulesInfo(sub)"
                       >
                         <Icon name="i-lucide-info" class="size-3.5" />
                       </button>
@@ -1281,7 +1403,6 @@ async function deleteSelected() {
                       leave-to-class="opacity-0 -translate-y-1"
                     >
                       <div v-if="expandedSubs.has(sub._id) && !isSubCatLocked(sub)" class="bg-muted/10 border-t border-border/20">
-
                         <!-- Mark All Toolbar -->
                         <div v-if="sub.skills.length > 0" class="flex items-center justify-end gap-2 px-3 sm:px-4 py-2 border-b border-border/10 bg-muted/5">
                           <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Mark All As:</span>
@@ -1300,7 +1421,9 @@ async function deleteSelected() {
                         <!-- Empty sub -->
                         <div v-if="sub.skills.length === 0" class="flex items-center justify-center py-6 gap-2">
                           <Icon name="i-lucide-sparkles" class="size-4 text-muted-foreground/50" />
-                          <p class="text-xs text-muted-foreground">No skills in this sub-category</p>
+                          <p class="text-xs text-muted-foreground">
+                            No skills in this sub-category
+                          </p>
                         </div>
 
                         <!-- Skill rows -->
@@ -1314,7 +1437,7 @@ async function deleteSelected() {
                             <div class="flex items-center gap-1.5 sm:gap-2">
                               <p class="text-[13px] sm:text-sm leading-snug flex items-center gap-1.5">
                                 {{ sk.name }}
-                                <button v-if="sk.info" @click.stop="openSkillInfoView(sk)" class="hover:text-primary hover:bg-primary/10 text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-1.5 rounded-md" title="Skill Info">
+                                <button v-if="sk.info" class="hover:text-primary hover:bg-primary/10 text-muted-foreground transition-colors shrink-0 flex items-center justify-center p-1.5 rounded-md" title="Skill Info" @click.stop="openSkillInfoView(sk)">
                                   <Icon name="i-lucide-info" class="size-4 sm:size-5" />
                                 </button>
                               </p>
@@ -1415,7 +1538,9 @@ async function deleteSelected() {
             <p class="text-sm text-muted-foreground">
               {{ searchQuery ? `No records match "${searchQuery}"` : 'No assessments recorded for this employee yet.' }}
             </p>
-            <Button v-if="searchQuery" variant="ghost" size="sm" @click="searchQuery = ''">Clear search</Button>
+            <Button v-if="searchQuery" variant="ghost" size="sm" @click="searchQuery = ''">
+              Clear search
+            </Button>
             <Button v-else variant="outline" size="sm" @click="activeView = 'tree'">
               <Icon name="i-lucide-network" class="mr-1.5 size-3.5" />
               Open Skill Tree
@@ -1426,75 +1551,95 @@ async function deleteSelected() {
           <div v-else class="rounded-xl border border-border/50 bg-card shadow-xs overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full text-sm" style="min-width: 640px">
-              <thead>
-                <tr class="border-b border-border/50 bg-muted/30">
-                  <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Category</th>
-                  <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Sub-Category</th>
-                  <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Skill</th>
-                  <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Level</th>
-                  <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Date</th>
-                  <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">Reviewed By</th>
-                  <th class="px-4 py-3 w-12 text-center">
-                    <button
-                      class="size-4 rounded border-2 transition-all inline-flex items-center justify-center"
-                      :class="allSelected
-                        ? 'bg-primary border-primary'
-                        : someSelected
-                          ? 'border-primary bg-primary/30'
-                          : 'border-muted-foreground/40 hover:border-muted-foreground'"
-                      @click="toggleSelectAll"
-                    >
-                      <Icon v-if="allSelected" name="i-lucide-check" class="size-3 text-primary-foreground" />
-                      <Icon v-else-if="someSelected" name="i-lucide-minus" class="size-3 text-primary-foreground" />
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="r in filteredRecords"
-                  :key="r._id"
-                  class="group border-b border-border/30 last:border-0 transition-colors"
-                  :class="selectedIds.has(r._id) ? 'bg-primary/5' : 'hover:bg-muted/20'"
-                >
-                  <td class="px-4 py-3"><span class="font-medium">{{ r.categoryName || '—' }}</span></td>
-                  <td class="px-4 py-3 text-muted-foreground">{{ r.subCategoryName || '—' }}</td>
-                  <td class="px-4 py-3"><span class="font-medium">{{ r.skillName || '—' }}</span></td>
-                  <td class="px-4 py-3">
-                    <div class="flex items-center gap-2.5">
-                      <div class="flex gap-0.5">
-                        <div
-                          v-for="i in 3"
-                          :key="i"
-                          class="w-2.5 h-4 rounded-[2px] transition-colors"
-                          :class="i <= levelIndex(r.currentSkillLevel) ? levelBarColor(r.currentSkillLevel) : 'bg-muted'"
-                        />
-                      </div>
-                      <span
-                        class="text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap"
-                        :class="levelColor(r.currentSkillLevel)"
+                <thead>
+                  <tr class="border-b border-border/50 bg-muted/30">
+                    <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+                      Sub-Category
+                    </th>
+                    <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+                      Skill
+                    </th>
+                    <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+                      Level
+                    </th>
+                    <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th class="text-left px-4 py-3 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+                      Reviewed By
+                    </th>
+                    <th class="px-4 py-3 w-12 text-center">
+                      <button
+                        class="size-4 rounded border-2 transition-all inline-flex items-center justify-center"
+                        :class="allSelected
+                          ? 'bg-primary border-primary'
+                          : someSelected
+                            ? 'border-primary bg-primary/30'
+                            : 'border-muted-foreground/40 hover:border-muted-foreground'"
+                        @click="toggleSelectAll"
                       >
-                        {{ r.currentSkillLevel || '—' }}
-                      </span>
-                    </div>
-                  </td>
-                  <td class="px-4 py-3 text-muted-foreground text-xs">{{ formatDate(r.createdAt) }}</td>
-                  <td class="px-4 py-3">
-                    <span class="text-xs font-medium text-muted-foreground">{{ r.createdByName || '—' }}</span>
-                  </td>
-                  <td class="px-4 py-3 text-center">
-                    <button
-                      class="size-4 rounded border-2 transition-all inline-flex items-center justify-center"
-                      :class="selectedIds.has(r._id)
-                        ? 'bg-primary border-primary'
-                        : 'border-muted-foreground/40 hover:border-muted-foreground'"
-                      @click="toggleSelect(r._id)"
-                    >
-                      <Icon v-if="selectedIds.has(r._id)" name="i-lucide-check" class="size-3 text-primary-foreground" />
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
+                        <Icon v-if="allSelected" name="i-lucide-check" class="size-3 text-primary-foreground" />
+                        <Icon v-else-if="someSelected" name="i-lucide-minus" class="size-3 text-primary-foreground" />
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="r in filteredRecords"
+                    :key="r._id"
+                    class="group border-b border-border/30 last:border-0 transition-colors"
+                    :class="selectedIds.has(r._id) ? 'bg-primary/5' : 'hover:bg-muted/20'"
+                  >
+                    <td class="px-4 py-3">
+                      <span class="font-medium">{{ r.categoryName || '—' }}</span>
+                    </td>
+                    <td class="px-4 py-3 text-muted-foreground">
+                      {{ r.subCategoryName || '—' }}
+                    </td>
+                    <td class="px-4 py-3">
+                      <span class="font-medium">{{ r.skillName || '—' }}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2.5">
+                        <div class="flex gap-0.5">
+                          <div
+                            v-for="i in 3"
+                            :key="i"
+                            class="w-2.5 h-4 rounded-[2px] transition-colors"
+                            :class="i <= levelIndex(r.currentSkillLevel) ? levelBarColor(r.currentSkillLevel) : 'bg-muted'"
+                          />
+                        </div>
+                        <span
+                          class="text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap"
+                          :class="levelColor(r.currentSkillLevel)"
+                        >
+                          {{ r.currentSkillLevel || '—' }}
+                        </span>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-muted-foreground text-xs">
+                      {{ formatDate(r.createdAt) }}
+                    </td>
+                    <td class="px-4 py-3">
+                      <span class="text-xs font-medium text-muted-foreground">{{ r.createdByName || '—' }}</span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <button
+                        class="size-4 rounded border-2 transition-all inline-flex items-center justify-center"
+                        :class="selectedIds.has(r._id)
+                          ? 'bg-primary border-primary'
+                          : 'border-muted-foreground/40 hover:border-muted-foreground'"
+                        @click="toggleSelect(r._id)"
+                      >
+                        <Icon v-if="selectedIds.has(r._id)" name="i-lucide-check" class="size-3 text-primary-foreground" />
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
               </table>
             </div>
           </div>
@@ -1534,33 +1679,37 @@ async function deleteSelected() {
             </div>
           </Transition>
         </template>
-
       </div>
     </main>
-
 
     <!-- Modals -->
     <Dialog v-model:open="showCatPdfModal">
       <DialogContent class="w-[95vw] max-h-[90vh] sm:max-w-4xl h-[90vh] flex flex-col p-4 sm:p-6">
         <DialogHeader class="shrink-0 flex justify-between items-start">
           <div>
-            <DialogTitle class="text-base sm:text-lg">{{ activeCatName }} Documentation</DialogTitle>
-            <DialogDescription class="text-xs sm:text-sm">Official PDF guide for this category.</DialogDescription>
+            <DialogTitle class="text-base sm:text-lg">
+              {{ activeCatName }} Documentation
+            </DialogTitle>
+            <DialogDescription class="text-xs sm:text-sm">
+              Official PDF guide for this category.
+            </DialogDescription>
           </div>
         </DialogHeader>
         <div class="flex flex-col gap-4 py-2 flex-1 min-h-0 overflow-hidden">
           <div class="w-full flex-1 border border-border/50 rounded-xl overflow-hidden relative shadow-inner bg-muted/20">
-            <iframe :src="activeCatPdfUrl.includes('#') ? activeCatPdfUrl + '&toolbar=0&navpanes=0&scrollbar=0' : activeCatPdfUrl + '#toolbar=0&navpanes=0&scrollbar=0'" class="w-full h-full pointer-events-auto" style="overflow: hidden;" frameborder="0"></iframe>
+            <iframe :src="activeCatPdfUrl.includes('#') ? `${activeCatPdfUrl}&toolbar=0&navpanes=0&scrollbar=0` : `${activeCatPdfUrl}#toolbar=0&navpanes=0&scrollbar=0`" class="w-full h-full pointer-events-auto" style="overflow: hidden;" frameborder="0" />
           </div>
         </div>
         <DialogFooter class="flex flex-row items-center justify-between shrink-0 pt-4 border-t border-border/40 mt-2 gap-2">
-           <div class="flex gap-2">
-              <Button variant="outline" size="sm" as="a" :href="activeCatPdfUrl" download="Category_Documentation.pdf" target="_blank" class="text-primary hover:text-primary">
-                 <Icon name="i-lucide-download" class="mr-1 sm:mr-1.5 size-3.5" />
-                 Download
-              </Button>
-           </div>
-           <Button variant="outline" size="sm" @click="showCatPdfModal = false">Close</Button>
+          <div class="flex gap-2">
+            <Button variant="outline" size="sm" as="a" :href="activeCatPdfUrl" download="Category_Documentation.pdf" target="_blank" class="text-primary hover:text-primary">
+              <Icon name="i-lucide-download" class="mr-1 sm:mr-1.5 size-3.5" />
+              Download
+            </Button>
+          </div>
+          <Button variant="outline" size="sm" @click="showCatPdfModal = false">
+            Close
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1568,14 +1717,20 @@ async function deleteSelected() {
     <Dialog v-model:open="showSkillInfoModal">
       <DialogContent class="w-[95vw] max-h-[85vh] sm:max-w-2xl flex flex-col p-0">
         <DialogHeader class="px-4 py-4 sm:px-6 sm:py-5 border-b border-border/40 bg-muted/20 shrink-0">
-          <DialogTitle class="text-base sm:text-lg">{{ activeSkillName }}</DialogTitle>
-          <DialogDescription class="text-xs sm:text-sm">Standard Operating Procedure & Requirements</DialogDescription>
+          <DialogTitle class="text-base sm:text-lg">
+            {{ activeSkillName }}
+          </DialogTitle>
+          <DialogDescription class="text-xs sm:text-sm">
+            Standard Operating Procedure & Requirements
+          </DialogDescription>
         </DialogHeader>
         <div class="p-4 sm:p-6 flex-1 min-h-0 overflow-y-auto w-full">
-          <div class="simple-editor-content prose prose-sm dark:prose-invert max-w-full prose-p:leading-relaxed prose-headings:font-semibold break-words !p-0" v-html="activeSkillInfoText"></div>
+          <div class="simple-editor-content prose prose-sm dark:prose-invert max-w-full prose-p:leading-relaxed prose-headings:font-semibold break-words !p-0" v-html="activeSkillInfoText" />
         </div>
         <DialogFooter class="px-4 py-3 sm:px-6 sm:py-4 border-t border-border/40 bg-muted/5 shrink-0 flex-row justify-end">
-          <Button variant="outline" size="sm" @click="showSkillInfoModal = false">Close</Button>
+          <Button variant="outline" size="sm" @click="showSkillInfoModal = false">
+            Close
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1643,10 +1798,11 @@ async function deleteSelected() {
         </div>
 
         <DialogFooter class="px-4 py-3 sm:px-6 sm:py-4 border-t border-border/40 bg-muted/5 shrink-0 flex-row justify-end">
-          <Button variant="outline" size="sm" @click="showSubRulesModal = false">Close</Button>
+          <Button variant="outline" size="sm" @click="showSubRulesModal = false">
+            Close
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-
   </div>
 </template>

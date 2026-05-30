@@ -10,27 +10,41 @@ import {
   parseAbsoluteToLocal,
   today,
 } from '@internationalized/date'
-import Draggable from 'vuedraggable'
 import { toast } from 'vue-sonner'
+import Draggable from 'vuedraggable'
 import { useKanban } from '~/composables/useKanban'
 import CardFooter from '../ui/card/CardFooter.vue'
 
 const {
-  board, loading, loadingMore, hasMore, columnTotals,
-  fetchBoard, loadMore,
-  addTask, updateTask, removeTask, setColumns, takeSnapshot,
-  addSubtask, toggleSubtask, removeSubtask,
-  addComment, removeComment,
+  board,
+  loading,
+  loadingMore,
+  hasMore,
+  columnTotals,
+  fetchBoard,
+  loadMore,
+  addTask,
+  updateTask,
+  removeTask,
+  setColumns,
+  takeSnapshot,
+  addSubtask,
+  toggleSubtask,
+  removeSubtask,
+  addComment,
+  removeComment,
 } = useKanban()
 
 // Get current user for comments
 const userCookie = useCookie<any>('hardwood_user')
 const currentUser = computed(() => {
-  if (!userCookie.value) return null
+  if (!userCookie.value)
+    return null
   if (typeof userCookie.value === 'string') {
     try {
       return JSON.parse(userCookie.value)
-    } catch {
+    }
+    catch {
       return null
     }
   }
@@ -42,15 +56,18 @@ const isSuperAdmin = computed(() => currentUser.value?.position === 'Super Admin
 const { canCreate, canUpdate, canDelete } = usePermissions('/tasks')
 
 const canCreateTasks = computed(() => {
-  if (isSuperAdmin.value) return true
+  if (isSuperAdmin.value)
+    return true
   return canCreate()
 })
 const canUpdateTasks = computed(() => {
-  if (isSuperAdmin.value) return true
+  if (isSuperAdmin.value)
+    return true
   return canUpdate()
 })
 const canDeleteTasks = computed(() => {
-  if (isSuperAdmin.value) return true
+  if (isSuperAdmin.value)
+    return true
   return canDelete()
 })
 
@@ -60,7 +77,8 @@ async function fetchEmployees() {
   try {
     const res = await $fetch<any>('/api/employees')
     employees.value = (res.data || []).filter((e: any) => e.status === 'Active').sort((a: any, b: any) => (a.employee || '').localeCompare(b.employee || ''))
-  } catch (e) {
+  }
+  catch (e) {
     console.error('[KanbanBoard] Failed to fetch employees', e)
   }
 }
@@ -78,7 +96,8 @@ const dueDate = ref<DateValue | undefined>()
 const dueTime = ref<string | undefined>('00:00')
 
 watch(() => dueTime.value, (newVal) => {
-  if (!newVal) return
+  if (!newVal)
+    return
   if (dueDate.value) {
     const [hours, minutes] = newVal.split(':').map(Number)
     dueDate.value = new CalendarDateTime(
@@ -114,7 +133,8 @@ function resetData() {
   assigneeSearch.value = ''
 }
 watch(() => showModalTask.value.open, (newVal) => {
-  if (!newVal) resetData()
+  if (!newVal)
+    resetData()
 })
 
 function openNewTask(colId: string) {
@@ -142,19 +162,25 @@ function adjustDueDate(days: number) {
   const adjusted = dueDate.value.add({ days })
   const min = minDueDate.value
   // Don't allow due date before today
-  if (adjusted.compare(new CalendarDateTime(min.year, min.month, min.day, 0, 0)) < 0) return
+  if (adjusted.compare(new CalendarDateTime(min.year, min.month, min.day, 0, 0)) < 0)
+    return
   dueDate.value = adjusted
 }
 
 // ─── Form Validation ──────────────────────────────────────
 const taskFormTouched = ref(false)
 const taskFormErrors = computed(() => {
-  if (!taskFormTouched.value) return {}
+  if (!taskFormTouched.value)
+    return {}
   const errors: Record<string, string> = {}
-  if (!newTask.title.trim()) errors.title = 'Title is required'
-  if (!newTask.priority) errors.priority = 'Priority is required'
-  if (!selectedAssignees.value.length) errors.assignees = 'At least one assignee is required'
-  if (!dueDate.value) errors.dueDate = 'Due date is required'
+  if (!newTask.title.trim())
+    errors.title = 'Title is required'
+  if (!newTask.priority)
+    errors.priority = 'Priority is required'
+  if (!selectedAssignees.value.length)
+    errors.assignees = 'At least one assignee is required'
+  if (!dueDate.value)
+    errors.dueDate = 'Due date is required'
   return errors
 })
 const isTaskFormValid = computed(() => {
@@ -162,7 +188,8 @@ const isTaskFormValid = computed(() => {
 })
 function createTask() {
   taskFormTouched.value = true
-  if (!showModalTask.value.columnId || !isTaskFormValid.value) return
+  if (!showModalTask.value.columnId || !isTaskFormValid.value)
+    return
   const payload: NewTask = {
     title: newTask.title.trim(),
     description: newTask.description?.trim(),
@@ -178,7 +205,8 @@ function createTask() {
 }
 
 function editTask() {
-  if (!showModalTask.value.columnId || !newTask.title.trim()) return
+  if (!showModalTask.value.columnId || !newTask.title.trim())
+    return
   const payload: Record<string, any> = {
     title: newTask.title.trim(),
     description: newTask.description?.trim(),
@@ -194,7 +222,8 @@ function editTask() {
 
 function showEditTask(colId: string, taskId: string) {
   const task = board.value.columns.find(c => c.id === colId)?.tasks.find(t => t.id === taskId)
-  if (!task) return
+  if (!task)
+    return
   newTask.title = task.title
   newTask.description = task.description
   newTask.priority = task.priority
@@ -204,7 +233,8 @@ function showEditTask(colId: string, taskId: string) {
       const d = typeof task.dueDate === 'string' ? task.dueDate : new Date(task.dueDate as any).toISOString()
       dueDate.value = parseAbsoluteToLocal(d)
       dueTime.value = `${dueDate.value.hour < 10 ? `0${dueDate.value?.hour}` : dueDate.value?.hour}:${dueDate.value.minute < 10 ? `0${dueDate.value?.minute}` : dueDate.value?.minute}`
-    } catch { /* ignore invalid dates */ }
+    }
+    catch { /* ignore invalid dates */ }
   }
   newTask.status = task.status
   newTask.labels = task.labels
@@ -223,7 +253,8 @@ async function onTaskDrop() {
   try {
     await nextTick()
     await setColumns([...board.value.columns])
-  } catch (e: any) {
+  }
+  catch (e: any) {
     // Approval gate — revert and show toast
     const msg = e?.data?.message || e?.message || 'Failed to reorder'
     toast.error(msg)
@@ -233,7 +264,8 @@ async function onTaskDrop() {
 
 // ─── Approval ───────────────────────────────────────
 async function approveTask(colId: string, task: Task) {
-  if (!(task as any)._id) return
+  if (!(task as any)._id)
+    return
   try {
     const res = await $fetch<any>(`/api/tasks/${(task as any)._id}`, {
       method: 'PUT',
@@ -257,7 +289,8 @@ async function approveTask(colId: string, task: Task) {
       viewTask.value = null
       toast.success('Task approved and moved to Done')
     }
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error(e?.data?.message || 'Failed to approve task')
   }
 }
@@ -268,14 +301,16 @@ const viewTask = ref<{ colId: string, task: Task } | null>(null)
 function findTaskCol(taskId: string): { colId: string, task: Task } | null {
   for (const col of board.value.columns) {
     const t = col.tasks.find(t => t.id === taskId)
-    if (t) return { colId: col.id, task: t }
+    if (t)
+      return { colId: col.id, task: t }
   }
   return null
 }
 
 function openTaskDetail(colId: string, t: Task) {
   // Only open if not a drag
-  if (isDragging.value) return
+  if (isDragging.value)
+    return
   viewTask.value = { colId, task: t }
 }
 
@@ -297,16 +332,22 @@ function onColumnScroll(event: Event, columnId: string) {
 }
 
 function colorPriority(p?: Task['priority']) {
-  if (!p) return 'text-muted-foreground'
-  if (p === 'low') return 'text-blue-500'
-  if (p === 'medium') return 'text-amber-500'
+  if (!p)
+    return 'text-muted-foreground'
+  if (p === 'low')
+    return 'text-blue-500'
+  if (p === 'medium')
+    return 'text-amber-500'
   return 'text-red-500'
 }
 
 function iconPriority(p?: Task['priority']) {
-  if (!p) return 'lucide:minus'
-  if (p === 'low') return 'lucide:arrow-down-circle'
-  if (p === 'medium') return 'lucide:alert-circle'
+  if (!p)
+    return 'lucide:minus'
+  if (p === 'low')
+    return 'lucide:arrow-down-circle'
+  if (p === 'medium')
+    return 'lucide:alert-circle'
   return 'lucide:alert-triangle'
 }
 
@@ -360,14 +401,16 @@ function handleAddComment(colId: string, taskId: string) {
 
 // ─── Sheet Assignee Toggle ──────────────────────────
 function toggleSheetAssignee(emp: any) {
-  if (!viewTask.value) return
+  if (!viewTask.value)
+    return
   const task = viewTask.value.task
   const current = task.assignees || []
   const exists = current.some((a: any) => a._id === emp._id)
 
   if (exists) {
     task.assignees = current.filter((a: any) => a._id !== emp._id)
-  } else {
+  }
+  else {
     task.assignees = [...current, { _id: emp._id, employee: emp.employee, profileImage: emp.profileImage || '' }]
   }
 
@@ -382,9 +425,12 @@ function remainingDaysLabel(dueDate: any): string {
   const due = new Date(dueDate)
   due.setHours(0, 0, 0, 0)
   const diff = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  if (diff < 0) return `${Math.abs(diff)}d overdue`
-  if (diff === 0) return 'Due today'
-  if (diff === 1) return '1 day left'
+  if (diff < 0)
+    return `${Math.abs(diff)}d overdue`
+  if (diff === 0)
+    return 'Due today'
+  if (diff === 1)
+    return '1 day left'
   return `${diff} days left`
 }
 
@@ -394,8 +440,10 @@ function remainingDaysClass(dueDate: any): string {
   const due = new Date(dueDate)
   due.setHours(0, 0, 0, 0)
   const diff = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  if (diff < 0) return 'bg-red-700 text-white'
-  if (diff <= 2) return 'bg-amber-700 text-white'
+  if (diff < 0)
+    return 'bg-red-700 text-white'
+  if (diff <= 2)
+    return 'bg-amber-700 text-white'
   return 'bg-emerald-700 text-white'
 }
 
@@ -405,8 +453,10 @@ function completedInDaysLabel(createdAt: any): string {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   const diff = Math.ceil((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
-  if (diff <= 0) return 'Completed today'
-  if (diff === 1) return 'Completed in 1 day'
+  if (diff <= 0)
+    return 'Completed today'
+  if (diff === 1)
+    return 'Completed in 1 day'
   return `Completed in ${diff} days`
 }
 
@@ -417,8 +467,9 @@ const assigneeSearch = ref('')
 // Filter tasks within each column based on search query
 function filteredTasks(tasks: Task[]): Task[] {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return tasks
-  return tasks.filter(t => {
+  if (!q)
+    return tasks
+  return tasks.filter((t) => {
     const titleMatch = t.title?.toLowerCase().includes(q)
     const descMatch = t.description?.toLowerCase().includes(q)
     const priorityMatch = t.priority?.toLowerCase().includes(q)
@@ -430,19 +481,23 @@ function filteredTasks(tasks: Task[]): Task[] {
 }
 
 const totalSearchResults = computed(() => {
-  if (!searchQuery.value.trim()) return 0
+  if (!searchQuery.value.trim())
+    return 0
   return board.value.columns.reduce((sum, c) => sum + filteredTasks(c.tasks).length, 0)
 })
 
 const filteredEmployees = computed(() => {
   const q = assigneeSearch.value.trim().toLowerCase()
-  if (!q) return employees.value
+  if (!q)
+    return employees.value
   return employees.value.filter((e: any) => e.employee?.toLowerCase().includes(q) || e.position?.toLowerCase().includes(q))
 })
 
 function isTaskCreator(task: Task | null): boolean {
-  if (!task) return false
-  if (!currentUser.value) return false
+  if (!task)
+    return false
+  if (!currentUser.value)
+    return false
 
   // 1. Compare by ID
   const creatorId = typeof task.createdBy === 'object' ? (task.createdBy as any)?._id || (task.createdBy as any)?.id : task.createdBy
@@ -463,10 +518,16 @@ function isTaskCreator(task: Task | null): boolean {
 
 // Permission: can current user edit/delete this task?
 function canEditTask(task: Task | null): boolean {
-  if (!task) return false
-  if (isSuperAdmin.value) return true
+  if (!task)
+    return false
+  if (isSuperAdmin.value)
+    return true
   return isTaskCreator(task)
 }
+</script>
+
+<script lang="ts">
+const PAGE_SIZE = 20
 </script>
 
 <template>
@@ -495,7 +556,6 @@ function canEditTask(task: Task | null): boolean {
   </Teleport>
 
   <div class="flex gap-4 overflow-x-auto overflow-y-hidden h-[calc(100dvh-var(--content-offset)-2rem)] snap-x snap-mandatory sm:snap-none">
-
     <!-- Loading State -->
     <template v-if="loading">
       <div v-for="i in 4" :key="i" class="flex-1 min-w-[220px] sm:min-w-[250px] rounded-xl border border-border/50 bg-card p-3 sm:p-4 space-y-3 self-start snap-center">
@@ -562,7 +622,9 @@ function canEditTask(task: Task | null): boolean {
                         <TooltipTrigger as-child>
                           <Avatar class="size-5 shrink-0">
                             <AvatarImage :src="t.createdBy.profileImage || ''" :alt="t.createdBy.employee" />
-                            <AvatarFallback class="text-[7px]">{{ t.createdBy.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                            <AvatarFallback class="text-[7px]">
+                              {{ t.createdBy.employee?.slice(0, 2).toUpperCase() }}
+                            </AvatarFallback>
                           </Avatar>
                         </TooltipTrigger>
                         <TooltipContent>{{ t.createdBy.employee }}</TooltipContent>
@@ -571,9 +633,13 @@ function canEditTask(task: Task | null): boolean {
                       <span class="text-[10px] text-muted-foreground/50 ml-auto shrink-0">{{ useTimeAgo(t.createdAt ?? '', OPTIONS) }}</span>
                     </div>
                     <!-- Row 2: Title -->
-                    <p class="font-semibold leading-5 text-[13px] sm:text-sm">{{ t.title }}</p>
+                    <p class="font-semibold leading-5 text-[13px] sm:text-sm">
+                      {{ t.title }}
+                    </p>
                     <!-- Row 3: Description (3 lines max) -->
-                    <p v-if="t.description" class="text-xs text-muted-foreground leading-relaxed mt-1 line-clamp-3">{{ t.description }}</p>
+                    <p v-if="t.description" class="text-xs text-muted-foreground leading-relaxed mt-1 line-clamp-3">
+                      {{ t.description }}
+                    </p>
                     <!-- Row 4: Due Date & Remaining / Completed -->
                     <div v-if="col.id === 'done'" class="flex items-center justify-between gap-2 mt-2">
                       <div class="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -606,7 +672,9 @@ function canEditTask(task: Task | null): boolean {
                         </PopoverTrigger>
                         <PopoverContent class="w-[280px] sm:w-80 p-0" align="start" @click.stop>
                           <div class="px-3 py-2 border-b">
-                            <p class="text-sm font-semibold">Comments</p>
+                            <p class="text-sm font-semibold">
+                              Comments
+                            </p>
                           </div>
                           <div class="max-h-56 overflow-y-auto">
                             <div v-if="!t.comments?.length" class="px-3 py-4 text-sm text-muted-foreground text-center">
@@ -617,7 +685,9 @@ function canEditTask(task: Task | null): boolean {
                                 <div class="flex items-center gap-2">
                                   <Avatar class="size-5">
                                     <AvatarImage :src="cm.avatar || ''" :alt="cm.author" />
-                                    <AvatarFallback class="text-[8px]">{{ cm.author?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                                    <AvatarFallback class="text-[8px]">
+                                      {{ cm.author?.slice(0, 2).toUpperCase() }}
+                                    </AvatarFallback>
                                   </Avatar>
                                   <span class="text-xs font-medium">{{ cm.author }}</span>
                                 </div>
@@ -628,7 +698,9 @@ function canEditTask(task: Task | null): boolean {
                                   </button>
                                 </div>
                               </div>
-                              <p class="text-xs text-muted-foreground mt-1 leading-relaxed pl-7">{{ cm.text }}</p>
+                              <p class="text-xs text-muted-foreground mt-1 leading-relaxed pl-7">
+                                {{ cm.text }}
+                              </p>
                             </div>
                           </div>
                           <div class="border-t px-2 py-2">
@@ -645,7 +717,9 @@ function canEditTask(task: Task | null): boolean {
                         <TooltipTrigger as-child>
                           <Icon :name="iconPriority(t.priority)" class="size-4" :class="colorPriority(t.priority)" />
                         </TooltipTrigger>
-                        <TooltipContent class="capitalize">{{ t.priority }} priority</TooltipContent>
+                        <TooltipContent class="capitalize">
+                          {{ t.priority }} priority
+                        </TooltipContent>
                       </Tooltip>
 
                       <!-- Approve button for in-review tasks (visible only to the task creator) -->
@@ -668,7 +742,9 @@ function canEditTask(task: Task | null): boolean {
                             <TooltipTrigger as-child>
                               <Avatar class="size-5 ring-2 ring-card">
                                 <AvatarImage :src="a.profileImage || ''" :alt="a.employee" />
-                                <AvatarFallback class="text-[7px]">{{ a.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                                <AvatarFallback class="text-[7px]">
+                                  {{ a.employee?.slice(0, 2).toUpperCase() }}
+                                </AvatarFallback>
                               </Avatar>
                             </TooltipTrigger>
                             <TooltipContent>{{ a.employee }}</TooltipContent>
@@ -731,9 +807,15 @@ function canEditTask(task: Task | null): boolean {
                 <SelectValue placeholder="Select a priority" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="low">
+                  Low
+                </SelectItem>
+                <SelectItem value="medium">
+                  Medium
+                </SelectItem>
+                <SelectItem value="high">
+                  High
+                </SelectItem>
               </SelectContent>
             </Select>
             <span v-if="taskFormErrors.priority" class="text-[10px] text-red-500">{{ taskFormErrors.priority }}</span>
@@ -747,7 +829,9 @@ function canEditTask(task: Task | null): boolean {
                     <div v-for="a in selectedAssignees" :key="a._id" class="flex items-center gap-1 bg-muted rounded-full pl-0.5 pr-2 py-0.5">
                       <Avatar class="size-4">
                         <AvatarImage :src="a.profileImage || ''" :alt="a.employee" />
-                        <AvatarFallback class="text-[7px]">{{ a.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                        <AvatarFallback class="text-[7px]">
+                          {{ a.employee?.slice(0, 2).toUpperCase() }}
+                        </AvatarFallback>
                       </Avatar>
                       <span class="text-[10px] font-medium">{{ a.employee }}</span>
                     </div>
@@ -760,7 +844,9 @@ function canEditTask(task: Task | null): boolean {
               </PopoverTrigger>
               <PopoverContent class="w-[260px] p-1" align="start">
                 <div class="px-2 py-1.5 border-b mb-1 flex items-center justify-between">
-                  <p class="text-xs font-semibold text-muted-foreground">Employees</p>
+                  <p class="text-xs font-semibold text-muted-foreground">
+                    Employees
+                  </p>
                   <button v-if="selectedAssignees.length" class="text-[10px] text-muted-foreground hover:text-foreground transition-colors" @click="selectedAssignees = []">
                     Clear all
                   </button>
@@ -778,7 +864,9 @@ function canEditTask(task: Task | null): boolean {
                   >
                     <Avatar class="size-5">
                       <AvatarImage :src="emp.profileImage || ''" :alt="emp.employee" />
-                      <AvatarFallback class="text-[8px]">{{ emp.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                      <AvatarFallback class="text-[8px]">
+                        {{ emp.employee?.slice(0, 2).toUpperCase() }}
+                      </AvatarFallback>
                     </Avatar>
                     <div class="flex flex-col items-start flex-1">
                       <span>{{ emp.employee }}</span>
@@ -794,7 +882,7 @@ function canEditTask(task: Task | null): boolean {
           <Label>Due Date <span class="text-red-500">*</span></Label>
           <div class="flex flex-col gap-0.5">
             <div class="flex items-center gap-1">
-              <Button size="icon" variant="outline" class="size-9 sm:size-10 shrink-0" @click="adjustDueDate(-1)" :disabled="!dueDate || dueDate.compare(new CalendarDateTime(minDueDate.year, minDueDate.month, minDueDate.day, 0, 0)) <= 0">
+              <Button size="icon" variant="outline" class="size-9 sm:size-10 shrink-0" :disabled="!dueDate || dueDate.compare(new CalendarDateTime(minDueDate.year, minDueDate.month, minDueDate.day, 0, 0)) <= 0" @click="adjustDueDate(-1)">
                 <Icon name="lucide:minus" class="size-4" />
               </Button>
               <Popover>
@@ -850,19 +938,27 @@ function canEditTask(task: Task | null): boolean {
       <template v-if="viewTask">
         <!-- Row 1: Title -->
         <div class="px-5 pt-6 pb-2">
-          <SheetTitle class="text-lg font-bold leading-snug">{{ viewTask.task.title }}</SheetTitle>
+          <SheetTitle class="text-lg font-bold leading-snug">
+            {{ viewTask.task.title }}
+          </SheetTitle>
         </div>
 
         <!-- Row 2: Description -->
         <div class="px-5 pb-4 border-b border-border/50">
-          <SheetDescription v-if="viewTask.task.description" class="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{{ viewTask.task.description }}</SheetDescription>
-          <p v-else class="text-sm text-muted-foreground/50 italic">No description</p>
+          <SheetDescription v-if="viewTask.task.description" class="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+            {{ viewTask.task.description }}
+          </SheetDescription>
+          <p v-else class="text-sm text-muted-foreground/50 italic">
+            No description
+          </p>
         </div>
 
         <!-- Row 3: Assignees (editable) -->
         <div class="px-5 py-4 border-b border-border/50">
           <div class="flex items-center justify-between mb-2">
-            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Assignees</p>
+            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Assignees
+            </p>
             <Popover>
               <PopoverTrigger as-child>
                 <button class="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer">
@@ -881,7 +977,9 @@ function canEditTask(task: Task | null): boolean {
                   >
                     <Avatar class="size-5">
                       <AvatarImage :src="emp.profileImage || ''" :alt="emp.employee" />
-                      <AvatarFallback class="text-[7px]">{{ emp.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                      <AvatarFallback class="text-[7px]">
+                        {{ emp.employee?.slice(0, 2).toUpperCase() }}
+                      </AvatarFallback>
                     </Avatar>
                     <span class="flex-1 text-left truncate">{{ emp.employee }}</span>
                     <Icon v-if="viewTask!.task.assignees?.some((a: any) => a._id === emp._id)" name="lucide:check" class="size-4 text-primary shrink-0" />
@@ -896,7 +994,9 @@ function canEditTask(task: Task | null): boolean {
                 <div class="flex items-center gap-1.5 bg-muted/50 rounded-full pl-1 pr-2.5 py-1 group/chip">
                   <Avatar class="size-5">
                     <AvatarImage :src="a.profileImage || ''" :alt="a.employee" />
-                    <AvatarFallback class="text-[7px]">{{ a.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                    <AvatarFallback class="text-[7px]">
+                      {{ a.employee?.slice(0, 2).toUpperCase() }}
+                    </AvatarFallback>
                   </Avatar>
                   <span class="text-xs font-medium">{{ a.employee }}</span>
                 </div>
@@ -911,7 +1011,9 @@ function canEditTask(task: Task | null): boolean {
         <div class="px-5 py-4 border-b border-border/50 grid grid-cols-2 sm:grid-cols-4 gap-4">
           <!-- Priority -->
           <div>
-            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Priority</p>
+            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Priority
+            </p>
             <div class="flex items-center gap-1.5 h-8">
               <Icon v-if="viewTask.task.priority" :name="iconPriority(viewTask.task.priority)" class="size-3.5" :class="colorPriority(viewTask.task.priority)" />
               <span class="text-sm capitalize">{{ viewTask.task.priority || '—' }}</span>
@@ -919,7 +1021,9 @@ function canEditTask(task: Task | null): boolean {
           </div>
           <!-- Status -->
           <div>
-            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Status</p>
+            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Status
+            </p>
             <Select
               v-if="isSuperAdmin || isTaskCreator(viewTask.task)"
               :model-value="viewTask.task.status || 'todo'"
@@ -930,16 +1034,24 @@ function canEditTask(task: Task | null): boolean {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todo">
-                  <div class="flex items-center gap-2"><Icon name="i-lucide-circle" class="size-3.5 text-blue-400" /><span>To Do</span></div>
+                  <div class="flex items-center gap-2">
+                    <Icon name="i-lucide-circle" class="size-3.5 text-blue-400" /><span>To Do</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="in-progress">
-                  <div class="flex items-center gap-2"><Icon name="i-lucide-loader" class="size-3.5 text-amber-400" /><span>In Progress</span></div>
+                  <div class="flex items-center gap-2">
+                    <Icon name="i-lucide-loader" class="size-3.5 text-amber-400" /><span>In Progress</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="in-review">
-                  <div class="flex items-center gap-2"><Icon name="i-lucide-eye" class="size-3.5 text-violet-400" /><span>In Review</span></div>
+                  <div class="flex items-center gap-2">
+                    <Icon name="i-lucide-eye" class="size-3.5 text-violet-400" /><span>In Review</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="done">
-                  <div class="flex items-center gap-2"><Icon name="i-lucide-check-circle-2" class="size-3.5 text-emerald-400" /><span>Done</span></div>
+                  <div class="flex items-center gap-2">
+                    <Icon name="i-lucide-check-circle-2" class="size-3.5 text-emerald-400" /><span>Done</span>
+                  </div>
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -950,7 +1062,9 @@ function canEditTask(task: Task | null): boolean {
           </div>
           <!-- Due Date -->
           <div>
-            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Due Date</p>
+            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Due Date
+            </p>
             <div v-if="viewTask.task.dueDate" class="flex items-center gap-1.5 h-8 text-sm">
               <Icon name="i-lucide-calendar" class="size-3.5 text-muted-foreground" />
               <span>{{ new Date(viewTask.task.dueDate as any).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}</span>
@@ -959,7 +1073,9 @@ function canEditTask(task: Task | null): boolean {
           </div>
           <!-- Remaining Days -->
           <div>
-            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Remaining</p>
+            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Remaining
+            </p>
             <div class="h-8 flex items-center">
               <template v-if="viewTask.task.dueDate">
                 <span
@@ -975,18 +1091,24 @@ function canEditTask(task: Task | null): boolean {
         <!-- Row 5: Created By & Created At -->
         <div class="px-5 py-4 border-b border-border/50 grid grid-cols-2 gap-4">
           <div>
-            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Created By</p>
+            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Created By
+            </p>
             <div v-if="viewTask.task.createdBy" class="flex items-center gap-2">
               <Avatar class="size-6">
                 <AvatarImage :src="viewTask.task.createdBy.profileImage || ''" :alt="viewTask.task.createdBy.employee" />
-                <AvatarFallback class="text-[8px]">{{ viewTask.task.createdBy.employee?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                <AvatarFallback class="text-[8px]">
+                  {{ viewTask.task.createdBy.employee?.slice(0, 2).toUpperCase() }}
+                </AvatarFallback>
               </Avatar>
               <span class="text-sm font-medium truncate">{{ viewTask.task.createdBy.employee }}</span>
             </div>
             <span v-else class="text-sm text-muted-foreground/50">—</span>
           </div>
           <div>
-            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Created At</p>
+            <p class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Created At
+            </p>
             <span class="text-sm text-muted-foreground">{{ useTimeAgo(viewTask.task.createdAt ?? '', OPTIONS) }}</span>
           </div>
         </div>
@@ -1003,7 +1125,9 @@ function canEditTask(task: Task | null): boolean {
                 <div class="flex items-center gap-2">
                   <Avatar class="size-5">
                     <AvatarImage :src="cm.avatar || ''" :alt="cm.author" />
-                    <AvatarFallback class="text-[8px]">{{ cm.author?.slice(0, 2).toUpperCase() }}</AvatarFallback>
+                    <AvatarFallback class="text-[8px]">
+                      {{ cm.author?.slice(0, 2).toUpperCase() }}
+                    </AvatarFallback>
                   </Avatar>
                   <span class="text-xs font-semibold">{{ cm.author }}</span>
                   <span class="text-[10px] text-muted-foreground">{{ useTimeAgo(cm.createdAt ?? '', OPTIONS) }}</span>
@@ -1012,7 +1136,9 @@ function canEditTask(task: Task | null): boolean {
                   <Icon name="i-lucide-x" class="size-3" />
                 </button>
               </div>
-              <p class="text-sm text-muted-foreground leading-relaxed pl-7">{{ cm.text }}</p>
+              <p class="text-sm text-muted-foreground leading-relaxed pl-7">
+                {{ cm.text }}
+              </p>
             </div>
           </div>
           <form class="flex gap-1.5 items-end" @submit.prevent="() => { if (newCommentText.trim()) { addComment(viewTask!.colId, viewTask!.task.id, newCommentText.trim(), currentUser?.employee, currentUser?.profileImage); newCommentText = '' } }">
@@ -1062,7 +1188,3 @@ function canEditTask(task: Task | null): boolean {
     </SheetContent>
   </Sheet>
 </template>
-
-<script lang="ts">
-const PAGE_SIZE = 20
-</script>

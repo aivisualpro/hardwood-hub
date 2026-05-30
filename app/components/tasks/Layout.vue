@@ -1,12 +1,17 @@
 <script lang="ts" setup>
-import type { Task } from './data/schema'
 import type { ColumnDef } from '@tanstack/vue-table'
+import type { Task } from './data/schema'
 import { useMediaQuery } from '@vueuse/core'
-import { projects, taskProjectMap } from './data/projects'
-import { labels, statuses, priorities } from './data/data'
 import { cn } from '~/lib/utils'
 import DataTable from './components/DataTable.vue'
+import { labels, priorities, statuses } from './data/data'
+import { projects, taskProjectMap } from './data/projects'
 
+const props = withDefaults(defineProps<Props>(), {
+  defaultCollapsed: false,
+  defaultLayout: () => [20, 80],
+  navCollapsedSize: 4,
+})
 const { t } = useLocale()
 const { setHeader } = usePageHeader()
 
@@ -17,12 +22,6 @@ interface Props {
   defaultCollapsed?: boolean
   navCollapsedSize?: number
 }
-
-const props = withDefaults(defineProps<Props>(), {
-  defaultCollapsed: false,
-  defaultLayout: () => [20, 80],
-  navCollapsedSize: 4,
-})
 
 const isCollapsed = ref(props.defaultCollapsed)
 const selectedProjectId = ref<string | null>(null)
@@ -62,7 +61,8 @@ const localData = ref<Task[]>([...props.data])
 function seedAssignees(data: Task[]): Task[] {
   const assigneeIds = ['u1', 'u2', 'u3', 'u4', 'u5']
   return data.map((task, i) => {
-    if (task.assignees && task.assignees.length > 0) return task
+    if (task.assignees && task.assignees.length > 0)
+      return task
     // Deterministic assignment based on index
     const count = (i % 3) + 1 // 1-3 assignees
     const start = i % assigneeIds.length
@@ -83,7 +83,7 @@ watch(() => props.data, (d) => {
 // Provide context for inline cell editing
 function updateTask(taskId: string, updates: Partial<Task>) {
   localData.value = localData.value.map(t =>
-    t.id === taskId ? { ...t, ...updates } : t
+    t.id === taskId ? { ...t, ...updates } : t,
   )
 }
 
@@ -150,14 +150,18 @@ function sortTasks(data: Task[]): Task[] {
   sorted.sort((a, b) => {
     const ma = taskProjectMap[a.id]
     const mb = taskProjectMap[b.id]
-    if (!ma && !mb) return 0
-    if (!ma) return 1
-    if (!mb) return -1
+    if (!ma && !mb)
+      return 0
+    if (!ma)
+      return 1
+    if (!mb)
+      return -1
 
     // Sort by project
     const pOrdA = projOrder.get(ma.projectId) ?? 999
     const pOrdB = projOrder.get(mb.projectId) ?? 999
-    if (pOrdA !== pOrdB) return pOrdA - pOrdB
+    if (pOrdA !== pOrdB)
+      return pOrdA - pOrdB
 
     // Sort by stage
     const projA = projectIndex.value.get(ma.projectId)
@@ -167,7 +171,8 @@ function sortTasks(data: Task[]): Task[] {
       const stagesB = [...projB.stageMap.keys()]
       const sOrdA = stagesA.indexOf(ma.stageId)
       const sOrdB = stagesB.indexOf(mb.stageId)
-      if (sOrdA !== sOrdB) return sOrdA - sOrdB
+      if (sOrdA !== sOrdB)
+        return sOrdA - sOrdB
     }
 
     // Sort by label (bug, feature, documentation)
@@ -193,14 +198,16 @@ function onReorder(groupKey: string, fromIdx: number, toIdx: number) {
   for (let i = 0; i < data.length; i++) {
     const task = data[i]!
     const mapping = taskProjectMap[task.id]
-    if (!mapping) continue
+    if (!mapping)
+      continue
     const key = `${mapping.projectId}:${mapping.stageId}:${task.label}`
     if (key === groupKey) {
       groupTasks.push(i)
     }
   }
 
-  if (fromIdx >= groupTasks.length || toIdx >= groupTasks.length) return
+  if (fromIdx >= groupTasks.length || toIdx >= groupTasks.length)
+    return
 
   const fromDataIdx = groupTasks[fromIdx]!
   const toDataIdx = groupTasks[toIdx]!
@@ -230,11 +237,14 @@ const taskGroupMap = computed(() => {
   const map = new Map<string, TaskGroupInfo>()
   for (const task of sortedData.value) {
     const mapping = taskProjectMap[task.id]
-    if (!mapping) continue
+    if (!mapping)
+      continue
     const proj = projectIndex.value.get(mapping.projectId)
-    if (!proj) continue
+    if (!proj)
+      continue
     const stage = proj.stageMap.get(mapping.stageId)
-    if (!stage) continue
+    if (!stage)
+      continue
     const labelDef = labels.find(l => l.value === task.label)
     map.set(task.id, {
       projectId: mapping.projectId,
@@ -326,7 +336,8 @@ const availableAssignees = [
 
 // Cascading phases based on selected project
 const availablePhases = computed(() => {
-  if (!newTaskProjectId.value) return []
+  if (!newTaskProjectId.value)
+    return []
   const proj = projects.find(p => p.id === newTaskProjectId.value)
   return proj?.stages ?? []
 })
@@ -352,13 +363,15 @@ function toggleAssignee(id: string) {
   const idx = newTaskAssignees.value.indexOf(id)
   if (idx >= 0) {
     newTaskAssignees.value = newTaskAssignees.value.filter(a => a !== id)
-  } else {
+  }
+  else {
     newTaskAssignees.value = [...newTaskAssignees.value, id]
   }
 }
 
 function createTask() {
-  if (!newTaskTitle.value.trim()) return
+  if (!newTaskTitle.value.trim())
+    return
   const id = `TASK-${Math.floor(1000 + Math.random() * 9000)}`
   const task: Task = {
     id,
@@ -601,16 +614,20 @@ function onTaskUpdated(updated: Task) {
           <div class="grid gap-2">
             <Label>{{ t('tasks.addTask.dueDateLabel' as any) }}</Label>
             <Input
-              type="date"
               v-model="newTaskDueDate"
+              type="date"
               class="h-9"
             />
           </div>
         </div>
       </div>
       <DialogFooter>
-        <Button variant="outline" @click="showAddTaskDialog = false">{{ t('common.cancel' as any) }}</Button>
-        <Button :disabled="!newTaskTitle.trim()" @click="createTask">{{ t('tasks.addTask.create' as any) }}</Button>
+        <Button variant="outline" @click="showAddTaskDialog = false">
+          {{ t('common.cancel' as any) }}
+        </Button>
+        <Button :disabled="!newTaskTitle.trim()" @click="createTask">
+          {{ t('tasks.addTask.create' as any) }}
+        </Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

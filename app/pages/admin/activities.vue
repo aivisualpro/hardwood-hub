@@ -25,10 +25,14 @@ async function fetchActivities(page = 1) {
       page: String(page),
       limit: '50',
     }
-    if (selectedUser.value !== 'all') params.user = selectedUser.value
-    if (selectedModule.value !== 'all') params.module = selectedModule.value
-    if (selectedAction.value !== 'all') params.action = selectedAction.value
-    if (searchQuery.value.trim()) params.search = searchQuery.value.trim()
+    if (selectedUser.value !== 'all')
+      params.user = selectedUser.value
+    if (selectedModule.value !== 'all')
+      params.module = selectedModule.value
+    if (selectedAction.value !== 'all')
+      params.action = selectedAction.value
+    if (searchQuery.value.trim())
+      params.search = searchQuery.value.trim()
 
     const query = new URLSearchParams(params).toString()
     const res = await $fetch<any>(`/api/activities?${query}`)
@@ -36,7 +40,8 @@ async function fetchActivities(page = 1) {
     pagination.value = res.pagination
     filterUsers.value = res.filters.users || []
     filterModules.value = res.filters.modules || []
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to load activities', { description: e?.message })
   }
 }
@@ -46,7 +51,8 @@ await useAsyncData('admin-activities', async () => { await fetchActivities(); re
 onMounted(async () => {
   try {
     await $fetch('/api/activities/mark-as-read', { method: 'POST' })
-  } catch {}
+  }
+  catch {}
 })
 
 watch([selectedUser, selectedModule, selectedAction], () => fetchActivities(1))
@@ -67,17 +73,26 @@ function timeAgo(date: string) {
   const diffHr = Math.floor(diffMin / 60)
   const diffDay = Math.floor(diffHr / 24)
 
-  if (diffSec < 60) return 'just now'
-  if (diffMin < 60) return `${diffMin}m ago`
-  if (diffHr < 24) return `${diffHr}h ago`
-  if (diffDay < 7) return `${diffDay}d ago`
+  if (diffSec < 60)
+    return 'just now'
+  if (diffMin < 60)
+    return `${diffMin}m ago`
+  if (diffHr < 24)
+    return `${diffHr}h ago`
+  if (diffDay < 7)
+    return `${diffDay}d ago`
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function fullDate(date: string) {
   return new Date(date).toLocaleString('en-US', {
-    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
   })
 }
 
@@ -140,8 +155,10 @@ const groupedActivities = computed(() => {
     d.setHours(0, 0, 0, 0)
     let label = ''
 
-    if (d.getTime() === today.getTime()) label = 'Today'
-    else if (d.getTime() === yesterday.getTime()) label = 'Yesterday'
+    if (d.getTime() === today.getTime())
+      label = 'Today'
+    else if (d.getTime() === yesterday.getTime())
+      label = 'Yesterday'
     else label = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
     if (label !== currentLabel) {
@@ -166,7 +183,6 @@ const stats = computed(() => {
 <template>
   <div>
     <div class="space-y-4 sm:space-y-6">
-
       <!-- ─── Stats Bar ─── -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
         <div class="rounded-xl border border-border/50 bg-card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
@@ -174,8 +190,12 @@ const stats = computed(() => {
             <Icon name="i-lucide-activity" class="size-4 sm:size-5 text-primary" />
           </div>
           <div>
-            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Total Events</p>
-            <p class="text-base sm:text-lg font-bold">{{ stats.total.toLocaleString() }}</p>
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              Total Events
+            </p>
+            <p class="text-base sm:text-lg font-bold">
+              {{ stats.total.toLocaleString() }}
+            </p>
           </div>
         </div>
         <div class="rounded-xl border border-border/50 bg-card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
@@ -183,8 +203,12 @@ const stats = computed(() => {
             <Icon name="i-lucide-plus-circle" class="size-4 sm:size-5 text-emerald-400" />
           </div>
           <div>
-            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Created</p>
-            <p class="text-base sm:text-lg font-bold text-emerald-400">{{ stats.creates }}</p>
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              Created
+            </p>
+            <p class="text-base sm:text-lg font-bold text-emerald-400">
+              {{ stats.creates }}
+            </p>
           </div>
         </div>
         <div class="rounded-xl border border-border/50 bg-card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
@@ -192,8 +216,12 @@ const stats = computed(() => {
             <Icon name="i-lucide-pencil" class="size-4 sm:size-5 text-blue-400" />
           </div>
           <div>
-            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Updated</p>
-            <p class="text-base sm:text-lg font-bold text-blue-400">{{ stats.updates }}</p>
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              Updated
+            </p>
+            <p class="text-base sm:text-lg font-bold text-blue-400">
+              {{ stats.updates }}
+            </p>
           </div>
         </div>
         <div class="rounded-xl border border-border/50 bg-card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
@@ -201,8 +229,12 @@ const stats = computed(() => {
             <Icon name="i-lucide-trash-2" class="size-4 sm:size-5 text-rose-400" />
           </div>
           <div>
-            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Deleted</p>
-            <p class="text-base sm:text-lg font-bold text-rose-400">{{ stats.deletes }}</p>
+            <p class="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+              Deleted
+            </p>
+            <p class="text-base sm:text-lg font-bold text-rose-400">
+              {{ stats.deletes }}
+            </p>
           </div>
         </div>
       </div>
@@ -226,8 +258,12 @@ const stats = computed(() => {
             <SelectValue placeholder="All Users" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Users</SelectItem>
-            <SelectItem v-for="u in filterUsers" :key="u" :value="u">{{ u }}</SelectItem>
+            <SelectItem value="all">
+              All Users
+            </SelectItem>
+            <SelectItem v-for="u in filterUsers" :key="u" :value="u">
+              {{ u }}
+            </SelectItem>
           </SelectContent>
         </Select>
 
@@ -237,8 +273,12 @@ const stats = computed(() => {
             <SelectValue placeholder="All Modules" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Modules</SelectItem>
-            <SelectItem v-for="m in filterModules" :key="m" :value="m">{{ m }}</SelectItem>
+            <SelectItem value="all">
+              All Modules
+            </SelectItem>
+            <SelectItem v-for="m in filterModules" :key="m" :value="m">
+              {{ m }}
+            </SelectItem>
           </SelectContent>
         </Select>
 
@@ -265,7 +305,9 @@ const stats = computed(() => {
         <div class="size-14 sm:size-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 sm:mb-5">
           <Icon name="i-lucide-eye-off" class="size-7 sm:size-10 text-primary" />
         </div>
-        <h3 class="text-base sm:text-xl font-bold mb-1.5 sm:mb-2">No activities recorded yet</h3>
+        <h3 class="text-base sm:text-xl font-bold mb-1.5 sm:mb-2">
+          No activities recorded yet
+        </h3>
         <p class="text-xs sm:text-sm text-muted-foreground max-w-sm">
           Activities will appear here automatically as users interact with the application. Every create, update, delete, login, and more will be tracked.
         </p>
@@ -305,7 +347,7 @@ const stats = computed(() => {
                       :src="act.userImage"
                       :alt="act.user"
                       class="size-full rounded-full object-cover"
-                    />
+                    >
                     <span v-else class="text-[9px] sm:text-[11px] font-bold">
                       {{ getInitials(act.user) }}
                     </span>
@@ -388,7 +430,6 @@ const stats = computed(() => {
           </Button>
         </div>
       </div>
-
     </div>
   </div>
 </template>

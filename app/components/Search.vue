@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { NavMenu } from '~/types/nav'
-import { navMenu, navMenuConcepts, navMenuBottom } from '@/constants/menus'
+import { navMenu, navMenuBottom, navMenuConcepts } from '@/constants/menus'
 
 const { metaSymbol } = useShortcuts()
 const { t } = useLocale()
@@ -88,7 +88,7 @@ function handleSelectLink(link: string) {
   </SidebarMenuButton>
 
   <CommandDialog v-model:open="openCommand">
-    <CommandInput :placeholder="t('common.search') + '...'" />
+    <CommandInput :placeholder="`${t('common.search')}...`" />
     <CommandList>
       <CommandEmpty>{{ t('common.noResults') }}</CommandEmpty>
       <template v-for="(items, group) in groupedMenuItems" :key="group">

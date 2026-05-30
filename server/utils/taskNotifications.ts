@@ -19,20 +19,24 @@ interface StatusChangePayload {
  * Resolve a creator name to their email address via the Employee collection.
  */
 async function resolveCreatorEmail(creatorName: string): Promise<string | null> {
-  if (!creatorName) return null
+  if (!creatorName)
+    return null
   try {
     const { Employee } = await import('../models/Employee')
     const emp = await Employee.findOne({ employee: creatorName }).lean<any>()
     return emp?.email || null
-  } catch {
+  }
+  catch {
     return null
   }
 }
 
 function formatDate(d: Date | string | null | undefined): string {
-  if (!d) return '—'
+  if (!d)
+    return '—'
   const date = typeof d === 'string' ? new Date(d) : d
-  if (isNaN(date.getTime())) return '—'
+  if (isNaN(date.getTime()))
+    return '—'
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
@@ -62,9 +66,9 @@ function statusColor(s: string): string {
 
 function priorityColor(p: string): string {
   const map: Record<string, string> = {
-    'high': '#ef4444',
-    'medium': '#f59e0b',
-    'low': '#3b82f6',
+    high: '#ef4444',
+    medium: '#f59e0b',
+    low: '#3b82f6',
   }
   return map[p] || '#6b7280'
 }
@@ -88,7 +92,8 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
     const { AppSetting } = await import('../models/AppSetting')
     const doc: any = await AppSetting.findOne({ key: 'companyProfile' }).lean()
     company = doc?.value || {}
-  } catch { /* use defaults */ }
+  }
+  catch { /* use defaults */ }
 
   const companyName = company.name || 'Ann Arbor Hardwoods'
   const fromLabel = statusLabel(oldStatus)
@@ -98,7 +103,8 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
   // ── "TASK DONE" minimal template (only for done status) ──
   const isDone = newStatus === 'done'
 
-  const emailHTML = isDone ? `<!DOCTYPE html>
+  const emailHTML = isDone
+    ? `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -123,7 +129,8 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
     </div>
   </div>
 </body>
-</html>` : `<!DOCTYPE html>
+</html>`
+    : `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -163,7 +170,8 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
       html: emailHTML,
     })
     console.log(`[TaskNotify] Status change email sent to ${creatorEmail} for task "${title}" (${fromLabel} → ${toLabel})`)
-  } catch (err) {
+  }
+  catch (err) {
     console.error(`[TaskNotify] Failed to send email to ${creatorEmail}`, err)
   }
 }
@@ -187,17 +195,20 @@ interface NewTaskPayload {
 export async function notifyNewTask(payload: NewTaskPayload) {
   const { title, description, createdByName, assigneeIds, priority, dueDate, status } = payload
 
-  if (!assigneeIds?.length) return
+  if (!assigneeIds?.length)
+    return
 
   // Resolve assignee emails
   let assignees: any[] = []
   try {
     const { Employee } = await import('../models/Employee')
     assignees = await Employee.find({ _id: { $in: assigneeIds } }).select('email employee').lean<any[]>()
-  } catch { return }
+  }
+  catch { return }
 
-  const emails = assignees.map(a => a.email).filter(Boolean)
-  if (!emails.length) return
+  const emails = assignees.map((a: any) => a.email).filter(Boolean)
+  if (!emails.length)
+    return
 
   // Load company branding
   let company: any = {}
@@ -205,7 +216,8 @@ export async function notifyNewTask(payload: NewTaskPayload) {
     const { AppSetting } = await import('../models/AppSetting')
     const doc: any = await AppSetting.findOne({ key: 'companyProfile' }).lean()
     company = doc?.value || {}
-  } catch { /* use defaults */ }
+  }
+  catch { /* use defaults */ }
 
   const companyName = company.name || 'Ann Arbor Hardwoods'
   const statusLbl = statusLabel(status)
@@ -312,7 +324,8 @@ export async function notifyNewTask(payload: NewTaskPayload) {
       html: emailHTML,
     })
     console.log(`[TaskNotify] New task email sent to ${emails.join(', ')} for "${title}"`)
-  } catch (err) {
+  }
+  catch (err) {
     console.error(`[TaskNotify] Failed to send new task email`, err)
   }
 }
@@ -335,7 +348,8 @@ interface CommentPayload {
 export async function notifyComment(payload: CommentPayload) {
   const { taskTitle, commentText, commentAuthor, createdById, assigneeIds } = payload
 
-  if (!createdById && !assigneeIds?.length) return
+  if (!createdById && !assigneeIds?.length)
+    return
 
   let targetEmails: string[] = []
   try {
@@ -347,16 +361,21 @@ export async function notifyComment(payload: CommentPayload) {
 
     if (isCreator) {
       // Creator commented → notify all assignees
-      if (!assigneeIds?.length) return
+      if (!assigneeIds?.length)
+        return
       const assignees = await Employee.find({ _id: { $in: assigneeIds } }).select('email').lean<any[]>()
-      targetEmails = assignees.map(a => a.email).filter(Boolean)
-    } else {
-      // Assignee commented → notify creator
-      if (creator?.email) targetEmails = [creator.email]
+      targetEmails = assignees.map((a: any) => a.email).filter(Boolean)
     }
-  } catch { return }
+    else {
+      // Assignee commented → notify creator
+      if (creator?.email)
+        targetEmails = [creator.email]
+    }
+  }
+  catch { return }
 
-  if (!targetEmails.length) return
+  if (!targetEmails.length)
+    return
 
   const emailHTML = `<!DOCTYPE html>
 <html>
@@ -409,7 +428,8 @@ export async function notifyComment(payload: CommentPayload) {
       html: emailHTML,
     })
     console.log(`[TaskNotify] Comment email sent to ${targetEmails.join(', ')} for "${taskTitle}"`)
-  } catch (err) {
+  }
+  catch (err) {
     console.error(`[TaskNotify] Failed to send comment email`, err)
   }
 }

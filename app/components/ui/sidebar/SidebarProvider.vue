@@ -6,8 +6,6 @@ import { computed, ref } from 'vue'
 import { cn } from '@/lib/utils'
 import { provideSidebarContext, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_KEYBOARD_SHORTCUT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from './utils'
 
-const { direction } = useAppSettings()
-
 const props = withDefaults(defineProps<{
   defaultOpen?: boolean
   open?: boolean
@@ -20,6 +18,8 @@ const props = withDefaults(defineProps<{
 const emits = defineEmits<{
   'update:open': [open: boolean]
 }>()
+
+const { direction } = useAppSettings()
 
 const isMobile = useMediaQuery('(max-width: 768px)')
 const openMobile = ref(false)

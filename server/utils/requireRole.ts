@@ -16,17 +16,18 @@
  */
 
 export const ROLE_TIER: Record<string, number> = {
-    'Staff':       1,
-    'Manager':     2,
-    'Admin':       3,
-    'Super Admin': 4,
+  'Staff': 1,
+  'Manager': 2,
+  'Admin': 3,
+  'Super Admin': 4,
 }
 
 export type RoleLevel = keyof typeof ROLE_TIER
 
 function getTier(position: string | undefined): number {
-    if (!position) return 0
-    return ROLE_TIER[position] ?? 0
+  if (!position)
+    return 0
+  return ROLE_TIER[position] ?? 0
 }
 
 /**
@@ -35,21 +36,21 @@ function getTier(position: string | undefined): number {
  * (i.e., event.context.session is populated).
  */
 export function requireRole(event: any, minRole: RoleLevel): void {
-    const session = (event.context as any).session
-    if (!session) {
-        throw createError({ statusCode: 401, message: 'Authentication required.' })
-    }
-    const callerTier = getTier(session.position)
-    const requiredTier = ROLE_TIER[minRole] ?? 0
-    if (callerTier < requiredTier) {
-        throw createError({
-            statusCode: 403,
-            message: `Access denied. Required role: ${minRole} (your role: ${session.position || 'unknown'}).`,
-        })
-    }
+  const session = (event.context as any).session
+  if (!session) {
+    throw createError({ statusCode: 401, message: 'Authentication required.' })
+  }
+  const callerTier = getTier(session.position)
+  const requiredTier = ROLE_TIER[minRole] ?? 0
+  if (callerTier < requiredTier) {
+    throw createError({
+      statusCode: 403,
+      message: `Access denied. Required role: ${minRole} (your role: ${session.position || 'unknown'}).`,
+    })
+  }
 }
 
 // Convenience aliases
-export const requireAdmin   = (event: any) => requireRole(event, 'Admin')
+export const requireAdmin = (event: any) => requireRole(event, 'Admin')
 export const requireManager = (event: any) => requireRole(event, 'Manager')
-export const requireStaff   = (event: any) => requireRole(event, 'Staff')
+export const requireStaff = (event: any) => requireRole(event, 'Staff')

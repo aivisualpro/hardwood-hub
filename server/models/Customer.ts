@@ -26,9 +26,9 @@ const CustomerSchema = new mongoose.Schema(
     woodOrderDate: { type: Date, default: null },
     tags: [{ type: String }],
     gallery: [{
-        url: { type: String, required: true },
-        caption: { type: String, default: '' },
-        uploadedAt: { type: Date, default: Date.now }
+      url: { type: String, required: true },
+      caption: { type: String, default: '' },
+      uploadedAt: { type: Date, default: Date.now },
     }],
     relatedContacts: [{
       firstName: { type: String, default: '' },
@@ -37,13 +37,13 @@ const CustomerSchema = new mongoose.Schema(
       emails: [{ type: String }],
       phones: [{ type: String }],
       preferredContact: { type: String, default: '' },
-      address: { type: String, default: '' }
-    }]
+      address: { type: String, default: '' },
+    }],
   },
   {
     timestamps: true,
     collection: 'hardwoodDB_Customers',
-  }
+  },
 )
 
 // Indexes for pipeline and search performance
@@ -95,5 +95,5 @@ export interface ICustomer {
   updatedAt?: Date
 }
 
-export const Customer =
-  mongoose.models.Customer || mongoose.model<ICustomer>('Customer', CustomerSchema)
+export const Customer
+  = mongoose.models.Customer || mongoose.model<ICustomer>('Customer', CustomerSchema)

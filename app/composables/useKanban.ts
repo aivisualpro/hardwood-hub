@@ -16,8 +16,10 @@ const COLUMN_DEFS = [
 const PAGE_SIZE = 20
 
 function getObjectIdString(val: any): string | null {
-  if (!val) return null
-  if (typeof val === 'string') return val.trim()
+  if (!val)
+    return null
+  if (typeof val === 'string')
+    return val.trim()
   if (typeof val === 'object') {
     if (typeof val.toHexString === 'function') {
       return val.toHexString().trim()
@@ -27,7 +29,8 @@ function getObjectIdString(val: any): string | null {
     }
     if (typeof val.toString === 'function') {
       const str = val.toString().trim()
-      if (str && str.length === 24) return str
+      if (str && str.length === 24)
+        return str
     }
     if (val.id && typeof val.id === 'string') {
       return val.id.trim()
@@ -73,29 +76,35 @@ export function useKanban() {
           }
         }
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('[useKanban] fetch failed', e)
-    } finally {
+    }
+    finally {
       loading.value = false
     }
   }
 
   // ─── Load More (infinite scroll) ──────────────────
   async function loadMore(columnId: string) {
-    if (loadingMore.value[columnId] || !hasMore.value[columnId]) return
+    if (loadingMore.value[columnId] || !hasMore.value[columnId])
+      return
     loadingMore.value[columnId] = true
     try {
       const col = board.value.columns.find(c => c.id === columnId)
-      if (!col) return
+      if (!col)
+        return
       const skip = col.tasks.length
       const res = await $fetch<any>(`/api/tasks?status=${columnId}&skip=${skip}&limit=${PAGE_SIZE}`)
       if (res.data) {
         col.tasks.push(...res.data.map(mapTask))
         hasMore.value[columnId] = res.hasMore
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('[useKanban] loadMore failed', e)
-    } finally {
+    }
+    finally {
       loadingMore.value[columnId] = false
     }
   }
@@ -109,7 +118,8 @@ export function useKanban() {
       description: t.description,
       priority: t.priority,
       assignees: (t.assignees || []).map((a: any) => {
-        if (!a) return null
+        if (!a)
+          return null
         // Populated Employee doc
         if (typeof a === 'object' && a.employee) {
           return { _id: getObjectIdString(a) || '', employee: a.employee, profileImage: a.profileImage || '' }
@@ -127,7 +137,8 @@ export function useKanban() {
       }).filter(Boolean),
       createdBy: (() => {
         const cb = t.createdBy
-        if (!cb) return undefined
+        if (!cb)
+          return undefined
         // Populated Employee doc
         if (typeof cb === 'object' && cb.employee) {
           return { _id: getObjectIdString(cb) || '', employee: cb.employee, profileImage: cb.profileImage || '' }
@@ -167,7 +178,8 @@ export function useKanban() {
           columnTotals.value[columnId] = (columnTotals.value[columnId] || 0) + 1
         }
       }
-    } catch (e: any) {
+    }
+    catch (e: any) {
       console.error('[useKanban] addTask failed', e)
       toast.error('Failed to create task', { description: e?.data?.message || e?.message || 'Unknown error' })
     }
@@ -176,13 +188,17 @@ export function useKanban() {
   async function updateTask(columnId: string, taskId: string, patch: Partial<Task>) {
     const col = board.value.columns.find(c => c.id === columnId)
     const t = col?.tasks.find(t => t.id === taskId)
-    if (!t || !(t as any)._id) return
+    if (!t || !(t as any)._id)
+      return
 
     // Get current user name for changelog
     const userCookie = useCookie<any>('hardwood_user')
-    const currentUser = typeof userCookie.value === 'string' ? (() => {
-      try { return JSON.parse(userCookie.value) } catch { return null }
-    })() : userCookie.value
+    const currentUser = typeof userCookie.value === 'string'
+      ? (() => {
+          try { return JSON.parse(userCookie.value) }
+          catch { return null }
+        })()
+      : userCookie.value
 
     const changedBy = currentUser?.employee || ''
 
@@ -194,15 +210,16 @@ export function useKanban() {
         body: {
           ...patch,
           _changedBy: changedBy,
-          _changedById: currentUser?._id || currentUser?.id || ''
-        }
+          _changedById: currentUser?._id || currentUser?.id || '',
+        },
       })
       // Apply populated response back (e.g. assignees with employee data)
       if (res?.data) {
         const mapped = mapTask(res.data)
         Object.assign(t, mapped)
       }
-    } catch (e) {
+    }
+    catch (e) {
       console.error('[useKanban] updateTask failed', e)
       // Reload on error
       await fetchBoard()
@@ -211,9 +228,11 @@ export function useKanban() {
 
   async function removeTask(columnId: string, taskId: string) {
     const col = board.value.columns.find(c => c.id === columnId)
-    if (!col) return
+    if (!col)
+      return
     const t = col.tasks.find(t => t.id === taskId)
-    if (!t || !(t as any)._id) return
+    if (!t || !(t as any)._id)
+      return
 
     // Optimistic
     col.tasks = col.tasks.filter(t => t.id !== taskId)
@@ -221,7 +240,8 @@ export function useKanban() {
 
     try {
       await $fetch(`/api/tasks/${(t as any)._id}`, { method: 'DELETE' })
-    } catch (e) {
+    }
+    catch (e) {
       console.error('[useKanban] removeTask failed', e)
       await fetchBoard()
     }
@@ -251,7 +271,8 @@ export function useKanban() {
     for (const col of next) {
       col.tasks.forEach((t, idx) => {
         const id = (t as any)._id
-        if (!id) return
+        if (!id)
+          return
         const prev = _snapshot.value[id]
         if (!prev || prev.status !== col.id || prev.order !== idx) {
           updates.push({ _id: id, status: col.id, order: idx })
@@ -259,21 +280,25 @@ export function useKanban() {
       })
     }
 
-    if (!updates.length) return
+    if (!updates.length)
+      return
 
     // Throws on 403 (approval gate) so caller can revert
     const userCookie = useCookie<any>('hardwood_user')
-    const currentUser = typeof userCookie.value === 'string' ? (() => {
-      try { return JSON.parse(userCookie.value) } catch { return null }
-    })() : userCookie.value
+    const currentUser = typeof userCookie.value === 'string'
+      ? (() => {
+          try { return JSON.parse(userCookie.value) }
+          catch { return null }
+        })()
+      : userCookie.value
 
     await $fetch('/api/tasks/reorder', {
       method: 'POST',
       body: {
         updates,
         _changedBy: currentUser?.employee || '',
-        _changedById: currentUser?._id || currentUser?.id || ''
-      }
+        _changedById: currentUser?._id || currentUser?.id || '',
+      },
     })
   }
 
@@ -281,10 +306,12 @@ export function useKanban() {
   async function addSubtask(columnId: string, taskId: string, title: string) {
     const col = board.value.columns.find(c => c.id === columnId)
     const task = col?.tasks.find(t => t.id === taskId)
-    if (!task || !(task as any)._id) return
+    if (!task || !(task as any)._id)
+      return
 
     const newSt = { id: nanoid(8), title, completed: false }
-    if (!task.subtasks) task.subtasks = []
+    if (!task.subtasks)
+      task.subtasks = []
     task.subtasks.push(newSt)
 
     await $fetch(`/api/tasks/${(task as any)._id}`, {
@@ -296,9 +323,11 @@ export function useKanban() {
   async function toggleSubtask(columnId: string, taskId: string, subtaskId: string) {
     const col = board.value.columns.find(c => c.id === columnId)
     const task = col?.tasks.find(t => t.id === taskId)
-    if (!task?.subtasks) return
+    if (!task?.subtasks)
+      return
     const st = task.subtasks.find(s => s.id === subtaskId)
-    if (st) st.completed = !st.completed
+    if (st)
+      st.completed = !st.completed
 
     await $fetch(`/api/tasks/${(task as any)._id}`, {
       method: 'PUT',
@@ -309,7 +338,8 @@ export function useKanban() {
   async function removeSubtask(columnId: string, taskId: string, subtaskId: string) {
     const col = board.value.columns.find(c => c.id === columnId)
     const task = col?.tasks.find(t => t.id === taskId)
-    if (!task?.subtasks) return
+    if (!task?.subtasks)
+      return
     task.subtasks = task.subtasks.filter(s => s.id !== subtaskId)
 
     await $fetch(`/api/tasks/${(task as any)._id}`, {
@@ -322,7 +352,8 @@ export function useKanban() {
   async function addComment(columnId: string, taskId: string, text: string, author?: string, avatar?: string) {
     const col = board.value.columns.find(c => c.id === columnId)
     const task = col?.tasks.find(t => t.id === taskId)
-    if (!task || !(task as any)._id) return
+    if (!task || !(task as any)._id)
+      return
 
     const newCm = {
       id: nanoid(8),
@@ -331,7 +362,8 @@ export function useKanban() {
       text,
       createdAt: new Date().toISOString(),
     }
-    if (!task.comments) task.comments = []
+    if (!task.comments)
+      task.comments = []
     task.comments.push(newCm)
 
     await $fetch(`/api/tasks/${(task as any)._id}`, {
@@ -343,7 +375,8 @@ export function useKanban() {
   async function removeComment(columnId: string, taskId: string, commentId: string) {
     const col = board.value.columns.find(c => c.id === columnId)
     const task = col?.tasks.find(t => t.id === taskId)
-    if (!task?.comments) return
+    if (!task?.comments)
+      return
     task.comments = task.comments.filter(c => c.id !== commentId)
 
     await $fetch(`/api/tasks/${(task as any)._id}`, {

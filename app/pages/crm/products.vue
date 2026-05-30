@@ -53,7 +53,8 @@ const totalPages = ref(1)
 async function fetchProducts(page = 1) {
   try {
     const params = new URLSearchParams()
-    if (searchQuery.value) params.set('search', searchQuery.value)
+    if (searchQuery.value)
+      params.set('search', searchQuery.value)
     params.set('page', String(page))
     params.set('limit', '50')
 
@@ -62,7 +63,8 @@ async function fetchProducts(page = 1) {
     currentPage.value = res.pagination?.page || 1
     totalPages.value = res.pagination?.totalPages || 1
     totalItems.value = res.pagination?.total || 0
-  } catch (err) {
+  }
+  catch (err) {
     toast.error('Failed to load products')
   }
 }
@@ -70,7 +72,8 @@ async function fetchProducts(page = 1) {
 // Debounced search
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 watch(searchQuery, () => {
-  if (searchTimer) clearTimeout(searchTimer)
+  if (searchTimer)
+    clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
     currentPage.value = 1
     fetchProducts(1)
@@ -83,36 +86,38 @@ await useAsyncData('crm-products', async () => { await fetchProducts(); return t
 const showFormDialog = ref(false)
 const editingProduct = ref<Product | null>(null)
 
-const emptyForm = () => ({
-  sku: '',
-  color: '',
-  path: '',
-  type: '',
-  description: '',
-  trade: '',
-  unit: '',
-  wasteAddon: 0,
-  salesPrice: 0,
-  costPrice: 0,
-  boxSalesPrice: 0,
-  boxCostPrice: 0,
-  isBoxPricesLinked: false,
-  boxName: '',
-  unitsPerBox: 0,
-  sellByBox: false,
-  worksheetByBox: false,
-  isTaxable: false,
-  isAddon: false,
-  vendor: '',
-  vendorSku: '',
-  manufacturer: '',
-  costCode: '',
-  styleCode: '',
-  styleName: '',
-  colorCode: '',
-  colorName: '',
-  createdBy: '',
-})
+function emptyForm() {
+  return {
+    sku: '',
+    color: '',
+    path: '',
+    type: '',
+    description: '',
+    trade: '',
+    unit: '',
+    wasteAddon: 0,
+    salesPrice: 0,
+    costPrice: 0,
+    boxSalesPrice: 0,
+    boxCostPrice: 0,
+    isBoxPricesLinked: false,
+    boxName: '',
+    unitsPerBox: 0,
+    sellByBox: false,
+    worksheetByBox: false,
+    isTaxable: false,
+    isAddon: false,
+    vendor: '',
+    vendorSku: '',
+    manufacturer: '',
+    costCode: '',
+    styleCode: '',
+    styleName: '',
+    colorCode: '',
+    colorName: '',
+    createdBy: '',
+  }
+}
 
 const form = ref(emptyForm())
 const isSaving = ref(false)
@@ -164,26 +169,31 @@ async function saveProduct() {
     if (editingProduct.value) {
       await $fetch(`/api/products/${editingProduct.value._id}`, { method: 'PUT', body: form.value })
       toast.success('Product updated')
-    } else {
+    }
+    else {
       await $fetch('/api/products', { method: 'POST', body: form.value })
       toast.success('Product created')
     }
     showFormDialog.value = false
     await fetchProducts(currentPage.value)
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Save failed', { description: e?.message })
-  } finally {
+  }
+  finally {
     isSaving.value = false
   }
 }
 
 async function deleteProduct(id: string) {
-  if (!confirm('Delete this product? This action cannot be undone.')) return
+  if (!confirm('Delete this product? This action cannot be undone.'))
+    return
   try {
     await $fetch(`/api/products/${id}`, { method: 'DELETE' })
     toast.success('Product deleted')
     await fetchProducts(currentPage.value)
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Delete failed', { description: e?.message })
   }
 }
@@ -269,7 +279,8 @@ const HEADER_MAP: Record<string, string> = {
 
 function parseCSV(text: string): { headers: string[], rows: Record<string, string>[] } {
   const lines = text.split(/\r?\n/).filter(l => l.trim())
-  if (lines.length === 0) return { headers: [], rows: [] }
+  if (lines.length === 0)
+    return { headers: [], rows: [] }
 
   // Parse a CSV line respecting quoted fields
   function parseLine(line: string): string[] {
@@ -282,13 +293,16 @@ function parseCSV(text: string): { headers: string[], rows: Record<string, strin
         if (inQuotes && line[i + 1] === '"') {
           current += '"'
           i++
-        } else {
+        }
+        else {
           inQuotes = !inQuotes
         }
-      } else if (ch === ',' && !inQuotes) {
+      }
+      else if (ch === ',' && !inQuotes) {
         result.push(current.trim())
         current = ''
-      } else {
+      }
+      else {
         current += ch
       }
     }
@@ -297,7 +311,7 @@ function parseCSV(text: string): { headers: string[], rows: Record<string, strin
   }
 
   const rawHeaders = parseLine(lines[0]!)
-  const headers = rawHeaders.map(h => {
+  const headers = rawHeaders.map((h) => {
     const key = h.toLowerCase().trim()
     return HEADER_MAP[key] || h
   })
@@ -311,7 +325,8 @@ function parseCSV(text: string): { headers: string[], rows: Record<string, strin
         row[h] = vals[idx]!
       }
     })
-    if (Object.keys(row).length > 0) rows.push(row)
+    if (Object.keys(row).length > 0)
+      rows.push(row)
   }
 
   return { headers, rows }
@@ -320,7 +335,8 @@ function parseCSV(text: string): { headers: string[], rows: Record<string, strin
 function handleFileSelect(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file) return
+  if (!file)
+    return
   importFile.value = file
   importError.value = ''
 
@@ -330,7 +346,8 @@ function handleFileSelect(e: Event) {
       const result = parseCSV(reader.result as string)
       importHeaders.value = result.headers
       importPreview.value = result.rows
-    } catch {
+    }
+    catch {
       importError.value = 'Failed to parse CSV file'
       importPreview.value = []
     }
@@ -339,7 +356,8 @@ function handleFileSelect(e: Event) {
 }
 
 async function executeImport() {
-  if (importPreview.value.length === 0) return
+  if (importPreview.value.length === 0)
+    return
   isImporting.value = true
   try {
     const res = await $fetch<any>('/api/products/import', {
@@ -355,24 +373,29 @@ async function executeImport() {
       importPreview.value = []
       importHeaders.value = []
       await fetchProducts(1)
-    } else {
+    }
+    else {
       toast.error('Import failed', { description: res.error || res.message })
     }
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Import failed', { description: e?.message })
-  } finally {
+  }
+  finally {
     isImporting.value = false
   }
 }
 
 // ─── Helpers ─────────────────────────────────────────────
 function formatCurrency(val: number | undefined) {
-  if (!val && val !== 0) return '—'
-  return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (!val && val !== 0)
+    return '—'
+  return `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 function formatDate(d: string) {
-  if (!d) return '—'
+  if (!d)
+    return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
@@ -469,34 +492,90 @@ const formSections = [
         <table class="w-full text-sm border-collapse" style="min-width: 1800px">
           <thead>
             <tr class="border-b bg-muted/30">
-              <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/30 z-10 min-w-[100px]">SKU</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">Description</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[90px]">Type</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[90px]">Color</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[80px]">Trade</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[60px]">Unit</th>
-              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Sales Price</th>
-              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Cost Price</th>
-              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[70px]">Waste %</th>
-              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Box Sales</th>
-              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Box Cost</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Box Name</th>
-              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[70px]">Qty/Box</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[60px]">Linked</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[70px]">Sell Box</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[60px]">WS Box</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[55px]">Tax</th>
-              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[60px]">Addon</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[110px]">Vendor</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Vendor SKU</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[120px]">Manufacturer</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[80px]">Cost Code</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[80px]">Style Code</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Style Name</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[80px]">Color Code</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Color Name</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Path</th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[90px]">Created</th>
+              <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/30 z-10 min-w-[100px]">
+                SKU
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">
+                Description
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[90px]">
+                Type
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[90px]">
+                Color
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[80px]">
+                Trade
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[60px]">
+                Unit
+              </th>
+              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                Sales Price
+              </th>
+              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                Cost Price
+              </th>
+              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[70px]">
+                Waste %
+              </th>
+              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                Box Sales
+              </th>
+              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                Box Cost
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                Box Name
+              </th>
+              <th class="text-right py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[70px]">
+                Qty/Box
+              </th>
+              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[60px]">
+                Linked
+              </th>
+              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[70px]">
+                Sell Box
+              </th>
+              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[60px]">
+                WS Box
+              </th>
+              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[55px]">
+                Tax
+              </th>
+              <th class="text-center py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[60px]">
+                Addon
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[110px]">
+                Vendor
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                Vendor SKU
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[120px]">
+                Manufacturer
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[80px]">
+                Cost Code
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[80px]">
+                Style Code
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                Style Name
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[80px]">
+                Color Code
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                Color Name
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                Path
+              </th>
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[90px]">
+                Created
+              </th>
               <th class="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-20 sticky right-0 bg-muted/30 z-10" />
             </tr>
           </thead>
@@ -509,8 +588,12 @@ const formSections = [
                     <Icon name="i-lucide-package" class="size-7 text-muted-foreground/50" />
                   </div>
                   <div>
-                    <p class="font-medium text-muted-foreground">No products found</p>
-                    <p class="text-xs text-muted-foreground/60 mt-1">Add products manually or import from a CSV file</p>
+                    <p class="font-medium text-muted-foreground">
+                      No products found
+                    </p>
+                    <p class="text-xs text-muted-foreground/60 mt-1">
+                      Add products manually or import from a CSV file
+                    </p>
                   </div>
                   <div class="flex items-center gap-2 mt-2">
                     <button class="px-4 py-2 rounded-lg border bg-card text-sm font-bold hover:bg-muted transition-colors" @click="showImportDialog = true">
@@ -538,38 +621,90 @@ const formSections = [
               <td class="py-2.5 px-4 sticky left-0 bg-card group-hover:bg-muted/20 z-10 transition-colors">
                 <span class="font-bold text-xs text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 whitespace-nowrap">{{ item.sku || '—' }}</span>
               </td>
-              <td class="py-2.5 px-3 font-medium text-foreground max-w-[200px] truncate">{{ item.description || '—' }}</td>
+              <td class="py-2.5 px-3 font-medium text-foreground max-w-[200px] truncate">
+                {{ item.description || '—' }}
+              </td>
               <td class="py-2.5 px-3">
                 <span v-if="item.type" class="text-xs font-semibold bg-violet-500/10 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-full whitespace-nowrap">{{ item.type }}</span>
                 <span v-else class="text-muted-foreground">—</span>
               </td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.color || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.trade || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.unit || '—' }}</td>
-              <td class="py-2.5 px-3 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400 text-xs">{{ formatCurrency(item.salesPrice) }}</td>
-              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">{{ formatCurrency(item.costPrice) }}</td>
-              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">{{ item.wasteAddon ? item.wasteAddon + '%' : '—' }}</td>
-              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">{{ formatCurrency(item.boxSalesPrice) }}</td>
-              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">{{ formatCurrency(item.boxCostPrice) }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.boxName || '—' }}</td>
-              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">{{ item.unitsPerBox || '—' }}</td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.color || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.trade || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.unit || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400 text-xs">
+                {{ formatCurrency(item.salesPrice) }}
+              </td>
+              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
+                {{ formatCurrency(item.costPrice) }}
+              </td>
+              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
+                {{ item.wasteAddon ? `${item.wasteAddon}%` : '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
+                {{ formatCurrency(item.boxSalesPrice) }}
+              </td>
+              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
+                {{ formatCurrency(item.boxCostPrice) }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.boxName || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
+                {{ item.unitsPerBox || '—' }}
+              </td>
               <!-- Boolean columns -->
-              <td class="py-2.5 px-3 text-center"><Icon :name="item.isBoxPricesLinked ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isBoxPricesLinked ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" /></td>
-              <td class="py-2.5 px-3 text-center"><Icon :name="item.sellByBox ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.sellByBox ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" /></td>
-              <td class="py-2.5 px-3 text-center"><Icon :name="item.worksheetByBox ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.worksheetByBox ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" /></td>
-              <td class="py-2.5 px-3 text-center"><Icon :name="item.isTaxable ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isTaxable ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" /></td>
-              <td class="py-2.5 px-3 text-center"><Icon :name="item.isAddon ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isAddon ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" /></td>
+              <td class="py-2.5 px-3 text-center">
+                <Icon :name="item.isBoxPricesLinked ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isBoxPricesLinked ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+              </td>
+              <td class="py-2.5 px-3 text-center">
+                <Icon :name="item.sellByBox ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.sellByBox ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+              </td>
+              <td class="py-2.5 px-3 text-center">
+                <Icon :name="item.worksheetByBox ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.worksheetByBox ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+              </td>
+              <td class="py-2.5 px-3 text-center">
+                <Icon :name="item.isTaxable ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isTaxable ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+              </td>
+              <td class="py-2.5 px-3 text-center">
+                <Icon :name="item.isAddon ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isAddon ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+              </td>
               <!-- Vendor / Style -->
-              <td class="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">{{ item.vendor || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.vendorSku || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">{{ item.manufacturer || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.costCode || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.styleCode || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.styleName || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.colorCode || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground">{{ item.colorName || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground max-w-[100px] truncate">{{ item.path || '—' }}</td>
-              <td class="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">{{ formatDate(item.createdAt) }}</td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">
+                {{ item.vendor || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.vendorSku || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">
+                {{ item.manufacturer || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.costCode || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.styleCode || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.styleName || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.colorCode || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground">
+                {{ item.colorName || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground max-w-[100px] truncate">
+                {{ item.path || '—' }}
+              </td>
+              <td class="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">
+                {{ formatDate(item.createdAt) }}
+              </td>
               <!-- Actions (sticky right) -->
               <td class="py-2.5 px-4 sticky right-0 bg-card group-hover:bg-muted/20 z-10 transition-colors">
                 <div class="flex items-center gap-0.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
@@ -631,13 +766,13 @@ const formSections = [
               <template v-for="field in section.fields" :key="field.key">
                 <div v-if="field.type === 'checkbox'" class="flex items-center gap-2 h-9">
                   <input
-                    :id="'f-'+field.key"
+                    :id="`f-${field.key}`"
                     type="checkbox"
                     :checked="(form as any)[field.key]"
-                    @change="(form as any)[field.key] = ($event.target as HTMLInputElement).checked"
                     class="size-4 rounded border-input text-primary focus:ring-primary cursor-pointer"
+                    @change="(form as any)[field.key] = ($event.target as HTMLInputElement).checked"
                   >
-                  <label :for="'f-'+field.key" class="text-xs font-semibold text-foreground cursor-pointer select-none">{{ field.label }}</label>
+                  <label :for="`f-${field.key}`" class="text-xs font-semibold text-foreground cursor-pointer select-none">{{ field.label }}</label>
                 </div>
                 <div v-else class="space-y-1" :class="field.span === 2 ? 'col-span-2' : ''">
                   <label class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{{ field.label }}</label>
@@ -654,7 +789,9 @@ const formSections = [
           </div>
 
           <div class="flex items-center justify-end gap-2 pt-4 border-t sticky bottom-0 bg-background pb-1">
-            <button type="button" class="px-4 py-2 text-sm font-medium border rounded-lg hover:bg-muted transition-colors" @click="showFormDialog = false">Cancel</button>
+            <button type="button" class="px-4 py-2 text-sm font-medium border rounded-lg hover:bg-muted transition-colors" @click="showFormDialog = false">
+              Cancel
+            </button>
             <button type="submit" :disabled="isSaving" class="px-4 py-2 text-sm font-bold text-primary-foreground bg-primary rounded-lg disabled:opacity-50 shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors">
               {{ isSaving ? 'Saving...' : editingProduct ? 'Update' : 'Create' }}
             </button>
@@ -709,13 +846,19 @@ const formSections = [
                 <table class="w-full text-xs border-collapse">
                   <thead class="sticky top-0 z-10">
                     <tr class="bg-muted/60">
-                      <th class="text-left py-2 px-3 font-bold text-muted-foreground">#</th>
-                      <th v-for="h in importHeaders" :key="h" class="text-left py-2 px-3 font-bold text-muted-foreground whitespace-nowrap">{{ h }}</th>
+                      <th class="text-left py-2 px-3 font-bold text-muted-foreground">
+                        #
+                      </th>
+                      <th v-for="h in importHeaders" :key="h" class="text-left py-2 px-3 font-bold text-muted-foreground whitespace-nowrap">
+                        {{ h }}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(row, idx) in importPreview.slice(0, 20)" :key="idx" class="border-t hover:bg-muted/20">
-                      <td class="py-1.5 px-3 text-muted-foreground font-mono">{{ idx + 1 }}</td>
+                      <td class="py-1.5 px-3 text-muted-foreground font-mono">
+                        {{ idx + 1 }}
+                      </td>
                       <td v-for="h in importHeaders" :key="h" class="py-1.5 px-3 max-w-[150px] truncate">
                         {{ row[h] || '' }}
                       </td>
@@ -731,7 +874,9 @@ const formSections = [
         </div>
 
         <div class="flex items-center justify-end gap-2 pt-4 border-t">
-          <button class="px-4 py-2 text-sm font-medium border rounded-lg hover:bg-muted transition-colors" @click="showImportDialog = false">Cancel</button>
+          <button class="px-4 py-2 text-sm font-medium border rounded-lg hover:bg-muted transition-colors" @click="showImportDialog = false">
+            Cancel
+          </button>
           <button
             :disabled="importPreview.length === 0 || isImporting"
             class="px-4 py-2 text-sm font-bold text-primary-foreground bg-primary rounded-lg disabled:opacity-50 shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors"

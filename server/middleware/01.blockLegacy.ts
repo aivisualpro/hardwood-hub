@@ -1,6 +1,6 @@
 export default defineEventHandler((event) => {
   const url = getRequestURL(event).pathname
-  
+
   if (url.startsWith('/api/bigquery')) {
     throw createError({
       statusCode: 404,

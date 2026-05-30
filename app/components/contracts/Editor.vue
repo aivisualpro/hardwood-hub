@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Color from '@tiptap/extension-color'
+import FontSize from '@tiptap/extension-font-size'
 import Highlight from '@tiptap/extension-highlight'
 import HorizontalRule from '@tiptap/extension-horizontal-rule'
 import Image from '@tiptap/extension-image'
@@ -15,8 +16,6 @@ import Underline from '@tiptap/extension-underline'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
-import '@tiptap/extension-text-style'
-import FontSize from '@tiptap/extension-font-size'
 
 const props = defineProps<{
   modelValue: string
@@ -28,33 +27,40 @@ const emit = defineEmits<{
 }>()
 
 function calculatePages() {
-  if (!editor.value) return 1
+  if (!editor.value)
+    return 1
   const dom = editor.value.view.dom
-  if (!dom) return 1
+  if (!dom)
+    return 1
   return Math.max(1, Math.ceil(dom.clientHeight / 992))
 }
 
 const currentFontSize = ref('14')
 
 function changeFontSize(delta: number) {
-  if (!editor.value) return
-  let current = parseInt(currentFontSize.value) || 14
+  if (!editor.value)
+    return
+  let current = Number.parseInt(currentFontSize.value) || 14
   current += delta
-  if (current < 8) current = 8
-  if (current > 72) current = 72
+  if (current < 8)
+    current = 8
+  if (current > 72)
+    current = 72
   setFontSize(current.toString())
 }
 
 function setFontSize(size: string | Event) {
-  if (!editor.value) return
+  if (!editor.value)
+    return
   const rawValue = typeof size === 'object' ? (size.target as HTMLInputElement).value : size
-  const val = parseInt(rawValue)
+  const val = Number.parseInt(rawValue)
   if (val && !isNaN(val)) {
     // @ts-ignore
     editor.value.commands.setFontSize(`${val}px`)
     currentFontSize.value = val.toString()
     editor.value.commands.focus()
-  } else {
+  }
+  else {
     // @ts-ignore
     editor.value.commands.unsetFontSize()
     currentFontSize.value = '14'
@@ -103,7 +109,8 @@ const editor = useEditor({
     const attrs = ed.getAttributes('textStyle')
     if (attrs && attrs.fontSize) {
       currentFontSize.value = attrs.fontSize.replace('px', '')
-    } else {
+    }
+    else {
       currentFontSize.value = '14'
     }
   },
@@ -118,7 +125,8 @@ watch(() => props.modelValue, (val) => {
 // Listen for variable insert events from parent
 function onInsertVariable(e: Event) {
   const key = (e as CustomEvent).detail?.key
-  if (!key || !editor.value) return
+  if (!key || !editor.value)
+    return
   editor.value.chain().focus().insertContent(`{{${key}}} `).run()
 }
 
@@ -143,17 +151,20 @@ const textColors = [
 
 const showColorPicker = ref(false)
 function setColor(color: string) {
-  if (!editor.value) return
+  if (!editor.value)
+    return
   if (!color) { editor.value.chain().focus().unsetColor().run() }
   else { editor.value.chain().focus().setColor(color).run() }
   showColorPicker.value = false
 }
 
 function setLink() {
-  if (!editor.value) return
+  if (!editor.value)
+    return
   const previousUrl = editor.value.getAttributes('link').href
   const url = window.prompt('Enter URL:', previousUrl)
-  if (url === null) return
+  if (url === null)
+    return
   if (url === '') {
     editor.value.chain().focus().extendMarkRange('link').unsetLink().run()
     return
@@ -162,7 +173,8 @@ function setLink() {
 }
 
 function insertImage() {
-  if (!editor.value) return
+  if (!editor.value)
+    return
   const url = window.prompt('Enter image URL:')
   if (url) {
     editor.value.chain().focus().setImage({ src: url }).run()
@@ -184,18 +196,18 @@ function insertImage() {
             <Icon name="i-lucide-redo-2" class="size-3.5" />
           </button>
           <div class="w-px h-4 bg-border/50 mx-1" />
-          
+
           <div class="flex items-center bg-muted/30 rounded border border-border/50 px-0.5 h-7">
             <button class="size-6 flex items-center justify-center rounded hover:bg-muted/80 hover:text-primary transition-colors text-muted-foreground" title="Decrease Font Size" @click="changeFontSize(-1)">
               <Icon name="i-lucide-minus" class="size-3" />
             </button>
-            <input 
-              type="text" 
-              v-model="currentFontSize" 
+            <input
+              v-model="currentFontSize"
+              type="text"
+              class="w-8 text-center text-xs bg-transparent border-none outline-none font-semibold h-full focus:bg-muted"
               @change="setFontSize($event)"
               @keydown.enter="setFontSize($event)"
-              class="w-8 text-center text-xs bg-transparent border-none outline-none font-semibold h-full focus:bg-muted" 
-            />
+            >
             <button class="size-6 flex items-center justify-center rounded hover:bg-muted/80 hover:text-primary transition-colors text-muted-foreground" title="Increase Font Size" @click="changeFontSize(1)">
               <Icon name="i-lucide-plus" class="size-3" />
             </button>
@@ -351,7 +363,7 @@ function insertImage() {
   min-width: 816px;
   max-width: 816px;
   margin: 0 auto;
-  
+
   /* US Letter Printable Area (11 inches = 1056px - 64px for top+bottom margins = 992px per page) */
   --page-height: 992px;
   background-image: repeating-linear-gradient(

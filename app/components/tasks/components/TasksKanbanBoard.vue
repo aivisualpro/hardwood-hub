@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Task } from '../data/schema'
-import { statuses, priorities } from '../data/data'
 import { inject, ref } from 'vue'
 import Draggable from 'vuedraggable'
+import { priorities, statuses } from '../data/data'
 
 const props = defineProps<{
   data: Task[]
@@ -18,7 +18,7 @@ const { t } = useLocale()
 
 const context = inject<{
   updateTask: (taskId: string, updates: Partial<Task>) => void
-  availableAssignees: { id: string; name: string; avatar: string }[]
+  availableAssignees: { id: string, name: string, avatar: string }[]
 }>('task-table-context')
 
 // Build columns from statuses
@@ -33,7 +33,7 @@ const statusColumns = computed(() => {
 })
 
 // Make a mutable copy for dragging
-const columns = ref<{ id: string; title: string; labelKey: string; icon: any; tasks: Task[] }[]>([])
+const columns = ref<{ id: string, title: string, labelKey: string, icon: any, tasks: Task[] }[]>([])
 
 watch(() => statusColumns.value, (val) => {
   columns.value = val.map(c => ({ ...c, tasks: [...c.tasks] }))
@@ -41,33 +41,38 @@ watch(() => statusColumns.value, (val) => {
 
 // Color map for column headers
 const columnColors: Record<string, string> = {
-  backlog: 'bg-slate-500',
-  todo: 'bg-blue-500',
+  'backlog': 'bg-slate-500',
+  'todo': 'bg-blue-500',
   'in progress': 'bg-amber-500',
-  done: 'bg-emerald-500',
-  canceled: 'bg-red-500',
+  'done': 'bg-emerald-500',
+  'canceled': 'bg-red-500',
 }
 
 // Priority styling
 function priorityColor(p: string) {
-  if (p === 'high') return 'text-rose-500'
-  if (p === 'medium') return 'text-amber-500'
+  if (p === 'high')
+    return 'text-rose-500'
+  if (p === 'medium')
+    return 'text-amber-500'
   return 'text-sky-500'
 }
 
 function priorityIcon(p: string) {
-  if (p === 'high') return 'lucide:arrow-up'
-  if (p === 'medium') return 'lucide:minus'
+  if (p === 'high')
+    return 'lucide:arrow-up'
+  if (p === 'medium')
+    return 'lucide:minus'
   return 'lucide:arrow-down'
 }
 
 // Assignee helpers
 function getAssignees(task: Task) {
   const ids = task.assignees || []
-  if (!context?.availableAssignees) return []
+  if (!context?.availableAssignees)
+    return []
   return ids
     .map(id => context.availableAssignees.find(a => a.id === id))
-    .filter(Boolean) as { id: string; name: string; avatar: string }[]
+    .filter(Boolean) as { id: string, name: string, avatar: string }[]
 }
 
 function getInitials(name: string) {
@@ -75,8 +80,14 @@ function getInitials(name: string) {
 }
 
 const avatarColors = [
-  'bg-violet-500/80', 'bg-sky-500/80', 'bg-emerald-500/80', 'bg-amber-500/80',
-  'bg-rose-500/80', 'bg-indigo-500/80', 'bg-teal-500/80', 'bg-pink-500/80',
+  'bg-violet-500/80',
+  'bg-sky-500/80',
+  'bg-emerald-500/80',
+  'bg-amber-500/80',
+  'bg-rose-500/80',
+  'bg-indigo-500/80',
+  'bg-teal-500/80',
+  'bg-pink-500/80',
 ]
 
 function getAvatarColor(id: string) {
@@ -101,26 +112,32 @@ function onTaskDrop() {
 
 // Due date display
 function dueLabel(d?: string) {
-  if (!d) return ''
+  if (!d)
+    return ''
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const due = new Date(d)
   due.setHours(0, 0, 0, 0)
   const diff = Math.round((due.getTime() - today.getTime()) / 86400000)
-  if (diff < 0) return `${Math.abs(diff)}d ago`
-  if (diff === 0) return 'Today'
+  if (diff < 0)
+    return `${Math.abs(diff)}d ago`
+  if (diff === 0)
+    return 'Today'
   return `${diff}d`
 }
 
 function dueClass(d?: string) {
-  if (!d) return ''
+  if (!d)
+    return ''
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const due = new Date(d)
   due.setHours(0, 0, 0, 0)
   const diff = Math.round((due.getTime() - today.getTime()) / 86400000)
-  if (diff < 0) return 'text-red-500'
-  if (diff <= 3) return 'text-amber-500'
+  if (diff < 0)
+    return 'text-red-500'
+  if (diff <= 3)
+    return 'text-amber-500'
   return 'text-muted-foreground'
 }
 </script>
@@ -168,7 +185,9 @@ function dueClass(d?: string) {
               </div>
 
               <!-- Title -->
-              <p class="text-sm font-medium leading-snug mt-1.5 line-clamp-2">{{ task.title }}</p>
+              <p class="text-sm font-medium leading-snug mt-1.5 line-clamp-2">
+                {{ task.title }}
+              </p>
 
               <!-- Labels -->
               <div class="mt-2 flex items-center gap-1 flex-wrap">
@@ -198,7 +217,9 @@ function dueClass(d?: string) {
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" :side-offset="2">
-                      <p class="text-xs">{{ a.name }}</p>
+                      <p class="text-xs">
+                        {{ a.name }}
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                   <div

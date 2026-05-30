@@ -51,14 +51,15 @@ const hasDrawnSignature = ref(false)
 const form = ref(emptyForm())
 
 // ─── Pipeline Clients Dropdown ───────────────────────────
-interface PipelineClient { _id: string; name: string; email: string; location: string }
-const { data: pipelineClientsRes } = await useFetch<{ success: boolean; data: PipelineClient[] }>('/api/crm/pipeline-clients', { key: 'pipeline-clients-stain' })
+interface PipelineClient { _id: string, name: string, email: string, location: string }
+const { data: pipelineClientsRes } = await useFetch<{ success: boolean, data: PipelineClient[] }>('/api/crm/pipeline-clients', { key: 'pipeline-clients-stain' })
 const pipelineClients = computed(() => pipelineClientsRes.value?.data || [])
 const clientSearch = ref('')
 const clientDropdownOpen = ref(false)
 const filteredClients = computed(() => {
   const q = clientSearch.value.toLowerCase().trim()
-  if (!q) return pipelineClients.value
+  if (!q)
+    return pipelineClients.value
   return pipelineClients.value.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.location.toLowerCase().includes(q))
 })
 function selectClient(client: PipelineClient) {
@@ -1048,8 +1049,12 @@ async function copyLink() {
                                 <span class="text-[10px] font-bold text-primary">{{ client.name.charAt(0).toUpperCase() }}</span>
                               </div>
                               <div class="flex-1 min-w-0">
-                                <p class="font-medium truncate">{{ client.name }}</p>
-                                <p v-if="client.location" class="text-[10px] text-muted-foreground truncate">{{ client.location }}</p>
+                                <p class="font-medium truncate">
+                                  {{ client.name }}
+                                </p>
+                                <p v-if="client.location" class="text-[10px] text-muted-foreground truncate">
+                                  {{ client.location }}
+                                </p>
                               </div>
                               <Icon v-if="form.clientName === client.name" name="i-lucide-check" class="size-3.5 text-primary shrink-0" />
                             </button>

@@ -7,7 +7,8 @@ setHeader({ title: 'Employees', icon: 'i-lucide-users', description: 'Manage you
 const { canCreate, canUpdate, canDelete } = usePermissions('/hr/employees')
 
 function notify(title: string, description: string, variant?: string) {
-  if (variant === 'destructive') toast.error(title, { description })
+  if (variant === 'destructive')
+    toast.error(title, { description })
   else toast.success(title, { description })
 }
 
@@ -33,72 +34,75 @@ const isEditing = ref(false)
 const deleteTarget = ref<Employee | null>(null)
 const showDeleteDialog = ref(false)
 
-const emptyForm = () => ({
-  employee: '',
-  email: '',
-  position: '',
-  profileImage: '',
-  status: 'Active',
-  workspace: 'none',
-  basePay: 0,
-})
+function emptyForm() {
+  return {
+    employee: '',
+    email: '',
+    position: '',
+    profileImage: '',
+    status: 'Active',
+    workspace: 'none',
+    basePay: 0,
+  }
+}
 
 const form = ref(emptyForm())
 const editId = ref<string | null>(null)
 const previewUrl = ref('')
 
-// ─── Computed ─────────────────────────────────────────────
-const filtered = computed(() => {
-  const q = searchQuery.value.toLowerCase()
-  const list = q
-    ? employees.value.filter(e =>
-      e.employee.toLowerCase().includes(q)
-      || e.email.toLowerCase().includes(q)
-      || e.position.toLowerCase().includes(q),
-    )
-    : employees.value
-  return [...list].sort((a, b) => a.employee.localeCompare(b.employee))
-})
+// ─── Pagination state ──────────────────────────────────────
+const empPage = ref(1)
+const empTotalPages = ref(1)
+const empTotal = ref(0)
+const EMP_LIMIT = 50
 
-// ─── Server-first data fetching (blocks navigation until resolved) ────────
+// ─── Server-side fetch ─────────────────────────────────────
 const workspacesList = ref<{ _id: string, name: string }[]>([])
 const loading = ref(true)
 
-onMounted(() => {
+async function fetchEmployees(targetPage = empPage.value) {
   loading.value = true
-  Promise.all([
-    $fetch<{ success: boolean, data: Employee[] }>('/api/employees'),
-    $fetch<{ success: boolean, data: any[] }>('/api/workspaces'),
-  ]).then(([empRes, wsRes]) => {
-    employees.value = empRes.data.map(emp => {
-      if (emp.profileImage && emp.profileImage.includes('api/bigquery')) {
-        emp.profileImage = ''
-      }
-      return emp
-    })
-    workspacesList.value = wsRes.data
-  }).catch((e: any) => {
-    notify('Error', e?.message || 'Failed to load employees', 'destructive')
-  }).finally(() => {
-    loading.value = false
-  })
-})
-
-// Keep fetchEmployees for manual refresh after create/update/delete
-async function fetchEmployees() {
   try {
-    const res = await $fetch<{ success: boolean, data: Employee[] }>('/api/employees')
-    employees.value = res.data.map(emp => {
-      if (emp.profileImage && emp.profileImage.includes('api/bigquery')) {
+    const params = new URLSearchParams({
+      page: String(targetPage),
+      limit: String(EMP_LIMIT),
+    })
+    if (searchQuery.value.trim())
+      params.set('search', searchQuery.value.trim())
+
+    const res = await $fetch<{ success: boolean, data: Employee[], pagination: any }>(`/api/employees?${params.toString()}`)
+    employees.value = (res.data || []).map((emp) => {
+      if (emp.profileImage && emp.profileImage.includes('api/bigquery'))
         emp.profileImage = ''
-      }
       return emp
     })
+    empPage.value = res.pagination?.page || 1
+    empTotalPages.value = res.pagination?.totalPages || 1
+    empTotal.value = res.pagination?.total || 0
   }
   catch (e: any) {
     notify('Error', e?.message || 'Failed to load employees', 'destructive')
   }
+  finally {
+    loading.value = false
+  }
 }
+
+onMounted(async () => {
+  const [, wsRes] = await Promise.all([
+    fetchEmployees(1),
+    $fetch<{ success: boolean, data: any[] }>('/api/workspaces'),
+  ])
+  workspacesList.value = wsRes.data
+})
+
+// Debounce search: 300ms
+let empSearchTimer: ReturnType<typeof setTimeout> | null = null
+watch(searchQuery, () => {
+  if (empSearchTimer)
+    clearTimeout(empSearchTimer)
+  empSearchTimer = setTimeout(() => fetchEmployees(1), 300)
+})
 
 function workspaceName(id: string) {
   return workspacesList.value.find(w => w._id === id)?.name || ''
@@ -107,7 +111,8 @@ function workspaceName(id: string) {
 // ─── Image Upload (→ Cloudinary via server with client-side resize) ───────────────
 async function onFileChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file) return
+  if (!file)
+    return
 
   // Show preview immediately (in-memory only, never stored as base64)
   previewUrl.value = URL.createObjectURL(file)
@@ -132,7 +137,8 @@ async function onFileChange(e: Event) {
         height *= MAX_SIZE / width
         width = MAX_SIZE
       }
-    } else {
+    }
+    else {
       if (height > MAX_SIZE) {
         width *= MAX_SIZE / height
         height = MAX_SIZE
@@ -144,18 +150,19 @@ async function onFileChange(e: Event) {
     canvas.width = width
     canvas.height = height
     const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Could not get canvas context')
+    if (!ctx)
+      throw new Error('Could not get canvas context')
 
     ctx.drawImage(img, 0, 0, width, height)
-    
+
     // Use WebP or JPEG for much smaller payload size (~70% compression)
     const base64 = canvas.toDataURL('image/jpeg', 0.8)
 
     // 4. Send the much-smaller optimized string directly to Cloudinary
     const sigRes = await $fetch<{ signature: string, timestamp: number, cloudName: string, apiKey: string, folder: string }>('/api/upload/cloudinary-signature', {
-      params: { folder: 'hardwood-hub/uploads' }
+      params: { folder: 'hardwood-hub/uploads' },
     })
-    
+
     const fd = new FormData()
     fd.append('file', base64)
     fd.append('api_key', sigRes.apiKey)
@@ -165,14 +172,15 @@ async function onFileChange(e: Event) {
 
     const clRes = await $fetch<any>(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/auto/upload`, {
       method: 'POST',
-      body: fd
+      body: fd,
     })
-    
+
     if (clRes && clRes.secure_url) {
       form.value.profileImage = clRes.secure_url // store only the Cloudinary URL
     }
     uploadingImage.value = false
-  } catch (e: any) {
+  }
+  catch (e: any) {
     uploadingImage.value = false
     notify('Upload failed', e?.message || 'Failed to process image', 'destructive')
   }
@@ -229,7 +237,8 @@ function confirmDelete(emp: Employee) {
 }
 
 async function deleteEmployee() {
-  if (!deleteTarget.value) return
+  if (!deleteTarget.value)
+    return
   try {
     await $fetch(`/api/employees/${deleteTarget.value._id}`, { method: 'DELETE' })
     notify('Deleted', `${deleteTarget.value.employee} removed`)
@@ -255,12 +264,10 @@ async function toggleStatus(emp: Employee) {
     notify('Error', e?.message || 'Failed to update status', 'destructive')
   }
 }
-
 </script>
 
 <template>
   <div class="w-full flex flex-col gap-4 sm:gap-6 p-3 sm:p-6">
-
     <!-- Header bar -->
     <div class="flex items-center justify-between gap-2 sm:gap-4 flex-wrap">
       <div class="relative flex-1 min-w-0 basis-full sm:basis-auto sm:max-w-sm">
@@ -275,12 +282,16 @@ async function toggleStatus(emp: Employee) {
     </div>
 
     <!-- Empty state -->
-    <div v-if="filtered.length === 0 && !loading" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
+    <div v-if="employees.length === 0 && !loading" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">
       <div class="size-14 sm:size-16 rounded-full bg-muted flex items-center justify-center">
         <Icon name="i-lucide-users" class="size-6 sm:size-8 text-muted-foreground" />
       </div>
-      <h3 class="text-base sm:text-lg font-semibold">No employees found</h3>
-      <p class="text-xs sm:text-sm text-muted-foreground">Add your first team member to get started.</p>
+      <h3 class="text-base sm:text-lg font-semibold">
+        No employees found
+      </h3>
+      <p class="text-xs sm:text-sm text-muted-foreground">
+        Add your first team member to get started.
+      </p>
       <Button v-if="canCreate()" size="sm" @click="openCreate">
         <Icon name="i-lucide-plus" class="mr-1.5 size-3.5 sm:size-4" />
         Add Employee
@@ -290,7 +301,7 @@ async function toggleStatus(emp: Employee) {
     <!-- Employee cards grid -->
     <div v-else class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4">
       <div
-        v-for="emp in filtered"
+        v-for="emp in employees"
         :key="emp._id"
         class="group relative rounded-xl border bg-card p-3 sm:p-5 flex flex-col items-center gap-2 sm:gap-3 shadow-xs hover:shadow-md transition-shadow"
       >
@@ -301,7 +312,7 @@ async function toggleStatus(emp: Employee) {
             :src="emp.profileImage"
             :alt="emp.employee"
             class="size-14 sm:size-20 rounded-full object-cover ring-2 ring-border"
-          />
+          >
           <div
             v-else
             class="size-14 sm:size-20 rounded-full bg-muted flex items-center justify-center ring-2 ring-border text-xl sm:text-2xl font-bold text-muted-foreground"
@@ -312,9 +323,15 @@ async function toggleStatus(emp: Employee) {
 
         <!-- Info -->
         <div class="text-center flex flex-col gap-0.5 w-full">
-          <p class="font-semibold text-xs sm:text-sm truncate">{{ emp.employee }}</p>
-          <Badge variant="secondary" class="mx-auto text-[10px] sm:text-xs">{{ emp.position }}</Badge>
-          <p class="text-[10px] sm:text-xs text-muted-foreground truncate mt-0.5 sm:mt-1">{{ emp.email }}</p>
+          <p class="font-semibold text-xs sm:text-sm truncate">
+            {{ emp.employee }}
+          </p>
+          <Badge variant="secondary" class="mx-auto text-[10px] sm:text-xs">
+            {{ emp.position }}
+          </Badge>
+          <p class="text-[10px] sm:text-xs text-muted-foreground truncate mt-0.5 sm:mt-1">
+            {{ emp.email }}
+          </p>
           <div class="flex items-center justify-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5">
             <span
               class="size-1.5 sm:size-2 rounded-full"
@@ -360,10 +377,29 @@ async function toggleStatus(emp: Employee) {
       </div>
     </div>
 
-    <!-- Count -->
-    <p v-if="filtered.length > 0" class="text-[10px] sm:text-xs text-muted-foreground">
-      Showing {{ filtered.length }} of {{ employees.length }} employees
-    </p>
+    <!-- Count + Pagination -->
+    <div v-if="employees.length > 0" class="flex items-center justify-between">
+      <p class="text-[10px] sm:text-xs text-muted-foreground">
+        Showing {{ employees.length }} of {{ empTotal }} employees
+      </p>
+      <div v-if="empTotalPages > 1" class="flex items-center gap-2">
+        <button
+          class="h-7 px-2.5 rounded-lg border border-input text-xs font-medium hover:bg-muted/50 transition-colors disabled:opacity-40"
+          :disabled="empPage <= 1"
+          @click="fetchEmployees(empPage - 1)"
+        >
+          ←
+        </button>
+        <span class="text-xs text-muted-foreground tabular-nums">{{ empPage }} / {{ empTotalPages }}</span>
+        <button
+          class="h-7 px-2.5 rounded-lg border border-input text-xs font-medium hover:bg-muted/50 transition-colors disabled:opacity-40"
+          :disabled="empPage >= empTotalPages"
+          @click="fetchEmployees(empPage + 1)"
+        >
+          →
+        </button>
+      </div>
+    </div>
 
     <!-- ─── Create / Edit Dialog ─── -->
     <Dialog v-model:open="showModal">
@@ -376,7 +412,6 @@ async function toggleStatus(emp: Employee) {
         </DialogHeader>
 
         <div class="flex flex-col gap-4 py-2">
-
           <!-- Profile image -->
           <div class="flex flex-col items-center gap-3">
             <div
@@ -388,7 +423,7 @@ async function toggleStatus(emp: Employee) {
                 :src="previewUrl || form.profileImage"
                 alt="Profile"
                 class="size-full object-cover"
-              />
+              >
               <Icon v-else name="i-lucide-user" class="size-8 sm:size-10 text-muted-foreground" />
               <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
                 <Icon name="i-lucide-camera" class="size-5 sm:size-6 text-white" />
@@ -397,14 +432,16 @@ async function toggleStatus(emp: Employee) {
                 <Icon name="i-lucide-loader-circle" class="size-5 sm:size-6 text-white animate-spin" />
               </div>
             </div>
-            <p class="text-[10px] sm:text-xs text-muted-foreground">Click to upload photo</p>
+            <p class="text-[10px] sm:text-xs text-muted-foreground">
+              Click to upload photo
+            </p>
             <input
               ref="fileInput"
               type="file"
               accept="image/*"
               class="hidden"
               @change="onFileChange"
-            />
+            >
           </div>
 
           <!-- Name -->
@@ -427,10 +464,18 @@ async function toggleStatus(emp: Employee) {
                 <SelectValue placeholder="Select a position" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Crew member">Crew member</SelectItem>
-                <SelectItem value="Finance">Finance</SelectItem>
-                <SelectItem value="Super Admin">Super Admin</SelectItem>
-                <SelectItem value="Supervisor">Supervisor</SelectItem>
+                <SelectItem value="Crew member">
+                  Crew member
+                </SelectItem>
+                <SelectItem value="Finance">
+                  Finance
+                </SelectItem>
+                <SelectItem value="Super Admin">
+                  Super Admin
+                </SelectItem>
+                <SelectItem value="Supervisor">
+                  Supervisor
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -443,8 +488,12 @@ async function toggleStatus(emp: Employee) {
                 <SelectValue placeholder="Select a workspace" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">All Workspaces (Admin)</SelectItem>
-                <SelectItem v-for="ws in workspacesList" :key="ws._id" :value="ws._id">{{ ws.name }}</SelectItem>
+                <SelectItem value="none">
+                  All Workspaces (Admin)
+                </SelectItem>
+                <SelectItem v-for="ws in workspacesList" :key="ws._id" :value="ws._id">
+                  {{ ws.name }}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -454,13 +503,15 @@ async function toggleStatus(emp: Employee) {
             <Label for="emp-basepay">Base Pay (USD)</Label>
             <div class="relative">
               <Icon name="i-lucide-dollar-sign" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-              <Input id="emp-basepay" type="number" v-model.number="form.basePay" placeholder="0.00" min="0" step="0.01" class="pl-9" />
+              <Input id="emp-basepay" v-model.number="form.basePay" type="number" placeholder="0.00" min="0" step="0.01" class="pl-9" />
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showModal = false">Cancel</Button>
+          <Button variant="outline" @click="showModal = false">
+            Cancel
+          </Button>
           <Button :disabled="saving || uploadingImage" @click="saveEmployee">
             <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
             {{ isEditing ? 'Save Changes' : 'Add Employee' }}
@@ -486,6 +537,5 @@ async function toggleStatus(emp: Employee) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-
   </div>
 </template>

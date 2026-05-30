@@ -18,19 +18,19 @@
 const IS_PROD = import.meta.env.PROD
 
 export interface Logger {
-    log:   (...args: unknown[]) => void
-    info:  (...args: unknown[]) => void
-    warn:  (...args: unknown[]) => void
-    error: (...args: unknown[]) => void
+  log: (...args: unknown[]) => void
+  info: (...args: unknown[]) => void
+  warn: (...args: unknown[]) => void
+  error: (...args: unknown[]) => void
 }
 
 export function logger(prefix: string): Logger {
-    return {
-        log:   IS_PROD ? () => {} : (...a) => console.log(prefix,   ...a),
-        info:  IS_PROD ? () => {} : (...a) => console.log(prefix,   ...a),
-        warn:                       (...a) => console.warn(prefix,  ...a),
-        error:                      (...a) => console.error(prefix, ...a),
-    }
+  return {
+    log: IS_PROD ? () => {} : (...a) => console.log(prefix, ...a),
+    info: IS_PROD ? () => {} : (...a) => console.log(prefix, ...a),
+    warn: (...a) => console.warn(prefix, ...a),
+    error: (...a) => console.error(prefix, ...a),
+  }
 }
 
 export const log = logger('')

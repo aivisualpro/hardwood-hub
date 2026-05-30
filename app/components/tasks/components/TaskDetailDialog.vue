@@ -1,16 +1,8 @@
 <script setup lang="ts">
-import type { Task, SubTask } from '../data/schema'
-import { statuses, priorities, labels } from '../data/data'
-import { projects, taskProjectMap } from '../data/projects'
+import type { SubTask, Task } from '../data/schema'
 import { computed, ref, watch } from 'vue'
-
-const { t } = useLocale()
-
-interface Props {
-  task: Task | null
-  open: boolean
-  availableAssignees?: { id: string; name: string; avatar: string }[]
-}
+import { labels, priorities, statuses } from '../data/data'
+import { projects, taskProjectMap } from '../data/projects'
 
 const props = withDefaults(defineProps<Props>(), {
   availableAssignees: () => [
@@ -27,9 +19,17 @@ const emit = defineEmits<{
   'update:task': [task: Task]
 }>()
 
+const { t } = useLocale()
+
+interface Props {
+  task: Task | null
+  open: boolean
+  availableAssignees?: { id: string, name: string, avatar: string }[]
+}
+
 const isOpen = computed({
   get: () => props.open,
-  set: (val) => emit('update:open', val),
+  set: val => emit('update:open', val),
 })
 
 // Local reactive copy of task
@@ -38,8 +38,10 @@ const localTask = ref<Task | null>(null)
 watch(() => props.task, (t) => {
   if (t) {
     localTask.value = JSON.parse(JSON.stringify(t))
-    if (!localTask.value!.subtasks) localTask.value!.subtasks = []
-    if (!localTask.value!.description) localTask.value!.description = ''
+    if (!localTask.value!.subtasks)
+      localTask.value!.subtasks = []
+    if (!localTask.value!.description)
+      localTask.value!.description = ''
   }
 }, { immediate: true, deep: true })
 
@@ -52,11 +54,14 @@ function emitUpdate() {
 
 // Project info
 const projectInfo = computed(() => {
-  if (!localTask.value) return null
+  if (!localTask.value)
+    return null
   const mapping = taskProjectMap[localTask.value.id]
-  if (!mapping) return null
+  if (!mapping)
+    return null
   const project = projects.find(p => p.id === mapping.projectId)
-  if (!project) return null
+  if (!project)
+    return null
   const stage = project.stages.find(s => s.id === mapping.stageId)
   return { project, stage }
 })
@@ -72,7 +77,8 @@ const newSubTaskPriority = ref('medium')
 const showAddSubTask = ref(false)
 
 function addSubTask() {
-  if (!newSubTaskTitle.value.trim() || !localTask.value) return
+  if (!newSubTaskTitle.value.trim() || !localTask.value)
+    return
   const subtask: SubTask = {
     id: `ST-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     title: newSubTaskTitle.value.trim(),
@@ -88,7 +94,8 @@ function addSubTask() {
 }
 
 function toggleSubTask(subtaskId: string) {
-  if (!localTask.value?.subtasks) return
+  if (!localTask.value?.subtasks)
+    return
   const st = localTask.value.subtasks.find(s => s.id === subtaskId)
   if (st) {
     st.status = st.status === 'done' ? 'todo' : 'done'
@@ -97,7 +104,8 @@ function toggleSubTask(subtaskId: string) {
 }
 
 function removeSubTask(subtaskId: string) {
-  if (!localTask.value?.subtasks) return
+  if (!localTask.value?.subtasks)
+    return
   localTask.value.subtasks = localTask.value.subtasks.filter(s => s.id !== subtaskId)
   emitUpdate()
 }
@@ -105,7 +113,8 @@ function removeSubTask(subtaskId: string) {
 // Progress
 const subtaskProgress = computed(() => {
   const subs = localTask.value?.subtasks || []
-  if (subs.length === 0) return 0
+  if (subs.length === 0)
+    return 0
   return Math.round((subs.filter(s => s.status === 'done').length / subs.length) * 100)
 })
 
@@ -114,23 +123,28 @@ const totalCount = computed(() => (localTask.value?.subtasks || []).length)
 
 // Format date
 function formatDate(dateStr?: string) {
-  if (!dateStr) return '—'
+  if (!dateStr)
+    return '—'
   const d = new Date(dateStr)
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // Due date info
 const dueDateInfo = computed(() => {
-  if (!localTask.value?.dueDate) return null
+  if (!localTask.value?.dueDate)
+    return null
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const due = new Date(localTask.value.dueDate)
   due.setHours(0, 0, 0, 0)
   const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
-  if (diffDays < 0) return { label: `${Math.abs(diffDays)}d overdue`, class: 'text-red-500 bg-red-500/10' }
-  if (diffDays === 0) return { label: 'Due today', class: 'text-amber-500 bg-amber-500/10' }
-  if (diffDays <= 3) return { label: `${diffDays}d left`, class: 'text-amber-500 bg-amber-500/10' }
+  if (diffDays < 0)
+    return { label: `${Math.abs(diffDays)}d overdue`, class: 'text-red-500 bg-red-500/10' }
+  if (diffDays === 0)
+    return { label: 'Due today', class: 'text-amber-500 bg-amber-500/10' }
+  if (diffDays <= 3)
+    return { label: `${diffDays}d left`, class: 'text-amber-500 bg-amber-500/10' }
   return { label: `${diffDays}d left`, class: 'text-emerald-500 bg-emerald-500/10' }
 })
 
@@ -287,13 +301,21 @@ function saveDesc() {
               placeholder="Add a description..."
             />
             <div class="flex items-center gap-2 justify-end">
-              <Button variant="ghost" size="sm" @click="isEditingDesc = false">Cancel</Button>
-              <Button size="sm" @click="saveDesc">Save</Button>
+              <Button variant="ghost" size="sm" @click="isEditingDesc = false">
+                Cancel
+              </Button>
+              <Button size="sm" @click="saveDesc">
+                Save
+              </Button>
             </div>
           </div>
           <div v-else class="rounded-lg bg-muted/30 border border-border/50 px-3 py-2.5 min-h-[48px]">
-            <p v-if="localTask?.description" class="text-sm text-foreground/80 whitespace-pre-wrap">{{ localTask.description }}</p>
-            <p v-else class="text-sm text-muted-foreground/60 italic">No description added yet.</p>
+            <p v-if="localTask?.description" class="text-sm text-foreground/80 whitespace-pre-wrap">
+              {{ localTask.description }}
+            </p>
+            <p v-else class="text-sm text-muted-foreground/60 italic">
+              No description added yet.
+            </p>
           </div>
         </div>
 
@@ -385,8 +407,8 @@ function saveDesc() {
               v-model="newSubTaskTitle"
               placeholder="What needs to be done?"
               class="h-9 bg-background"
-              @keydown.enter="addSubTask"
               autofocus
+              @keydown.enter="addSubTask"
             />
             <div class="flex items-center gap-2">
               <Select v-model="newSubTaskPriority">
@@ -403,7 +425,9 @@ function saveDesc() {
                 </SelectContent>
               </Select>
               <div class="flex-1" />
-              <Button variant="ghost" size="sm" class="h-8 text-xs" @click="showAddSubTask = false">Cancel</Button>
+              <Button variant="ghost" size="sm" class="h-8 text-xs" @click="showAddSubTask = false">
+                Cancel
+              </Button>
               <Button size="sm" class="h-8 text-xs" :disabled="!newSubTaskTitle.trim()" @click="addSubTask">
                 <Icon name="lucide:plus" class="size-3 mr-1" />
                 Add

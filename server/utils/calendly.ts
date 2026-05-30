@@ -1,9 +1,9 @@
 // Utility to sync Calendly appointments
 import { Buffer } from 'node:buffer'
 
-const BATCH_SIZE = 2         // concurrent invitee requests per batch
-const BATCH_DELAY_MS = 1500  // delay between batches
-const MAX_RETRIES = 3        // retries for 429 errors
+const BATCH_SIZE = 2 // concurrent invitee requests per batch
+const BATCH_DELAY_MS = 1500 // delay between batches
+const MAX_RETRIES = 3 // retries for 429 errors
 
 // Global sync lock to prevent concurrent syncs from piling up
 let isSyncing = false
@@ -15,9 +15,10 @@ async function sleep(ms: number) {
 async function fetchWithRetry(url: string, headers: Record<string, string>, retries = MAX_RETRIES): Promise<Response | null> {
   for (let attempt = 0; attempt < retries; attempt++) {
     const res = await fetch(url, { headers })
-    if (res.ok) return res
+    if (res.ok)
+      return res
     if (res.status === 429) {
-      const retryAfter = parseInt(res.headers.get('retry-after') || '0') || (2 ** attempt) * 3
+      const retryAfter = Number.parseInt(res.headers.get('retry-after') || '0') || (2 ** attempt) * 3
       console.warn(`[Calendly] Rate limited, waiting ${retryAfter}s (attempt ${attempt + 1}/${retries})`)
       await sleep(retryAfter * 1000)
       continue
@@ -44,7 +45,8 @@ export async function fetchCalendlyAppointments(recentOnly = true) {
 
   try {
     return await _doFetch(recentOnly)
-  } finally {
+  }
+  finally {
     isSyncing = false
   }
 }
@@ -59,33 +61,35 @@ async function _doFetch(recentOnly: boolean) {
 
   // Decode user UUID from the PAT token payload
   const parts = token.split('.')
-  if (parts.length < 2) throw new Error('Invalid token format')
-  
-  const payloadStr = Buffer.from(parts[1], 'base64').toString('utf-8')
+  if (parts.length < 2)
+    throw new Error('Invalid token format')
+
+  const payloadStr = Buffer.from(parts[1]!, 'base64').toString('utf-8')
   const payload = JSON.parse(payloadStr)
-  
+
   const userUuid = payload.user_uuid
-  if (!userUuid) throw new Error('Could not find user_uuid in Calendly token')
-  
+  if (!userUuid)
+    throw new Error('Could not find user_uuid in Calendly token')
+
   const userUri = `https://api.calendly.com/users/${userUuid}`
-  const headers = { 'Authorization': `Bearer ${token}` }
-  
+  const headers = { Authorization: `Bearer ${token}` }
+
   // Date range: only recent events to minimize API calls
   const minDate = recentOnly
     ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // last 30 days
     : undefined
   // Include future events too (upcoming appointments)
   const maxDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-  
+
   console.log(`[Calendly] Starting sync (recentOnly=${recentOnly}, since=${minDate || 'all'})`)
-  
+
   // Fetch scheduled events
   const allEvents: any[] = []
-  
+
   for (const status of ['active', 'canceled']) {
     let nextPageToken: string | null = null
     let page = 0
-    
+
     do {
       page++
       const params = new URLSearchParams({
@@ -94,49 +98,53 @@ async function _doFetch(recentOnly: boolean) {
         count: '100',
         sort: 'start_time:desc',
       })
-      if (minDate) params.set('min_start_time', minDate)
+      if (minDate)
+        params.set('min_start_time', minDate)
       params.set('max_start_time', maxDate)
-      if (nextPageToken) params.set('page_token', nextPageToken)
-      
+      if (nextPageToken)
+        params.set('page_token', nextPageToken)
+
       const url = `https://api.calendly.com/scheduled_events?${params.toString()}`
       console.log(`[Calendly] Fetching events (status=${status}, page=${page})`)
-      
+
       const eventsRes = await fetchWithRetry(url, headers)
-      
+
       if (!eventsRes) {
         console.error(`[Calendly] Events fetch failed for status=${status}, page=${page}`)
         break
       }
-      
+
       const eventsData = await eventsRes.json()
       const events = eventsData.collection || []
       console.log(`[Calendly] Got ${events.length} events (status=${status}, page=${page})`)
-      
+
       for (const event of events) {
         allEvents.push({ event, status })
       }
-      
+
       nextPageToken = eventsData.pagination?.next_page_token || null
-      
-      if (nextPageToken) await sleep(1000)
+
+      if (nextPageToken)
+        await sleep(1000)
     } while (nextPageToken)
   }
-  
+
   console.log(`[Calendly] Total events: ${allEvents.length}, fetching invitees in batches of ${BATCH_SIZE}...`)
-  
+
   // Process invitees in small batches
   const allAppointments: any[] = []
-  
+
   for (let i = 0; i < allEvents.length; i += BATCH_SIZE) {
     const batch = allEvents.slice(i, i + BATCH_SIZE)
-    
+
     const results = await Promise.all(batch.map(async ({ event, status }) => {
       const inviteesRes = await fetchWithRetry(`${event.uri}/invitees`, headers)
-      if (!inviteesRes) return []
-      
+      if (!inviteesRes)
+        return []
+
       const inviteesData = await inviteesRes.json()
       const invitees = inviteesData.collection || []
-      
+
       return invitees.map((invitee: any) => {
         const fields: Record<string, string> = {}
         let address = ''
@@ -146,10 +154,11 @@ async function _doFetch(recentOnly: boolean) {
           for (const qa of invitee.questions_and_answers) {
             const q = qa.question.toLowerCase()
             fields[qa.question] = qa.answer
-            
+
             if (q.includes('address')) {
               address = qa.answer
-            } else if (q.includes('prepare') || q.includes('anything') || q.includes('message')) {
+            }
+            else if (q.includes('prepare') || q.includes('anything') || q.includes('message')) {
               details = qa.answer
             }
           }
@@ -179,7 +188,7 @@ async function _doFetch(recentOnly: boolean) {
               rescheduleUrl: invitee.reschedule_url,
               cancelUrl: invitee.cancel_url,
               eventStatus: status,
-            }
+            },
           },
           dateSubmitted: new Date(invitee.created_at),
           dateUpdated: invitee.updated_at ? new Date(invitee.updated_at) : undefined,
@@ -188,17 +197,17 @@ async function _doFetch(recentOnly: boolean) {
         }
       })
     }))
-    
+
     for (const r of results) {
       allAppointments.push(...r)
     }
-    
+
     // Delay between batches
     if (i + BATCH_SIZE < allEvents.length) {
       await sleep(BATCH_DELAY_MS)
     }
   }
-  
+
   console.log(`[Calendly] Total appointments fetched: ${allAppointments.length}`)
   return allAppointments
 }

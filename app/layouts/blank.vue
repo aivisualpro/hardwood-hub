@@ -1,7 +1,7 @@
 <script setup lang="ts">
 useHead({
   htmlAttrs: { class: 'blank-layout' },
-  bodyAttrs: { class: 'blank-layout' }
+  bodyAttrs: { class: 'blank-layout' },
 })
 </script>
 

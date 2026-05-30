@@ -3,7 +3,8 @@ import nodemailer from 'nodemailer'
 let transporter: nodemailer.Transporter | null = null
 
 export function getMailer() {
-  if (transporter) return transporter
+  if (transporter)
+    return transporter
 
   const config = useRuntimeConfig()
   const user = config.gmailUser

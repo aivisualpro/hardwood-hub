@@ -32,8 +32,10 @@ async function checkGmail() {
     const res = await $fetch<{ connected: boolean, email: string }>('/api/gmail/status')
     gmailConnected.value = res.connected
     gmailEmail.value = res.email
-    if (res.connected) fetchMessages()
-  } catch { /* ignore */ }
+    if (res.connected)
+      fetchMessages()
+  }
+  catch { /* ignore */ }
 }
 
 // ─── Fetch Messages ──────────────────────────────────────
@@ -41,20 +43,25 @@ async function fetchMessages(append = false) {
   loading.value = true
   try {
     const params: Record<string, any> = { folder: activeFolder.value, maxResults: 25 }
-    if (append && nextPageToken.value) params.pageToken = nextPageToken.value
-    if (searchQuery.value.trim()) params.q = searchQuery.value.trim()
+    if (append && nextPageToken.value)
+      params.pageToken = nextPageToken.value
+    if (searchQuery.value.trim())
+      params.q = searchQuery.value.trim()
 
     const res = await $fetch<any>('/api/gmail/messages', { params })
     if (append) {
       messages.value.push(...(res.messages || []))
-    } else {
+    }
+    else {
       messages.value = res.messages || []
     }
     nextPageToken.value = res.nextPageToken
     resultSizeEstimate.value = res.resultSizeEstimate || 0
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to load emails', { description: e?.data?.message || e?.message })
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -68,10 +75,13 @@ async function openMessage(id: string) {
     selectedMessage.value = res.data
     // Mark as read in local state
     const msg = messages.value.find(m => m.id === id)
-    if (msg) msg.read = true
-  } catch (e: any) {
+    if (msg)
+      msg.read = true
+  }
+  catch (e: any) {
     toast.error('Failed to load message', { description: e?.message })
-  } finally {
+  }
+  finally {
     loadingMessage.value = false
   }
 }
@@ -97,14 +107,16 @@ async function connectGmail() {
   try {
     const res = await $fetch<{ url: string }>('/api/gmail/auth-url')
     window.location.href = res.url
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to connect', { description: e?.data?.message || e?.message })
   }
 }
 
 // ─── Helpers ─────────────────────────────────────────────
 function formatDate(d: string) {
-  if (!d) return ''
+  if (!d)
+    return ''
   const date = new Date(d)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -127,15 +139,16 @@ await useAsyncData('email-page', async () => {
     const res = await $fetch<{ connected: boolean, email: string }>('/api/gmail/status')
     gmailConnected.value = res.connected
     gmailEmail.value = res.email
-    if (res.connected) await fetchMessages()
-  } catch { /* ignore */ }
+    if (res.connected)
+      await fetchMessages()
+  }
+  catch { /* ignore */ }
   return true
 })
 </script>
 
 <template>
   <div class="h-[calc(100dvh-var(--content-offset))] flex overflow-hidden -m-4 lg:-m-6">
-
     <!-- Not Connected State -->
     <div v-if="!gmailConnected" class="flex-1 flex items-center justify-center p-8">
       <div class="text-center max-w-md space-y-6">
@@ -143,7 +156,9 @@ await useAsyncData('email-page', async () => {
           <Icon name="i-lucide-mail" class="size-10 text-primary" />
         </div>
         <div>
-          <h2 class="text-2xl font-bold tracking-tight">Connect Your Gmail</h2>
+          <h2 class="text-2xl font-bold tracking-tight">
+            Connect Your Gmail
+          </h2>
           <p class="text-muted-foreground mt-2 text-sm leading-relaxed">
             Link your Google account to view and manage your emails directly from Hardwood Hub.
             Your data is secured with AES-256 encryption.
@@ -173,8 +188,12 @@ await useAsyncData('email-page', async () => {
               <Icon name="i-lucide-mail" class="size-4 text-primary" />
             </div>
             <div class="min-w-0 flex-1">
-              <p class="text-xs font-bold truncate">{{ gmailEmail }}</p>
-              <p class="text-[10px] text-muted-foreground">Google Mail</p>
+              <p class="text-xs font-bold truncate">
+                {{ gmailEmail }}
+              </p>
+              <p class="text-[10px] text-muted-foreground">
+                Google Mail
+              </p>
             </div>
           </div>
         </div>
@@ -218,7 +237,7 @@ await useAsyncData('email-page', async () => {
               type="text"
               placeholder="Search emails..."
               class="w-full h-9 pl-9 pr-3 rounded-lg border border-border/60 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background transition-all"
-            />
+            >
           </div>
         </div>
 
@@ -236,7 +255,9 @@ await useAsyncData('email-page', async () => {
 
           <div v-else-if="messages.length === 0" class="flex flex-col items-center justify-center py-16 text-center px-4">
             <Icon name="i-lucide-inbox" class="size-12 text-muted-foreground/20 mb-3" />
-            <p class="text-sm font-medium text-muted-foreground">No messages found</p>
+            <p class="text-sm font-medium text-muted-foreground">
+              No messages found
+            </p>
           </div>
 
           <div v-else>
@@ -251,7 +272,8 @@ await useAsyncData('email-page', async () => {
               @click="openMessage(msg.id)"
             >
               <div class="flex items-start gap-3">
-                <div class="size-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold mt-0.5"
+                <div
+                  class="size-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold mt-0.5"
                   :class="!msg.read ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'"
                 >
                   {{ (msg.fromName || '?').charAt(0).toUpperCase() }}
@@ -266,7 +288,9 @@ await useAsyncData('email-page', async () => {
                   <p class="text-xs mt-0.5 truncate" :class="!msg.read ? 'font-semibold text-foreground/90' : 'text-foreground/70'">
                     {{ msg.subject || '(no subject)' }}
                   </p>
-                  <p class="text-[11px] text-muted-foreground mt-1 line-clamp-1">{{ msg.snippet }}</p>
+                  <p class="text-[11px] text-muted-foreground mt-1 line-clamp-1">
+                    {{ msg.snippet }}
+                  </p>
                 </div>
                 <div v-if="!msg.read" class="size-2 rounded-full bg-primary shrink-0 mt-2" />
               </div>
@@ -292,7 +316,9 @@ await useAsyncData('email-page', async () => {
         <div v-else-if="!selectedMessage" class="flex-1 flex items-center justify-center text-center p-8">
           <div>
             <Icon name="i-lucide-mail-open" class="size-16 text-muted-foreground/15 mx-auto mb-4" />
-            <p class="text-sm font-medium text-muted-foreground">Select a message to read</p>
+            <p class="text-sm font-medium text-muted-foreground">
+              Select a message to read
+            </p>
           </div>
         </div>
 
@@ -301,21 +327,29 @@ await useAsyncData('email-page', async () => {
           <div class="border-b border-border/40 p-5 shrink-0">
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0 flex-1">
-                <h2 class="text-lg font-bold leading-tight">{{ selectedMessage.subject || '(no subject)' }}</h2>
+                <h2 class="text-lg font-bold leading-tight">
+                  {{ selectedMessage.subject || '(no subject)' }}
+                </h2>
                 <div class="flex items-center gap-3 mt-3">
                   <div class="size-10 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold shrink-0">
                     {{ (selectedMessage.fromName || '?').charAt(0).toUpperCase() }}
                   </div>
                   <div class="min-w-0">
-                    <p class="text-sm font-bold">{{ selectedMessage.fromName }}</p>
-                    <p class="text-xs text-muted-foreground truncate">{{ selectedMessage.fromEmail }}</p>
+                    <p class="text-sm font-bold">
+                      {{ selectedMessage.fromName }}
+                    </p>
+                    <p class="text-xs text-muted-foreground truncate">
+                      {{ selectedMessage.fromEmail }}
+                    </p>
                   </div>
                 </div>
               </div>
               <div class="text-right shrink-0">
-                <p class="text-xs text-muted-foreground tabular-nums">{{ formatDate(selectedMessage.internalDate || selectedMessage.date) }}</p>
+                <p class="text-xs text-muted-foreground tabular-nums">
+                  {{ formatDate(selectedMessage.internalDate || selectedMessage.date) }}
+                </p>
                 <div class="flex items-center gap-1 mt-2 justify-end">
-                  <button @click="selectedMessage = null; selectedId = ''" class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
+                  <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors" @click="selectedMessage = null; selectedId = ''">
                     <Icon name="i-lucide-x" class="size-4" />
                   </button>
                 </div>

@@ -4,40 +4,85 @@ import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
 import { CustomerCreateSchema, parseBody } from '../../utils/validation'
 
+/**
+ * Escape a string for safe use inside a MongoDB $regex value.
+ * Prevents user input from being interpreted as regex operators.
+ */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export default defineEventHandler(async (event) => {
   await connectDB()
   const method = event.node.req.method
 
   if (method === 'GET') {
     const query = getQuery(event)
-    const search = query.search as string | undefined
-    const limit = Math.min(200, Math.max(1, Number(query.limit) || 200))
+
+    // ── Pagination ──────────────────────────────────────────────────────────
+    const page = Math.max(1, Number.parseInt(query.page as string) || 1)
+    const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit as string) || 25))
+    const skip = (page - 1) * limit
+
+    // ── Filters ──────────────────────────────────────────────────────────────
+    const search = (query.search as string | undefined)?.trim()
+    const type = (query.type as string | undefined)?.trim()
+    const status = (query.status as string | undefined)?.trim()
+    const sortField = (query.sortField as string) || 'createdAt'
+    const sortDir = query.sortDir === 'asc' ? 1 : -1
+
+    // Whitelist sortable fields to prevent arbitrary key injection
+    const ALLOWED_SORT = new Set(['createdAt', 'name', 'email', 'city', 'type'])
+    const safeSort = ALLOWED_SORT.has(sortField) ? sortField : 'createdAt'
 
     const filter: Record<string, any> = {}
+
     if (search) {
+      const re = { $regex: escapeRegex(search), $options: 'i' }
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
+        { name: re },
+        { firstName: re },
+        { lastName: re },
+        { email: re },
+        { phone: re },
+        { city: re },
       ]
     }
 
-    // Projection: exclude heavy embedded arrays not needed for list views
-    const customers = await Customer.find(filter)
-      .select('-gallery -relatedContacts -notes')
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean()
+    if (type)
+      filter.type = type
+
+    if (status)
+      filter.status = status
+
+    // ── Query ────────────────────────────────────────────────────────────────
+    const [customers, total] = await Promise.all([
+      Customer.find(filter)
+        .select('-gallery -relatedContacts -notes')
+        .sort({ [safeSort]: sortDir })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Customer.countDocuments(filter),
+    ])
+
     // Stringify ObjectId fields so they survive Nitro's JSON serialization on Vercel
-    // (raw BSON ObjectIds serialize to nested objects instead of hex strings in production)
     const serialized = customers.map((c: any) => ({
       ...c,
       _id: String(c._id),
       status: c.status ? String(c.status) : null,
     }))
-    return { success: true, data: serialized }
+
+    return {
+      success: true,
+      data: serialized,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    }
   }
 
   if (method === 'POST') {

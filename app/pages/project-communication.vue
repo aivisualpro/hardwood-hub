@@ -15,33 +15,35 @@ const hideCompleted = ref(false)
 
 const editingId = ref<string | null>(null)
 
-const emptyForm = () => ({
-  leadTechnicianSupervisorTechnician: '',
-  pleaseMarkIfThisProjectIsFullyCompleteOrNot: '',
-  leaveAnyNotesAboutThingsThatStillNeedToBeDoneForFutureCrews: '',
-  whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply: [] as string[],
-  gradeOfFlooring: [] as string[],
-  widthOfFlooring: [] as string[],
-  cutOfFlooring: [] as string[],
-  fidBox: [] as string[],
-  stain: [] as string[],
-  ifMixWhatColorsAndRatio: '',
-  whatSealerWasUsed: [] as string[],
-  whatWasTheFirstCoatOfFinish: [] as string[],
-  whatWasTheFinalCoatOfFinish: [] as string[],
-  whatSheen: [] as string[],
-  whatAdditivesToFinish: [] as string[],
-  allTasksAssignedToProjectLeadFromQcAreCompleted: '',
-  ifNoWhatNeedsToBeDone: '',
-  wasThereAChangeOrderFilledOut: '',
-  wasThereAnyWorkAdded: '',
-  wasThereAnyWorkNotCompletedThatShouldBeRemovedFromTheInvoice: '',
-  listAnyWorkRemovedOrAddedPleaseGiveAsMuchDetailAsPossibleForBilling: '',
-  howWouldYouRateYourTeamsPerformanceOnThisProject: '',
-  howWouldYouRateYourInteractionsWithTheClient: '',
-  anyOtherNotesAboutThisProject: '',
-  didYouTakeFinalPictures: '',
-})
+function emptyForm() {
+  return {
+    leadTechnicianSupervisorTechnician: '',
+    pleaseMarkIfThisProjectIsFullyCompleteOrNot: '',
+    leaveAnyNotesAboutThingsThatStillNeedToBeDoneForFutureCrews: '',
+    whatTypeOfWoodFlooringWasUsedOnTheProjectSelectAllThatApply: [] as string[],
+    gradeOfFlooring: [] as string[],
+    widthOfFlooring: [] as string[],
+    cutOfFlooring: [] as string[],
+    fidBox: [] as string[],
+    stain: [] as string[],
+    ifMixWhatColorsAndRatio: '',
+    whatSealerWasUsed: [] as string[],
+    whatWasTheFirstCoatOfFinish: [] as string[],
+    whatWasTheFinalCoatOfFinish: [] as string[],
+    whatSheen: [] as string[],
+    whatAdditivesToFinish: [] as string[],
+    allTasksAssignedToProjectLeadFromQcAreCompleted: '',
+    ifNoWhatNeedsToBeDone: '',
+    wasThereAChangeOrderFilledOut: '',
+    wasThereAnyWorkAdded: '',
+    wasThereAnyWorkNotCompletedThatShouldBeRemovedFromTheInvoice: '',
+    listAnyWorkRemovedOrAddedPleaseGiveAsMuchDetailAsPossibleForBilling: '',
+    howWouldYouRateYourTeamsPerformanceOnThisProject: '',
+    howWouldYouRateYourInteractionsWithTheClient: '',
+    anyOtherNotesAboutThisProject: '',
+    didYouTakeFinalPictures: '',
+  }
+}
 const form = ref(emptyForm())
 
 // ─── Checklist Options ────────────────────────────────
@@ -70,7 +72,7 @@ const sections = computed(() => [
     icon: 'i-lucide-hard-hat',
     fields: [
       { key: 'leadTechnicianSupervisorTechnician', label: 'Lead Technician / Supervisor Technician', type: 'chips', options: technicianOptions },
-    ]
+    ],
   },
   {
     id: 'completion',
@@ -80,7 +82,7 @@ const sections = computed(() => [
     fields: [
       { key: 'pleaseMarkIfThisProjectIsFullyCompleteOrNot', label: 'Please mark if this project is fully complete or not', type: 'chips', options: completionOptions },
       { key: 'leaveAnyNotesAboutThingsThatStillNeedToBeDoneForFutureCrews', label: 'Leave any notes about things that still need to be done for future crews', type: 'textarea' },
-    ]
+    ],
   },
   {
     id: 'flooring-species',
@@ -93,7 +95,7 @@ const sections = computed(() => [
       { key: 'widthOfFlooring', label: 'Width of flooring', type: 'multi-chips', options: widthOptions },
       { key: 'cutOfFlooring', label: 'Cut of flooring', type: 'multi-chips', options: cutOptions },
       { key: 'fidBox', label: 'Fid Box', type: 'multi-chips', options: fidBoxOptions },
-    ]
+    ],
   },
   {
     id: 'coatings',
@@ -108,7 +110,7 @@ const sections = computed(() => [
       { key: 'whatWasTheFinalCoatOfFinish', label: 'What was the final coat of finish', type: 'multi-chips', options: finalCoatOptions },
       { key: 'whatSheen', label: 'What sheen', type: 'multi-chips', options: sheenOptions },
       { key: 'whatAdditivesToFinish', label: 'What additives to finish', type: 'multi-chips', options: additivesOptions },
-    ]
+    ],
   },
   {
     id: 'qc-tasks',
@@ -118,7 +120,7 @@ const sections = computed(() => [
     fields: [
       { key: 'allTasksAssignedToProjectLeadFromQcAreCompleted', label: 'All Tasks assigned to project lead from QC are completed', type: 'chips', options: yesNoOptions },
       { key: 'ifNoWhatNeedsToBeDone', label: 'If no what needs to be done', type: 'textarea' },
-    ]
+    ],
   },
   {
     id: 'invoice-changes',
@@ -130,7 +132,7 @@ const sections = computed(() => [
       { key: 'wasThereAnyWorkAdded', label: 'Was there any work added', type: 'chips', options: yesNoOptions },
       { key: 'wasThereAnyWorkNotCompletedThatShouldBeRemovedFromTheInvoice', label: 'Was there any work not completed that should be removed from the invoice', type: 'chips', options: yesNoOptions },
       { key: 'listAnyWorkRemovedOrAddedPleaseGiveAsMuchDetailAsPossibleForBilling', label: 'List any work removed or added, please give as much detail as possible for billing', type: 'textarea' },
-    ]
+    ],
   },
   {
     id: 'notes-feedback',
@@ -141,7 +143,7 @@ const sections = computed(() => [
       { key: 'howWouldYouRateYourTeamsPerformanceOnThisProject', label: 'How would you rate your teams performance on this Project', type: 'chips', options: ratingOptions },
       { key: 'howWouldYouRateYourInteractionsWithTheClient', label: 'How would you rate your interactions with the client', type: 'chips', options: ratingOptions },
       { key: 'anyOtherNotesAboutThisProject', label: 'Any other notes about this Project', type: 'textarea' },
-    ]
+    ],
   },
   {
     id: 'pictures',
@@ -150,7 +152,7 @@ const sections = computed(() => [
     icon: 'i-lucide-camera',
     fields: [
       { key: 'didYouTakeFinalPictures', label: 'Did you take final pictures', type: 'chips', options: yesNoOptions },
-    ]
+    ],
   },
 ])
 
@@ -163,8 +165,12 @@ const completedFields = computed(() => {
     for (const field of section.fields) {
       const val = (form.value as any)[field.key]
       if (field.type === 'multi-chips') {
-        if (Array.isArray(val) && val.length > 0) count++
-      } else if (val && typeof val === 'string' && val.trim() !== '') count++
+        if (Array.isArray(val) && val.length > 0)
+          count++
+      }
+      else if (val && typeof val === 'string' && val.trim() !== '') {
+        count++
+      }
     }
   }
   return count
@@ -175,7 +181,8 @@ const progressPercent = computed(() => totalFields.value > 0 ? Math.round((compl
 function isSectionCompleted(section: any) {
   return section.fields.every((field: any) => {
     const val = (form.value as any)[field.key]
-    if (field.type === 'multi-chips') return Array.isArray(val) && val.length > 0
+    if (field.type === 'multi-chips')
+      return Array.isArray(val) && val.length > 0
     return val && typeof val === 'string' && val.trim() !== ''
   })
 }
@@ -184,20 +191,27 @@ function sectionProgress(section: any) {
   let done = 0
   for (const field of section.fields) {
     const val = (form.value as any)[field.key]
-    if (field.type === 'multi-chips') { if (Array.isArray(val) && val.length > 0) done++ }
-    else if (val && typeof val === 'string' && val.trim() !== '') done++
+    if (field.type === 'multi-chips') {
+      if (Array.isArray(val) && val.length > 0)
+        done++
+    }
+    else if (val && typeof val === 'string' && val.trim() !== '') {
+      done++
+    }
   }
   return { done, total: section.fields.length }
 }
 
 function isFieldCompleted(field: any) {
   const val = (form.value as any)[field.key]
-  if (field.type === 'multi-chips') return Array.isArray(val) && val.length > 0
+  if (field.type === 'multi-chips')
+    return Array.isArray(val) && val.length > 0
   return val && typeof val === 'string' && val.trim() !== ''
 }
 
 const visibleSections = computed(() => {
-  if (!hideCompleted.value) return sections.value
+  if (!hideCompleted.value)
+    return sections.value
   return sections.value.filter(s => !isSectionCompleted(s))
 })
 
@@ -208,10 +222,12 @@ function selectChip(key: string, value: string) {
 
 function toggleMultiChip(key: string, value: string) {
   let arr: string[] = (form.value as any)[key]
-  if (!Array.isArray(arr)) arr = arr ? [arr] : []
+  if (!Array.isArray(arr))
+    arr = arr ? [arr] : []
   if (arr.includes(value)) {
     ;(form.value as any)[key] = arr.filter((v: string) => v !== value)
-  } else {
+  }
+  else {
     ;(form.value as any)[key] = [...arr, value]
   }
 }
@@ -229,7 +245,8 @@ async function fetchRecords() {
   try {
     const res = await $fetch<{ success: boolean, data: any[] }>('/api/project-communication')
     records.value = res.data
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to load project communications', { description: e?.message })
   }
 }
@@ -267,45 +284,53 @@ async function saveRecord() {
     if (editingId.value) {
       await $fetch(`/api/project-communication/${editingId.value}`, { method: 'PUT', body: form.value })
       toast.success('Record updated successfully')
-    } else {
+    }
+    else {
       await $fetch('/api/project-communication', { method: 'POST', body: form.value })
       toast.success('Record created successfully')
     }
     await fetchRecords()
     activeTab.value = 'list'
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Save failed', { description: e?.message })
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
 
 async function deleteRecord(id: string) {
-  if (!confirm('Are you sure you want to delete this record?')) return
+  if (!confirm('Are you sure you want to delete this record?'))
+    return
   try {
     const idx = records.value.findIndex(r => r._id === id)
-    if (idx !== -1) records.value.splice(idx, 1)
+    if (idx !== -1)
+      records.value.splice(idx, 1)
     await $fetch(`/api/project-communication/${id}`, { method: 'DELETE' })
     toast.success('Record deleted')
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Delete failed', { description: e?.message })
     await fetchRecords()
   }
 }
 
 function formatDate(d: string) {
-  if (!d) return '—'
+  if (!d)
+    return '—'
   return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 </script>
 
 <template>
   <div>
-
     <!-- ═════════ LIST VIEW ═════════ -->
     <div v-if="activeTab === 'list'" class="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <div class="flex items-center justify-between gap-3">
-        <h1 class="text-lg sm:text-2xl font-bold tracking-tight">Project Communications</h1>
+        <h1 class="text-lg sm:text-2xl font-bold tracking-tight">
+          Project Communications
+        </h1>
         <Button v-if="canCreate()" size="sm" class="shrink-0 h-8 sm:h-9 text-xs sm:text-sm" @click="openCreate">
           <Icon name="i-lucide-plus" class="mr-1 sm:mr-2 size-3.5 sm:size-4" />
           <span class="hidden sm:inline">New Checklist</span>
@@ -318,9 +343,13 @@ function formatDate(d: string) {
           <div class="size-16 sm:size-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-4 sm:mb-5">
             <Icon name="i-lucide-clipboard-list" class="size-7 sm:size-10 text-primary" />
           </div>
-          <h3 class="text-lg sm:text-xl font-bold mb-2">No checklists yet</h3>
-          <p class="text-xs sm:text-sm text-muted-foreground max-w-sm mb-4 sm:mb-6">Create your first project communication checklist to start tracking field data.</p>
-          <Button v-if="canCreate()" @click="openCreate" size="lg">
+          <h3 class="text-lg sm:text-xl font-bold mb-2">
+            No checklists yet
+          </h3>
+          <p class="text-xs sm:text-sm text-muted-foreground max-w-sm mb-4 sm:mb-6">
+            Create your first project communication checklist to start tracking field data.
+          </p>
+          <Button v-if="canCreate()" size="lg" @click="openCreate">
             <Icon name="i-lucide-plus" class="mr-2 size-4" />
             Create First Checklist
           </Button>
@@ -331,22 +360,39 @@ function formatDate(d: string) {
             <table class="w-full text-sm text-left whitespace-nowrap">
               <thead>
                 <tr class="bg-muted/40 border-b border-border/50 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
-                  <th class="px-5 py-3">Date</th>
-                  <th class="px-5 py-3">Lead Technician</th>
-                  <th class="px-5 py-3">Status</th>
-                  <th class="px-5 py-3">Wood Type</th>
-                  <th class="px-5 py-3">Change Order?</th>
-                  <th class="px-5 py-3 text-right">Actions</th>
+                  <th class="px-5 py-3">
+                    Date
+                  </th>
+                  <th class="px-5 py-3">
+                    Lead Technician
+                  </th>
+                  <th class="px-5 py-3">
+                    Status
+                  </th>
+                  <th class="px-5 py-3">
+                    Wood Type
+                  </th>
+                  <th class="px-5 py-3">
+                    Change Order?
+                  </th>
+                  <th class="px-5 py-3 text-right">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-border/30">
                 <tr v-for="r in records" :key="r._id" class="hover:bg-muted/20 transition-colors cursor-pointer" @click="openEdit(r)">
-                  <td class="px-5 py-3 text-muted-foreground">{{ formatDate(r.createdAt) }}</td>
-                  <td class="px-5 py-3 font-medium">{{ r.leadTechnicianSupervisorTechnician || '—' }}</td>
+                  <td class="px-5 py-3 text-muted-foreground">
+                    {{ formatDate(r.createdAt) }}
+                  </td>
+                  <td class="px-5 py-3 font-medium">
+                    {{ r.leadTechnicianSupervisorTechnician || '—' }}
+                  </td>
                   <td class="px-5 py-3">
-                    <span class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold border"
-                      :class="r.pleaseMarkIfThisProjectIsFullyCompleteOrNot === 'Fully Complete' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                              r.pleaseMarkIfThisProjectIsFullyCompleteOrNot ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-muted text-muted-foreground border-border'"
+                    <span
+                      class="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold border"
+                      :class="r.pleaseMarkIfThisProjectIsFullyCompleteOrNot === 'Fully Complete' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                        : r.pleaseMarkIfThisProjectIsFullyCompleteOrNot ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-muted text-muted-foreground border-border'"
                     >
                       {{ r.pleaseMarkIfThisProjectIsFullyCompleteOrNot || 'Pending' }}
                     </span>
@@ -362,7 +408,9 @@ function formatDate(d: string) {
                       </span>
                     </div>
                   </td>
-                  <td class="px-5 py-3">{{ r.wasThereAChangeOrderFilledOut || '—' }}</td>
+                  <td class="px-5 py-3">
+                    {{ r.wasThereAChangeOrderFilledOut || '—' }}
+                  </td>
                   <td class="px-5 py-3 text-right" @click.stop>
                     <Button v-if="canUpdate()" variant="ghost" size="sm" class="h-8 px-2" @click="openEdit(r)">
                       <Icon name="i-lucide-pencil" class="size-4" />
@@ -380,13 +428,18 @@ function formatDate(d: string) {
             <div v-for="r in records" :key="r._id" class="px-3 py-3 hover:bg-muted/20 transition-colors cursor-pointer" @click="openEdit(r)">
               <div class="flex items-center justify-between gap-2">
                 <div class="min-w-0">
-                  <p class="text-sm font-medium truncate">{{ r.leadTechnicianSupervisorTechnician || 'No Lead' }}</p>
-                  <p class="text-[10px] text-muted-foreground mt-0.5">{{ formatDate(r.createdAt) }}</p>
+                  <p class="text-sm font-medium truncate">
+                    {{ r.leadTechnicianSupervisorTechnician || 'No Lead' }}
+                  </p>
+                  <p class="text-[10px] text-muted-foreground mt-0.5">
+                    {{ formatDate(r.createdAt) }}
+                  </p>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                  <span class="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold border"
-                    :class="r.pleaseMarkIfThisProjectIsFullyCompleteOrNot === 'Fully Complete' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                            r.pleaseMarkIfThisProjectIsFullyCompleteOrNot ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-muted text-muted-foreground border-border'"
+                  <span
+                    class="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold border"
+                    :class="r.pleaseMarkIfThisProjectIsFullyCompleteOrNot === 'Fully Complete' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                      : r.pleaseMarkIfThisProjectIsFullyCompleteOrNot ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-muted text-muted-foreground border-border'"
                   >
                     {{ r.pleaseMarkIfThisProjectIsFullyCompleteOrNot || 'Pending' }}
                   </span>
@@ -408,7 +461,6 @@ function formatDate(d: string) {
 
     <!-- ═════════ CHECKLIST FORM VIEW ═════════ -->
     <div v-else class="max-w-4xl mx-auto pb-12">
-
       <!-- ─── Checklist Masthead ─── -->
       <div class="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border/50">
         <div class="px-3 sm:px-6 py-3 sm:py-5 flex items-center gap-3 sm:gap-5">
@@ -416,7 +468,8 @@ function formatDate(d: string) {
           <div class="relative size-12 sm:size-16 shrink-0">
             <svg class="size-12 sm:size-16 -rotate-90" viewBox="0 0 64 64">
               <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4" class="text-muted/30" />
-              <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4"
+              <circle
+                cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4"
                 class="text-primary transition-all duration-500"
                 :stroke-dasharray="`${progressPercent * 1.76} 176`"
                 stroke-linecap="round"
@@ -486,10 +539,15 @@ function formatDate(d: string) {
                 <Icon v-else :name="section.icon" class="size-3.5 sm:size-4" />
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="font-bold text-sm sm:text-base">{{ section.title }}</h3>
-                <p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{{ section.description }}</p>
+                <h3 class="font-bold text-sm sm:text-base">
+                  {{ section.title }}
+                </h3>
+                <p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+                  {{ section.description }}
+                </p>
               </div>
-              <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shrink-0 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full"
+              <span
+                class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest shrink-0 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full"
                 :class="isSectionCompleted(section) ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted/60 text-muted-foreground'"
               >
                 {{ sectionProgress(section).done }}/{{ sectionProgress(section).total }}
@@ -601,7 +659,9 @@ function formatDate(d: string) {
             </div>
           </div>
           <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            <Button variant="outline" class="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm" @click="cancelEdit">Cancel</Button>
+            <Button variant="outline" class="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm" @click="cancelEdit">
+              Cancel
+            </Button>
             <Button :disabled="saving" class="flex-1 sm:flex-none h-8 sm:h-9 text-xs sm:text-sm" @click="saveRecord">
               <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 sm:mr-2 size-3.5 sm:size-4 animate-spin" />
               {{ editingId ? 'Save' : 'Submit' }}
@@ -609,9 +669,7 @@ function formatDate(d: string) {
           </div>
         </div>
       </div>
-
     </div>
-
   </div>
 </template>
 

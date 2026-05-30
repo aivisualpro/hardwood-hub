@@ -22,7 +22,7 @@ defineProps<{
         src="/hardwood image.png"
         alt="Hardwood craftsmanship"
         class="absolute inset-0 w-full h-full object-cover object-center"
-      />
+      >
       <!-- Gradient overlays -->
       <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
       <div class="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
@@ -35,10 +35,14 @@ defineProps<{
             src="/hardwood logo.png"
             alt="Hardwood Hub"
             class="size-11 rounded-xl shadow-lg"
-          />
+          >
           <div>
-            <h2 class="text-white font-bold text-lg tracking-tight">Hardwood Hub</h2>
-            <p class="text-white/50 text-xs font-medium">Workforce Management</p>
+            <h2 class="text-white font-bold text-lg tracking-tight">
+              Hardwood Hub
+            </h2>
+            <p class="text-white/50 text-xs font-medium">
+              Workforce Management
+            </p>
           </div>
         </div>
 
@@ -87,8 +91,10 @@ defineProps<{
           src="/hardwood logo.png"
           alt="Hardwood Hub"
           class="size-10 rounded-xl shadow-lg"
-        />
-        <h2 class="font-bold text-lg tracking-tight">Hardwood Hub</h2>
+        >
+        <h2 class="font-bold text-lg tracking-tight">
+          Hardwood Hub
+        </h2>
       </div>
 
       <div class="w-full max-w-sm">

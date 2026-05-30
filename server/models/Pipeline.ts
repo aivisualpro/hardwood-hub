@@ -29,9 +29,9 @@ const PipelineSchema = new mongoose.Schema(
     woodOrderDate: { type: Date, default: null },
     tags: [{ type: String }],
     gallery: [{
-        url: { type: String, required: true },
-        caption: { type: String, default: '' },
-        uploadedAt: { type: Date, default: Date.now }
+      url: { type: String, required: true },
+      caption: { type: String, default: '' },
+      uploadedAt: { type: Date, default: Date.now },
     }],
     relatedContacts: [{
       firstName: { type: String, default: '' },
@@ -40,13 +40,13 @@ const PipelineSchema = new mongoose.Schema(
       emails: [{ type: String }],
       phones: [{ type: String }],
       preferredContact: { type: String, default: '' },
-      address: { type: String, default: '' }
-    }]
+      address: { type: String, default: '' },
+    }],
   },
   {
     timestamps: true,
     collection: 'hardwoodDB_pipeline',
-  }
+  },
 )
 
 // Indexes for pipeline and search performance
@@ -100,5 +100,5 @@ export interface IPipeline {
   updatedAt?: Date
 }
 
-export const Pipeline =
-  mongoose.models.Pipeline || mongoose.model<IPipeline>('Pipeline', PipelineSchema)
+export const Pipeline
+  = mongoose.models.Pipeline || mongoose.model<IPipeline>('Pipeline', PipelineSchema)

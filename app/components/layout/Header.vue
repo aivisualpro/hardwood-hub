@@ -12,7 +12,8 @@ watch(() => route.fullPath, async () => {
   markPending()
   await nextTick()
   // If no setHeader was called by the new page, clear stale header info
-  if (!headerState.value._explicit) clearHeader()
+  if (!headerState.value._explicit)
+    clearHeader()
 })
 
 // Derive fallback title from route when no explicit title is set

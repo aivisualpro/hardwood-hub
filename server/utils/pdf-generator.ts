@@ -12,7 +12,7 @@
 
 const BROWSERLESS_BASE = 'https://production-sfo.browserless.io'
 
-export const generatePdfFromHtml = async (htmlContent: string): Promise<Buffer> => {
+export async function generatePdfFromHtml(htmlContent: string): Promise<Buffer> {
   const config = useRuntimeConfig()
   const token = config.browserlessToken || process.env.BROWSERLESS_TOKEN
 

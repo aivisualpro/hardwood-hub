@@ -23,39 +23,75 @@ interface StainSignOffRecord {
 const submitted = ref(false)
 const saving = ref(false)
 
-const emptyForm = (): StainSignOffRecord => ({
-  clientName: '',
-  email: '',
-  stainColorAdditive: [],
-  isStainSamplesThrough: false,
-  isScreensNotAnAccurate: false,
-  isWoodNaturalProduct: false,
-  isAnyChangesColorsYourExpense: false,
-  isMaplePineOther: false,
-  specialNotes: '',
-  isSigned: false,
-  signature: null,
-})
+function emptyForm(): StainSignOffRecord {
+  return {
+    clientName: '',
+    email: '',
+    stainColorAdditive: [],
+    isStainSamplesThrough: false,
+    isScreensNotAnAccurate: false,
+    isWoodNaturalProduct: false,
+    isAnyChangesColorsYourExpense: false,
+    isMaplePineOther: false,
+    specialNotes: '',
+    isSigned: false,
+    signature: null,
+  }
+}
 const hasDrawnSignature = ref(false)
 const form = ref(emptyForm())
 
 // ─── Stain Options ───────────────────────────────────────
 const STAIN_OPTIONS = [
-  'CLEAR', '1 COAT WHITENER', '2 COATS WHITENER', '3 COATS WHITENER',
-  '1 COAT AMBERIZER', '2 COATS AMBERIZER', '3 COATS AMBERIZER',
-  'AGED BARREL', 'ANTIQUE BROWN', 'CHERRY', 'CHESTNUT', 'CLASSIC GRAY',
-  'COFFEE BROWN', 'COLONIAL MAPLE', 'DARK GRAY', 'DARK WALNUT',
-  'EARLY AMERICAN', 'EBONY', 'ENGLISH CHESTNUT', 'ESPRESSO', 'FRUITWOOD',
-  'GOLDEN BROWN', 'GOLDEN OAK', 'GOLDEN PECAN', 'GUNSTOCK',
-  'HERITAGE BROWN', 'JACOBEAN', 'MEDIUM BROWN', 'NEUTRAL', 'NUTMEG',
-  'PROVINCIAL', 'RED MAHOGANY', 'ROYAL MAHOGANY', 'ROSEWOOD',
-  'RUSTIC BEIGE', 'SEDONA RED', 'SILVERED GRAY', 'SPECIAL WALNUT',
-  'SPICE BROWN', 'TRUE BLACK', 'WARM GRAY', 'WEATHERED OAK', 'MIX',
+  'CLEAR',
+  '1 COAT WHITENER',
+  '2 COATS WHITENER',
+  '3 COATS WHITENER',
+  '1 COAT AMBERIZER',
+  '2 COATS AMBERIZER',
+  '3 COATS AMBERIZER',
+  'AGED BARREL',
+  'ANTIQUE BROWN',
+  'CHERRY',
+  'CHESTNUT',
+  'CLASSIC GRAY',
+  'COFFEE BROWN',
+  'COLONIAL MAPLE',
+  'DARK GRAY',
+  'DARK WALNUT',
+  'EARLY AMERICAN',
+  'EBONY',
+  'ENGLISH CHESTNUT',
+  'ESPRESSO',
+  'FRUITWOOD',
+  'GOLDEN BROWN',
+  'GOLDEN OAK',
+  'GOLDEN PECAN',
+  'GUNSTOCK',
+  'HERITAGE BROWN',
+  'JACOBEAN',
+  'MEDIUM BROWN',
+  'NEUTRAL',
+  'NUTMEG',
+  'PROVINCIAL',
+  'RED MAHOGANY',
+  'ROYAL MAHOGANY',
+  'ROSEWOOD',
+  'RUSTIC BEIGE',
+  'SEDONA RED',
+  'SILVERED GRAY',
+  'SPECIAL WALNUT',
+  'SPICE BROWN',
+  'TRUE BLACK',
+  'WARM GRAY',
+  'WEATHERED OAK',
+  'MIX',
 ] as const
 
 const stainSearch = ref('')
 const filteredStains = computed(() => {
-  if (!stainSearch.value.trim()) return STAIN_OPTIONS
+  if (!stainSearch.value.trim())
+    return STAIN_OPTIONS
   const q = stainSearch.value.toLowerCase()
   return STAIN_OPTIONS.filter(s => s.toLowerCase().includes(q))
 })
@@ -127,10 +163,12 @@ function setSectionRef(id: string, el: any) {
 
 function scrollToSection(idx: number) {
   const section = sections.value[idx]
-  if (!section) return
+  if (!section)
+    return
   const el = sectionRefs.value[section.id]
   const container = window // since it's the whole page body
-  if (!el) return
+  if (!el)
+    return
   isScrollingProgrammatically.value = true
   activeSectionIdx.value = idx
   // calculate offset — sticky header is ~140px
@@ -145,14 +183,16 @@ function scrollToSection(idx: number) {
 
 function scrollPillIntoView(idx: number) {
   const navEl = navPillsRef.value
-  if (!navEl) return
+  if (!navEl)
+    return
   const pills = navEl.querySelectorAll('[data-pill]')
   const pill = pills[idx] as HTMLElement
-  if (!pill) return
-  
+  if (!pill)
+    return
+
   const navRect = navEl.getBoundingClientRect()
   const pillRect = pill.getBoundingClientRect()
-  
+
   const targetScrollLeft = navEl.scrollLeft + (pillRect.left - navRect.left) - (navRect.width / 2) + (pillRect.width / 2)
   navEl.scrollTo({ left: targetScrollLeft, behavior: 'smooth' })
 }
@@ -161,10 +201,12 @@ function scrollPillIntoView(idx: number) {
 let observer: IntersectionObserver | null = null
 
 function setupScrollSpy() {
-  if (observer) observer.disconnect()
+  if (observer)
+    observer.disconnect()
   observer = new IntersectionObserver(
     (entries) => {
-      if (isScrollingProgrammatically.value) return
+      if (isScrollingProgrammatically.value)
+        return
       for (const entry of entries) {
         if (entry.isIntersecting) {
           const id = entry.target.getAttribute('data-section-id')
@@ -180,13 +222,14 @@ function setupScrollSpy() {
       root: null,
       rootMargin: '-30% 0px -60% 0px',
       threshold: 0,
-    }
+    },
   )
 
   // Observe all section elements
   for (const section of sections.value) {
     const el = sectionRefs.value[section.id]
-    if (el) observer.observe(el)
+    if (el)
+      observer.observe(el)
   }
 }
 
@@ -217,18 +260,19 @@ const completedSections = computed(() => sections.value.filter(s => isSectionDon
 const progressPercent = computed(() => sections.value.length > 0 ? Math.round((completedSections.value / sections.value.length) * 100) : 0)
 
 const allTermsAccepted = computed(() =>
-  form.value.isStainSamplesThrough &&
-  form.value.isScreensNotAnAccurate &&
-  form.value.isWoodNaturalProduct &&
-  form.value.isAnyChangesColorsYourExpense &&
-  form.value.isMaplePineOther
+  form.value.isStainSamplesThrough
+  && form.value.isScreensNotAnAccurate
+  && form.value.isWoodNaturalProduct
+  && form.value.isAnyChangesColorsYourExpense
+  && form.value.isMaplePineOther,
 )
 
 // ─── Stain toggle ────────────────────────────────────────
 function toggleStain(stain: string) {
   const arr = form.value.stainColorAdditive
   const idx = arr.indexOf(stain)
-  if (idx >= 0) arr.splice(idx, 1)
+  if (idx >= 0)
+    arr.splice(idx, 1)
   else arr.push(stain)
 }
 
@@ -248,14 +292,17 @@ function getCtx() {
 
 function initCanvas() {
   const canvas = getCanvas()
-  if (!canvas) return false
+  if (!canvas)
+    return false
   const rect = canvas.getBoundingClientRect()
-  if (rect.width === 0 || rect.height === 0) return false
+  if (rect.width === 0 || rect.height === 0)
+    return false
   const dpr = window.devicePixelRatio || 1
   canvas.width = rect.width * dpr
   canvas.height = rect.height * dpr
   const ctx = canvas.getContext('2d')
-  if (!ctx) return false
+  if (!ctx)
+    return false
   ctx.scale(dpr, dpr)
   // Fill with white background so strokes are always visible
   ctx.fillStyle = '#ffffff'
@@ -270,11 +317,13 @@ function initCanvas() {
 
 function startDraw(e: MouseEvent | TouchEvent) {
   if (!canvasReady.value) {
-    if (!initCanvas()) return
+    if (!initCanvas())
+      return
   }
   isDrawing.value = true
   const ctx = getCtx()
-  if (!ctx) return
+  if (!ctx)
+    return
   ctx.strokeStyle = penColor.value
   ctx.lineWidth = 2.5
   ctx.lineJoin = 'round'
@@ -285,17 +334,20 @@ function startDraw(e: MouseEvent | TouchEvent) {
 }
 
 function draw(e: MouseEvent | TouchEvent) {
-  if (!isDrawing.value) return
+  if (!isDrawing.value)
+    return
   e.preventDefault()
   const ctx = getCtx()
-  if (!ctx) return
+  if (!ctx)
+    return
   const { x, y } = getPos(e)
   ctx.lineTo(x, y)
   ctx.stroke()
 }
 
 function endDraw() {
-  if (!isDrawing.value) return
+  if (!isDrawing.value)
+    return
   isDrawing.value = false
   hasDrawnSignature.value = true
   form.value.isSigned = true
@@ -317,9 +369,11 @@ function getPos(e: MouseEvent | TouchEvent) {
 
 function clearSignature() {
   const canvas = getCanvas()
-  if (!canvas) return
+  if (!canvas)
+    return
   const ctx = getCtx()
-  if (!ctx) return
+  if (!ctx)
+    return
   const rect = canvas.getBoundingClientRect()
   // Re-fill with white
   ctx.fillStyle = '#ffffff'
@@ -331,56 +385,68 @@ function clearSignature() {
 
 // ─── API ─────────────────────────────────────────────────
 async function saveRecord() {
-  if (!form.value.clientName) return toast.error('Name is required')
-  if (!form.value.email) return toast.error('Email is required')
-  if (form.value.stainColorAdditive.length === 0) return toast.error('Please select at least one stain color')
-  if (!allTermsAccepted.value) return toast.error('All terms must be accepted')
-  if (!form.value.isSigned) return toast.error('Signature is required')
-  
+  if (!form.value.clientName)
+    return toast.error('Name is required')
+  if (!form.value.email)
+    return toast.error('Email is required')
+  if (form.value.stainColorAdditive.length === 0)
+    return toast.error('Please select at least one stain color')
+  if (!allTermsAccepted.value)
+    return toast.error('All terms must be accepted')
+  if (!form.value.isSigned)
+    return toast.error('Signature is required')
+
   saving.value = true
   try {
     await $fetch('/api/public/stain-sign-off', { method: 'POST', body: form.value })
     submitted.value = true
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Submission failed', { description: e?.message || 'Please try again later' })
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
-
 </script>
 
 <template>
   <div class="min-h-screen bg-muted/20 dark:bg-zinc-950 pb-20">
-
     <!-- ═════════ SUCCESS STATE ═════════ -->
     <div v-if="submitted" class="min-h-screen flex items-center justify-center p-6">
       <div class="max-w-md w-full text-center space-y-6 animate-in slide-in-from-bottom-8 fade-in duration-700">
         <div class="size-24 mx-auto rounded-full bg-emerald-500/10 border-2 border-emerald-500/20 flex items-center justify-center -mb-2 shadow-xl shadow-emerald-500/10">
           <Icon name="i-lucide-check" class="size-12 text-emerald-500" />
         </div>
-        <h1 class="text-3xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">Sign Off Successful</h1>
+        <h1 class="text-3xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+          Sign Off Successful
+        </h1>
         <p class="text-muted-foreground leading-relaxed">
-          Thank you, <strong class="text-foreground">{{ form.clientName }}</strong>. Your stain sign-off has been completely processed. 
+          Thank you, <strong class="text-foreground">{{ form.clientName }}</strong>. Your stain sign-off has been completely processed.
           A confirmation copy will be emailed to <strong class="text-foreground">{{ form.email }}</strong> shortly.
         </p>
         <div class="pt-6 border-t border-border/50">
-          <p class="text-xs text-muted-foreground/60">Hardwood Hub Client Portal</p>
+          <p class="text-xs text-muted-foreground/60">
+            Hardwood Hub Client Portal
+          </p>
         </div>
       </div>
     </div>
 
     <!-- ═════════ FORM VIEW ═════════ -->
     <div v-else class="max-w-4xl mx-auto animate-in fade-in duration-500 bg-background/50 sm:bg-transparent min-h-screen shadow-2xl sm:shadow-none shadow-black/5">
-      
       <!-- Public Brand Header -->
       <div class="px-6 py-8 flex flex-col items-center justify-center text-center">
         <div class="size-12 sm:size-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
           <Icon name="i-lucide-box" class="size-6 sm:size-8 text-primary" />
         </div>
-        <h2 class="text-2xl sm:text-3xl font-black tracking-tight font-display mb-1">Stain Sign Off</h2>
-        <p class="text-sm text-muted-foreground">Please review and select your final stain preferences.</p>
+        <h2 class="text-2xl sm:text-3xl font-black tracking-tight font-display mb-1">
+          Stain Sign Off
+        </h2>
+        <p class="text-sm text-muted-foreground">
+          Please review and select your final stain preferences.
+        </p>
       </div>
 
       <!-- Sticky Masthead -->
@@ -390,7 +456,8 @@ async function saveRecord() {
           <div class="relative size-12 sm:size-14 shrink-0 transition-transform hover:scale-105 duration-300">
             <svg class="size-12 sm:size-14 -rotate-90" viewBox="0 0 64 64">
               <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4" class="text-muted/30" />
-              <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4"
+              <circle
+                cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4"
                 class="text-primary transition-all duration-700 ease-out"
                 :stroke-dasharray="`${progressPercent * 1.76} 176`"
                 stroke-linecap="round"
@@ -400,8 +467,12 @@ async function saveRecord() {
           </div>
 
           <div class="flex-1 min-w-0">
-            <p class="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Progress</p>
-            <p class="text-sm font-semibold truncate">{{ completedSections }} of {{ sections.length }} complete</p>
+            <p class="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+              Progress
+            </p>
+            <p class="text-sm font-semibold truncate">
+              {{ completedSections }} of {{ sections.length }} complete
+            </p>
           </div>
 
           <div class="flex items-center gap-2">
@@ -435,7 +506,6 @@ async function saveRecord() {
 
       <!-- ─── All Sections (vertical timeline) ─── -->
       <div class="px-4 sm:px-8 pt-8 sm:pt-12 relative max-w-4xl mx-auto">
-
         <!-- Timeline connector line (desktop only) -->
         <div class="hidden sm:block absolute left-[42px] top-16 bottom-16 w-[2px] bg-gradient-to-b from-border/80 via-border/50 to-border/10 rounded-full" />
 
@@ -465,7 +535,7 @@ async function saveRecord() {
               class="rounded-2xl border bg-card/80 backdrop-blur-sm overflow-hidden transition-all duration-500 sm:ml-8 hover:shadow-xl hover:shadow-black/5"
               :class="[
                 isSectionDone(section.id) ? 'border-emerald-500/30 bg-emerald-500/[0.02]' : 'border-border/50',
-                activeSectionIdx === idx ? 'ring-2 ring-primary/30 shadow-2xl shadow-primary/5 -translate-y-1' : ''
+                activeSectionIdx === idx ? 'ring-2 ring-primary/30 shadow-2xl shadow-primary/5 -translate-y-1' : '',
               ]"
             >
               <!-- Section Header -->
@@ -474,14 +544,18 @@ async function saveRecord() {
                   class="size-10 sm:size-12 rounded-xl bg-gradient-to-br flex items-center justify-center shrink-0 border"
                   :class="section.color"
                 >
-                  <Icon :name="section.icon" :class="['size-5 sm:size-6', section.iconColor]" />
+                  <Icon :name="section.icon" class="size-5 sm:size-6" :class="[section.iconColor]" />
                 </div>
                 <div class="flex-1 min-w-0 self-center">
                   <div class="flex items-baseline gap-2 mb-0.5">
                     <span class="text-[10px] font-black text-muted-foreground/40 tabular-nums font-mono leading-none tracking-tight">{{ String(idx + 1).padStart(2, '0') }}</span>
-                    <h3 class="font-bold text-base sm:text-lg leading-none tracking-tight">{{ section.title }}</h3>
+                    <h3 class="font-bold text-base sm:text-lg leading-none tracking-tight">
+                      {{ section.title }}
+                    </h3>
                   </div>
-                  <p class="text-xs text-muted-foreground">{{ section.description }}</p>
+                  <p class="text-xs text-muted-foreground">
+                    {{ section.description }}
+                  </p>
                 </div>
                 <div
                   class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full transition-colors self-center border"
@@ -494,7 +568,6 @@ async function saveRecord() {
 
               <!-- Section Content -->
               <div class="p-4 sm:p-6 space-y-5 sm:space-y-6">
-
                 <!-- ── Client Info ── -->
                 <template v-if="section.id === 'client-info'">
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
@@ -565,7 +638,9 @@ async function saveRecord() {
                 <!-- ── Terms & Acknowledgements ── -->
                 <template v-if="section.id === 'terms'">
                   <div class="flex flex-col gap-2">
-                    <p class="text-sm text-muted-foreground mb-4">Please read and acknowledge each of the following terms regarding the finishing process.</p>
+                    <p class="text-sm text-muted-foreground mb-4">
+                      Please read and acknowledge each of the following terms regarding the finishing process.
+                    </p>
 
                     <div class="space-y-3">
                       <label
@@ -591,7 +666,7 @@ async function saveRecord() {
                             {{ item.label }}
                           </p>
                         </div>
-                        <input type="checkbox" v-model="(form as any)[item.key]" class="sr-only" />
+                        <input v-model="(form as any)[item.key]" type="checkbox" class="sr-only">
                       </label>
                     </div>
                   </div>
@@ -676,22 +751,23 @@ async function saveRecord() {
               <div class="size-16 rounded-full flex items-center justify-center mb-5 transition-colors duration-500" :class="progressPercent === 100 ? 'bg-emerald-500 text-primary-foreground shadow-lg shadow-emerald-500/30' : 'bg-muted text-muted-foreground'">
                 <Icon :name="progressPercent === 100 ? 'i-lucide-check-check' : 'i-lucide-lock'" class="size-8" />
               </div>
-              <h2 class="text-2xl font-black tracking-tight mb-2">Ready to submit?</h2>
+              <h2 class="text-2xl font-black tracking-tight mb-2">
+                Ready to submit?
+              </h2>
               <p class="text-muted-foreground mb-8 max-w-sm mx-auto">
                 {{ progressPercent === 100 ? 'All sections are complete. You may now submit your stain sign-off.' : `You must complete all sections before submitting. Currently at ${progressPercent}%.` }}
               </p>
-              
+
               <Button :disabled="saving || progressPercent < 100" class="h-14 px-12 text-base font-black rounded-full w-full sm:w-auto transition-all duration-300 group-hover:shadow-xl group-hover:shadow-primary/20" :class="progressPercent === 100 ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-muted text-muted-foreground'" @click="saveRecord">
                 <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-5 animate-spin" />
                 {{ saving ? 'Processing...' : 'Submit Sign Off' }}
               </Button>
               <div class="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">
-                 <Icon name="i-lucide-shield-check" class="size-3" /> Secure digital signature
+                <Icon name="i-lucide-shield-check" class="size-3" /> Secure digital signature
               </div>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   </div>

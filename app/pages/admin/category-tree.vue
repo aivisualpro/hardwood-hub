@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { VueFlow, useVueFlow } from '@vue-flow/core'
-import { Handle, Position } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
+import { Handle, Position, useVueFlow, VueFlow } from '@vue-flow/core'
 import { MiniMap } from '@vue-flow/minimap'
 import dagre from 'dagre'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -39,8 +38,10 @@ const categories = computed(() => {
 
 const activeFilterCount = computed(() => {
   let count = 0
-  if (selectedCategories.value.length > 0) count += selectedCategories.value.length
-  if (searchQuery.value.trim()) count += 1
+  if (selectedCategories.value.length > 0)
+    count += selectedCategories.value.length
+  if (searchQuery.value.trim())
+    count += 1
   return count
 })
 
@@ -51,9 +52,9 @@ function buildGraph(tree: any[]) {
   const newNodes: any[] = []
   const newEdges: any[] = []
 
-  tree.forEach(cat => {
+  tree.forEach((cat) => {
     const rawColor = cat.color || '#94a3b8'
-    
+
     cat.subCategories.forEach((sub: any) => {
       newNodes.push({
         id: `sub_${sub._id}`,
@@ -112,7 +113,7 @@ function applyFilters() {
   // Step 1: Determine primary matched sub IDs
   const matchedIds = new Set<string>()
 
-  allNodes.value.forEach(node => {
+  allNodes.value.forEach((node) => {
     const d = node.data
     const matchesCat = catFilter.length === 0 || catFilter.includes(d.categoryId)
     const matchesSearch = q.length === 0 || d.label.toLowerCase().includes(q)
@@ -126,7 +127,7 @@ function applyFilters() {
 
   // Walk predecessors UP (if A requires B, and A matches, also show B)
   function walkUp(nodeId: string) {
-    allEdges.value.forEach(edge => {
+    allEdges.value.forEach((edge) => {
       if (edge.target === nodeId && !relatedIds.has(edge.source)) {
         relatedIds.add(edge.source)
         walkUp(edge.source)
@@ -135,7 +136,7 @@ function applyFilters() {
   }
   // Walk successors DOWN (if A requires B, and B matches, also show A)
   function walkDown(nodeId: string) {
-    allEdges.value.forEach(edge => {
+    allEdges.value.forEach((edge) => {
       if (edge.source === nodeId && !relatedIds.has(edge.target)) {
         relatedIds.add(edge.target)
         walkDown(edge.target)
@@ -143,7 +144,7 @@ function applyFilters() {
     })
   }
 
-  matchedIds.forEach(id => {
+  matchedIds.forEach((id) => {
     walkUp(id)
     walkDown(id)
   })
@@ -190,7 +191,8 @@ function layoutAndFit() {
 
   nodes.value = nodes.value.map((node) => {
     const nodeWithPos = g.node(node.id)
-    if (!nodeWithPos) return node
+    if (!nodeWithPos)
+      return node
     return {
       ...node,
       position: { x: nodeWithPos.x - nodeWithPos.width / 2, y: nodeWithPos.y - nodeWithPos.height / 2 },
@@ -202,7 +204,8 @@ function layoutAndFit() {
   const padding = count <= 3 ? 0.6 : count <= 8 ? 0.35 : 0.2
 
   setTimeout(() => {
-    try { fitView({ padding, duration: 600, maxZoom: count <= 3 ? 1.5 : 1.2 }) } catch {}
+    try { fitView({ padding, duration: 600, maxZoom: count <= 3 ? 1.5 : 1.2 }) }
+    catch {}
   }, 120)
 }
 
@@ -213,7 +216,7 @@ function layoutNodes() {
 // ─── Server-first data fetching (blocks navigation until resolved) ──────
 async function fetchTree() {
   try {
-    const res = await $fetch<{ success: boolean; data: any[] }>('/api/skills/tree')
+    const res = await $fetch<{ success: boolean, data: any[] }>('/api/skills/tree')
     rawTree.value = res.data
     buildGraph(res.data)
 
@@ -235,7 +238,8 @@ onMounted(() => {
 // ─── Category Filter Toggle ─────────────────────────────
 function toggleCategory(catId: string) {
   const idx = selectedCategories.value.indexOf(catId)
-  if (idx >= 0) selectedCategories.value.splice(idx, 1)
+  if (idx >= 0)
+    selectedCategories.value.splice(idx, 1)
   else selectedCategories.value.push(catId)
 }
 
@@ -312,12 +316,12 @@ async function handleEdgeDoubleClick(params: any) {
           catch (e) {
             toast.error('Failed to remove requirement')
           }
-        }
+        },
       },
       cancel: {
         label: 'Cancel',
-        onClick: () => {}
-      }
+        onClick: () => {},
+      },
     })
   }
 }
@@ -325,14 +329,10 @@ async function handleEdgeDoubleClick(params: any) {
 
 <template>
   <div class="h-[calc(100vh-100px)] w-full relative bg-muted/10 rounded-xl overflow-hidden border border-border/50">
-
-
     <!-- ─── TOP TOOLBAR ────────────────────────────────── -->
     <div class="absolute top-3 left-3 right-3 z-10 flex items-start gap-3">
-      
       <!-- Search + Category Filters Panel -->
       <div class="bg-card/95 backdrop-blur-md border border-border/60 shadow-xl rounded-xl p-3 flex flex-col gap-3 min-w-[320px] max-w-sm pointer-events-auto">
-        
         <!-- Search Input -->
         <div class="relative">
           <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60" />
@@ -341,11 +341,11 @@ async function handleEdgeDoubleClick(params: any) {
             type="text"
             placeholder="Search sub-categories..."
             class="w-full pl-9 pr-9 py-2 text-sm rounded-lg border border-border/50 bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 placeholder:text-muted-foreground/40 transition-all"
-          />
+          >
           <button
             v-if="searchQuery"
-            @click="searchQuery = ''"
             class="absolute right-2.5 top-1/2 -translate-y-1/2 size-5 rounded-full bg-muted/60 hover:bg-muted flex items-center justify-center transition-colors"
+            @click="searchQuery = ''"
           >
             <Icon name="i-lucide-x" class="size-3 text-muted-foreground" />
           </button>
@@ -356,19 +356,19 @@ async function handleEdgeDoubleClick(params: any) {
           <button
             v-for="cat in categories"
             :key="cat.id"
-            @click="toggleCategory(cat.id)"
             class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border-2 transition-all duration-200 cursor-pointer select-none"
-            :class="selectedCategories.includes(cat.id) 
-              ? 'text-white shadow-md scale-105' 
+            :class="selectedCategories.includes(cat.id)
+              ? 'text-white shadow-md scale-105'
               : 'bg-card hover:scale-105 text-muted-foreground/80 hover:text-foreground'"
-            :style="selectedCategories.includes(cat.id) 
-              ? { backgroundColor: cat.color, borderColor: cat.color, boxShadow: `0 2px 8px ${cat.color}40` } 
+            :style="selectedCategories.includes(cat.id)
+              ? { backgroundColor: cat.color, borderColor: cat.color, boxShadow: `0 2px 8px ${cat.color}40` }
               : { borderColor: `${cat.color}40` }"
+            @click="toggleCategory(cat.id)"
           >
-            <span 
+            <span
               class="size-2.5 rounded-full shrink-0"
               :style="{ backgroundColor: selectedCategories.includes(cat.id) ? '#fff' : cat.color }"
-            ></span>
+            />
             {{ cat.name }}
             <span class="text-[10px] opacity-70">({{ cat.count }})</span>
           </button>
@@ -384,8 +384,8 @@ async function handleEdgeDoubleClick(params: any) {
             </span>
           </div>
           <button
-            @click="clearFilters"
             class="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
+            @click="clearFilters"
           >
             <Icon name="i-lucide-x-circle" class="size-3" />
             Clear
@@ -394,7 +394,7 @@ async function handleEdgeDoubleClick(params: any) {
       </div>
 
       <!-- Spacer -->
-      <div class="flex-1"></div>
+      <div class="flex-1" />
 
       <!-- Auto Layout Button -->
       <div class="pointer-events-auto">
@@ -409,39 +409,43 @@ async function handleEdgeDoubleClick(params: any) {
     <VueFlow
       v-model:nodes="nodes"
       v-model:edges="edges"
-      @connect="handleConnect"
-      @edge-double-click="handleEdgeDoubleClick"
       :default-viewport="{ zoom: 0.8 }"
       :min-zoom="0.1"
       :max-zoom="2"
       fit-view-on-init
       class="vue-flow-theme"
+      @connect="handleConnect"
+      @edge-double-click="handleEdgeDoubleClick"
     >
       <Background pattern-color="#888" :gap="20" :size="1" />
       <Controls position="bottom-right" />
       <MiniMap position="bottom-left" />
-      
+
       <!-- Custom Sub-Category Node -->
       <template #node-subcategory="{ data }">
-        <div 
+        <div
           class="px-4 py-3 rounded-xl border-2 shadow-sm flex flex-col items-center justify-center gap-1.5 w-[240px] transition-all duration-300 cursor-grab group/node relative bg-card"
           :class="data.dimmed ? 'opacity-40 scale-95' : 'hover:shadow-lg'"
           :style="{ borderColor: `${data.color}80`, boxShadow: data.dimmed ? 'none' : `0 4px 14px 0 ${data.color}15` }"
         >
           <Handle type="source" :position="Position.Top" class="!w-3 !h-3 !-top-1.5 transition-colors" :style="{ backgroundColor: data.color }" />
           <Handle type="target" :position="Position.Bottom" class="!w-3 !h-3 !-bottom-1.5 transition-colors" :style="{ backgroundColor: data.color }" />
-          
+
           <!-- Category Badge -->
           <div class="flex items-center gap-2 mb-1 w-full justify-center">
             <div class="size-6 rounded-md flex items-center justify-center shrink-0" :style="{ backgroundColor: `${data.color}20` }">
               <Icon name="i-lucide-layers" class="size-3.5" :style="{ color: data.color }" />
             </div>
-            <div class="font-bold text-xs uppercase tracking-wider truncate max-w-[160px]" :style="{ color: data.color }">{{ data.categoryName }}</div>
+            <div class="font-bold text-xs uppercase tracking-wider truncate max-w-[160px]" :style="{ color: data.color }">
+              {{ data.categoryName }}
+            </div>
           </div>
-          
+
           <!-- Sub-Category Name -->
-          <div class="font-bold text-[15px] text-foreground leading-tight text-center drop-shadow-sm px-2 w-full truncate" :title="data.label">{{ data.label }}</div>
-          
+          <div class="font-bold text-[15px] text-foreground leading-tight text-center drop-shadow-sm px-2 w-full truncate" :title="data.label">
+            {{ data.label }}
+          </div>
+
           <!-- Dimmed badge for related predecessors -->
           <div v-if="data.dimmed" class="absolute -top-2 -right-2 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
             LINKED

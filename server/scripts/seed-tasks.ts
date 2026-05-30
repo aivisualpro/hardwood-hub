@@ -1,7 +1,8 @@
+import mongoose from 'mongoose'
+
 // Seed demo tasks into MongoDB
 // Original: server/api/tasks/seed.post.ts
 import { Task } from '../models/Task'
-
 /**
  * Run with:
  *   npx tsx server/scripts/seed-tasks.ts
@@ -14,21 +15,22 @@ import { Task } from '../models/Task'
  * an HTTP route — it runs once manually and should never be re-added to server/api/.
  */
 import 'dotenv/config'
-import mongoose from 'mongoose'
 
 async function run() {
-    const uri = process.env.MONGODB_URI
-    if (!uri) throw new Error('MONGODB_URI is not set')
-    await mongoose.connect(uri)
-    console.log('[DB] Connected')
+  const uri = process.env.MONGODB_URI
+  if (!uri)
+    throw new Error('MONGODB_URI is not set')
+  await mongoose.connect(uri)
+  console.log('[DB] Connected')
 
-    try {
-        // Seed disabled — tasks are now user-created only
-        return { success: true, message: 'Seed disabled', skipped: true }
-    } finally {
-        await mongoose.disconnect()
-        console.log('[DB] Disconnected')
-    }
+  try {
+    // Seed disabled — tasks are now user-created only
+    return { success: true, message: 'Seed disabled', skipped: true }
+  }
+  finally {
+    await mongoose.disconnect()
+    console.log('[DB] Disconnected')
+  }
 }
 
-run().catch(err => { console.error(err); process.exit(1) })
+run().catch((err) => { console.error(err); process.exit(1) })

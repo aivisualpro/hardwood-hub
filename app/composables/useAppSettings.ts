@@ -44,4 +44,3 @@ export function useAppSettings() {
     locale: computed(() => cookieAppSettings.value.locale || 'en'),
   }
 }
-

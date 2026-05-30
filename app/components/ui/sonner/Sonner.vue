@@ -16,7 +16,7 @@ const props = defineProps<ToasterProps>()
         description: 'text-muted-foreground !opacity-100 font-medium',
         actionButton: 'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
         cancelButton: 'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
-      }
+      },
     }"
   />
 </template>

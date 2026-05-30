@@ -27,28 +27,32 @@ const showDetailSheet = ref(false)
 async function viewDetails(item: CrmSubmission) {
   selectedItem.value = item
   showDetailSheet.value = true
-  
+
   if (item.email) {
     isLoadingRelated.value = true
     try {
       const res = await $fetch<any>(`/api/crm/submissions?email=${encodeURIComponent(item.email)}&limit=100`)
       // Filter out current item from related records
       relatedSubmissions.value = (res.data || []).filter((s: CrmSubmission) => s._id !== item._id)
-    } finally {
+    }
+    finally {
       isLoadingRelated.value = false
     }
-  } else {
+  }
+  else {
     relatedSubmissions.value = []
   }
 }
 
 function formatDate(date: string) {
-  if (!date) return '—'
+  if (!date)
+    return '—'
   return format(new Date(date), 'MMM dd, yyyy h:mm a')
 }
 
 function formatDateShort(date: string) {
-  if (!date) return '—'
+  if (!date)
+    return '—'
   return format(new Date(date), 'MMM dd, yyyy')
 }
 
@@ -101,27 +105,53 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
         <thead>
           <tr class="border-b bg-muted/30">
             <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-8" />
-            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contact</th>
-            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Email</th>
-            <th v-if="showTypeColumn" class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Type</th>
-            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">Phone</th>
-            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Date</th>
-            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Contact
+            </th>
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">
+              Email
+            </th>
+            <th v-if="showTypeColumn" class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Type
+            </th>
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">
+              Phone
+            </th>
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">
+              Date
+            </th>
+            <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Status
+            </th>
             <th class="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-12" />
           </tr>
         </thead>
         <tbody v-if="isLoading">
           <tr v-for="n in 8" :key="n" class="border-b last:border-b-0">
-            <td class="py-3 px-4"><div class="w-5 h-5 rounded bg-muted animate-pulse" /></td>
+            <td class="py-3 px-4">
+              <div class="w-5 h-5 rounded bg-muted animate-pulse" />
+            </td>
             <td class="py-3 px-4">
               <div class="h-4 w-36 rounded bg-muted animate-pulse" />
             </td>
-            <td class="py-3 px-4 hidden lg:table-cell"><div class="h-4 w-48 rounded bg-muted animate-pulse" /></td>
-            <td v-if="showTypeColumn" class="py-3 px-4"><div class="h-5 w-20 rounded-full bg-muted animate-pulse" /></td>
-            <td class="py-3 px-4 hidden xl:table-cell"><div class="h-4 w-28 rounded bg-muted animate-pulse" /></td>
-            <td class="py-3 px-4 hidden md:table-cell"><div class="h-4 w-24 rounded bg-muted animate-pulse" /></td>
-            <td class="py-3 px-4"><div class="h-5 w-20 rounded-full bg-muted animate-pulse" /></td>
-            <td class="py-3 px-4"><div class="h-5 w-5 rounded bg-muted animate-pulse" /></td>
+            <td class="py-3 px-4 hidden lg:table-cell">
+              <div class="h-4 w-48 rounded bg-muted animate-pulse" />
+            </td>
+            <td v-if="showTypeColumn" class="py-3 px-4">
+              <div class="h-5 w-20 rounded-full bg-muted animate-pulse" />
+            </td>
+            <td class="py-3 px-4 hidden xl:table-cell">
+              <div class="h-4 w-28 rounded bg-muted animate-pulse" />
+            </td>
+            <td class="py-3 px-4 hidden md:table-cell">
+              <div class="h-4 w-24 rounded bg-muted animate-pulse" />
+            </td>
+            <td class="py-3 px-4">
+              <div class="h-5 w-20 rounded-full bg-muted animate-pulse" />
+            </td>
+            <td class="py-3 px-4">
+              <div class="h-5 w-5 rounded bg-muted animate-pulse" />
+            </td>
           </tr>
         </tbody>
         <tbody v-else-if="items.length === 0">
@@ -132,8 +162,12 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
                   <Icon :name="emptyIcon || 'i-lucide-inbox'" class="size-7 text-muted-foreground/50" />
                 </div>
                 <div>
-                  <p class="font-medium text-muted-foreground">{{ emptyTitle || 'No submissions yet' }}</p>
-                  <p class="text-xs text-muted-foreground/60 mt-1">{{ emptyDescription || 'Click "Sync from WordPress" to pull in form submissions' }}</p>
+                  <p class="font-medium text-muted-foreground">
+                    {{ emptyTitle || 'No submissions yet' }}
+                  </p>
+                  <p class="text-xs text-muted-foreground/60 mt-1">
+                    {{ emptyDescription || 'Click "Sync from WordPress" to pull in form submissions' }}
+                  </p>
                 </div>
               </div>
             </td>
@@ -265,22 +299,26 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
             <Icon :name="emptyIcon || 'i-lucide-inbox'" class="size-8 text-muted-foreground/40" />
           </div>
           <div>
-            <p class="font-bold text-lg">{{ emptyTitle || 'No items found' }}</p>
-            <p class="text-sm text-muted-foreground mt-1">{{ emptyDescription || 'Check your filters or click Sync to fetch new data' }}</p>
+            <p class="font-bold text-lg">
+              {{ emptyTitle || 'No items found' }}
+            </p>
+            <p class="text-sm text-muted-foreground mt-1">
+              {{ emptyDescription || 'Check your filters or click Sync to fetch new data' }}
+            </p>
           </div>
         </div>
       </template>
 
       <!-- Submissions Cards -->
       <template v-else>
-        <div 
-          v-for="item in items" 
+        <div
+          v-for="item in items"
           :key="item._id"
           class="group relative overflow-hidden p-5 rounded-3xl border border-border/50 bg-card transition-all active:scale-[0.98] shadow-sm hover:shadow-md"
           @click="navigateTo(`/crm/submissions/${item._id}`)"
         >
           <!-- Subtle Type Gradient -->
-          <div 
+          <div
             class="absolute top-0 right-0 w-32 h-32 blur-3xl opacity-10 pointer-events-none -mr-10 -mt-10"
             :class="{
               'bg-sky-500': item.type === 'appointment',
@@ -362,10 +400,12 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-56 p-1.5 rounded-2xl shadow-xl border-border/50">
-                  <div class="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Update State</div>
-                  <DropdownMenuItem 
-                    v-for="s in statuses" 
-                    :key="s" 
+                  <div class="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    Update State
+                  </div>
+                  <DropdownMenuItem
+                    v-for="s in statuses"
+                    :key="s"
                     class="rounded-xl px-3 py-2.5 text-xs font-semibold"
                     @click.stop="emit('update-status', item._id, s)"
                   >
@@ -391,7 +431,9 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
               </span>
             </div>
             <div>
-              <SheetTitle class="text-lg">{{ selectedItem.name || 'Unknown Contact' }}</SheetTitle>
+              <SheetTitle class="text-lg">
+                {{ selectedItem.name || 'Unknown Contact' }}
+              </SheetTitle>
               <SheetDescription>{{ selectedItem.formName }}</SheetDescription>
             </div>
           </div>
@@ -440,7 +482,9 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
 
           <!-- Message -->
           <div v-if="selectedItem.message" class="space-y-2">
-            <h4 class="text-sm font-medium text-foreground">Message</h4>
+            <h4 class="text-sm font-medium text-foreground">
+              Message
+            </h4>
             <div class="rounded-lg bg-muted/30 p-4 text-sm text-foreground/80 leading-relaxed border border-border/50">
               {{ selectedItem.message }}
             </div>
@@ -448,7 +492,9 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
 
           <!-- All Fields -->
           <div v-if="selectedItem.fields && Object.keys(selectedItem.fields).length > 0" class="space-y-2">
-            <h4 class="text-sm font-medium text-foreground">All Form Fields</h4>
+            <h4 class="text-sm font-medium text-foreground">
+              All Form Fields
+            </h4>
             <div class="rounded-lg border border-border/50 overflow-hidden">
               <div
                 v-for="(value, key) in selectedItem.fields"
@@ -490,13 +536,15 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
                       class="shrink-0 w-2 h-2 rounded-full"
                       :class="sub.status === 'new' ? 'bg-blue-500' : 'bg-muted-foreground/30'"
                     />
-                    <p class="text-sm font-semibold truncate">{{ sub.formName }}</p>
+                    <p class="text-sm font-semibold truncate">
+                      {{ sub.formName }}
+                    </p>
                   </div>
                   <span class="text-[10px] text-muted-foreground shrink-0 uppercase tracking-tighter tabular-nums">
                     {{ formatDateShort(sub.dateSubmitted) }}
                   </span>
                 </div>
-                
+
                 <div class="flex items-center gap-3">
                   <span
                     class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold"
@@ -514,15 +562,21 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
             </div>
 
             <div v-else class="text-center py-6 rounded-xl border border-dashed text-muted-foreground">
-              <p class="text-xs">No other records found for this email.</p>
+              <p class="text-xs">
+                No other records found for this email.
+              </p>
             </div>
           </div>
 
           <!-- Metadata -->
           <div class="text-[10px] text-muted-foreground/40 space-y-1 pt-4 border-t">
             <p>GF Entry #{{ selectedItem.gfEntryId }} · Form ID #{{ selectedItem.gfFormId }}</p>
-            <p v-if="selectedItem.ip">IP: {{ selectedItem.ip }}</p>
-            <p v-if="selectedItem.sourceUrl">Source: {{ selectedItem.sourceUrl }}</p>
+            <p v-if="selectedItem.ip">
+              IP: {{ selectedItem.ip }}
+            </p>
+            <p v-if="selectedItem.sourceUrl">
+              Source: {{ selectedItem.sourceUrl }}
+            </p>
           </div>
         </div>
       </SheetContent>

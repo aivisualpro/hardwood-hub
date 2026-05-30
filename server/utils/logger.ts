@@ -19,14 +19,14 @@
 const IS_PROD = process.env.NODE_ENV === 'production'
 
 export interface Logger {
-    /** Silenced in production — use for verbose operational flow */
-    log:   (...args: unknown[]) => void
-    /** Silenced in production — same as log */
-    info:  (...args: unknown[]) => void
-    /** Always emits — use for recoverable anomalies */
-    warn:  (...args: unknown[]) => void
-    /** Always emits — use for actionable failures */
-    error: (...args: unknown[]) => void
+  /** Silenced in production — use for verbose operational flow */
+  log: (...args: unknown[]) => void
+  /** Silenced in production — same as log */
+  info: (...args: unknown[]) => void
+  /** Always emits — use for recoverable anomalies */
+  warn: (...args: unknown[]) => void
+  /** Always emits — use for actionable failures */
+  error: (...args: unknown[]) => void
 }
 
 /**
@@ -34,12 +34,12 @@ export interface Logger {
  * @param prefix - e.g. '[Calendar Webhook]' — prepended to every message
  */
 export function logger(prefix: string): Logger {
-    return {
-        log:   IS_PROD ? () => {} : (...a) => console.log(prefix,   ...a),
-        info:  IS_PROD ? () => {} : (...a) => console.log(prefix,   ...a),
-        warn:                       (...a) => console.warn(prefix,  ...a),
-        error:                      (...a) => console.error(prefix, ...a),
-    }
+  return {
+    log: IS_PROD ? () => {} : (...a) => console.log(prefix, ...a),
+    info: IS_PROD ? () => {} : (...a) => console.log(prefix, ...a),
+    warn: (...a) => console.warn(prefix, ...a),
+    error: (...a) => console.error(prefix, ...a),
+  }
 }
 
 /**

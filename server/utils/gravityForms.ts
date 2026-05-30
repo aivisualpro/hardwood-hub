@@ -73,7 +73,8 @@ async function v1Fetch<T = any>(cfg: GFConfig, route: string): Promise<T> {
 
 // ——— Auto-detect which API is available ———
 async function detectApiMode(cfg: GFConfig): Promise<'v2' | 'v1'> {
-  if (_apiMode) return _apiMode
+  if (_apiMode)
+    return _apiMode
 
   // Check if site has gf/v2 namespace
   try {
@@ -87,7 +88,8 @@ async function detectApiMode(cfg: GFConfig): Promise<'v2' | 'v1'> {
         return 'v2'
       }
     }
-  } catch { /* ignore */ }
+  }
+  catch { /* ignore */ }
 
   // Fallback to v1
   _apiMode = 'v1'
@@ -112,7 +114,7 @@ export async function gfFetch<T = any>(path: string): Promise<T> {
 
   // Convert v2-style paths to v1 routes
   // /forms → forms, /forms/3 → forms/3, /forms/3/entries → forms/3/entries
-  const route = path.replace(/^\//, '').split('?')[0]
+  const route = (path.replace(/^\//, '').split('?')[0]) ?? ''
   return v1Fetch<T>(cfg, route)
 }
 
@@ -135,7 +137,7 @@ export async function gfGetEntries(formId: number, page = 1, pageSize = 100) {
   const mode = await detectApiMode(cfg)
 
   if (mode === 'v2') {
-    return v2Fetch<{ total_count: number; entries: any[] }>(
+    return v2Fetch<{ total_count: number, entries: any[] }>(
       cfg,
       `/forms/${formId}/entries?paging[page_size]=${pageSize}&paging[current_page]=${page}&sorting[key]=date_created&sorting[direction]=DESC`,
     )
@@ -175,9 +177,11 @@ export async function gfGetAllEntries(formId: number): Promise<any[]> {
   const pageSize = 100
   while (true) {
     const res = await gfGetEntries(formId, page, pageSize)
-    if (!res.entries?.length) break
+    if (!res.entries?.length)
+      break
     all.push(...res.entries)
-    if (all.length >= res.total_count) break
+    if (all.length >= res.total_count)
+      break
     page++
   }
   return all

@@ -1,3 +1,4 @@
+import { Employee } from '../models/Employee'
 /**
  * In-process epoch cache — avoids a MongoDB round-trip on every API request.
  *
@@ -9,22 +10,22 @@
  *    paths propagate instantly rather than waiting for TTL expiry.
  */
 import { connectDB } from '../utils/mongoose'
-import { Employee } from '../models/Employee'
 
 const CACHE_TTL_MS = 30_000 // 30 seconds
 
 interface CacheEntry {
-    epoch: number
-    cachedAt: number
+  epoch: number
+  cachedAt: number
 }
 
 const cache = new Map<string, CacheEntry>()
 
 async function fetchDbEpoch(employeeId: string): Promise<number | null> {
-    await connectDB()
-    const doc = await Employee.findById(employeeId).select('sessionEpoch').lean<any>()
-    if (!doc) return null
-    return (doc.sessionEpoch ?? 0) as number
+  await connectDB()
+  const doc = await Employee.findById(employeeId).select('sessionEpoch').lean<any>()
+  if (!doc)
+    return null
+  return (doc.sessionEpoch ?? 0) as number
 }
 
 /**
@@ -32,19 +33,20 @@ async function fetchDbEpoch(employeeId: string): Promise<number | null> {
  * Returns false if the employee no longer exists or the epoch is stale.
  */
 export async function checkEpoch(employeeId: string, tokenEpoch: number): Promise<boolean> {
-    const now = Date.now()
-    const entry = cache.get(employeeId)
+  const now = Date.now()
+  const entry = cache.get(employeeId)
 
-    if (entry && now - entry.cachedAt < CACHE_TTL_MS) {
-        return tokenEpoch >= entry.epoch
-    }
+  if (entry && now - entry.cachedAt < CACHE_TTL_MS) {
+    return tokenEpoch >= entry.epoch
+  }
 
-    // Cache miss or stale — fetch from DB
-    const dbEpoch = await fetchDbEpoch(employeeId)
-    if (dbEpoch === null) return false   // employee deleted
+  // Cache miss or stale — fetch from DB
+  const dbEpoch = await fetchDbEpoch(employeeId)
+  if (dbEpoch === null)
+    return false // employee deleted
 
-    cache.set(employeeId, { epoch: dbEpoch, cachedAt: now })
-    return tokenEpoch >= dbEpoch
+  cache.set(employeeId, { epoch: dbEpoch, cachedAt: now })
+  return tokenEpoch >= dbEpoch
 }
 
 /**
@@ -52,5 +54,5 @@ export async function checkEpoch(employeeId: string, tokenEpoch: number): Promis
  * Next request for this employee will hit MongoDB and see the new epoch.
  */
 export function invalidateEpochCache(employeeId: string): void {
-    cache.delete(employeeId)
+  cache.delete(employeeId)
 }

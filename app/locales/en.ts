@@ -126,7 +126,7 @@ export default {
 
   // Tasks
   'tasks.title': 'Tasks',
-  'tasks.description': "Here's a list of your tasks for this month!",
+  'tasks.description': 'Here\'s a list of your tasks for this month!',
   'tasks.allTasks': 'All Tasks',
   'tasks.task': 'task',
   'tasks.tasks': 'tasks',

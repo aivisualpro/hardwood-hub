@@ -66,12 +66,24 @@ async function handleStatusUpdate(id: string, status: string) {
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="contacted">Contacted</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
+                <SelectItem value="all">
+                  All Statuses
+                </SelectItem>
+                <SelectItem value="new">
+                  New
+                </SelectItem>
+                <SelectItem value="contacted">
+                  Contacted
+                </SelectItem>
+                <SelectItem value="in-progress">
+                  In Progress
+                </SelectItem>
+                <SelectItem value="completed">
+                  Completed
+                </SelectItem>
+                <SelectItem value="archived">
+                  Archived
+                </SelectItem>
               </SelectContent>
             </Select>
             <template #fallback>
@@ -115,4 +127,3 @@ async function handleStatusUpdate(id: string, status: string) {
     </div>
   </div>
 </template>
-

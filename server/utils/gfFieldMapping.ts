@@ -9,7 +9,7 @@
  *   5 → Get in Touch with Conditional Logic
  */
 
-export const GF_FORM_MAP: Record<number, { type: string; formName: string }> = {
+export const GF_FORM_MAP: Record<number, { type: string, formName: string }> = {
   3: { type: 'appointment', formName: 'Book an Appointment' },
   1: { type: 'fast-quote', formName: 'Get a FAST Quote' },
   6: { type: 'flooring-estimate', formName: 'Get a Quick Flooring Estimate' },
@@ -42,7 +42,8 @@ export function parseGFEntry(entry: Record<string, any>, formFields: any[] = [])
         labelMap[inputLabel] = val
         rawFields[input.label || inputId] = val
       }
-    } else {
+    }
+    else {
       const val = entry[id] ?? ''
       labelMap[label] = val
       rawFields[field.label || id] = val
@@ -50,19 +51,19 @@ export function parseGFEntry(entry: Record<string, any>, formFields: any[] = [])
   }
 
   // Extract canonical contact info from various naming conventions
-  const firstName = labelMap['first'] || labelMap['first name'] || ''
-  const lastName = labelMap['last'] || labelMap['last name'] || ''
-  const name = (firstName && lastName) ? `${firstName} ${lastName}`.trim() : (labelMap['name'] || `${firstName}${lastName}`.trim())
-  const email = labelMap['email'] || labelMap['email address'] || labelMap['your email'] || ''
-  const phone = labelMap['phone'] || labelMap['phone number'] || labelMap['telephone'] || ''
+  const firstName = labelMap.first || labelMap['first name'] || ''
+  const lastName = labelMap.last || labelMap['last name'] || ''
+  const name = (firstName && lastName) ? `${firstName} ${lastName}`.trim() : (labelMap.name || `${firstName}${lastName}`.trim())
+  const email = labelMap.email || labelMap['email address'] || labelMap['your email'] || ''
+  const phone = labelMap.phone || labelMap['phone number'] || labelMap.telephone || ''
   const address = [
-    labelMap['street address'] || labelMap['address'] || labelMap['street'] || '',
+    labelMap['street address'] || labelMap.address || labelMap.street || '',
     labelMap['address line 2'] || '',
   ].filter(Boolean).join(', ')
-  const city = labelMap['city'] || ''
-  const state = labelMap['state / province'] || labelMap['state'] || ''
-  const zip = labelMap['zip / postal code'] || labelMap['zip'] || labelMap['zip code'] || ''
-  const message = labelMap['message'] || labelMap['comments'] || labelMap['comment'] || labelMap['your message'] || labelMap['details'] || ''
+  const city = labelMap.city || ''
+  const state = labelMap['state / province'] || labelMap.state || ''
+  const zip = labelMap['zip / postal code'] || labelMap.zip || labelMap['zip code'] || ''
+  const message = labelMap.message || labelMap.comments || labelMap.comment || labelMap['your message'] || labelMap.details || ''
 
   return {
     gfEntryId: String(entry.id),

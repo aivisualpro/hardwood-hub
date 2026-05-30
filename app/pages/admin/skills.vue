@@ -48,7 +48,8 @@ const showMobileSidebar = ref(false)
 
 const filteredTree = computed(() => {
   const q = categorySearch.value.toLowerCase().trim()
-  if (!q) return tree.value
+  if (!q)
+    return tree.value
   return tree.value.filter(c => c.name.toLowerCase().includes(q))
 })
 
@@ -87,7 +88,8 @@ function openCatInfo(cat: Cat) {
 function onCatPdfSelected(e: Event) {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
-  if (!file) return
+  if (!file)
+    return
   if (file.type !== 'application/pdf') {
     toast.error('Only PDF files are allowed')
     target.value = ''
@@ -101,14 +103,15 @@ function onCatPdfSelected(e: Event) {
 }
 
 async function saveCatPdf() {
-  if (!activeCatId.value) return
+  if (!activeCatId.value)
+    return
   savingCatPdf.value = true
   try {
     let finalUrl = catPdfUrl.value
     if (finalUrl && finalUrl.startsWith('data:')) {
       toast.loading('Uploading PDF...', { id: 'category-pdf-upload' })
       const sigRes = await $fetch<any>('/api/upload/cloudinary-signature', {
-        params: { folder: 'hardwood-hub/categories' }
+        params: { folder: 'hardwood-hub/categories' },
       })
       const fd = new FormData()
       fd.append('file', finalUrl)
@@ -119,29 +122,32 @@ async function saveCatPdf() {
 
       const clRes = await $fetch<any>(`https://api.cloudinary.com/v1_1/${sigRes.cloudName}/auto/upload`, {
         method: 'POST',
-        body: fd
+        body: fd,
       })
       if (clRes && clRes.secure_url) {
         finalUrl = clRes.secure_url
       }
       toast.dismiss('category-pdf-upload')
     }
-    
+
     await $fetch(`/api/categories/${activeCatId.value}`, {
       method: 'PUT',
-      body: { info: finalUrl }
+      body: { info: finalUrl },
     })
-    
+
     // Update local tree
     const targetCat = tree.value.find(c => c._id === activeCatId.value)
-    if (targetCat) targetCat.info = finalUrl
-    
+    if (targetCat)
+      targetCat.info = finalUrl
+
     toast.success('Category PDF saved')
     showCatInfoModal.value = false
-  } catch(e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to save PDF', { description: e.message })
     toast.dismiss('category-pdf-upload')
-  } finally {
+  }
+  finally {
     savingCatPdf.value = false
   }
 }
@@ -159,23 +165,26 @@ function openSkillInfo(sk: SkillItem) {
 }
 
 async function saveSkillInfo() {
-  if (!activeSkillId.value) return
+  if (!activeSkillId.value)
+    return
   savingSkillInfo.value = true
   try {
     const found = findSkill(activeSkillId.value)
     if (found) {
       found.skill.info = skillInfoText.value
     }
-    
+
     await $fetch(`/api/skills/${activeSkillId.value}`, {
       method: 'PUT',
-      body: { info: skillInfoText.value }
+      body: { info: skillInfoText.value },
     })
     toast.success('Skill info saved')
     showSkillInfoModal.value = false
-  } catch(e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to save skill info', { description: e.message })
-  } finally {
+  }
+  finally {
     savingSkillInfo.value = false
   }
 }
@@ -209,10 +218,12 @@ function cancelEditSubCat() {
 
 async function saveEditSubCat(subId: string) {
   const newName = editingSubCatName.value.trim()
-  if (!newName) return toast.error('Sub-category name is required')
+  if (!newName)
+    return toast.error('Sub-category name is required')
 
   const found = findSub(subId)
-  if (!found) return
+  if (!found)
+    return
 
   const prev = found.sub.name
   found.sub.name = newName
@@ -221,7 +232,8 @@ async function saveEditSubCat(subId: string) {
   try {
     await $fetch(`/api/subcategories/${subId}`, { method: 'PUT', body: { name: newName } })
     toast.success('Sub-category renamed', { duration: 2000 })
-  } catch (e: any) {
+  }
+  catch (e: any) {
     found.sub.name = prev
     editingSubCatId.value = subId
     editingSubCatName.value = newName
@@ -245,10 +257,12 @@ function cancelEditCat() {
 
 async function saveEditCat(catId: string) {
   const newName = editingCatName.value.trim()
-  if (!newName) return toast.error('Category name is required')
+  if (!newName)
+    return toast.error('Category name is required')
 
   const cat = tree.value.find(c => c._id === catId)
-  if (!cat) return
+  if (!cat)
+    return
 
   const prev = cat.name
   cat.name = newName
@@ -257,7 +271,8 @@ async function saveEditCat(catId: string) {
   try {
     await $fetch(`/api/categories/${catId}`, { method: 'PUT', body: { name: newName } })
     toast.success('Category renamed', { duration: 2000 })
-  } catch (e: any) {
+  }
+  catch (e: any) {
     cat.name = prev
     editingCatId.value = catId
     editingCatName.value = newName
@@ -271,8 +286,10 @@ function openCreateSubCat() {
 }
 
 async function saveSubCat() {
-  if (!subCatForm.value.name.trim()) return toast.error('Sub-category name is required')
-  if (!selectedCatId.value) return toast.error('Please select a category first')
+  if (!subCatForm.value.name.trim())
+    return toast.error('Sub-category name is required')
+  if (!selectedCatId.value)
+    return toast.error('Please select a category first')
   savingSubCat.value = true
 
   // Optimistic: close modal immediately, add placeholder
@@ -287,7 +304,8 @@ async function saveSubCat() {
     skills: [],
   }
   const cat = tree.value.find(c => c._id === selectedCatId.value)
-  if (cat) cat.subCategories.push(newSub)
+  if (cat)
+    cat.subCategories.push(newSub)
   showSubCatModal.value = false
 
   try {
@@ -298,18 +316,22 @@ async function saveSubCat() {
     // Replace temp _id with real one from server
     if (cat) {
       const idx = cat.subCategories.findIndex(s => s._id === tempId)
-      if (idx !== -1 && res.data?._id) cat.subCategories[idx]!._id = res.data._id
+      if (idx !== -1 && res.data?._id)
+        cat.subCategories[idx]!._id = res.data._id
     }
     toast.success('Sub-category added')
-  } catch (e: any) {
+  }
+  catch (e: any) {
     // Revert: remove the temp sub-category
     if (cat) {
       const idx = cat.subCategories.findIndex(s => s._id === tempId)
-      if (idx !== -1) cat.subCategories.splice(idx, 1)
+      if (idx !== -1)
+        cat.subCategories.splice(idx, 1)
     }
     showSubCatModal.value = true
     toast.error('Failed to create sub-category', { description: e?.message })
-  } finally {
+  }
+  finally {
     savingSubCat.value = false
   }
 }
@@ -317,9 +339,11 @@ async function saveSubCat() {
 // ─── Delete category ──────────────────────────────────────
 async function deleteCat(catId: string) {
   const idx = tree.value.findIndex(c => c._id === catId)
-  if (idx === -1) return
+  if (idx === -1)
+    return
   const cat = tree.value[idx]
-  if (cat && cat.subCategories.length > 0) return toast.error('Cannot delete a category with sub-categories')
+  if (cat && cat.subCategories.length > 0)
+    return toast.error('Cannot delete a category with sub-categories')
 
   // Snapshot for revert
   const snapshot = cat
@@ -333,9 +357,11 @@ async function deleteCat(catId: string) {
   try {
     await $fetch(`/api/categories/${catId}`, { method: 'DELETE' })
     toast.success('Category removed', { duration: 2000 })
-  } catch (e: any) {
+  }
+  catch (e: any) {
     // Revert
-    if (snapshot) tree.value.splice(idx, 0, snapshot)
+    if (snapshot)
+      tree.value.splice(idx, 0, snapshot)
     selectedCatId.value = catId
     toast.error('Failed to delete category', { description: e?.message })
   }
@@ -344,8 +370,10 @@ async function deleteCat(catId: string) {
 // ─── Delete sub-category ──────────────────────────────────
 async function deleteSubCat(subId: string) {
   const found = findSub(subId)
-  if (!found) return
-  if (found.sub.skills.length > 0) return toast.error('Cannot delete a sub-category with skills')
+  if (!found)
+    return
+  if (found.sub.skills.length > 0)
+    return toast.error('Cannot delete a sub-category with skills')
 
   // Snapshot for revert
   const idx = found.cat.subCategories.findIndex(s => s._id === subId)
@@ -357,9 +385,11 @@ async function deleteSubCat(subId: string) {
   try {
     await $fetch(`/api/subcategories/${subId}`, { method: 'DELETE' })
     toast.success('Sub-category removed', { duration: 2000 })
-  } catch (e: any) {
+  }
+  catch (e: any) {
     // Revert
-    if (snapshot) found.cat.subCategories.splice(idx, 0, snapshot)
+    if (snapshot)
+      found.cat.subCategories.splice(idx, 0, snapshot)
     toast.error('Failed to delete sub-category', { description: e?.message })
   }
 }
@@ -387,17 +417,20 @@ function removeBonusRule(idx: number) {
 }
 
 async function saveBonusRules() {
-  if (!bonusSubId.value) return
+  if (!bonusSubId.value)
+    return
   // Validate
   for (const r of bonusRules.value) {
-    if (!r.skillSet) return toast.error('Each rule needs a Skill Set')
+    if (!r.skillSet)
+      return toast.error('Each rule needs a Skill Set')
   }
   savingBonus.value = true
   const found = findSub(bonusSubId.value)
   const prev = found ? JSON.parse(JSON.stringify(found.sub.bonusRules)) : []
 
   // Optimistic
-  if (found) found.sub.bonusRules = JSON.parse(JSON.stringify(bonusRules.value))
+  if (found)
+    found.sub.bonusRules = JSON.parse(JSON.stringify(bonusRules.value))
   showBonusModal.value = false
 
   try {
@@ -406,11 +439,14 @@ async function saveBonusRules() {
       body: { bonusRules: bonusRules.value },
     })
     toast.success('Bonus rules saved', { duration: 2000 })
-  } catch (e: any) {
-    if (found) found.sub.bonusRules = prev
+  }
+  catch (e: any) {
+    if (found)
+      found.sub.bonusRules = prev
     showBonusModal.value = true
     toast.error('Failed to save bonus rules', { description: e?.message })
-  } finally {
+  }
+  finally {
     savingBonus.value = false
   }
 }
@@ -426,10 +462,12 @@ async function fetchTree() {
         const found = res.data.find(c => c._id === queryCat || c.name === queryCat)
         if (found) {
           selectedCatId.value = found._id
-        } else {
+        }
+        else {
           selectedCatId.value = res.data[0]!._id
         }
-      } else {
+      }
+      else {
         const firstCat = res.data[0]
         if (firstCat) {
           selectedCatId.value = firstCat._id
@@ -448,7 +486,8 @@ function findSkill(id: string) {
   for (const cat of tree.value) {
     for (const sub of cat.subCategories) {
       const skill = sub.skills.find(s => s._id === id)
-      if (skill) return { cat, sub, skill }
+      if (skill)
+        return { cat, sub, skill }
     }
   }
   return null
@@ -457,7 +496,8 @@ function findSkill(id: string) {
 function findSub(id: string) {
   for (const cat of tree.value) {
     const sub = cat.subCategories.find(s => s._id === id)
-    if (sub) return { cat, sub }
+    if (sub)
+      return { cat, sub }
   }
   return null
 }
@@ -466,9 +506,11 @@ function findSub(id: string) {
 const selectedCat = computed(() => tree.value.find(c => c._id === selectedCatId.value) ?? null)
 
 const filteredSubs = computed(() => {
-  if (!selectedCat.value) return []
+  if (!selectedCat.value)
+    return []
   const q = searchQuery.value.toLowerCase()
-  if (!q) return selectedCat.value.subCategories
+  if (!q)
+    return selectedCat.value.subCategories
   return selectedCat.value.subCategories
     .map(sub => ({
       ...sub,
@@ -487,13 +529,14 @@ const allSubs = computed(() =>
       _id: sub._id,
       name: sub.name,
       categoryName: cat.name,
-    }))
-  ).sort((a, b) => a.name.localeCompare(b.name))
+    })),
+  ).sort((a, b) => a.name.localeCompare(b.name)),
 )
 
 const filteredPredecessors = computed(() => {
   const q = predecessorSearch.value.toLowerCase()
-  if (!q) return allSubs.value
+  if (!q)
+    return allSubs.value
   return allSubs.value.filter(
     s => s.name.toLowerCase().includes(q) || s.categoryName.toLowerCase().includes(q),
   )
@@ -501,7 +544,8 @@ const filteredPredecessors = computed(() => {
 
 // ─── Accordion toggle ────────────────────────────────────
 function toggleSub(id: string) {
-  if (expandedSubs.value.has(id)) expandedSubs.value.delete(id)
+  if (expandedSubs.value.has(id))
+    expandedSubs.value.delete(id)
   else expandedSubs.value.add(id)
 }
 
@@ -532,7 +576,8 @@ function openCreateSkill(catId: string, subCatId: string) {
 }
 
 async function saveSkill() {
-  if (!skillForm.value.skill.trim()) return toast.error('Skill name is required')
+  if (!skillForm.value.skill.trim())
+    return toast.error('Skill name is required')
   savingSkill.value = true
 
   // Optimistic: close modal immediately, add placeholder
@@ -545,7 +590,8 @@ async function saveSkill() {
     subCategory: skillForm.value.subCategory,
   }
   const targetSub = findSub(skillForm.value.subCategory)
-  if (targetSub) targetSub.sub.skills.push(newSkill)
+  if (targetSub)
+    targetSub.sub.skills.push(newSkill)
   showSkillModal.value = false
 
   try {
@@ -556,7 +602,8 @@ async function saveSkill() {
     // Replace temp _id with real one from server
     if (targetSub) {
       const idx = targetSub.sub.skills.findIndex(s => s._id === tempId)
-      if (idx !== -1 && res.data?._id) targetSub.sub.skills[idx]!._id = res.data._id
+      if (idx !== -1 && res.data?._id)
+        targetSub.sub.skills[idx]!._id = res.data._id
     }
     toast.success('Skill added')
   }
@@ -564,7 +611,8 @@ async function saveSkill() {
     // Revert: remove the temp skill
     if (targetSub) {
       const idx = targetSub.sub.skills.findIndex(s => s._id === tempId)
-      if (idx !== -1) targetSub.sub.skills.splice(idx, 1)
+      if (idx !== -1)
+        targetSub.sub.skills.splice(idx, 1)
     }
     showSkillModal.value = true
     toast.error('Failed to create skill', { description: e?.message })
@@ -583,10 +631,12 @@ function cancelInlineEdit() {
 }
 
 async function saveInlineEdit(id: string) {
-  if (!editingForm.value.skill.trim()) return toast.error('Skill name is required')
+  if (!editingForm.value.skill.trim())
+    return toast.error('Skill name is required')
 
   const found = findSkill(id)
-  if (!found) return
+  if (!found)
+    return
 
   // Snapshot for revert
   const prev = { name: found.skill.name, isRequired: found.skill.isRequired }
@@ -612,7 +662,8 @@ async function saveInlineEdit(id: string) {
 // ─── DELETE skill ─────────────────────────────────────────
 async function deleteSkill(id: string) {
   const found = findSkill(id)
-  if (!found) return
+  if (!found)
+    return
 
   // Snapshot for revert
   const snapshot = { ...found.skill }
@@ -635,7 +686,8 @@ async function deleteSkill(id: string) {
 // ─── SET predecessor ──────────────────────────────────────
 async function savePredecessor(subId: string, predecessorId: string | null) {
   const found = findSub(subId)
-  if (!found) return
+  if (!found)
+    return
 
   // Snapshot for revert
   const prev = { predecessor: found.sub.predecessor, predecessorName: found.sub.predecessorName }
@@ -663,9 +715,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
   }
 }
 </script>
+
 <template>
   <div class="flex gap-4 h-[calc(100dvh-var(--content-offset))] overflow-hidden">
-
     <!-- ══════════════════════ MOBILE SIDEBAR OVERLAY ══════════════════════ -->
     <Transition
       enter-active-class="transition-opacity duration-200"
@@ -684,11 +736,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
     <!-- ══════════════════════ LEFT PANEL: Category sidebar ══════════════════════ -->
     <aside
-      class="shrink-0 border-r border-border/60 bg-background flex flex-col h-full transition-transform duration-200 z-50"
+      class="shrink-0 border-r border-border/60 bg-background flex flex-col h-full transition-transform duration-200 z-50 w-64 fixed md:relative inset-y-0 left-0 md:inset-auto"
       :class="[
-        'w-64',
         showMobileSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-        'fixed md:relative inset-y-0 left-0 md:inset-auto'
       ]"
     >
       <!-- Header with search -->
@@ -700,7 +750,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
             type="text"
             placeholder="Search Categories"
             class="w-full h-8 pl-8 pr-3 rounded-lg border border-input bg-muted/50 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
-          />
+          >
         </div>
         <button class="md:hidden size-8 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground shrink-0" @click="showMobileSidebar = false">
           <Icon name="i-lucide-x" class="size-4" />
@@ -724,7 +774,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
               @keydown.enter="saveEditCat(cat._id)"
               @keydown.escape="cancelEditCat()"
               @click.stop
-            />
+            >
             <div class="flex gap-1.5">
               <button
                 class="flex-1 flex items-center justify-center gap-1 text-xs font-medium py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
@@ -784,14 +834,15 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           <div class="size-10 rounded-full bg-muted flex items-center justify-center">
             <Icon name="i-lucide-layers" class="size-5 text-muted-foreground" />
           </div>
-          <p class="text-xs text-muted-foreground">No categories yet</p>
+          <p class="text-xs text-muted-foreground">
+            No categories yet
+          </p>
         </div>
       </nav>
     </aside>
 
     <!-- ══════════════════════ RIGHT PANEL: Skills content ══════════════════════ -->
     <main class="flex-1 flex flex-col min-h-0 h-full">
-
       <!-- Top toolbar -->
       <div class="flex items-center gap-2 sm:gap-3 h-[52px] border-b border-border/60 bg-background/80 backdrop-blur-sm mb-4">
         <!-- Mobile sidebar toggle -->
@@ -837,8 +888,8 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           size="sm"
           variant="outline"
           class="shrink-0 gap-1 sm:gap-1.5 border-dashed border-primary/40 text-primary hover:bg-primary/5 hover:text-primary text-xs sm:text-sm h-8 px-2 sm:px-3 ml-1"
-          @click="openCatInfo(selectedCat)"
           title="Upload Category PDF"
+          @click="openCatInfo(selectedCat)"
         >
           <Icon name="i-lucide-upload" class="size-3 sm:size-3.5" />
           <span class="hidden xs:inline">Upload PDF</span>
@@ -851,8 +902,8 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           size="sm"
           variant="default"
           class="shrink-0 gap-1 sm:gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm text-xs sm:text-sm h-8 px-2 sm:px-3 ml-1"
-          @click="openCatInfo(selectedCat)"
           title="View PDF Document"
+          @click="openCatInfo(selectedCat)"
         >
           <Icon name="i-lucide-file-text" class="size-3 sm:size-3.5" />
           <span class="hidden xs:inline">View PDF</span>
@@ -865,8 +916,8 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
           size="sm"
           variant="outline"
           class="shrink-0 gap-1 sm:gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive text-xs sm:text-sm h-8 px-2 sm:px-3 ml-1"
-          @click="deleteCat(selectedCat._id)"
           title="Delete Category"
+          @click="deleteCat(selectedCat._id)"
         >
           <Icon name="i-lucide-trash-2" class="size-3 sm:size-3.5" />
           <span class="hidden xs:inline">Delete Category</span>
@@ -890,14 +941,17 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
       <!-- Skills content area -->
       <div class="flex-1 overflow-y-auto">
-
         <!-- No category selected -->
         <div v-if="!selectedCat" class="flex flex-col items-center justify-center h-full gap-3 sm:gap-4 text-center py-16 sm:py-24 px-4">
           <div class="size-14 sm:size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
             <Icon name="i-lucide-graduation-cap" class="size-6 sm:size-8 text-primary" />
           </div>
-          <h3 class="text-base sm:text-lg font-semibold">Select a category</h3>
-          <p class="text-xs sm:text-sm text-muted-foreground max-w-xs">Choose a skill category from the <span class="md:hidden">menu</span><span class="hidden md:inline">left panel</span> to view and manage its sub-categories and skills.</p>
+          <h3 class="text-base sm:text-lg font-semibold">
+            Select a category
+          </h3>
+          <p class="text-xs sm:text-sm text-muted-foreground max-w-xs">
+            Choose a skill category from the <span class="md:hidden">menu</span><span class="hidden md:inline">left panel</span> to view and manage its sub-categories and skills.
+          </p>
           <Button class="md:hidden" size="sm" variant="outline" @click="showMobileSidebar = true">
             <Icon name="i-lucide-panel-left" class="size-3.5 mr-1.5" />
             Open Categories
@@ -907,8 +961,12 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         <!-- No results for search -->
         <div v-else-if="filteredSubs.length === 0 && searchQuery" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3">
           <Icon name="i-lucide-search-x" class="size-8 sm:size-10 text-muted-foreground" />
-          <p class="text-xs sm:text-sm text-muted-foreground">No skills match "<strong>{{ searchQuery }}</strong>"</p>
-          <Button variant="ghost" size="sm" @click="searchQuery = ''">Clear search</Button>
+          <p class="text-xs sm:text-sm text-muted-foreground">
+            No skills match "<strong>{{ searchQuery }}</strong>"
+          </p>
+          <Button variant="ghost" size="sm" @click="searchQuery = ''">
+            Clear search
+          </Button>
         </div>
 
         <!-- SubCategory accordions -->
@@ -952,7 +1010,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                     @keydown.escape="cancelEditSubCat()"
                     @keydown.space.stop
                     @click.stop
-                  />
+                  >
                   <button
                     class="size-6 rounded flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
                     @click.stop="saveEditSubCat(sub._id)"
@@ -969,7 +1027,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
                 <!-- Sub-category name: VIEW MODE -->
                 <template v-else>
-                  <p class="text-xs sm:text-sm font-semibold truncate">{{ sub.name }}</p>
+                  <p class="text-xs sm:text-sm font-semibold truncate">
+                    {{ sub.name }}
+                  </p>
                   <!-- Predecessor label (view mode) -->
                   <p v-if="sub.predecessorName && editingPredecessorSubId !== sub._id" class="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                     <Icon name="i-lucide-arrow-right" class="size-2.5 sm:size-3 shrink-0" />
@@ -1038,7 +1098,7 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                           placeholder="Search sub-categories…"
                           class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-sm sm:text-xs rounded-md bg-muted/50 border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/50"
                           @click.stop
-                        />
+                        >
                       </div>
                     </div>
 
@@ -1068,8 +1128,12 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                           :class="sub.predecessor === opt._id ? 'text-primary opacity-100' : 'opacity-0'"
                         />
                         <div class="min-w-0">
-                          <p class="text-xs font-medium truncate">{{ opt.name }}</p>
-                          <p class="text-[10px] text-muted-foreground/70">{{ opt.categoryName }}</p>
+                          <p class="text-xs font-medium truncate">
+                            {{ opt.name }}
+                          </p>
+                          <p class="text-[10px] text-muted-foreground/70">
+                            {{ opt.categoryName }}
+                          </p>
                         </div>
                       </div>
 
@@ -1140,83 +1204,87 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                 <!-- Empty sub-category -->
                 <div v-if="sub.skills.length === 0" class="flex flex-col items-center justify-center py-6 sm:py-8 gap-2">
                   <Icon name="i-lucide-sparkles" class="size-5 sm:size-6 text-muted-foreground/50" />
-                  <p class="text-[10px] sm:text-xs text-muted-foreground">No skills yet in this sub-category</p>
+                  <p class="text-[10px] sm:text-xs text-muted-foreground">
+                    No skills yet in this sub-category
+                  </p>
                   <Button v-if="canCreate()" size="sm" variant="outline" class="mt-1 text-xs" @click="openCreateSkill(selectedCat!._id, sub._id)">
                     <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
                     Add first skill
                   </Button>
                 </div>
 
-                  <!-- Skills grid -->
-                  <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3 p-3 sm:p-4">
-                    <div
-                      v-for="sk in sub.skills"
-                      :key="sk._id"
-                      class="group/card relative flex flex-col gap-2 sm:gap-2.5 rounded-lg border bg-background p-3 sm:p-3.5 transition-all duration-150"
-                      :class="editingSkillId === sk._id
-                        ? 'border-primary/40 shadow-md ring-1 ring-primary/20'
-                        : 'border-border/50 hover:shadow-md hover:border-border'"
-                    >
-                      <!-- ── VIEW MODE ── -->
-                      <template v-if="editingSkillId !== sk._id">
-                        <!-- Skill text -->
-                        <p class="text-xs sm:text-sm leading-relaxed pb-6">{{ sk.name }}</p>
+                <!-- Skills grid -->
+                <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3 p-3 sm:p-4">
+                  <div
+                    v-for="sk in sub.skills"
+                    :key="sk._id"
+                    class="group/card relative flex flex-col gap-2 sm:gap-2.5 rounded-lg border bg-background p-3 sm:p-3.5 transition-all duration-150"
+                    :class="editingSkillId === sk._id
+                      ? 'border-primary/40 shadow-md ring-1 ring-primary/20'
+                      : 'border-border/50 hover:shadow-md hover:border-border'"
+                  >
+                    <!-- ── VIEW MODE ── -->
+                    <template v-if="editingSkillId !== sk._id">
+                      <!-- Skill text -->
+                      <p class="text-xs sm:text-sm leading-relaxed pb-6">
+                        {{ sk.name }}
+                      </p>
 
-                        <!-- Action buttons (bottom-right) -->
-                        <div v-if="canUpdate() || canDelete()" class="absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 flex gap-0.5 sm:gap-1">
-                          <button
-                            class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                            title="Skill Info"
-                            @click="openSkillInfo(sk)"
-                          >
-                            <Icon name="i-lucide-info" class="size-3" :class="sk.info ? 'text-primary' : ''" />
-                          </button>
-                          <button
-                            v-if="canUpdate()"
-                            class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                            @click="startInlineEdit(sk)"
-                          >
-                            <Icon name="i-lucide-pencil" class="size-3" />
-                          </button>
-                          <button
-                            v-if="canDelete()"
-                            class="size-6 rounded flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                            @click="deleteSkill(sk._id)"
-                          >
-                            <Icon name="i-lucide-trash-2" class="size-3" />
-                          </button>
-                        </div>
-                      </template>
+                      <!-- Action buttons (bottom-right) -->
+                      <div v-if="canUpdate() || canDelete()" class="absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 flex gap-0.5 sm:gap-1">
+                        <button
+                          class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          title="Skill Info"
+                          @click="openSkillInfo(sk)"
+                        >
+                          <Icon name="i-lucide-info" class="size-3" :class="sk.info ? 'text-primary' : ''" />
+                        </button>
+                        <button
+                          v-if="canUpdate()"
+                          class="size-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          @click="startInlineEdit(sk)"
+                        >
+                          <Icon name="i-lucide-pencil" class="size-3" />
+                        </button>
+                        <button
+                          v-if="canDelete()"
+                          class="size-6 rounded flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          @click="deleteSkill(sk._id)"
+                        >
+                          <Icon name="i-lucide-trash-2" class="size-3" />
+                        </button>
+                      </div>
+                    </template>
 
-                      <!-- ── EDIT MODE (inline) ── -->
-                      <template v-else>
-                        <!-- Editable skill text -->
-                        <textarea
-                          v-model="editingForm.skill"
-                          rows="3"
-                          class="w-full resize-none rounded-md border border-input bg-muted/40 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
-                          placeholder="Skill description…"
-                        />
+                    <!-- ── EDIT MODE (inline) ── -->
+                    <template v-else>
+                      <!-- Editable skill text -->
+                      <textarea
+                        v-model="editingForm.skill"
+                        rows="3"
+                        class="w-full resize-none rounded-md border border-input bg-muted/40 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
+                        placeholder="Skill description…"
+                      />
 
-                        <!-- Save / Cancel -->
-                        <div class="flex gap-2 pt-0.5">
-                          <button
-                            class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                            @click="saveInlineEdit(sk._id)"
-                          >
-                            <Icon name="i-lucide-check" class="size-3" />
-                            Save
-                          </button>
-                          <button
-                            class="flex-1 text-xs font-medium py-1.5 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
-                            @click="cancelInlineEdit()"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </template>
-                    </div>
+                      <!-- Save / Cancel -->
+                      <div class="flex gap-2 pt-0.5">
+                        <button
+                          class="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                          @click="saveInlineEdit(sk._id)"
+                        >
+                          <Icon name="i-lucide-check" class="size-3" />
+                          Save
+                        </button>
+                        <button
+                          class="flex-1 text-xs font-medium py-1.5 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+                          @click="cancelInlineEdit()"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </template>
                   </div>
+                </div>
               </div>
             </Transition>
           </div>
@@ -1244,7 +1312,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showSkillModal = false">Cancel</Button>
+          <Button variant="outline" @click="showSkillModal = false">
+            Cancel
+          </Button>
           <Button :disabled="savingSkill" @click="saveSkill">
             <Icon v-if="savingSkill" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
             Add Skill
@@ -1269,7 +1339,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
             <div class="size-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center">
               <Icon name="i-lucide-trophy" class="size-6 text-emerald-400" />
             </div>
-            <p class="text-sm text-muted-foreground">No custom rules yet. Add one to override the global settings.</p>
+            <p class="text-sm text-muted-foreground">
+              No custom rules yet. Add one to override the global settings.
+            </p>
           </div>
 
           <!-- Rules list -->
@@ -1302,7 +1374,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                     <SelectValue placeholder="Select level" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem v-for="lvl in SKILL_LEVELS" :key="lvl" :value="lvl">{{ lvl }}</SelectItem>
+                    <SelectItem v-for="lvl in SKILL_LEVELS" :key="lvl" :value="lvl">
+                      {{ lvl }}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1321,7 +1395,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem v-for="opt in SUPERVISOR_OPTIONS" :key="opt" :value="opt">{{ opt }}</SelectItem>
+                    <SelectItem v-for="opt in SUPERVISOR_OPTIONS" :key="opt" :value="opt">
+                      {{ opt }}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1341,7 +1417,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
             Add Rule
           </Button>
           <div class="flex gap-2">
-            <Button variant="outline" @click="showBonusModal = false">Cancel</Button>
+            <Button variant="outline" @click="showBonusModal = false">
+              Cancel
+            </Button>
             <Button :disabled="savingBonus" @click="saveBonusRules">
               <Icon v-if="savingBonus" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
               Save Rules
@@ -1372,7 +1450,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showSubCatModal = false">Cancel</Button>
+          <Button variant="outline" @click="showSubCatModal = false">
+            Cancel
+          </Button>
           <Button :disabled="savingSubCat" @click="saveSubCat">
             <Icon v-if="savingSubCat" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
             Add Sub Category
@@ -1380,8 +1460,6 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-
-
 
     <!-- ══════════════════════ CATEGORY PDF MODAL ══════════════════════ -->
     <Dialog v-model:open="showCatInfoModal">
@@ -1393,15 +1471,15 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
 
         <div class="flex flex-col gap-4 py-2 flex-1 min-h-0 overflow-hidden">
           <div class="shrink-0">
-             <Input type="file" accept="application/pdf" @change="onCatPdfSelected" class="file:bg-primary file:text-primary-foreground file:border-0 file:rounded-md file:px-3 file:py-1 file:mr-3 file:text-xs file:font-semibold cursor-pointer border-border/50 text-sm" />
+            <Input type="file" accept="application/pdf" class="file:bg-primary file:text-primary-foreground file:border-0 file:rounded-md file:px-3 file:py-1 file:mr-3 file:text-xs file:font-semibold cursor-pointer border-border/50 text-sm" @change="onCatPdfSelected" />
           </div>
-          
+
           <div v-if="catPdfUrl" class="w-full flex-1 border border-border/50 rounded-xl overflow-hidden relative shadow-inner bg-muted/20">
-            <iframe :src="catPdfUrl.includes('#') ? catPdfUrl + '&toolbar=0&navpanes=0&scrollbar=0' : catPdfUrl + '#toolbar=0&navpanes=0&scrollbar=0'" class="w-full h-full pointer-events-auto" style="overflow: hidden;" frameborder="0"></iframe>
+            <iframe :src="catPdfUrl.includes('#') ? `${catPdfUrl}&toolbar=0&navpanes=0&scrollbar=0` : `${catPdfUrl}#toolbar=0&navpanes=0&scrollbar=0`" class="w-full h-full pointer-events-auto" style="overflow: hidden;" frameborder="0" />
           </div>
           <div v-else class="w-full flex-1 border-2 border-dashed border-muted flex flex-col gap-3 items-center justify-center rounded-xl bg-muted/5 transition-colors hover:bg-muted/10">
             <div class="size-16 rounded-full bg-muted/50 flex flex-col items-center justify-center mb-2 shadow-sm">
-               <Icon name="i-lucide-file-text" class="size-8 text-muted-foreground/50" />
+              <Icon name="i-lucide-file-text" class="size-8 text-muted-foreground/50" />
             </div>
             <span class="text-[15px] font-semibold text-foreground">No Document Available</span>
             <span class="text-xs font-medium text-muted-foreground max-w-[200px] text-center">Click the file upload button above to select a PDF</span>
@@ -1409,24 +1487,26 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         </div>
 
         <DialogFooter class="flex items-center justify-between shrink-0 pt-4 border-t border-border/40 mt-2">
-            <div class="flex gap-2">
-              <Button variant="destructive" size="sm" v-if="catPdfUrl" @click="catPdfUrl = ''" class="bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border-0 shadow-none">
-                 <Icon name="i-lucide-trash-2" class="mr-1.5 size-3.5" />
-                 Clear PDF
-              </Button>
-              <Button variant="outline" size="sm" v-if="catPdfUrl" as="a" :href="catPdfUrl" download="Category_Documentation.pdf" target="_blank" class="text-primary hover:text-primary">
-                 <Icon name="i-lucide-download" class="mr-1.5 size-3.5" />
-                 Download
-              </Button>
-            </div>
-            <div class="flex gap-2">
-              <Button variant="outline" @click="showCatInfoModal = false">Cancel</Button>
-              <Button :disabled="savingCatPdf" @click="saveCatPdf" class="min-w-[140px] shadow-md relative overflow-hidden group">
-                <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
-                <Icon v-if="savingCatPdf" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin relative z-10" />
-                <span class="relative z-10 font-semibold">{{ catPdfUrl ? 'Save & Upload PDF' : 'Save Changes' }}</span>
-              </Button>
-            </div>
+          <div class="flex gap-2">
+            <Button v-if="catPdfUrl" variant="destructive" size="sm" class="bg-destructive/10 text-destructive hover:bg-destructive hover:text-white border-0 shadow-none" @click="catPdfUrl = ''">
+              <Icon name="i-lucide-trash-2" class="mr-1.5 size-3.5" />
+              Clear PDF
+            </Button>
+            <Button v-if="catPdfUrl" variant="outline" size="sm" as="a" :href="catPdfUrl" download="Category_Documentation.pdf" target="_blank" class="text-primary hover:text-primary">
+              <Icon name="i-lucide-download" class="mr-1.5 size-3.5" />
+              Download
+            </Button>
+          </div>
+          <div class="flex gap-2">
+            <Button variant="outline" @click="showCatInfoModal = false">
+              Cancel
+            </Button>
+            <Button :disabled="savingCatPdf" class="min-w-[140px] shadow-md relative overflow-hidden group" @click="saveCatPdf">
+              <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out" />
+              <Icon v-if="savingCatPdf" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin relative z-10" />
+              <span class="relative z-10 font-semibold">{{ catPdfUrl ? 'Save & Upload PDF' : 'Save Changes' }}</span>
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1456,7 +1536,9 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showSkillInfoModal = false">Cancel</Button>
+          <Button variant="outline" @click="showSkillInfoModal = false">
+            Cancel
+          </Button>
           <Button :disabled="savingSkillInfo" @click="saveSkillInfo">
             <Icon v-if="savingSkillInfo" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
             Save Info
@@ -1464,6 +1546,5 @@ async function savePredecessor(subId: string, predecessorId: string | null) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-
   </div>
 </template>

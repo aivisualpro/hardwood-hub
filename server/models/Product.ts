@@ -76,5 +76,5 @@ export interface IProduct {
   updatedAt?: Date
 }
 
-export const Product =
-  mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema)
+export const Product
+  = mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema)

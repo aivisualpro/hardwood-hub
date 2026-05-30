@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Task } from '../data/schema'
-import { priorities } from '../data/data'
 import { inject, ref } from 'vue'
+import { priorities } from '../data/data'
 
 const props = defineProps<{ task: Task }>()
 const { t } = useLocale()
@@ -14,7 +14,7 @@ const priority = computed(() => priorities.find(p => p.value === props.task.prio
 const open = ref(false)
 
 // Color map for priority chips
-const priorityColors: Record<string, { bg: string; text: string; ring: string; icon: string }> = {
+const priorityColors: Record<string, { bg: string, text: string, ring: string, icon: string }> = {
   low: { bg: 'bg-sky-500/10', text: 'text-sky-600 dark:text-sky-400', ring: 'ring-sky-500/20', icon: 'lucide:arrow-down' },
   medium: { bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-500/20', icon: 'lucide:minus' },
   high: { bg: 'bg-rose-500/10', text: 'text-rose-600 dark:text-rose-400', ring: 'ring-rose-500/20', icon: 'lucide:arrow-up' },
@@ -45,7 +45,9 @@ function select(value: string) {
         </button>
       </PopoverTrigger>
       <PopoverContent class="w-[180px] p-1.5" align="start" :side-offset="5">
-        <p class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">Set Priority</p>
+        <p class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+          Set Priority
+        </p>
         <div class="space-y-0.5">
           <button
             v-for="p in priorities"

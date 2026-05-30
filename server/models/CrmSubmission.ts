@@ -76,5 +76,5 @@ export interface ICrmSubmission {
   ip: string
 }
 
-export const CrmSubmission =
-  mongoose.models.CrmSubmission || mongoose.model<ICrmSubmission>('CrmSubmission', CrmSubmissionSchema)
+export const CrmSubmission
+  = mongoose.models.CrmSubmission || mongoose.model<ICrmSubmission>('CrmSubmission', CrmSubmissionSchema)

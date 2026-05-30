@@ -1,35 +1,36 @@
-import mongoose, { Schema, Document } from 'mongoose'
+import type { Document } from 'mongoose'
+import mongoose, { Schema } from 'mongoose'
 
 export interface IActivityLog extends Document {
-    user: string
-    action: string       // 'create' | 'update' | 'delete' | 'login' | 'logout' | 'view'
-    module: string       // 'employees', 'skills', 'performance', 'project-communication', 'workspaces', 'skill-bonus', 'auth'
-    description: string
-    targetId?: string
-    targetName?: string
-    metadata?: Record<string, any>
-    ip?: string
-    userAgent?: string
-    userImage?: string
-    isRead: boolean
-    createdAt: Date
+  user: string
+  action: string // 'create' | 'update' | 'delete' | 'login' | 'logout' | 'view'
+  module: string // 'employees', 'skills', 'performance', 'project-communication', 'workspaces', 'skill-bonus', 'auth'
+  description: string
+  targetId?: string
+  targetName?: string
+  metadata?: Record<string, any>
+  ip?: string
+  userAgent?: string
+  userImage?: string
+  isRead: boolean
+  createdAt: Date
 }
 
 const ActivityLogSchema = new Schema(
-    {
-        user: { type: String, required: true },
-        action: { type: String, required: true, index: true },
-        module: { type: String, required: true, index: true },
-        description: { type: String, required: true },
-        targetId: { type: String, default: '' },
-        targetName: { type: String, default: '' },
-        metadata: { type: Schema.Types.Mixed, default: {} },
-        ip: { type: String, default: '' },
-        userAgent: { type: String, default: '' },
-        userImage: { type: String, default: '' },
-        isRead: { type: Boolean, default: false, index: true },
-    },
-    { timestamps: true, collection: 'hardwoodDB_activitylogs' }
+  {
+    user: { type: String, required: true },
+    action: { type: String, required: true, index: true },
+    module: { type: String, required: true, index: true },
+    description: { type: String, required: true },
+    targetId: { type: String, default: '' },
+    targetName: { type: String, default: '' },
+    metadata: { type: Schema.Types.Mixed, default: {} },
+    ip: { type: String, default: '' },
+    userAgent: { type: String, default: '' },
+    userImage: { type: String, default: '' },
+    isRead: { type: Boolean, default: false, index: true },
+  },
+  { timestamps: true, collection: 'hardwoodDB_activitylogs' },
 )
 
 // Compound index for fast querying

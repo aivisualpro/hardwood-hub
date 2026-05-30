@@ -19,7 +19,7 @@ const { isMobile } = useSidebar()
 
 const activeTeam = computed({
   get: () => props.modelValue || props.teams[0],
-  set: (val) => emit('update:modelValue', val)
+  set: val => emit('update:modelValue', val),
 })
 </script>
 
@@ -32,7 +32,7 @@ const activeTeam = computed({
           size="lg"
         >
           <div class="aspect-square size-8 flex items-center justify-center rounded-lg overflow-hidden">
-            <img src="/logo-192.png" alt="Hardwood Hub" class="size-8 object-cover" />
+            <img src="/logo-192.png" alt="Hardwood Hub" class="size-8 object-cover">
           </div>
           <div class="grid flex-1 text-left text-sm leading-tight">
             <span class="truncate font-semibold">{{ activeTeam!.name }}</span>
@@ -50,7 +50,7 @@ const activeTeam = computed({
           >
             <!-- Logo only in the trigger button, no background -->
             <div class="aspect-square size-8 flex items-center justify-center rounded-lg overflow-hidden">
-              <img src="/logo-192.png" alt="Hardwood Hub" class="size-8 object-cover" />
+              <img src="/logo-192.png" alt="Hardwood Hub" class="size-8 object-cover">
             </div>
             <div class="grid flex-1 text-left text-sm leading-tight">
               <span class="truncate font-semibold">{{ activeTeam!.name }}</span>

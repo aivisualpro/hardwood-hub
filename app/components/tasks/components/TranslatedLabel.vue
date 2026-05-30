@@ -7,7 +7,8 @@ const props = defineProps<{
 const { t } = useLocale()
 
 const display = computed(() => {
-  if (props.labelKey) return t(props.labelKey as any)
+  if (props.labelKey)
+    return t(props.labelKey as any)
   return props.fallback
 })
 </script>

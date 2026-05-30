@@ -13,16 +13,22 @@ useHead({
 
 const statusCode = computed(() => props.error?.statusCode || 500)
 const statusMessage = computed(() => {
-  if (statusCode.value === 404) return 'Page Not Found'
-  if (statusCode.value === 401) return 'Unauthorized'
-  if (statusCode.value === 403) return 'Forbidden'
-  if (statusCode.value === 500) return 'Server Error'
+  if (statusCode.value === 404)
+    return 'Page Not Found'
+  if (statusCode.value === 401)
+    return 'Unauthorized'
+  if (statusCode.value === 403)
+    return 'Forbidden'
+  if (statusCode.value === 500)
+    return 'Server Error'
   return props.error?.statusMessage || 'Something Went Wrong'
 })
 
 const description = computed(() => {
-  if (statusCode.value === 404) return 'The page you\'re looking for does not exist or might have been removed.'
-  if (statusCode.value === 500) return 'An unexpected error occurred on the server. Please try again.'
+  if (statusCode.value === 404)
+    return 'The page you\'re looking for does not exist or might have been removed.'
+  if (statusCode.value === 500)
+    return 'An unexpected error occurred on the server. Please try again.'
   return props.error?.message || 'An unexpected error occurred.'
 })
 

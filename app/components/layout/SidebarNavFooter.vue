@@ -13,13 +13,12 @@ defineProps<{
 const { isMobile, setOpenMobile } = useSidebar()
 
 async function handleLogout() {
-  try { await $fetch('/api/auth/logout', { method: 'POST' }) } catch {}
+  try { await $fetch('/api/auth/logout', { method: 'POST' }) }
+  catch {}
   const userCookie = useCookie('hardwood_user')
   userCookie.value = null
   navigateTo('/login')
 }
-
-
 </script>
 
 <template>
@@ -62,8 +61,6 @@ async function handleLogout() {
       </DropdownMenu>
     </SidebarMenuItem>
   </SidebarMenu>
-
-
 </template>
 
 <style scoped>

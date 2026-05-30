@@ -50,7 +50,8 @@ const myPerfLevelMap = computed(() => {
 const skillReviewerMap = computed(() => {
   const map = new Map<string, any[]>()
   for (const r of localRecords.value) {
-    if (!map.has(r.skill)) map.set(r.skill, [])
+    if (!map.has(r.skill))
+      map.set(r.skill, [])
     map.get(r.skill)!.push(r)
   }
   return map
@@ -65,19 +66,24 @@ function getMyLevelDate(skillId: string, level: string) {
 }
 function canMarkMastered(skillId: string) {
   const d = getMyLevelDate(skillId, 'Proficient')
-  if (!d) return false
+  if (!d)
+    return false
   return new Date(d).toISOString().slice(0, 10) < new Date().toISOString().slice(0, 10)
 }
 function getSkillStatus(skillId: string): 'mastered' | 'proficient' | 'needs' | 'unreviewed' {
   const rec = highestPerfMap.value.get(skillId)
-  if (!rec) return 'unreviewed'
-  if (rec.currentSkillLevel === 'Mastered') return 'mastered'
-  if (rec.currentSkillLevel === 'Proficient') return 'proficient'
+  if (!rec)
+    return 'unreviewed'
+  if (rec.currentSkillLevel === 'Mastered')
+    return 'mastered'
+  if (rec.currentSkillLevel === 'Proficient')
+    return 'proficient'
   return 'needs'
 }
 
 function formatDate(d: string) {
-  if (!d) return '—'
+  if (!d)
+    return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
@@ -101,24 +107,28 @@ const overallStats = computed(() => {
 })
 
 const overallPct = computed(() => {
-  if (!totalSkills.value) return 0
+  if (!totalSkills.value)
+    return 0
   return Math.round(((overallStats.value.mastered + overallStats.value.proficient) / totalSkills.value) * 100)
 })
 
 function subCatStats(sub: any) {
   const total = sub.skills.length
-  let mastered = 0, proficient = 0, needs = 0
+  let mastered = 0; let proficient = 0; let needs = 0
   for (const sk of sub.skills) {
     const s = getSkillStatus(sk._id)
-    if (s === 'mastered') mastered++
-    else if (s === 'proficient') proficient++
-    else if (s === 'needs') needs++
+    if (s === 'mastered')
+      mastered++
+    else if (s === 'proficient')
+      proficient++
+    else if (s === 'needs')
+      needs++
   }
   return { total, mastered, proficient, needs, reviewed: mastered + proficient + needs }
 }
 
 function catStats(cat: any) {
-  let total = 0, reviewed = 0
+  let total = 0; let reviewed = 0
   for (const sub of cat.subCategories) {
     const s = subCatStats(sub)
     total += s.total
@@ -128,13 +138,15 @@ function catStats(cat: any) {
 }
 
 function toggleCat(id: string) {
-  if (expandedCats.value.has(id)) expandedCats.value.delete(id)
+  if (expandedCats.value.has(id))
+    expandedCats.value.delete(id)
   else expandedCats.value.add(id)
 }
 
 // Expand first category by default
 onMounted(() => {
-  if (props.treeData.length) expandedCats.value.add(props.treeData[0]._id)
+  if (props.treeData.length)
+    expandedCats.value.add(props.treeData[0]._id)
 })
 
 // ─── Palette ─────────────────────────────────────────────
@@ -172,9 +184,11 @@ const levelBtnClass: Record<typeof LEVELS[number], { active: string, idle: strin
 
 // ─── Mark skill ──────────────────────────────────────────
 async function markSkill(skill: any, level: string, catId: string) {
-  if (props.isViewingOther) return
+  if (props.isViewingOther)
+    return
   const myId = currentUserId.value
-  if (!myId) return toast.error('You must be logged in')
+  if (!myId)
+    return toast.error('You must be logged in')
 
   if (level === 'Mastered') {
     if (!hasMyLevel(skill._id, 'Proficient')) {
@@ -197,11 +211,13 @@ async function markSkill(skill: any, level: string, catId: string) {
     }
     // Delete
     const idx = localRecords.value.findIndex(r => r._id === existingRec._id)
-    if (idx !== -1) localRecords.value.splice(idx, 1)
+    if (idx !== -1)
+      localRecords.value.splice(idx, 1)
     try {
       await $fetch(`/api/performance/${existingRec._id}`, { method: 'DELETE' })
       toast.success('Removed', { duration: 1500 })
-    } catch (e: any) {
+    }
+    catch (e: any) {
       localRecords.value.push(existingRec)
       toast.error('Failed', { description: e?.message })
     }
@@ -238,11 +254,14 @@ async function markSkill(skill: any, level: string, catId: string) {
       },
     })
     const temp = localRecords.value.find(r => r._id === tempId)
-    if (temp && res.data?._id) temp._id = String(res.data._id)
+    if (temp && res.data?._id)
+      temp._id = String(res.data._id)
     toast.success(`Marked as ${level}`, { duration: 1500 })
-  } catch (e: any) {
+  }
+  catch (e: any) {
     const idx = localRecords.value.findIndex(r => r._id === tempId)
-    if (idx !== -1) localRecords.value.splice(idx, 1)
+    if (idx !== -1)
+      localRecords.value.splice(idx, 1)
     toast.error('Failed', { description: e?.data?.message || e?.message })
   }
 }
@@ -250,7 +269,6 @@ async function markSkill(skill: any, level: string, catId: string) {
 
 <template>
   <div class="space-y-5 animate-in slide-in-from-right-4 fade-in duration-300">
-
     <!-- ═══ Overall Status Card (Signal-style) ═══ -->
     <div class="rounded-2xl border border-border/50 bg-card shadow-sm overflow-hidden relative">
       <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 pointer-events-none" />
@@ -260,7 +278,9 @@ async function markSkill(skill: any, level: string, catId: string) {
             <Icon name="i-lucide-activity" class="size-7 text-emerald-500" />
           </div>
           <div>
-            <p class="text-xs text-muted-foreground font-medium">Overall Skill Completion</p>
+            <p class="text-xs text-muted-foreground font-medium">
+              Overall Skill Completion
+            </p>
             <p class="text-3xl font-black" :class="overallPct >= 80 ? 'text-emerald-500' : overallPct >= 50 ? 'text-blue-500' : 'text-amber-500'">
               {{ overallPct }}%
             </p>
@@ -268,10 +288,18 @@ async function markSkill(skill: any, level: string, catId: string) {
         </div>
         <!-- Legend -->
         <div class="flex items-center gap-4 text-xs text-muted-foreground">
-          <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-emerald-500" /> Mastered ({{ overallStats.mastered }})</div>
-          <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-blue-500" /> Proficient ({{ overallStats.proficient }})</div>
-          <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-amber-500" /> Needs Imp. ({{ overallStats.needs }})</div>
-          <div class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-zinc-700" /> Unreviewed ({{ overallStats.unreviewed }})</div>
+          <div class="flex items-center gap-1.5">
+            <span class="size-2.5 rounded-sm bg-emerald-500" /> Mastered ({{ overallStats.mastered }})
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="size-2.5 rounded-sm bg-blue-500" /> Proficient ({{ overallStats.proficient }})
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="size-2.5 rounded-sm bg-amber-500" /> Needs Imp. ({{ overallStats.needs }})
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="size-2.5 rounded-sm bg-zinc-700" /> Unreviewed ({{ overallStats.unreviewed }})
+          </div>
         </div>
       </div>
     </div>
@@ -299,7 +327,9 @@ async function markSkill(skill: any, level: string, catId: string) {
             <Icon name="i-lucide-layers" class="size-4" :class="pal(catIdx).text" />
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold" :class="pal(catIdx).text">{{ cat.name }}</p>
+            <p class="text-sm font-semibold" :class="pal(catIdx).text">
+              {{ cat.name }}
+            </p>
             <p class="text-[10px] text-muted-foreground mt-0.5">
               {{ cat.subCategories.length }} sub-categories · {{ catStats(cat).reviewed }}/{{ catStats(cat).total }} reviewed
             </p>
@@ -342,34 +372,52 @@ async function markSkill(skill: any, level: string, catId: string) {
                           : 'bg-zinc-600'"
                     />
                     <div>
-                      <h3 class="text-sm font-semibold">{{ sub.name }}</h3>
-                      <p class="text-[10px] font-mono text-muted-foreground/70">{{ subCatStats(sub).reviewed }}/{{ subCatStats(sub).total }} skills reviewed</p>
+                      <h3 class="text-sm font-semibold">
+                        {{ sub.name }}
+                      </h3>
+                      <p class="text-[10px] font-mono text-muted-foreground/70">
+                        {{ subCatStats(sub).reviewed }}/{{ subCatStats(sub).total }} skills reviewed
+                      </p>
                     </div>
                   </div>
                   <div class="flex items-center gap-5 text-xs">
-                    <div class="text-center" v-if="subCatStats(sub).mastered">
-                      <p class="font-semibold text-emerald-500">{{ subCatStats(sub).mastered }}</p>
-                      <p class="text-muted-foreground">Mastered</p>
+                    <div v-if="subCatStats(sub).mastered" class="text-center">
+                      <p class="font-semibold text-emerald-500">
+                        {{ subCatStats(sub).mastered }}
+                      </p>
+                      <p class="text-muted-foreground">
+                        Mastered
+                      </p>
                     </div>
-                    <div class="text-center" v-if="subCatStats(sub).proficient">
-                      <p class="font-semibold text-blue-500">{{ subCatStats(sub).proficient }}</p>
-                      <p class="text-muted-foreground">Proficient</p>
+                    <div v-if="subCatStats(sub).proficient" class="text-center">
+                      <p class="font-semibold text-blue-500">
+                        {{ subCatStats(sub).proficient }}
+                      </p>
+                      <p class="text-muted-foreground">
+                        Proficient
+                      </p>
                     </div>
-                    <div class="text-center" v-if="subCatStats(sub).needs">
-                      <p class="font-semibold text-amber-500">{{ subCatStats(sub).needs }}</p>
-                      <p class="text-muted-foreground">Needs Imp.</p>
+                    <div v-if="subCatStats(sub).needs" class="text-center">
+                      <p class="font-semibold text-amber-500">
+                        {{ subCatStats(sub).needs }}
+                      </p>
+                      <p class="text-muted-foreground">
+                        Needs Imp.
+                      </p>
                     </div>
                     <div class="text-center">
                       <p class="font-semibold" :class="subCatStats(sub).total ? (subCatStats(sub).reviewed === subCatStats(sub).total ? 'text-emerald-500' : 'text-foreground') : 'text-muted-foreground'">
                         {{ subCatStats(sub).total ? Math.round((subCatStats(sub).reviewed / subCatStats(sub).total) * 100) : 0 }}%
                       </p>
-                      <p class="text-muted-foreground">Complete</p>
+                      <p class="text-muted-foreground">
+                        Complete
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 <!-- Uptime bar (Signal-style) — one segment per skill -->
-                <div class="flex gap-[2px]" v-if="sub.skills.length">
+                <div v-if="sub.skills.length" class="flex gap-[2px]">
                   <div
                     v-for="sk in sub.skills"
                     :key="sk._id"
@@ -397,7 +445,9 @@ async function markSkill(skill: any, level: string, catId: string) {
                   >
                     <!-- Skill name + reviewer chips -->
                     <div class="flex-1 min-w-0">
-                      <p class="text-[13px] font-medium leading-tight">{{ sk.name }}</p>
+                      <p class="text-[13px] font-medium leading-tight">
+                        {{ sk.name }}
+                      </p>
                       <!-- Show existing reviews from all reviewers -->
                       <div v-if="skillReviewerMap.get(sk._id)?.length" class="flex flex-wrap items-center gap-1 mt-1">
                         <span

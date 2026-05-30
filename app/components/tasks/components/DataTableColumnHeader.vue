@@ -13,7 +13,8 @@ const props = defineProps<DataTableColumnHeaderProps>()
 const { t } = useLocale()
 
 const displayTitle = computed(() => {
-  if (props.titleKey) return t(props.titleKey as any)
+  if (props.titleKey)
+    return t(props.titleKey as any)
   return props.title ?? ''
 })
 </script>

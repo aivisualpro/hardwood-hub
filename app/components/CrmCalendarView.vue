@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday, parseISO, startOfMonth, startOfWeek } from 'date-fns'
 import { computed, ref } from 'vue'
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday, parseISO } from 'date-fns'
 
 const props = defineProps<{
   items: any[]
@@ -26,7 +26,7 @@ function nextMonth() {
 }
 
 function getAppointmentsForDay(day: Date) {
-  return props.items.filter(item => {
+  return props.items.filter((item) => {
     // Check if the appointment has meetingScheduled.startTime from Calendly
     if (item.fields?.meetingScheduled?.startTime) {
       return isSameDay(new Date(item.fields.meetingScheduled.startTime), day)
@@ -41,7 +41,8 @@ function getAppointmentsForDay(day: Date) {
 }
 
 function formatTime(dateString: string | Date) {
-  if (!dateString) return ''
+  if (!dateString)
+    return ''
   return format(new Date(dateString), 'h:mm a')
 }
 </script>
@@ -50,15 +51,17 @@ function formatTime(dateString: string | Date) {
   <div class="bg-card rounded-2xl border flex flex-col overflow-hidden shadow-sm">
     <!-- Header Controls -->
     <div class="flex items-center justify-between px-6 py-4 border-b bg-muted/40">
-      <h2 class="text-xl font-bold font-display text-foreground">{{ format(currentDate, 'MMMM yyyy') }}</h2>
+      <h2 class="text-xl font-bold font-display text-foreground">
+        {{ format(currentDate, 'MMMM yyyy') }}
+      </h2>
       <div class="flex items-center gap-2">
-        <button @click="previousMonth" class="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
+        <button class="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors" @click="previousMonth">
           <Icon name="i-lucide-chevron-left" class="size-5" />
         </button>
-        <button @click="currentDate = new Date()" class="px-4 py-2 text-sm font-semibold rounded-lg bg-background border hover:bg-muted transition-colors">
+        <button class="px-4 py-2 text-sm font-semibold rounded-lg bg-background border hover:bg-muted transition-colors" @click="currentDate = new Date()">
           Today
         </button>
-        <button @click="nextMonth" class="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
+        <button class="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors" @click="nextMonth">
           <Icon name="i-lucide-chevron-right" class="size-5" />
         </button>
       </div>
@@ -74,19 +77,19 @@ function formatTime(dateString: string | Date) {
             <span class="sm:hidden">{{ day.substring(0, 3) }}</span>
           </div>
         </div>
-        
+
         <!-- Calendar Body Grid -->
         <div class="bg-border grid grid-cols-7 gap-px flex-1">
-          <div 
-            v-for="day in days" 
-            :key="day.toString()" 
+          <div
+            v-for="day in days"
+            :key="day.toString()"
             class="min-h-[120px] sm:min-h-[140px] bg-card p-1.5 sm:p-2 flex flex-col gap-1 transition-colors hover:bg-muted/10"
             :class="{
               'opacity-60 bg-muted/5': !isSameMonth(day, currentDate),
             }"
           >
             <div class="flex items-center justify-between px-1">
-              <span 
+              <span
                 class="text-xs sm:text-sm font-medium w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full"
                 :class="isToday(day) ? 'bg-primary text-primary-foreground font-bold shadow-md' : 'text-foreground'"
               >
@@ -96,15 +99,15 @@ function formatTime(dateString: string | Date) {
                 {{ getAppointmentsForDay(day).length }}
               </span>
             </div>
-            
+
             <!-- Appointments List -->
             <div class="flex flex-col gap-1 sm:gap-1.5 mt-1 flex-1 overflow-y-auto overflow-x-hidden pr-0.5 scrollbar-thin">
-              <div 
-                v-for="apt in getAppointmentsForDay(day)" 
+              <div
+                v-for="apt in getAppointmentsForDay(day)"
                 :key="apt._id"
-                @click="emit('select', apt)"
                 class="group cursor-pointer flex flex-col p-1.5 sm:p-2 rounded-md sm:rounded-lg border text-[10px] sm:text-xs text-left bg-gradient-to-br transition-all hover:-translate-y-px hover:shadow-md truncate"
                 :class="apt.status === 'completed' ? 'from-green-500/10 to-green-500/5 border-green-500/20 text-green-700 dark:text-green-400' : 'from-sky-500/10 to-blue-600/5 border-sky-500/20 text-sky-700 dark:text-sky-400'"
+                @click="emit('select', apt)"
               >
                 <div class="font-bold truncate group-hover:text-sky-600 transition-colors">
                   {{ apt.name || 'Anonymous' }}

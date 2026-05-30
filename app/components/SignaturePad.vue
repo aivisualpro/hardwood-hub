@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 const props = defineProps<{
   modelValue?: string
@@ -16,15 +16,17 @@ let lastX = 0
 let lastY = 0
 
 function initCanvas() {
-  if (!canvas.value) return
+  if (!canvas.value)
+    return
   ctx = canvas.value.getContext('2d')
-  if (!ctx) return
-  
+  if (!ctx)
+    return
+
   // Set actual size in memory (scaled to account for extra pixel density)
   const rect = canvas.value.getBoundingClientRect()
   canvas.value.width = rect.width
   canvas.value.height = rect.height
-  
+
   ctx.strokeStyle = '#000000'
   ctx.lineWidth = 2
   ctx.lineCap = 'round'
@@ -59,16 +61,17 @@ function startDrawing(e: MouseEvent | TouchEvent) {
 }
 
 function draw(e: MouseEvent | TouchEvent) {
-  if (!isDrawing || !ctx) return
+  if (!isDrawing || !ctx)
+    return
   e.preventDefault()
-  
+
   const { x, y } = getCoordinates(e)
-  
+
   ctx.beginPath()
   ctx.moveTo(lastX, lastY)
   ctx.lineTo(x, y)
   ctx.stroke()
-  
+
   lastX = x
   lastY = y
 }
@@ -81,9 +84,10 @@ function stopDrawing() {
 }
 
 function getCoordinates(e: MouseEvent | TouchEvent) {
-  if (!canvas.value) return { x: 0, y: 0 }
+  if (!canvas.value)
+    return { x: 0, y: 0 }
   const rect = canvas.value.getBoundingClientRect()
-  
+
   if ('touches' in e) {
     const touchEvent = e as TouchEvent
     if (touchEvent.touches && touchEvent.touches.length > 0 && touchEvent.touches[0]) {
@@ -93,7 +97,7 @@ function getCoordinates(e: MouseEvent | TouchEvent) {
       }
     }
   }
-  
+
   return {
     x: (e as MouseEvent).clientX - rect.left,
     y: (e as MouseEvent).clientY - rect.top,
@@ -101,13 +105,15 @@ function getCoordinates(e: MouseEvent | TouchEvent) {
 }
 
 function clear() {
-  if (!canvas.value || !ctx) return
+  if (!canvas.value || !ctx)
+    return
   ctx.clearRect(0, 0, canvas.value.width, canvas.value.height)
   emit('update:modelValue', '')
 }
 
 function emitSignature() {
-  if (!canvas.value) return
+  if (!canvas.value)
+    return
   emit('update:modelValue', canvas.value.toDataURL('image/png'))
 }
 
@@ -128,8 +134,8 @@ defineExpose({ clear })
       @touchend="stopDrawing"
     />
 
-    <img v-if="modelValue && modelValue.startsWith('http')" :src="modelValue" class="absolute inset-0 w-full h-full object-contain pointer-events-none z-0 opacity-80 dark:invert dark:opacity-70" />
-    
+    <img v-if="modelValue && modelValue.startsWith('http')" :src="modelValue" class="absolute inset-0 w-full h-full object-contain pointer-events-none z-0 opacity-80 dark:invert dark:opacity-70">
+
     <div v-if="!modelValue" class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center opacity-40 z-0">
       <Icon name="i-lucide-pencil-line" class="size-5 mb-1" />
       <span class="text-xs font-medium">Draw signature here</span>

@@ -4,8 +4,8 @@ import type { HTMLAttributes } from 'vue'
 import { reactiveOmit } from '@vueuse/core'
 import { Check } from 'lucide-vue-next'
 import {
-  SelectItem as SelectItemRoot,
   SelectItemIndicator as SelectItemIndicatorRoot,
+  SelectItem as SelectItemRoot,
 
   SelectItemText as SelectItemTextRoot,
   useForwardProps,

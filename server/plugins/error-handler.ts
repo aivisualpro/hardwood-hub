@@ -25,29 +25,31 @@ const IS_PROD = process.env.NODE_ENV === 'production'
 const CLIENT_ERROR_CODES = new Set([400, 401, 403, 404, 405, 409, 422, 429])
 
 export default defineNitroPlugin((nitro) => {
-    nitro.hooks.hook('error', (error, { event }) => {
-        const statusCode: number = (error as any).statusCode ?? 500
+  nitro.hooks.hook('error', (error, { event }) => {
+    const statusCode: number = (error as any).statusCode ?? 500
 
-        // 4xx: deliberate createError() calls — pass through untouched, no logging
-        if (CLIENT_ERROR_CODES.has(statusCode)) return
+    // 4xx: deliberate createError() calls — pass through untouched, no logging
+    if (CLIENT_ERROR_CODES.has(statusCode))
+      return
 
-        // 5xx: unexpected — log full detail server-side only
-        log.error(
-            `Unhandled ${statusCode} on ${event?.method ?? ''} ${event?.path ?? ''}:`,
-            error,
-        )
+    // 5xx: unexpected — log full detail server-side only
+    log.error(
+      `Unhandled ${statusCode} on ${event?.method ?? ''} ${event?.path ?? ''}:`,
+      error,
+    )
 
-        if (!event) return  // non-request context (startup hooks etc.)
+    if (!event)
+      return // non-request context (startup hooks etc.)
 
-        // Sanitise the response — strip raw internals in production
-        const safeMessage = IS_PROD
-            ? 'An internal error occurred. Please try again later.'
-            : ((error as any).message ?? String(error))
+    // Sanitise the response — strip raw internals in production
+    const safeMessage = IS_PROD
+      ? 'An internal error occurred. Please try again later.'
+      : ((error as any).message ?? String(error))
 
-        ;(error as any).message       = safeMessage
-        ;(error as any).statusMessage = safeMessage
-        // Never leak a stack trace or raw DB error to the client
-        delete (error as any).stack
-        delete (error as any).data
-    })
+        ;(error as any).message = safeMessage
+    ;(error as any).statusMessage = safeMessage
+    // Never leak a stack trace or raw DB error to the client
+    delete (error as any).stack
+    delete (error as any).data
+  })
 })

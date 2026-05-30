@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { toast } from 'vue-sonner'
 import { format } from 'date-fns'
+import { toast } from 'vue-sonner'
 
 const { setHeader } = usePageHeader()
 setHeader({
@@ -35,7 +35,8 @@ async function autoSyncCalendly() {
       // Refresh the submissions list after background sync
       await fetchSubmissions(currentPage.value)
     }
-  } catch (err) {
+  }
+  catch (err) {
     console.warn('[Appointments] Auto-sync failed:', err)
   }
 }
@@ -58,7 +59,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (pollTimer) clearInterval(pollTimer)
+  if (pollTimer)
+    clearInterval(pollTimer)
 })
 
 // Manual full sync (Calendly + Gravity Forms)
@@ -84,14 +86,15 @@ function showDetails(item: any) {
 }
 
 function formatDate(date: string) {
-  if (!date) return '—'
+  if (!date)
+    return '—'
   return format(new Date(date), 'MMM dd, yyyy h:mm a')
 }
 
 async function handleStatusUpdate(id: string, status: string) {
   await updateSubmission(id, { status } as any)
   if (selectedItem.value && selectedItem.value._id === id) {
-     selectedItem.value.status = status
+    selectedItem.value.status = status
   }
   toast.success(`Status updated to ${status}`)
 }
@@ -115,16 +118,16 @@ async function handleStatusUpdate(id: string, status: string) {
           <!-- View Toggle -->
           <div class="bg-muted p-0.5 hidden sm:flex rounded-lg items-center shadow-inner border border-input/50 h-8 sm:h-9">
             <button
-              @click="viewMode = 'calendar'"
               class="px-2.5 h-full rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all"
               :class="viewMode === 'calendar' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+              @click="viewMode = 'calendar'"
             >
               <Icon name="i-lucide-calendar" class="size-3.5" />
             </button>
             <button
-              @click="viewMode = 'list'"
               class="px-2.5 h-full rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all"
               :class="viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
+              @click="viewMode = 'list'"
             >
               <Icon name="i-lucide-list" class="size-3.5" />
             </button>
@@ -151,9 +154,9 @@ async function handleStatusUpdate(id: string, status: string) {
       v-if="viewMode === 'calendar'"
       :items="items"
       :is-loading="isLoading"
+      class="min-h-[700px]"
       @update-status="handleStatusUpdate"
       @select="showDetails"
-      class="min-h-[700px]"
     />
 
     <!-- List View -->
@@ -189,7 +192,9 @@ async function handleStatusUpdate(id: string, status: string) {
               <Icon name="i-lucide-calendar" class="size-6 text-primary" />
             </div>
             <div>
-              <SheetTitle class="text-lg">{{ selectedItem.name || 'Unknown Contact' }}</SheetTitle>
+              <SheetTitle class="text-lg">
+                {{ selectedItem.name || 'Unknown Contact' }}
+              </SheetTitle>
               <SheetDescription>Calendly Appointment</SheetDescription>
             </div>
           </div>
@@ -208,16 +213,16 @@ async function handleStatusUpdate(id: string, status: string) {
             <div v-if="selectedItem.fields?.meetingScheduled" class="flex items-center gap-2 text-sm col-span-1 sm:col-span-2 mt-2 p-3 bg-muted/40 rounded-xl border">
               <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 shrink-0" />
               <div class="flex flex-col">
-                 <span class="font-bold text-foreground">Scheduled for:</span>
-                 <span class="text-muted-foreground">{{ formatDate(selectedItem.fields.meetingScheduled.startTime) }}</span>
+                <span class="font-bold text-foreground">Scheduled for:</span>
+                <span class="text-muted-foreground">{{ formatDate(selectedItem.fields.meetingScheduled.startTime) }}</span>
               </div>
             </div>
           </div>
 
           <Separator />
-          
+
           <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-             <span
+            <span
               class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium capitalize w-fit"
               :class="selectedItem.status === 'completed' ? 'bg-emerald-500/15 text-emerald-600' : 'bg-sky-500/15 text-sky-600'"
             >
@@ -229,14 +234,18 @@ async function handleStatusUpdate(id: string, status: string) {
           </div>
 
           <div v-if="selectedItem.message" class="space-y-2">
-            <h4 class="text-sm font-medium text-foreground">Message / Notes</h4>
+            <h4 class="text-sm font-medium text-foreground">
+              Message / Notes
+            </h4>
             <div class="rounded-lg bg-muted/30 p-4 text-sm text-foreground/80 leading-relaxed border border-border/50 whitespace-pre-wrap">
               {{ selectedItem.message }}
             </div>
           </div>
 
           <div v-if="selectedItem.fields && Object.keys(selectedItem.fields).length > 0" class="space-y-2">
-            <h4 class="text-sm font-medium text-foreground">Additional Details</h4>
+            <h4 class="text-sm font-medium text-foreground">
+              Additional Details
+            </h4>
             <div class="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/50">
               <div
                 v-for="(entry, index) in Object.entries(selectedItem.fields).filter(([k]) => k !== 'meetingScheduled')"
@@ -247,14 +256,14 @@ async function handleStatusUpdate(id: string, status: string) {
                 <span class="text-foreground whitespace-pre-wrap break-words leading-relaxed">{{ entry[1] || '—' }}</span>
               </div>
             </div>
-            
+
             <div v-if="selectedItem.fields.meetingScheduled" class="mt-4 flex flex-col sm:flex-row gap-3 pb-8">
-               <a v-if="selectedItem.fields.meetingScheduled.rescheduleUrl" :href="selectedItem.fields.meetingScheduled.rescheduleUrl" target="_blank" class="px-4 py-2.5 rounded-lg bg-orange-500/10 text-orange-600 font-bold text-sm sm:text-xs ring-1 ring-orange-500/20 hover:bg-orange-500/20 transition-all flex items-center justify-center flex-1">
-                 Reschedule Link
-               </a>
-               <a v-if="selectedItem.fields.meetingScheduled.cancelUrl" :href="selectedItem.fields.meetingScheduled.cancelUrl" target="_blank" class="px-4 py-2.5 rounded-lg bg-red-500/10 text-red-600 font-bold text-sm sm:text-xs ring-1 ring-red-500/20 hover:bg-red-500/20 transition-all flex items-center justify-center flex-1">
-                 Cancel Link
-               </a>
+              <a v-if="selectedItem.fields.meetingScheduled.rescheduleUrl" :href="selectedItem.fields.meetingScheduled.rescheduleUrl" target="_blank" class="px-4 py-2.5 rounded-lg bg-orange-500/10 text-orange-600 font-bold text-sm sm:text-xs ring-1 ring-orange-500/20 hover:bg-orange-500/20 transition-all flex items-center justify-center flex-1">
+                Reschedule Link
+              </a>
+              <a v-if="selectedItem.fields.meetingScheduled.cancelUrl" :href="selectedItem.fields.meetingScheduled.cancelUrl" target="_blank" class="px-4 py-2.5 rounded-lg bg-red-500/10 text-red-600 font-bold text-sm sm:text-xs ring-1 ring-red-500/20 hover:bg-red-500/20 transition-all flex items-center justify-center flex-1">
+                Cancel Link
+              </a>
             </div>
           </div>
         </div>

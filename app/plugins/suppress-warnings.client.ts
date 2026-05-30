@@ -9,8 +9,10 @@ export default defineNuxtPlugin(() => {
     const origWarn = console.warn
     console.warn = (...args: any[]) => {
       const msg = typeof args[0] === 'string' ? args[0] : ''
-      if (msg.includes('<Suspense> is an experimental feature')) return
-      if (msg.includes('No match found for location with path') && msg.includes('/api/')) return
+      if (msg.includes('<Suspense> is an experimental feature'))
+        return
+      if (msg.includes('No match found for location with path') && msg.includes('/api/'))
+        return
       origWarn.apply(console, args)
     }
   }

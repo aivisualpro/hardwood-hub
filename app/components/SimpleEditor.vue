@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Color from '@tiptap/extension-color'
+import FontSize from '@tiptap/extension-font-size'
 import Highlight from '@tiptap/extension-highlight'
 import HorizontalRule from '@tiptap/extension-horizontal-rule'
 import Image from '@tiptap/extension-image'
@@ -15,8 +16,6 @@ import Underline from '@tiptap/extension-underline'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { BubbleMenu } from '@tiptap/vue-3/menus'
-import '@tiptap/extension-text-style'
-import FontSize from '@tiptap/extension-font-size'
 
 const props = defineProps<{
   modelValue: string
@@ -57,7 +56,8 @@ watch(() => props.modelValue, (val) => {
 // Listen for variable insert events from parent
 function onInsertVariable(e: Event) {
   const key = (e as CustomEvent).detail?.key
-  if (!key || !editor.value) return
+  if (!key || !editor.value)
+    return
   editor.value.chain().focus().insertContent(`{{${key}}} `).run()
 }
 

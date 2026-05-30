@@ -31,7 +31,8 @@ function handlePdfDrop(e: DragEvent) {
   const file = e.dataTransfer?.files?.[0]
   if (file && file.type === 'application/pdf') {
     pdfFile.value = file
-  } else {
+  }
+  else {
     toast.error('Please drop a valid PDF file')
   }
 }
@@ -58,7 +59,8 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 async function parsePdf() {
-  if (!pdfFile.value) return
+  if (!pdfFile.value)
+    return
   pdfParsing.value = true
   pdfParseProgress.value = 10
 
@@ -87,16 +89,19 @@ async function parsePdf() {
       pdfPreviewStep.value = 'preview'
       toast.success('PDF analyzed successfully', { description: `Found ${res.data.variables?.length || 0} variables` })
     }
-  } catch (e: any) {
+  }
+  catch (e: any) {
     clearInterval(progressInterval)
     toast.error('Failed to parse PDF', { description: e?.data?.message || e?.message })
-  } finally {
+  }
+  finally {
     pdfParsing.value = false
   }
 }
 
 function acceptPdfTemplate() {
-  if (!pdfParsed.value) return
+  if (!pdfParsed.value)
+    return
   selectedTemplate.value = null
   const mappedVars = pdfParsed.value.variables.map((v: any) => ({
     key: v.key,
@@ -106,7 +111,7 @@ function acceptPdfTemplate() {
     required: v.required || false,
     scope: v.scope || 'template',
   }))
-  
+
   templateForm.value = {
     name: pdfParsed.value.templateName,
     description: pdfParsed.value.description,
@@ -114,7 +119,7 @@ function acceptPdfTemplate() {
     category: pdfParsed.value.category || 'General',
     variables: [
       { key: 'contract_number', label: 'Contract Number', type: 'text', defaultValue: '', required: true, scope: 'template' },
-      ...mappedVars.filter((v: any) => v.key !== 'contract_number')
+      ...mappedVars.filter((v: any) => v.key !== 'contract_number'),
     ],
   }
   showPdfUpload.value = false
@@ -136,8 +141,6 @@ setHeader({
   icon: 'i-lucide-file-signature',
   description: 'Manage legal contracts and templates',
 })
-
-
 
 const route = useRoute()
 const activeTab = computed(() => {
@@ -227,9 +230,10 @@ watch(() => showEditor.value, (isEditing) => {
     setHeader({
       title: 'Editing Template',
       icon: 'i-lucide-pen-tool',
-      description: 'Customize contract layout and variables'
+      description: 'Customize contract layout and variables',
     })
-  } else {
+  }
+  else {
     // Flush any pending auto-save before closing
     if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null }
     autoSaveStatus.value = 'idle'
@@ -251,15 +255,19 @@ const AUTO_SAVE_DELAY = 1500 // 1.5s debounce
 
 function scheduleAutoSave() {
   // Only auto-save when editor is open and template already exists in DB
-  if (!showEditor.value || !selectedTemplate.value?._id) return
-  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  if (!showEditor.value || !selectedTemplate.value?._id)
+    return
+  if (autoSaveTimer)
+    clearTimeout(autoSaveTimer)
   autoSaveStatus.value = 'idle' // mark as unsaved / pending
   autoSaveTimer = setTimeout(() => performAutoSave(), AUTO_SAVE_DELAY)
 }
 
 async function performAutoSave() {
-  if (!selectedTemplate.value?._id || saving.value) return
-  if (!templateForm.value.name?.trim()) return // don't save without a name
+  if (!selectedTemplate.value?._id || saving.value)
+    return
+  if (!templateForm.value.name?.trim())
+    return // don't save without a name
 
   autoSaveStatus.value = 'saving'
   try {
@@ -269,24 +277,27 @@ async function performAutoSave() {
     })
     lastSavedAt.value = new Date()
     autoSaveStatus.value = 'saved'
-  } catch (e: any) {
+  }
+  catch (e: any) {
     console.error('[auto-save] Failed:', e?.message)
     autoSaveStatus.value = 'error'
   }
 }
 
-
 // Cleanup timer on unmount
 onUnmounted(() => {
-  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  if (autoSaveTimer)
+    clearTimeout(autoSaveTimer)
 })
 
 const autoSaveLabel = computed(() => {
-  if (autoSaveStatus.value === 'saving') return 'Saving...'
+  if (autoSaveStatus.value === 'saving')
+    return 'Saving...'
   if (autoSaveStatus.value === 'saved' && lastSavedAt.value) {
     return `Saved ${lastSavedAt.value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
   }
-  if (autoSaveStatus.value === 'error') return 'Save failed'
+  if (autoSaveStatus.value === 'error')
+    return 'Save failed'
   return ''
 })
 
@@ -301,7 +312,7 @@ const systemVariables = [
   { key: 'company_phone2', label: 'Secondary Phone' },
   { key: 'company_website', label: 'Website' },
   { key: 'company_email', label: 'Email' },
-  { key: 'company_license', label: "Builder's License Number" },
+  { key: 'company_license', label: 'Builder\'s License Number' },
 ]
 
 const templatePages = ref(1)
@@ -326,9 +337,11 @@ async function fetchTemplates() {
   try {
     const res = await $fetch<{ success: boolean, data: ContractTemplate[] }>('/api/contracts/templates')
     templates.value = res.data || []
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to load templates', { description: e?.message })
-  } finally {
+  }
+  finally {
     loadingTemplates.value = false
   }
 }
@@ -339,9 +352,11 @@ async function seedChangeOrder() {
     await $fetch('/api/contracts/templates/seed', { method: 'POST' })
     toast.success('Change Order template created')
     await fetchTemplates()
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Seed failed', { description: e?.message })
-  } finally {
+  }
+  finally {
     seeding.value = false
   }
 }
@@ -355,7 +370,7 @@ function openTemplateEditor(template: ContractTemplate) {
     category: template.category,
     variables: [
       { key: 'contract_number', label: 'Contract Number', type: 'text', defaultValue: '', required: true, scope: 'template' },
-      ...template.variables.filter(v => v.key !== 'contract_number')
+      ...template.variables.filter(v => v.key !== 'contract_number'),
     ],
   }
   showEditor.value = true
@@ -369,7 +384,7 @@ function openNewTemplate() {
     content: '<p>Start writing your contract template...</p>',
     category: 'General',
     variables: [
-      { key: 'contract_number', label: 'Contract Number', type: 'text', defaultValue: '', required: true, scope: 'template' }
+      { key: 'contract_number', label: 'Contract Number', type: 'text', defaultValue: '', required: true, scope: 'template' },
     ],
   }
   showEditor.value = true
@@ -382,36 +397,41 @@ async function saveTemplate() {
   }
 
   // --- AUTO-SYNC VARIABLES FROM CONTENT ---
-  const regex = /\{\{([^}]+)\}\}/g;
-  let match;
-  const foundKeys = new Set<string>();
-  
+  const regex = /\{\{([^}]+)\}\}/g
+  let match
+  const foundKeys = new Set<string>()
+
   while ((match = regex.exec(templateForm.value.content)) !== null) {
-      let key = (match[1] || '').replace(/&nbsp;/g, ' ').replace(/<[^>]*>?/gm, '').trim();
-      if (key) foundKeys.add(key);
+    let key = (match[1] || '').replace(/&nbsp;/g, ' ').replace(/<[^>]*>?/g, '').trim()
+    if (key)
+      foundKeys.add(key)
   }
 
   const ignoreKeys = new Set([
-      'contract_number',
-      'company_name', 'companyName', 'client_name', 'clientName',
-      ...systemVariables.map(sv => sv.key)
-  ]);
+    'contract_number',
+    'company_name',
+    'companyName',
+    'client_name',
+    'clientName',
+    ...systemVariables.map(sv => sv.key),
+  ])
 
   // Add missing variables found in text
-  foundKeys.forEach(key => {
-      if (ignoreKeys.has(key)) return;
-      const exists = templateForm.value.variables.some(v => v.key === key);
-      if (!exists) {
-          templateForm.value.variables.push({
-              key,
-              label: key,
-              type: 'text',
-              defaultValue: '',
-              required: false,
-              scope: 'template'
-          });
-      }
-  });
+  foundKeys.forEach((key) => {
+    if (ignoreKeys.has(key))
+      return
+    const exists = templateForm.value.variables.some(v => v.key === key)
+    if (!exists) {
+      templateForm.value.variables.push({
+        key,
+        label: key,
+        type: 'text',
+        defaultValue: '',
+        required: false,
+        scope: 'template',
+      })
+    }
+  })
 
   // We no longer auto-delete variables to preserve manual changes to keys.
   // The user can manually delete them via the UI if they are no longer needed.
@@ -424,7 +444,7 @@ async function saveTemplate() {
   }
 
   // Auto-fill missing labels using the key
-  templateForm.value.variables.forEach(v => {
+  templateForm.value.variables.forEach((v) => {
     if (!v.label?.trim()) {
       v.label = v.key.trim()
     }
@@ -438,7 +458,8 @@ async function saveTemplate() {
         body: templateForm.value,
       })
       toast.success('Template updated')
-    } else {
+    }
+    else {
       const res = await $fetch<{ success: boolean, data: any }>('/api/contracts/templates', {
         method: 'POST',
         body: templateForm.value,
@@ -453,9 +474,11 @@ async function saveTemplate() {
     autoSaveStatus.value = 'saved'
     showEditor.value = false
     await fetchTemplates()
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Save failed', { description: e?.message })
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
@@ -465,7 +488,8 @@ async function deleteTemplate(id: string) {
     await $fetch(`/api/contracts/templates/${id}`, { method: 'DELETE' })
     toast.success('Template deleted')
     await fetchTemplates()
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Delete failed', { description: e?.message })
   }
 }
@@ -481,14 +505,16 @@ function removeVariable(idx: number) {
 function moveVariable(idx: number, direction: 'up' | 'down') {
   const vars = templateForm.value.variables
   const currentVar = vars[idx]
-  if (!currentVar) return
+  if (!currentVar)
+    return
 
   const targetScope = currentVar.scope || 'template'
-  
+
   if (direction === 'up') {
     for (let i = idx - 1; i >= 0; i--) {
       const swapVar = vars[i]
-      if (!swapVar) continue
+      if (!swapVar)
+        continue
       const scope = swapVar.scope || 'template'
       if (scope === targetScope) {
         vars[idx] = swapVar
@@ -496,10 +522,12 @@ function moveVariable(idx: number, direction: 'up' | 'down') {
         break
       }
     }
-  } else {
+  }
+  else {
     for (let i = idx + 1; i < vars.length; i++) {
       const swapVar = vars[i]
-      if (!swapVar) continue
+      if (!swapVar)
+        continue
       const scope = swapVar.scope || 'template'
       if (scope === targetScope) {
         vars[idx] = swapVar
@@ -517,12 +545,12 @@ function escapeRegExp(string: string) {
 function syncVariableKeyAndContent(v: any) {
   const oldKey = v.key
   const newLabel = v.label
-  
+
   if (!oldKey) {
     v.key = newLabel
     return
   }
-  
+
   if (newLabel && oldKey !== newLabel) {
     const regex = new RegExp(`\\{\\{${escapeRegExp(oldKey)}\\}\\}`, 'g')
     templateForm.value.content = templateForm.value.content.replace(regex, `{{${newLabel}}}`)
@@ -556,9 +584,11 @@ async function fetchContracts() {
       params: searchQuery.value ? { search: searchQuery.value } : {},
     })
     contracts.value = res.data || []
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to load contracts', { description: e?.message })
-  } finally {
+  }
+  finally {
     loadingContracts.value = false
   }
 }
@@ -580,8 +610,10 @@ const companyProfile = ref<any>({})
 async function fetchCompanyProfile() {
   try {
     const res = await $fetch<{ success: boolean, data: Record<string, any> }>('/api/app-settings')
-    if (res.data?.companyProfile) companyProfile.value = res.data.companyProfile
-  } catch { /* ignore */ }
+    if (res.data?.companyProfile)
+      companyProfile.value = res.data.companyProfile
+  }
+  catch { /* ignore */ }
 }
 
 // ─── Client-side data fetching (avoids hydration mismatches with useState) ──────
@@ -590,20 +622,20 @@ if (import.meta.client) {
 }
 
 function formatDate(d: string) {
-  if (!d) return '—'
+  if (!d)
+    return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 const CATEGORIES = ['General', 'Agreements', 'Change Orders', 'Legal', 'Warranties']
 
 const TYPE_ICONS: Record<string, string> = {
-  appointment: 'i-lucide-calendar-check',
+  'appointment': 'i-lucide-calendar-check',
   'fast-quote': 'i-lucide-zap',
   'flooring-estimate': 'i-lucide-ruler',
   'conditional-logic': 'i-lucide-split',
-  other: 'i-lucide-user',
+  'other': 'i-lucide-user',
 }
-
 </script>
 
 <template>
@@ -671,14 +703,18 @@ const TYPE_ICONS: Record<string, string> = {
           </button>
           <div class="h-4 w-px bg-border/50 mx-1" />
           <div class="flex items-center gap-2 bg-muted/30 rounded-lg p-1 border border-border/50">
-             <input v-model="templateForm.name" type="text" placeholder="Template Name" class="text-sm font-bold bg-transparent border-none outline-none w-[180px] px-2 placeholder:text-muted-foreground/40 transition-colors focus:bg-background focus:ring-1 focus:ring-primary rounded">
-             <div class="h-3 w-px bg-border/50 mx-1" />
-             <Select v-model="templateForm.category">
-               <SelectTrigger class="w-28 h-7 text-xs border-none bg-transparent shadow-none focus:ring-0"><SelectValue placeholder="Category" /></SelectTrigger>
-               <SelectContent>
-                 <SelectItem v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</SelectItem>
-               </SelectContent>
-             </Select>
+            <input v-model="templateForm.name" type="text" placeholder="Template Name" class="text-sm font-bold bg-transparent border-none outline-none w-[180px] px-2 placeholder:text-muted-foreground/40 transition-colors focus:bg-background focus:ring-1 focus:ring-primary rounded">
+            <div class="h-3 w-px bg-border/50 mx-1" />
+            <Select v-model="templateForm.category">
+              <SelectTrigger class="w-28 h-7 text-xs border-none bg-transparent shadow-none focus:ring-0">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="cat in CATEGORIES" :key="cat" :value="cat">
+                  {{ cat }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div class="h-4 w-px bg-border/50 mx-1" />
 
@@ -701,7 +737,9 @@ const TYPE_ICONS: Record<string, string> = {
             </div>
           </Transition>
 
-          <Button variant="ghost" size="sm" class="h-8" @click="showEditor = false">Cancel</Button>
+          <Button variant="ghost" size="sm" class="h-8" @click="showEditor = false">
+            Cancel
+          </Button>
           <Button size="sm" class="h-8 shadow-lg shadow-primary/20" :disabled="saving" @click="saveTemplate">
             <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
             <Icon v-else name="i-lucide-save" class="mr-1.5 size-3.5" />
@@ -746,15 +784,14 @@ const TYPE_ICONS: Record<string, string> = {
       </div>
 
       <!-- Tab content: fills remaining height, no overflow on body -->
-      <div class="flex-1 overflow-hidden">  
+      <div class="flex-1 overflow-hidden">
         <!-- ═══════ LIST TAB ═══════ -->
         <div v-if="activeTab === 'list'" class="h-full overflow-y-auto">
-
-          <CrmContractsTable 
-            :contracts="contracts" 
-            :templates="templates" 
-            :companyProfile="companyProfile"
-            :isLoading="loadingContracts"
+          <CrmContractsTable
+            :contracts="contracts"
+            :templates="templates"
+            :company-profile="companyProfile"
+            :is-loading="loadingContracts"
             @refresh="fetchContracts"
             @edit="openEditContract"
           />
@@ -781,163 +818,195 @@ const TYPE_ICONS: Record<string, string> = {
               <!-- RIGHT: Variables — scrolls inside -->
               <div class="flex flex-col overflow-hidden">
                 <div class="flex-1 overflow-y-auto">
-                    <!-- Template Variables -->
-                    <div class="px-4 py-2 border-b border-border/50 bg-card flex items-center justify-between sticky top-0 z-10">
-                      <h3 class="text-xs font-bold flex items-center gap-1.5">
-                        <Icon name="i-lucide-braces" class="size-3.5 text-amber-500" />
-                        Template Variables
-                      </h3>
-                      <button class="size-7 rounded-md bg-primary/10 hover:bg-primary/20 flex items-center justify-center text-primary transition-colors" @click="addVariable('template')">
-                        <Icon name="i-lucide-plus" class="size-3.5" />
+                  <!-- Template Variables -->
+                  <div class="px-4 py-2 border-b border-border/50 bg-card flex items-center justify-between sticky top-0 z-10">
+                    <h3 class="text-xs font-bold flex items-center gap-1.5">
+                      <Icon name="i-lucide-braces" class="size-3.5 text-amber-500" />
+                      Template Variables
+                    </h3>
+                    <button class="size-7 rounded-md bg-primary/10 hover:bg-primary/20 flex items-center justify-center text-primary transition-colors" @click="addVariable('template')">
+                      <Icon name="i-lucide-plus" class="size-3.5" />
+                    </button>
+                  </div>
+                  <div class="divide-y divide-border/30">
+                    <div v-for="(v, idx) in templateForm.variables" :key="idx">
+                      <div v-if="!v.scope || v.scope === 'template'">
+                        <div class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
+                          <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" title="Insert into document" @click="insertVariable(v.key)">
+                            <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
+                          </button>
+                          <div class="flex-1 min-w-0 relative group">
+                            <input v-model="v.label" :readonly="v.key === 'contract_number'" placeholder="Variable Name" class="w-full text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 focus:border-amber-500/50 rounded px-2 py-1.5 outline-none transition-all pr-12" :class="{ 'opacity-80 cursor-default': v.key === 'contract_number' }" @input="syncVariableKeyAndContent(v)">
+                            <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                              <span class="text-[8px] font-mono font-bold text-amber-500/50 bg-amber-500/10 px-1 py-0.5 rounded max-w-[60px] truncate" :title="v.key">
+                                {{ v.key || 'key' }}
+                              </span>
+                            </div>
+                          </div>
+                          <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[72px]">
+                            <option value="text">
+                              Text
+                            </option>
+                            <option value="date">
+                              Date
+                            </option>
+                            <option value="number">
+                              Number
+                            </option>
+                            <option value="currency">
+                              Currency
+                            </option>
+                            <option value="select">
+                              Dropdown
+                            </option>
+                            <option value="textarea">
+                              LongText
+                            </option>
+                          </select>
+                          <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
+                            <input :id="`req-${idx}`" v-model="v.required" type="checkbox" :disabled="v.key === 'contract_number'" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer disabled:opacity-50">
+                            <label :for="`req-${idx}`" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
+                          </div>
+                          <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }">
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" title="Move Up" @click="moveVariable(idx, 'up')">
+                              <Icon name="i-lucide-chevron-up" class="size-3" />
+                            </button>
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" title="Move Down" @click="moveVariable(idx, 'down')">
+                              <Icon name="i-lucide-chevron-down" class="size-3" />
+                            </button>
+                          </div>
+                          <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }" @click="removeVariable(idx)">
+                            <Icon name="i-lucide-x" class="size-3.5" />
+                          </button>
+                        </div>
+                        <!-- Dropdown Options Input -->
+                        <div v-if="v.type === 'select'" class="px-2 pb-2 pl-10 border-b border-border/20 last:border-0 bg-muted/5">
+                          <input v-model="v._optionsText" placeholder="Enter dropdown options separated by commas (e.g. Option A, Option B)" class="w-full text-[10px] font-medium bg-background border border-amber-500/20 rounded px-2 py-1.5 outline-none focus:border-amber-500/50 shadow-sm text-foreground" @focus="initOptionsText(v)" @input="updateOptions(v)">
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="!templateForm.variables.some(v => !v.scope || v.scope === 'template')" class="p-4 text-center">
+                      <p class="text-xs text-muted-foreground">
+                        Filled by you during creation
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Client Variables -->
+                  <div class="px-4 py-2 border-y border-border/50 bg-card flex items-center justify-between sticky top-0 z-10">
+                    <h3 class="text-xs font-bold flex items-center gap-1.5">
+                      <Icon name="i-lucide-user" class="size-3.5 text-blue-500" />
+                      Client Variables
+                    </h3>
+                    <button class="size-7 rounded-md bg-blue-500/10 hover:bg-blue-500/20 flex items-center justify-center text-blue-600 transition-colors" @click="addVariable('client')">
+                      <Icon name="i-lucide-plus" class="size-3.5" />
+                    </button>
+                  </div>
+                  <div class="divide-y divide-border/30">
+                    <div v-for="(v, idx) in templateForm.variables" :key="idx">
+                      <div v-if="v.scope === 'client'">
+                        <div class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
+                          <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" title="Insert into document" @click="insertVariable(v.key)">
+                            <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
+                          </button>
+                          <div class="flex-1 min-w-0 relative group">
+                            <input v-model="v.label" placeholder="Variable Name" class="w-full text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 focus:border-blue-500/50 rounded px-2 py-1.5 outline-none transition-all pr-12" @input="syncVariableKeyAndContent(v)">
+                            <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                              <span class="text-[8px] font-mono font-bold text-blue-500/50 bg-blue-500/10 px-1 py-0.5 rounded max-w-[60px] truncate" :title="v.key">
+                                {{ v.key || 'key' }}
+                              </span>
+                            </div>
+                          </div>
+                          <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[72px]">
+                            <option value="text">
+                              Text
+                            </option>
+                            <option value="date">
+                              Date
+                            </option>
+                            <option value="number">
+                              Number
+                            </option>
+                            <option value="currency">
+                              Currency
+                            </option>
+                            <option value="select">
+                              Dropdown
+                            </option>
+                            <option value="textarea">
+                              LongText
+                            </option>
+                            <option value="signature">
+                              Sign
+                            </option>
+                          </select>
+                          <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
+                            <input :id="`req-${idx}`" v-model="v.required" type="checkbox" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer">
+                            <label :for="`req-${idx}`" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
+                          </div>
+                          <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" title="Move Up" @click="moveVariable(idx, 'up')">
+                              <Icon name="i-lucide-chevron-up" class="size-3" />
+                            </button>
+                            <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" title="Move Down" @click="moveVariable(idx, 'down')">
+                              <Icon name="i-lucide-chevron-down" class="size-3" />
+                            </button>
+                          </div>
+                          <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
+                            <Icon name="i-lucide-x" class="size-3.5" />
+                          </button>
+                        </div>
+                        <!-- Dropdown Options Input -->
+                        <div v-if="v.type === 'select'" class="px-2 pb-2 pl-10 border-b border-border/20 last:border-0 bg-muted/5">
+                          <input v-model="v._optionsText" placeholder="Enter dropdown options separated by commas (e.g. Option A, Option B)" class="w-full text-[10px] font-medium bg-background border border-blue-500/20 rounded px-2 py-1.5 outline-none focus:border-blue-500/50 shadow-sm text-foreground" @focus="initOptionsText(v)" @input="updateOptions(v)">
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="!templateForm.variables.some(v => v.scope === 'client')" class="p-4 text-center">
+                      <p class="text-xs text-muted-foreground">
+                        Filled by the client when signing
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- System Variables -->
+                  <div class="bg-muted/10 border-t border-border/50 p-3 flex flex-col gap-2">
+                    <div class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      System Variables
+                    </div>
+
+                    <div
+                      v-for="sv in systemVariables"
+                      :key="sv.key"
+                      class="flex items-center gap-2 group px-2.5 py-1.5 hover:bg-muted/20 transition-colors"
+                    >
+                      <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" title="Insert into document" @click="insertVariable(sv.key)">
+                        <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
                       </button>
-                    </div>
-                    <div class="divide-y divide-border/30">
-                      <div v-for="(v, idx) in templateForm.variables" :key="idx">
-                        <div v-if="!v.scope || v.scope === 'template'">
-                          <div class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
-                            <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" @click="insertVariable(v.key)" title="Insert into document">
-                              <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
-                            </button>
-                            <div class="flex-1 min-w-0 relative group">
-                              <input v-model="v.label" @input="syncVariableKeyAndContent(v)" :readonly="v.key === 'contract_number'" placeholder="Variable Name" class="w-full text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 focus:border-amber-500/50 rounded px-2 py-1.5 outline-none transition-all pr-12" :class="{ 'opacity-80 cursor-default': v.key === 'contract_number' }">
-                              <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-                                <span class="text-[8px] font-mono font-bold text-amber-500/50 bg-amber-500/10 px-1 py-0.5 rounded max-w-[60px] truncate" :title="v.key">
-                                  {{ v.key || 'key' }}
-                                </span>
-                              </div>
-                            </div>
-                            <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[72px]">
-                              <option value="text">Text</option>
-                              <option value="date">Date</option>
-                              <option value="number">Number</option>
-                              <option value="currency">Currency</option>
-                              <option value="select">Dropdown</option>
-                              <option value="textarea">LongText</option>
-                            </select>
-                            <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
-                              <input type="checkbox" :id="'req-'+idx" v-model="v.required" :disabled="v.key === 'contract_number'" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer disabled:opacity-50">
-                              <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
-                            </div>
-                            <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }">
-                              <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
-                                <Icon name="i-lucide-chevron-up" class="size-3" />
-                              </button>
-                              <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
-                                <Icon name="i-lucide-chevron-down" class="size-3" />
-                              </button>
-                            </div>
-                            <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)" :class="{ 'invisible pointer-events-none': v.key === 'contract_number' }">
-                              <Icon name="i-lucide-x" class="size-3.5" />
-                            </button>
-                          </div>
-                          <!-- Dropdown Options Input -->
-                          <div v-if="v.type === 'select'" class="px-2 pb-2 pl-10 border-b border-border/20 last:border-0 bg-muted/5">
-                            <input v-model="v._optionsText" @focus="initOptionsText(v)" @input="updateOptions(v)" placeholder="Enter dropdown options separated by commas (e.g. Option A, Option B)" class="w-full text-[10px] font-medium bg-background border border-amber-500/20 rounded px-2 py-1.5 outline-none focus:border-amber-500/50 shadow-sm text-foreground">
-                          </div>
-                        </div>
+                      <input :value="sv.key" readonly class="flex-1 min-w-0 text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/5 border border-cyan-500/20 rounded px-2 py-1.5 outline-none cursor-default">
+
+                      <!-- Invisible placeholders to mathematically match Client Variables width -->
+                      <select class="invisible pointer-events-none text-[10px] border rounded px-1.5 py-1.5 shrink-0 w-[68px]">
+                        <option>Text</option>
+                      </select>
+                      <div class="invisible pointer-events-none flex items-center gap-1 shrink-0 px-1">
+                        <div class="size-3.5 border rounded" />
+                        <label class="text-[10px] font-medium select-none">Req</label>
                       </div>
-                      <div v-if="!templateForm.variables.some(v => !v.scope || v.scope === 'template')" class="p-4 text-center">
-                        <p class="text-xs text-muted-foreground">Filled by you during creation</p>
-                      </div>
+                      <div class="invisible pointer-events-none shrink-0 size-3.5" />
+                      <div class="invisible pointer-events-none shrink-0 size-6" />
                     </div>
 
-                    <!-- Client Variables -->
-                    <div class="px-4 py-2 border-y border-border/50 bg-card flex items-center justify-between sticky top-0 z-10">
-                      <h3 class="text-xs font-bold flex items-center gap-1.5">
-                        <Icon name="i-lucide-user" class="size-3.5 text-blue-500" />
-                        Client Variables
-                      </h3>
-                      <button class="size-7 rounded-md bg-blue-500/10 hover:bg-blue-500/20 flex items-center justify-center text-blue-600 transition-colors" @click="addVariable('client')">
-                        <Icon name="i-lucide-plus" class="size-3.5" />
-                      </button>
-                    </div>
-                    <div class="divide-y divide-border/30">
-                      <div v-for="(v, idx) in templateForm.variables" :key="idx">
-                        <div v-if="v.scope === 'client'">
-                          <div class="p-2.5 hover:bg-muted/20 transition-colors group flex items-center gap-2">
-                            <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" @click="insertVariable(v.key)" title="Insert into document">
-                              <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
-                            </button>
-                            <div class="flex-1 min-w-0 relative group">
-                              <input v-model="v.label" @input="syncVariableKeyAndContent(v)" placeholder="Variable Name" class="w-full text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 focus:border-blue-500/50 rounded px-2 py-1.5 outline-none transition-all pr-12">
-                              <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-                                <span class="text-[8px] font-mono font-bold text-blue-500/50 bg-blue-500/10 px-1 py-0.5 rounded max-w-[60px] truncate" :title="v.key">
-                                  {{ v.key || 'key' }}
-                                </span>
-                              </div>
-                            </div>
-                            <select v-model="v.type" class="text-[10px] border rounded px-1.5 py-1.5 bg-background text-foreground outline-none shrink-0 w-[72px]">
-                              <option value="text">Text</option>
-                              <option value="date">Date</option>
-                              <option value="number">Number</option>
-                              <option value="currency">Currency</option>
-                              <option value="select">Dropdown</option>
-                              <option value="textarea">LongText</option>
-                              <option value="signature">Sign</option>
-                            </select>
-                            <div class="flex items-center gap-1 shrink-0 px-1" title="Required">
-                              <input type="checkbox" :id="'req-'+idx" v-model="v.required" class="size-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer">
-                              <label :for="'req-'+idx" class="text-[10px] text-muted-foreground cursor-pointer font-medium select-none">Req</label>
-                            </div>
-                            <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                              <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'up')" title="Move Up">
-                                <Icon name="i-lucide-chevron-up" class="size-3" />
-                              </button>
-                              <button class="size-3.5 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors rounded hover:text-foreground" @click="moveVariable(idx, 'down')" title="Move Down">
-                                <Icon name="i-lucide-chevron-down" class="size-3" />
-                              </button>
-                            </div>
-                            <button class="size-6 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0" @click="removeVariable(idx)">
-                              <Icon name="i-lucide-x" class="size-3.5" />
-                            </button>
-                          </div>
-                          <!-- Dropdown Options Input -->
-                          <div v-if="v.type === 'select'" class="px-2 pb-2 pl-10 border-b border-border/20 last:border-0 bg-muted/5">
-                            <input v-model="v._optionsText" @focus="initOptionsText(v)" @input="updateOptions(v)" placeholder="Enter dropdown options separated by commas (e.g. Option A, Option B)" class="w-full text-[10px] font-medium bg-background border border-blue-500/20 rounded px-2 py-1.5 outline-none focus:border-blue-500/50 shadow-sm text-foreground">
-                          </div>
-                        </div>
-                      </div>
-                      <div v-if="!templateForm.variables.some(v => v.scope === 'client')" class="p-4 text-center">
-                        <p class="text-xs text-muted-foreground">Filled by the client when signing</p>
-                      </div>
-                    </div>
-
-                    <!-- System Variables -->
-                    <div class="bg-muted/10 border-t border-border/50 p-3 flex flex-col gap-2">
-                      <div class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">System Variables</div>
-                      
-                      <div
-                        v-for="sv in systemVariables"
-                        :key="sv.key"
-                        class="flex items-center gap-2 group px-2.5 py-1.5 hover:bg-muted/20 transition-colors"
-                      >
-                        <button class="size-6 rounded flex items-center justify-center text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors shrink-0" title="Insert into document" @click="insertVariable(sv.key)">
-                          <Icon name="i-lucide-arrow-left-to-line" class="size-3.5" />
-                        </button>
-                        <input :value="sv.key" readonly class="flex-1 min-w-0 text-[10px] font-mono text-cyan-600 dark:text-cyan-400 bg-cyan-500/5 border border-cyan-500/20 rounded px-2 py-1.5 outline-none cursor-default" />
-                        
-                        <!-- Invisible placeholders to mathematically match Client Variables width -->
-                        <select class="invisible pointer-events-none text-[10px] border rounded px-1.5 py-1.5 shrink-0 w-[68px]">
-                          <option>Text</option>
-                        </select>
-                        <div class="invisible pointer-events-none flex items-center gap-1 shrink-0 px-1">
-                          <div class="size-3.5 border rounded"></div>
-                          <label class="text-[10px] font-medium select-none">Req</label>
-                        </div>
-                        <div class="invisible pointer-events-none shrink-0 size-3.5"></div>
-                        <div class="invisible pointer-events-none shrink-0 size-6"></div>
-                      </div>
-
-                      <div class="mt-2 p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
-                        <p class="text-[9px] text-emerald-600 dark:text-emerald-400 leading-relaxed">
-                          <Icon name="i-lucide-info" class="size-3 inline-block mr-1 -mt-0.5" />
-                          Signature block is automatically appended to every PDF with contractor &amp; client signatures.
-                        </p>
-                      </div>
+                    <div class="mt-2 p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
+                      <p class="text-[9px] text-emerald-600 dark:text-emerald-400 leading-relaxed">
+                        <Icon name="i-lucide-info" class="size-3 inline-block mr-1 -mt-0.5" />
+                        Signature block is automatically appended to every PDF with contractor &amp; client signatures.
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
           </div>
 
           <div v-else class="h-full overflow-y-auto">
@@ -949,8 +1018,12 @@ const TYPE_ICONS: Record<string, string> = {
               <div class="size-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 flex items-center justify-center mb-4 border border-amber-500/20">
                 <Icon name="i-lucide-layout-template" class="size-8 text-amber-500" />
               </div>
-              <h3 class="text-xl font-bold mb-1">No Templates Yet</h3>
-              <p class="text-muted-foreground max-w-sm px-4 text-sm mb-4">Create your first contract template or seed the default Change Order template.</p>
+              <h3 class="text-xl font-bold mb-1">
+                No Templates Yet
+              </h3>
+              <p class="text-muted-foreground max-w-sm px-4 text-sm mb-4">
+                Create your first contract template or seed the default Change Order template.
+              </p>
               <div class="flex items-center gap-3">
                 <Button variant="outline" size="sm" :disabled="seeding" @click="seedChangeOrder">
                   <Icon v-if="seeding" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
@@ -984,8 +1057,12 @@ const TYPE_ICONS: Record<string, string> = {
                       </button>
                     </div>
                   </div>
-                  <h3 class="font-bold text-sm mb-1 group-hover:text-primary transition-colors">{{ tmpl.name }}</h3>
-                  <p v-if="tmpl.description" class="text-xs text-muted-foreground line-clamp-2 mb-3">{{ tmpl.description }}</p>
+                  <h3 class="font-bold text-sm mb-1 group-hover:text-primary transition-colors">
+                    {{ tmpl.name }}
+                  </h3>
+                  <p v-if="tmpl.description" class="text-xs text-muted-foreground line-clamp-2 mb-3">
+                    {{ tmpl.description }}
+                  </p>
                   <div class="flex items-center justify-between pt-3 border-t border-border/40">
                     <span class="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Icon name="i-lucide-clock" class="size-3" />
@@ -1004,7 +1081,7 @@ const TYPE_ICONS: Record<string, string> = {
     </div>
 
     <!-- ═══════════════════════════════════════════════════════ -->
-        <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════ -->
     <!-- ═══════ CREATE CONTRACT MODAL ═══════ -->
     <!-- ═══════════════════════════════════════════════════════ -->
     <CrmContractFormDialog ref="contractFormDialog" @saved="fetchContracts" />
@@ -1019,8 +1096,12 @@ const TYPE_ICONS: Record<string, string> = {
               <Icon name="i-lucide-sparkles" class="size-5 text-amber-500" />
             </div>
             <div>
-              <h2 class="text-lg font-bold">Upload PDF Template</h2>
-              <p class="text-xs text-muted-foreground">AI-powered content extraction with Gemini</p>
+              <h2 class="text-lg font-bold">
+                Upload PDF Template
+              </h2>
+              <p class="text-xs text-muted-foreground">
+                AI-powered content extraction with Gemini
+              </p>
             </div>
           </div>
         </div>
@@ -1049,8 +1130,12 @@ const TYPE_ICONS: Record<string, string> = {
                   <Icon name="i-lucide-cloud-upload" class="size-8 text-primary/70" />
                 </div>
                 <div>
-                  <p class="text-sm font-bold">Drop your PDF here</p>
-                  <p class="text-xs text-muted-foreground mt-1">or click to browse • PDF files only</p>
+                  <p class="text-sm font-bold">
+                    Drop your PDF here
+                  </p>
+                  <p class="text-xs text-muted-foreground mt-1">
+                    or click to browse • PDF files only
+                  </p>
                 </div>
               </div>
 
@@ -1059,8 +1144,12 @@ const TYPE_ICONS: Record<string, string> = {
                   <Icon name="i-lucide-file-text" class="size-7 text-red-500" />
                 </div>
                 <div class="text-left">
-                  <p class="text-sm font-bold truncate max-w-[300px]">{{ pdfFile.name }}</p>
-                  <p class="text-xs text-muted-foreground">{{ (pdfFile.size / 1024).toFixed(1) }} KB</p>
+                  <p class="text-sm font-bold truncate max-w-[300px]">
+                    {{ pdfFile.name }}
+                  </p>
+                  <p class="text-xs text-muted-foreground">
+                    {{ (pdfFile.size / 1024).toFixed(1) }} KB
+                  </p>
                 </div>
                 <button
                   class="size-8 rounded-lg hover:bg-destructive/10 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
@@ -1078,14 +1167,18 @@ const TYPE_ICONS: Record<string, string> = {
                   <Icon name="i-lucide-brain" class="size-4 text-primary animate-pulse" />
                 </div>
                 <div class="flex-1">
-                  <p class="text-sm font-semibold">Analyzing PDF with AI...</p>
-                  <p class="text-[10px] text-muted-foreground">Extracting content, layout, and identifying variables</p>
+                  <p class="text-sm font-semibold">
+                    Analyzing PDF with AI...
+                  </p>
+                  <p class="text-[10px] text-muted-foreground">
+                    Extracting content, layout, and identifying variables
+                  </p>
                 </div>
               </div>
               <div class="w-full bg-muted/40 rounded-full h-2 overflow-hidden">
                 <div
                   class="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-500 ease-out"
-                  :style="{ width: pdfParseProgress + '%' }"
+                  :style="{ width: `${pdfParseProgress}%` }"
                 />
               </div>
               <div class="flex items-center justify-center gap-6 text-[10px] text-muted-foreground">
@@ -1100,7 +1193,9 @@ const TYPE_ICONS: Record<string, string> = {
               <div class="flex items-start gap-3">
                 <Icon name="i-lucide-info" class="size-4 text-violet-500 shrink-0 mt-0.5" />
                 <div class="text-xs text-muted-foreground space-y-1">
-                  <p class="font-semibold text-foreground">How it works</p>
+                  <p class="font-semibold text-foreground">
+                    How it works
+                  </p>
                   <p>Google Gemini AI will analyze your PDF and extract:</p>
                   <ul class="list-disc pl-4 space-y-0.5">
                     <li>Full document content with formatting preserved</li>
@@ -1135,7 +1230,9 @@ const TYPE_ICONS: Record<string, string> = {
                     v-model="pdfParsed.category"
                     class="w-full mt-1 h-8 px-2 text-sm border rounded-lg bg-background focus:ring-2 focus:ring-primary/20 outline-none"
                   >
-                    <option v-for="cat in CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
+                    <option v-for="cat in CATEGORIES" :key="cat" :value="cat">
+                      {{ cat }}
+                    </option>
                   </select>
                 </div>
               </div>
@@ -1159,7 +1256,9 @@ const TYPE_ICONS: Record<string, string> = {
               </div>
 
               <div v-if="pdfParsed.variables.length === 0" class="text-center py-4">
-                <p class="text-xs text-muted-foreground">No variables detected in this PDF</p>
+                <p class="text-xs text-muted-foreground">
+                  No variables detected in this PDF
+                </p>
               </div>
 
               <div v-else class="space-y-1.5 max-h-48 overflow-y-auto">
@@ -1176,7 +1275,8 @@ const TYPE_ICONS: Record<string, string> = {
                   >{{ v.key }}</span>
                   <span class="text-xs text-muted-foreground truncate flex-1">{{ v.label }}</span>
                   <span class="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-semibold">{{ v.type }}</span>
-                  <span class="text-[9px] px-1.5 py-0.5 rounded font-semibold"
+                  <span
+                    class="text-[9px] px-1.5 py-0.5 rounded font-semibold"
                     :class="v.scope === 'client' ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'"
                   >{{ v.scope }}</span>
                   <button
@@ -1216,7 +1316,9 @@ const TYPE_ICONS: Record<string, string> = {
             </button>
           </div>
           <div class="flex items-center gap-2">
-            <Button variant="ghost" size="sm" @click="showPdfUpload = false">Cancel</Button>
+            <Button variant="ghost" size="sm" @click="showPdfUpload = false">
+              Cancel
+            </Button>
             <Button
               v-if="pdfPreviewStep === 'upload'"
               size="sm"

@@ -52,7 +52,9 @@ function confirmDelete() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" class="w-[160px]">
-        <DropdownMenuItem @click="handleEdit">{{ t('tasks.actions.edit' as any) }}</DropdownMenuItem>
+        <DropdownMenuItem @click="handleEdit">
+          {{ t('tasks.actions.edit' as any) }}
+        </DropdownMenuItem>
         <DropdownMenuItem>{{ t('tasks.actions.copy' as any) }}</DropdownMenuItem>
         <DropdownMenuItem>{{ t('tasks.actions.favorite' as any) }}</DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -84,7 +86,9 @@ function confirmDelete() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel @click="showDeleteConfirm = false">Cancel</AlertDialogCancel>
+          <AlertDialogCancel @click="showDeleteConfirm = false">
+            Cancel
+          </AlertDialogCancel>
           <AlertDialogAction class="bg-destructive text-destructive-foreground hover:bg-destructive/90" @click="confirmDelete">
             Delete
           </AlertDialogAction>

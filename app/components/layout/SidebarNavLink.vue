@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SidebarMenuButtonVariants } from '~/components/ui/sidebar'
-import type { NavLink } from '~/types/nav'
 import type { TranslationKey } from '~/composables/useLocale'
+import type { NavLink } from '~/types/nav'
 import { useSidebar } from '~/components/ui/sidebar'
 
 const props = withDefaults(defineProps<{
@@ -22,7 +22,7 @@ const displayTitle = computed(() =>
 <template>
   <SidebarMenu>
     <SidebarMenuItem>
-      <SidebarMenuButton as-child :tooltip="displayTitle" :size="size" :data-active="$route.path === item.link || $route.path.startsWith(item.link + '/')">
+      <SidebarMenuButton as-child :tooltip="displayTitle" :size="size" :data-active="$route.path === item.link || $route.path.startsWith(`${item.link}/`)">
         <NuxtLink :to="item.link" @click="setOpenMobile(false)">
           <Icon :name="item.icon || ''" />
           <span>{{ displayTitle }}</span>

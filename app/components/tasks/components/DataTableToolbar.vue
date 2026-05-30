@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<DataTableToolbarProps>(), {
 })
 
 const emit = defineEmits<{
-  addTask: []
+  'addTask': []
   'update:viewMode': [mode: 'table' | 'kanban']
 }>()
 

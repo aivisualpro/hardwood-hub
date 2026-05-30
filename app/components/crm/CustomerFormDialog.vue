@@ -42,7 +42,7 @@ const isLoading = ref(false)
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     if (props.customer) {
-      form.value = { 
+      form.value = {
         name: props.customer.name || '',
         projectName: props.customer.projectName || '',
         firstName: props.customer.firstName || '',
@@ -67,7 +67,8 @@ watch(() => props.modelValue, (isOpen) => {
         woodOrderDate: props.customer.woodOrderDate ? (new Date(props.customer.woodOrderDate).toISOString().split('T')[0] || '') : '',
         tags: (props.customer.tags || []).join(', '),
       }
-    } else {
+    }
+    else {
       form.value = {
         name: '',
         projectName: '',
@@ -102,12 +103,12 @@ async function submit() {
     toast?.error?.('Please enter a First Name or Company Name')
     return
   }
-  
+
   isLoading.value = true
   try {
     const url = props.customer ? `/api/pipeline/${props.customer._id}` : '/api/pipeline'
     const method = props.customer ? 'PUT' : 'POST'
-    
+
     const nameParts = form.value.name ? form.value.name.split(' ') : []
     const fallbackFirstName = nameParts[0] || ''
     const fallbackLastName = nameParts.slice(1).join(' ') || ''
@@ -125,27 +126,30 @@ async function submit() {
       totalEstimate: form.value.totalEstimate ? Number(form.value.totalEstimate) : null,
       totalTrackedViews: form.value.totalTrackedViews ? Number(form.value.totalTrackedViews) : 0,
     }
-    
+
     if (!payload.name) {
       payload.name = `${payload.firstName} ${payload.lastName}`.trim()
     }
-    
+
     const res = await $fetch<any>(url, {
       method,
-      body: payload
+      body: payload,
     })
-    
+
     if (res.success) {
       emit('saved', res.data)
       emit('update:modelValue', false)
       toast.success('Customer saved successfully')
-    } else {
+    }
+    else {
       toast.error(res.message || 'Failed to save customer')
     }
-  } catch (e: any) {
+  }
+  catch (e: any) {
     console.error(e)
     toast.error(e?.data?.message || e?.message || 'An error occurred while saving')
-  } finally {
+  }
+  finally {
     isLoading.value = false
   }
 }
@@ -167,11 +171,12 @@ const STAGES = [
   { id: 'needs follow', label: 'needs follow', bg: 'bg-[#6AA84F]', text: 'text-white', border: 'border-[#6AA84F]' },
   { id: 'inspection do', label: 'inspection do...', bg: 'bg-[#93C47D]', text: 'text-black', border: 'border-[#93C47D]' },
   { id: 'Waiting for P', label: 'Waiting for P...', bg: 'bg-[#8FCE00]', text: 'text-black', border: 'border-[#8FCE00]' },
-  { id: 'lost', label: 'lost', bg: 'bg-[#999999]', text: 'text-white', border: 'border-[#999999]' }
+  { id: 'lost', label: 'lost', bg: 'bg-[#999999]', text: 'text-white', border: 'border-[#999999]' },
 ]
 
 function normalizeStage(stageStr: string): string {
-  if (!stageStr) return ''
+  if (!stageStr)
+    return ''
   let s = stageStr.trim().toLowerCase()
   s = s.replace('neads', 'needs')
   s = s.replace(/needs estimate\s*$/, 'needs estimate')
@@ -203,28 +208,32 @@ watch(activeDropdown, (val) => {
 const filteredStageOptions = computed(() => {
   let all = [...STAGES]
   if (form.value.stage) {
-     const exactVal = form.value.stage.trim()
-     const found = all.find(x => normalizeStage(x.id) === normalizeStage(exactVal))
-     if (!found && exactVal) {
-        all.push({ id: exactVal, label: exactVal, bg: 'bg-muted/80', text: 'text-foreground', border: 'border-border' })
-     }
+    const exactVal = form.value.stage.trim()
+    const found = all.find(x => normalizeStage(x.id) === normalizeStage(exactVal))
+    if (!found && exactVal) {
+      all.push({ id: exactVal, label: exactVal, bg: 'bg-muted/80', text: 'text-foreground', border: 'border-border' })
+    }
   }
-  if (!stageSearch.value) return all
+  if (!stageSearch.value)
+    return all
   const sub = stageSearch.value.toLowerCase()
   return all.filter(s => s.label.toLowerCase().includes(sub))
 })
 
 function handleStageSelect(newStage: string) {
-  if (!newStage.trim()) return
+  if (!newStage.trim())
+    return
   form.value.stage = newStage.trim()
   activeDropdown.value = null
 }
 
 function getStageClasses(stageName: string) {
-  if (!stageName) return 'bg-muted text-muted-foreground border-border'
+  if (!stageName)
+    return 'bg-muted text-muted-foreground border-border'
   const norm = normalizeStage(stageName)
   const found = STAGES.find(s => normalizeStage(s.id) === norm)
-  if (found) return `${found.bg} ${found.text} border ${found.border}`
+  if (found)
+    return `${found.bg} ${found.text} border ${found.border}`
   return 'bg-muted/80 text-foreground border-border'
 }
 
@@ -232,13 +241,15 @@ const { data: employeesRes } = await useFetch<any>('/api/employees')
 const employeesData = computed(() => employeesRes.value?.data || [])
 
 const filteredEmployees = computed(() => {
-  if (!employeeSearch.value) return employeesData.value
+  if (!employeeSearch.value)
+    return employeesData.value
   const s = employeeSearch.value.toLowerCase()
   return employeesData.value.filter((e: any) => e.employee.toLowerCase().includes(s))
 })
 
 function getSelectedEmployees() {
-  if (!form.value.projectAssignedTo) return []
+  if (!form.value.projectAssignedTo)
+    return []
   return form.value.projectAssignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
 }
 
@@ -250,7 +261,8 @@ function toggleEmployee(emp: string) {
   const selected = getSelectedEmployees()
   if (selected.includes(emp)) {
     form.value.projectAssignedTo = selected.filter(x => x !== emp).join(', ')
-  } else {
+  }
+  else {
     selected.push(emp)
     form.value.projectAssignedTo = selected.join(', ')
   }
@@ -266,8 +278,8 @@ function toggleEmployee(emp: string) {
           {{ customer ? 'Update the details for this customer below.' : 'Fill in the details below to create a new customer.' }}
         </DialogDescription>
       </DialogHeader>
-      
-      <form @submit.prevent="submit" class="space-y-4 py-4 max-h-[75vh] overflow-y-auto px-2">
+
+      <form class="space-y-4 py-4 max-h-[75vh] overflow-y-auto px-2" @submit.prevent="submit">
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2 col-span-2">
             <Label>Company / Display Name</Label>
@@ -278,12 +290,12 @@ function toggleEmployee(emp: string) {
             <Label>Project Name</Label>
             <Input v-model="form.projectName" placeholder="e.g. Kitchen Remodel" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>First Name <span class="text-destructive">*</span></Label>
             <Input v-model="form.firstName" placeholder="John" required />
           </div>
-          
+
           <div class="space-y-2">
             <Label>Last Name</Label>
             <Input v-model="form.lastName" placeholder="Doe" />
@@ -293,7 +305,7 @@ function toggleEmployee(emp: string) {
             <Label>Email</Label>
             <Input v-model="form.email" type="email" placeholder="john@example.com" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>Phone</Label>
             <Input v-model="form.phone" placeholder="(555) 555-5555" />
@@ -302,37 +314,37 @@ function toggleEmployee(emp: string) {
           <div class="space-y-2 relative" :class="activeDropdown === 'stage' ? 'z-50' : ''">
             <Label>Stage</Label>
             <div class="relative">
-              <button type="button" @click.stop="activeDropdown = activeDropdown === 'stage' ? null : 'stage'" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary h-9">
+              <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary h-9" @click.stop="activeDropdown = activeDropdown === 'stage' ? null : 'stage'">
                 <div class="flex items-center gap-2">
                   <div class="size-2 rounded-full ring-1 ring-border shadow-xs" :class="getStageClasses(form.stage)" />
                   <span :class="form.stage ? 'text-foreground font-bold uppercase tracking-wider text-[10px]' : 'text-muted-foreground'">{{ form.stage || 'Select stage...' }}</span>
                 </div>
                 <Icon name="i-lucide-chevron-down" class="size-4 opacity-50" />
               </button>
-              
+
               <div v-if="activeDropdown === 'stage'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
               <div v-if="activeDropdown === 'stage'" class="absolute left-0 mt-1 top-full w-full bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
-                 <div class="p-2 border-b border-border/50">
-                   <input ref="stageSearchInput" type="text" v-model="stageSearch" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop @keydown.enter.prevent="handleStageSelect(stageSearch)" />
-                 </div>
-                 <div class="max-h-[200px] overflow-y-auto py-1.5">
-                    <button type="button" v-for="st in filteredStageOptions" :key="st.id" @click.stop="handleStageSelect(st.id)" class="w-full text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2">
-                       <div class="size-2 rounded-full shadow-inner ring-1 ring-border" :class="st.bg" />
-                       <span class="truncate">{{ st.label }}</span>
-                    </button>
-                    <button type="button" v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" @click.stop="handleStageSelect(stageSearch)" class="w-full text-left px-3 py-2 text-sm hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap">
-                       <Icon name="i-lucide-plus" class="size-4 shrink-0" />
-                       <span class="truncate">Add "{{ stageSearch }}"</span>
-                    </button>
-                 </div>
+                <div class="p-2 border-b border-border/50">
+                  <input ref="stageSearchInput" v-model="stageSearch" type="text" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop @keydown.enter.prevent="handleStageSelect(stageSearch)">
+                </div>
+                <div class="max-h-[200px] overflow-y-auto py-1.5">
+                  <button v-for="st in filteredStageOptions" :key="st.id" type="button" class="w-full text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2" @click.stop="handleStageSelect(st.id)">
+                    <div class="size-2 rounded-full shadow-inner ring-1 ring-border" :class="st.bg" />
+                    <span class="truncate">{{ st.label }}</span>
+                  </button>
+                  <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap" @click.stop="handleStageSelect(stageSearch)">
+                    <Icon name="i-lucide-plus" class="size-4 shrink-0" />
+                    <span class="truncate">Add "{{ stageSearch }}"</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-          
+
           <div class="space-y-2 col-span-2 sm:col-span-1 relative" :class="activeDropdown === 'projectAssignedTo' ? 'z-50' : ''">
             <Label>Project Assigned To</Label>
             <div class="relative">
-              <button type="button" @click.stop="activeDropdown = activeDropdown === 'projectAssignedTo' ? null : 'projectAssignedTo'" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] h-auto">
+              <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] h-auto" @click.stop="activeDropdown = activeDropdown === 'projectAssignedTo' ? null : 'projectAssignedTo'">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span v-if="!form.projectAssignedTo" class="text-muted-foreground">Select assignees...</span>
                   <template v-else>
@@ -341,33 +353,35 @@ function toggleEmployee(emp: string) {
                 </div>
                 <Icon name="i-lucide-users" class="size-4 opacity-50 shrink-0" />
               </button>
-              
+
               <div v-if="activeDropdown === 'projectAssignedTo'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
               <div v-if="activeDropdown === 'projectAssignedTo'" class="absolute left-0 mt-1 top-full w-full bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
-                 <div class="p-2 border-b border-border/50">
-                   <input ref="employeeSearchInput" type="text" v-model="employeeSearch" placeholder="Search employees..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop />
-                 </div>
-                 <div class="max-h-[200px] overflow-y-auto py-1.5">
-                    <button type="button" v-for="emp in filteredEmployees" :key="emp.employee" @click.stop="toggleEmployee(emp.employee)" class="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center justify-between gap-2">
-                       <span class="truncate" :class="isSelectedEmployee(emp.employee) ? 'font-bold text-primary' : ''">{{ emp.employee }}</span>
-                       <Icon v-if="isSelectedEmployee(emp.employee)" name="i-lucide-check" class="size-4 text-primary shrink-0" />
-                    </button>
-                    <div v-if="!filteredEmployees.length" class="px-3 py-2 text-xs text-muted-foreground text-center">No employees found.</div>
-                 </div>
+                <div class="p-2 border-b border-border/50">
+                  <input ref="employeeSearchInput" v-model="employeeSearch" type="text" placeholder="Search employees..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop>
+                </div>
+                <div class="max-h-[200px] overflow-y-auto py-1.5">
+                  <button v-for="emp in filteredEmployees" :key="emp.employee" type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center justify-between gap-2" @click.stop="toggleEmployee(emp.employee)">
+                    <span class="truncate" :class="isSelectedEmployee(emp.employee) ? 'font-bold text-primary' : ''">{{ emp.employee }}</span>
+                    <Icon v-if="isSelectedEmployee(emp.employee)" name="i-lucide-check" class="size-4 text-primary shrink-0" />
+                  </button>
+                  <div v-if="!filteredEmployees.length" class="px-3 py-2 text-xs text-muted-foreground text-center">
+                    No employees found.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          
+
           <div class="space-y-2">
             <Label>Estim. Project Duration</Label>
             <Input v-model="form.estimatedProjectDuration" placeholder="e.g. 3 weeks" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>Total Estimate ($)</Label>
             <Input v-model="form.totalEstimate" type="number" step="0.01" placeholder="10000" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>Total Tracked Views</Label>
             <Input v-model="form.totalTrackedViews" type="number" placeholder="0" />
@@ -377,22 +391,22 @@ function toggleEmployee(emp: string) {
             <Label>Initial Contact Date</Label>
             <Input v-model="form.initialContactDate" type="date" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>Last Follow Up Date</Label>
             <Input v-model="form.lastFollowUpSentOn" type="date" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>Estimate Sent On</Label>
             <Input v-model="form.estimateSentOn" type="date" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>Date Approved</Label>
             <Input v-model="form.dateApproved" type="date" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>Wood Order Date</Label>
             <Input v-model="form.woodOrderDate" type="date" />
@@ -402,17 +416,17 @@ function toggleEmployee(emp: string) {
             <Label>Tags (comma separated)</Label>
             <Input v-model="form.tags" placeholder="VIP, Flooring, Urgent" />
           </div>
-          
+
           <div class="space-y-2 col-span-2">
             <Label>Address</Label>
             <Input v-model="form.address" placeholder="123 Main St" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>City</Label>
             <Input v-model="form.city" placeholder="Anytown" />
           </div>
-          
+
           <div class="grid grid-cols-2 gap-2 space-y-0">
             <div class="space-y-2">
               <Label>State</Label>
@@ -423,15 +437,17 @@ function toggleEmployee(emp: string) {
               <Input v-model="form.zip" placeholder="10001" />
             </div>
           </div>
-          
+
           <div class="space-y-2 col-span-2">
             <Label>Notes</Label>
             <Textarea v-model="form.notes" placeholder="Additional details..." rows="3" />
           </div>
         </div>
-        
+
         <DialogFooter class="mt-4">
-          <button type="button" class="px-4 py-2 text-sm font-medium border rounded-md" @click="emit('update:modelValue', false)">Cancel</button>
+          <button type="button" class="px-4 py-2 text-sm font-medium border rounded-md" @click="emit('update:modelValue', false)">
+            Cancel
+          </button>
           <button type="submit" :disabled="isLoading" class="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md disabled:opacity-50">
             {{ isLoading ? 'Saving...' : 'Save' }}
           </button>

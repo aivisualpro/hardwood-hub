@@ -20,6 +20,19 @@ import {
 import { valueUpdater } from '@/lib/utils'
 import DataTableToolbar from './DataTableToolbar.vue'
 
+const props = withDefaults(defineProps<DataTableProps>(), {
+  taskGroupMap: () => new Map(),
+  showGrouping: false,
+  viewMode: 'table',
+})
+
+const emit = defineEmits<{
+  'reorder': [groupKey: string, fromIdx: number, toIdx: number]
+  'addTask': []
+  'taskClick': [task: Task]
+  'update:viewMode': [mode: 'table' | 'kanban']
+}>()
+
 const { t } = useLocale()
 
 interface DataTableProps {
@@ -29,19 +42,6 @@ interface DataTableProps {
   showGrouping?: boolean
   viewMode?: 'table' | 'kanban'
 }
-const props = withDefaults(defineProps<DataTableProps>(), {
-  taskGroupMap: () => new Map(),
-  showGrouping: false,
-  viewMode: 'table',
-})
-
-const emit = defineEmits<{
-  reorder: [groupKey: string, fromIdx: number, toIdx: number]
-  addTask: []
-  taskClick: [task: Task]
-  'update:viewMode': [mode: 'table' | 'kanban']
-}>()
-
 const sorting = ref<SortingState>([])
 const columnFilters = ref<ColumnFiltersState>([])
 const columnVisibility = ref<VisibilityState>({})
@@ -97,7 +97,8 @@ onMounted(() => {
   )
 
   watch(sentinelRef, (el) => {
-    if (el) observer.observe(el)
+    if (el)
+      observer.observe(el)
   }, { immediate: true })
 
   onUnmounted(() => observer.disconnect())
@@ -224,7 +225,8 @@ function onDragEnd() {
 // Move up/down within group
 function moveTask(dRow: TaskRow, direction: 'up' | 'down') {
   const toIdx = direction === 'up' ? dRow.indexInGroup - 1 : dRow.indexInGroup + 1
-  if (toIdx < 0 || toIdx >= dRow.groupSize) return
+  if (toIdx < 0 || toIdx >= dRow.groupSize)
+    return
   emit('reorder', dRow.groupKey, dRow.indexInGroup, toIdx)
   nextTick(() => triggerDustEffect(dRow.groupKey, toIdx))
 }
@@ -284,7 +286,6 @@ onMounted(() => {
                 @drop="onDrop(dRow.groupKey, dRow.indexInGroup)"
                 @dragend="onDragEnd"
               >
-
                 <TableCell v-for="(cell, cIdx) in dRow.row.getVisibleCells()" :key="cell.id">
                   <!-- Override S.No column with per-group serial number -->
                   <template v-if="cell.column.id === 'sno'">

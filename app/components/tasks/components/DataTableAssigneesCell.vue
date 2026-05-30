@@ -6,17 +6,18 @@ const props = defineProps<{ task: Task }>()
 
 const context = inject<{
   updateTask: (taskId: string, updates: Partial<Task>) => void
-  availableAssignees: { id: string; name: string; avatar: string }[]
+  availableAssignees: { id: string, name: string, avatar: string }[]
 }>('task-table-context')
 
 const open = ref(false)
 
 const assignees = computed(() => {
   const ids = props.task.assignees || []
-  if (!context?.availableAssignees) return []
+  if (!context?.availableAssignees)
+    return []
   return ids
     .map(id => context.availableAssignees.find(a => a.id === id))
-    .filter(Boolean) as { id: string; name: string; avatar: string }[]
+    .filter(Boolean) as { id: string, name: string, avatar: string }[]
 })
 
 function getInitials(name: string) {
@@ -77,7 +78,9 @@ function toggleAssignee(id: string) {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" :side-offset="4">
-                  <p class="text-xs font-medium">{{ a.name }}</p>
+                  <p class="text-xs font-medium">
+                    {{ a.name }}
+                  </p>
                 </TooltipContent>
               </Tooltip>
               <Tooltip v-if="assignees.length > 3">
@@ -90,7 +93,9 @@ function toggleAssignee(id: string) {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" :side-offset="4">
-                  <p class="text-xs font-medium">{{ assignees.slice(3).map(a => a.name).join(', ') }}</p>
+                  <p class="text-xs font-medium">
+                    {{ assignees.slice(3).map(a => a.name).join(', ') }}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </div>

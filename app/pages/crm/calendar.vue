@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday, parseISO, setHours, setMinutes, startOfMonth, startOfWeek, subMonths } from 'date-fns'
 import { toast } from 'vue-sonner'
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameDay, isSameMonth, isToday, parseISO, setHours, setMinutes } from 'date-fns'
 
 const { setHeader } = usePageHeader()
 setHeader({
@@ -20,8 +20,8 @@ interface CalendarEvent {
   start: string
   end: string
   allDay: boolean
-  attendees: { email: string; displayName: string; responseStatus: string; self: boolean }[]
-  organizer: { email: string; displayName: string; self: boolean }
+  attendees: { email: string, displayName: string, responseStatus: string, self: boolean }[]
+  organizer: { email: string, displayName: string, self: boolean }
   colorId: string
 }
 
@@ -72,38 +72,40 @@ const displayDays = computed(() => viewMode.value === 'month' ? calendarDays.val
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 // ─── Event Colors ────────────────────────────────────────
-const EVENT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  '1': { bg: 'bg-indigo-500/15', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-500/30' },
-  '2': { bg: 'bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-500/30' },
-  '3': { bg: 'bg-violet-500/15', text: 'text-violet-700 dark:text-violet-300', border: 'border-violet-500/30' },
-  '4': { bg: 'bg-rose-500/15', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-500/30' },
-  '5': { bg: 'bg-amber-500/15', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-500/30' },
-  '6': { bg: 'bg-orange-500/15', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-500/30' },
-  '7': { bg: 'bg-cyan-500/15', text: 'text-cyan-700 dark:text-cyan-300', border: 'border-cyan-500/30' },
-  '8': { bg: 'bg-gray-500/15', text: 'text-gray-700 dark:text-gray-300', border: 'border-gray-500/30' },
-  '9': { bg: 'bg-sky-500/15', text: 'text-sky-700 dark:text-sky-300', border: 'border-sky-500/30' },
-  '10': { bg: 'bg-green-500/15', text: 'text-green-700 dark:text-green-300', border: 'border-green-500/30' },
-  '11': { bg: 'bg-red-500/15', text: 'text-red-700 dark:text-red-300', border: 'border-red-500/30' },
+const EVENT_COLORS: Record<string, { bg: string, text: string, border: string }> = {
+  1: { bg: 'bg-indigo-500/15', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-500/30' },
+  2: { bg: 'bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-500/30' },
+  3: { bg: 'bg-violet-500/15', text: 'text-violet-700 dark:text-violet-300', border: 'border-violet-500/30' },
+  4: { bg: 'bg-rose-500/15', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-500/30' },
+  5: { bg: 'bg-amber-500/15', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-500/30' },
+  6: { bg: 'bg-orange-500/15', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-500/30' },
+  7: { bg: 'bg-cyan-500/15', text: 'text-cyan-700 dark:text-cyan-300', border: 'border-cyan-500/30' },
+  8: { bg: 'bg-gray-500/15', text: 'text-gray-700 dark:text-gray-300', border: 'border-gray-500/30' },
+  9: { bg: 'bg-sky-500/15', text: 'text-sky-700 dark:text-sky-300', border: 'border-sky-500/30' },
+  10: { bg: 'bg-green-500/15', text: 'text-green-700 dark:text-green-300', border: 'border-green-500/30' },
+  11: { bg: 'bg-red-500/15', text: 'text-red-700 dark:text-red-300', border: 'border-red-500/30' },
   default: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/20' },
 }
 
-function getEventColor(colorId: string) {
-  return EVENT_COLORS[colorId] || EVENT_COLORS['default']
+function getEventColor(colorId: string | undefined | null) {
+  return EVENT_COLORS[colorId ?? ''] || EVENT_COLORS.default
 }
 
 // ─── Event Helpers ───────────────────────────────────────
 function getEventsForDay(day: Date): CalendarEvent[] {
-  return events.value.filter(ev => {
+  return events.value.filter((ev) => {
     const evStart = parseISO(ev.start)
     return isSameDay(evStart, day)
   })
 }
 
 function formatEventTime(ev: CalendarEvent): string {
-  if (ev.allDay) return 'All day'
+  if (ev.allDay)
+    return 'All day'
   try {
     return format(parseISO(ev.start), 'h:mm a')
-  } catch {
+  }
+  catch {
     return ''
   }
 }
@@ -114,7 +116,8 @@ function goPrev() { currentDate.value = viewMode.value === 'month' ? subMonths(c
 function goNext() { currentDate.value = viewMode.value === 'month' ? addMonths(currentDate.value, 1) : addDays(currentDate.value, 7) }
 
 const headerTitle = computed(() => {
-  if (viewMode.value === 'month') return format(currentDate.value, 'MMMM yyyy')
+  if (viewMode.value === 'month')
+    return format(currentDate.value, 'MMMM yyyy')
   const start = startOfWeek(currentDate.value, { weekStartsOn: 0 })
   const end = addDays(start, 6)
   if (start.getMonth() === end.getMonth()) {
@@ -146,10 +149,12 @@ async function fetchEvents() {
       params: { timeMin, timeMax },
     })
     events.value = res.data?.events || []
-  } catch (e: any) {
+  }
+  catch (e: any) {
     console.error('[Calendar] Failed to fetch events:', e?.message)
     toast.error('Failed to load calendar events', { description: e?.message })
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -176,7 +181,8 @@ async function createEvent() {
         body,
       })
       toast.success('Event updated')
-    } else {
+    }
+    else {
       await $fetch('/api/google-calendar/events', {
         method: 'POST',
         body,
@@ -186,9 +192,11 @@ async function createEvent() {
 
     showEventDialog.value = false
     await fetchEvents()
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to save event', { description: e?.message })
-  } finally {
+  }
+  finally {
     savingEvent.value = false
   }
 }
@@ -200,7 +208,8 @@ async function deleteEvent(id: string) {
     showEventDetail.value = false
     selectedEvent.value = null
     await fetchEvents()
-  } catch (e: any) {
+  }
+  catch (e: any) {
     toast.error('Failed to delete event', { description: e?.message })
   }
 }
@@ -214,8 +223,8 @@ function openNewEvent(day?: Date) {
     summary: '',
     description: '',
     location: '',
-    start: format(start, "yyyy-MM-dd'T'HH:mm"),
-    end: format(end, "yyyy-MM-dd'T'HH:mm"),
+    start: format(start, 'yyyy-MM-dd\'T\'HH:mm'),
+    end: format(end, 'yyyy-MM-dd\'T\'HH:mm'),
     allDay: false,
   }
   showEventDialog.value = true
@@ -223,8 +232,8 @@ function openNewEvent(day?: Date) {
 
 function openEditEvent(ev: CalendarEvent) {
   editingEvent.value = ev
-  const startStr = ev.allDay ? ev.start : format(parseISO(ev.start), "yyyy-MM-dd'T'HH:mm")
-  const endStr = ev.allDay ? ev.end : format(parseISO(ev.end), "yyyy-MM-dd'T'HH:mm")
+  const startStr = ev.allDay ? ev.start : format(parseISO(ev.start), 'yyyy-MM-dd\'T\'HH:mm')
+  const endStr = ev.allDay ? ev.end : format(parseISO(ev.end), 'yyyy-MM-dd\'T\'HH:mm')
   eventForm.value = {
     summary: ev.summary,
     description: ev.description,
@@ -278,7 +287,9 @@ onMounted(() => {
             </button>
           </div>
 
-          <h2 class="text-sm sm:text-base font-bold truncate">{{ headerTitle }}</h2>
+          <h2 class="text-sm sm:text-base font-bold truncate">
+            {{ headerTitle }}
+          </h2>
 
           <div class="ml-auto flex items-center gap-2">
             <!-- View Toggle -->
@@ -315,10 +326,14 @@ onMounted(() => {
         <Icon name="i-lucide-calendar" class="size-10 text-blue-500" />
       </div>
       <div>
-        <h2 class="text-xl font-bold mb-2">Connect Google Calendar</h2>
+        <h2 class="text-xl font-bold mb-2">
+          Connect Google Calendar
+        </h2>
         <p class="text-sm text-muted-foreground max-w-md">
           Connect your Google Calendar to view and manage your events.
-          Go to <NuxtLink to="/admin/general-settings/integrations" class="text-primary hover:underline font-medium">Admin → Integrations</NuxtLink> to connect.
+          Go to <NuxtLink to="/admin/general-settings/integrations" class="text-primary hover:underline font-medium">
+            Admin → Integrations
+          </NuxtLink> to connect.
         </p>
       </div>
     </div>
@@ -410,7 +425,9 @@ onMounted(() => {
               <Icon name="i-lucide-calendar" class="size-6" :class="getEventColor(selectedEvent.colorId).text" />
             </div>
             <div class="flex-1 min-w-0">
-              <SheetTitle class="text-lg truncate">{{ selectedEvent.summary || 'Untitled Event' }}</SheetTitle>
+              <SheetTitle class="text-lg truncate">
+                {{ selectedEvent.summary || 'Untitled Event' }}
+              </SheetTitle>
               <SheetDescription>
                 {{ selectedEvent.allDay ? 'All-day event' : `${formatEventTime(selectedEvent)}` }}
               </SheetDescription>
@@ -437,13 +454,17 @@ onMounted(() => {
           <!-- Location -->
           <div v-if="selectedEvent.location" class="flex items-start gap-3">
             <Icon name="i-lucide-map-pin" class="size-4 text-muted-foreground mt-0.5 shrink-0" />
-            <p class="text-sm">{{ selectedEvent.location }}</p>
+            <p class="text-sm">
+              {{ selectedEvent.location }}
+            </p>
           </div>
 
           <!-- Description -->
           <div v-if="selectedEvent.description" class="flex items-start gap-3">
             <Icon name="i-lucide-align-left" class="size-4 text-muted-foreground mt-0.5 shrink-0" />
-            <p class="text-sm text-muted-foreground whitespace-pre-wrap">{{ selectedEvent.description }}</p>
+            <p class="text-sm text-muted-foreground whitespace-pre-wrap">
+              {{ selectedEvent.description }}
+            </p>
           </div>
 
           <!-- Attendees -->
@@ -502,11 +523,11 @@ onMounted(() => {
               v-model="eventForm.summary"
               class="h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Event title"
-            />
+            >
           </div>
 
           <div class="flex items-center gap-2">
-            <input id="ev-allday" v-model="eventForm.allDay" type="checkbox" class="rounded border-border" />
+            <input id="ev-allday" v-model="eventForm.allDay" type="checkbox" class="rounded border-border">
             <Label for="ev-allday" class="text-sm cursor-pointer">All-day event</Label>
           </div>
 
@@ -518,7 +539,7 @@ onMounted(() => {
                 v-model="eventForm.start"
                 :type="eventForm.allDay ? 'date' : 'datetime-local'"
                 class="h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+              >
             </div>
             <div class="flex flex-col gap-1.5">
               <Label for="ev-end">End</Label>
@@ -527,7 +548,7 @@ onMounted(() => {
                 v-model="eventForm.end"
                 :type="eventForm.allDay ? 'date' : 'datetime-local'"
                 class="h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+              >
             </div>
           </div>
 
@@ -538,7 +559,7 @@ onMounted(() => {
               v-model="eventForm.location"
               class="h-10 px-3 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Add location"
-            />
+            >
           </div>
 
           <div class="flex flex-col gap-1.5">
@@ -554,7 +575,9 @@ onMounted(() => {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showEventDialog = false">Cancel</Button>
+          <Button variant="outline" @click="showEventDialog = false">
+            Cancel
+          </Button>
           <Button :disabled="savingEvent" @click="createEvent">
             <Icon v-if="savingEvent" name="i-lucide-loader-2" class="size-3.5 animate-spin mr-2" />
             {{ editingEvent ? 'Update' : 'Create' }}

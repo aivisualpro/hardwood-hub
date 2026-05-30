@@ -3,11 +3,11 @@ import type { ColumnDef } from '@tanstack/vue-table'
 import type { Task } from '../data/schema'
 import { h } from 'vue'
 import { priorities, statuses } from '../data/data'
+import DataTableAssigneesCell from './DataTableAssigneesCell.vue'
 import DataTableColumnHeader from './DataTableColumnHeader.vue'
+import DataTablePriorityCell from './DataTablePriorityCell.vue'
 import DataTableRowActions from './DataTableRowActions.vue'
 import DataTableStatusCell from './DataTableStatusCell.vue'
-import DataTablePriorityCell from './DataTablePriorityCell.vue'
-import DataTableAssigneesCell from './DataTableAssigneesCell.vue'
 import DueDateBadge from './DueDateBadge.vue'
 
 export const columns: ColumnDef<Task>[] = [
@@ -52,11 +52,10 @@ export const columns: ColumnDef<Task>[] = [
     header: ({ column }) => h(DataTableColumnHeader, { column, titleKey: 'tasks.col.createdAt' }),
     cell: ({ row }) => {
       const val = row.getValue('createdAt') as string | undefined
-      if (!val) return h('span', { class: 'text-xs text-muted-foreground' }, '—')
+      if (!val)
+        return h('span', { class: 'text-xs text-muted-foreground' }, '—')
       const d = new Date(val)
-      return h('span', { class: 'text-xs text-muted-foreground whitespace-nowrap' },
-        d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
-      )
+      return h('span', { class: 'text-xs text-muted-foreground whitespace-nowrap' }, d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }))
     },
   },
   {
@@ -69,9 +68,12 @@ export const columns: ColumnDef<Task>[] = [
     sortingFn: (rowA, rowB) => {
       const a = rowA.getValue('dueDate') as string | undefined
       const b = rowB.getValue('dueDate') as string | undefined
-      if (!a && !b) return 0
-      if (!a) return 1
-      if (!b) return -1
+      if (!a && !b)
+        return 0
+      if (!a)
+        return 1
+      if (!b)
+        return -1
       return new Date(a).getTime() - new Date(b).getTime()
     },
   },

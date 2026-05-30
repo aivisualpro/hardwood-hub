@@ -8,71 +8,81 @@ setHeader({
   description: 'Customer records from the master client database',
 })
 
-// ─── Data ────────────────────────────────────────────────
+// ─── Server-side state ───────────────────────────────────
 const clients = ref<any[]>([])
 const loading = ref(true)
 const search = ref('')
+const typeFilter = ref('')
+const page = ref(1)
+const totalPages = ref(1)
+const total = ref(0)
+const PAGE_LIMIT = 25
 
-// ─── Sort ────────────────────────────────────────────────
+// ─── Sort (sent to server) ───────────────────────────────
 const sortField = ref('name')
 const sortDir = ref<'asc' | 'desc'>('asc')
 
 function toggleSort(field: string) {
   if (sortField.value === field) {
     sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-  } else {
+  }
+  else {
     sortField.value = field
     sortDir.value = 'asc'
   }
+  fetchClients(1)
 }
 
 function sortIcon(field: string) {
-  if (sortField.value !== field) return 'i-lucide-arrow-up-down'
+  if (sortField.value !== field)
+    return 'i-lucide-arrow-up-down'
   return sortDir.value === 'asc' ? 'i-lucide-arrow-up' : 'i-lucide-arrow-down'
 }
 
-const filteredClients = computed(() => {
-  let list = [...clients.value]
-  const q = search.value.trim().toLowerCase()
-  if (q) {
-    list = list.filter(c =>
-      (c.name || '').toLowerCase().includes(q)
-      || (c.email || '').toLowerCase().includes(q)
-      || (c.phone || '').includes(q)
-      || (c.address || '').toLowerCase().includes(q)
-      || (c.city || '').toLowerCase().includes(q)
-      || (c.state || '').toLowerCase().includes(q)
-      || (c.zip || '').includes(q)
-      || (c.type || '').toLowerCase().includes(q)
-      || (c.firstName || '').toLowerCase().includes(q)
-      || (c.lastName || '').toLowerCase().includes(q)
-    )
-  }
-  const f = sortField.value
-  const dir = sortDir.value === 'asc' ? 1 : -1
-  list.sort((a, b) => {
-    const va = (a[f] || '').toString().toLowerCase()
-    const vb = (b[f] || '').toString().toLowerCase()
-    return va < vb ? -1 * dir : va > vb ? 1 * dir : 0
-  })
-  return list
-})
-
-// ─── Fetch ───────────────────────────────────────────────
-async function fetchClients() {
+// ─── Fetch (server-side) ─────────────────────────────────
+async function fetchClients(targetPage = page.value) {
   loading.value = true
   try {
-    const res = await $fetch<any>('/api/customers?limit=1000')
-    if (res?.success) clients.value = res.data || []
-  } catch {
+    const params = new URLSearchParams({
+      page: String(targetPage),
+      limit: String(PAGE_LIMIT),
+      sortField: sortField.value,
+      sortDir: sortDir.value,
+    })
+    if (search.value.trim())
+      params.set('search', search.value.trim())
+    if (typeFilter.value)
+      params.set('type', typeFilter.value)
+
+    const res = await $fetch<any>(`/api/customers?${params.toString()}`)
+    if (res?.success) {
+      clients.value = res.data || []
+      page.value = res.pagination?.page || 1
+      totalPages.value = res.pagination?.totalPages || 1
+      total.value = res.pagination?.total || 0
+    }
+  }
+  catch {
     toast.error('Failed to load customers')
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
 
+// Debounce search: 300 ms
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(search, () => {
+  if (searchTimer)
+    clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => fetchClients(1), 300)
+})
+
+// Immediate re-fetch on filter changes
+watch(typeFilter, () => fetchClients(1))
+
 useAsyncData('crm-clients', async () => {
-  await fetchClients()
+  await fetchClients(1)
   return true
 }, { server: false, lazy: true })
 
@@ -88,19 +98,21 @@ const TYPE_OPTIONS = [
   { value: 'past-customer', label: 'Past Customer' },
 ]
 
-const emptyForm = () => ({
-  name: '',
-  firstName: '',
-  lastName: '',
-  email: '',
-  phone: '',
-  address: '',
-  city: '',
-  state: '',
-  zip: '',
-  type: 'lead',
-  notes: '',
-})
+function emptyForm() {
+  return {
+    name: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    type: 'lead',
+    notes: '',
+  }
+}
 
 const form = ref(emptyForm())
 
@@ -138,15 +150,18 @@ async function saveCustomer() {
     if (editingId.value) {
       await $fetch(`/api/customers/${editingId.value}`, { method: 'PUT', body: form.value })
       toast.success('Customer updated')
-    } else {
+    }
+    else {
       await $fetch('/api/customers', { method: 'POST', body: form.value })
       toast.success('Customer created')
     }
     showDialog.value = false
-    await fetchClients()
-  } catch (e: any) {
+    await fetchClients(page.value)
+  }
+  catch (e: any) {
     toast.error(editingId.value ? 'Failed to update' : 'Failed to create', { description: e?.message })
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
@@ -160,16 +175,19 @@ function confirmDelete(c: any) {
 }
 
 async function doDelete() {
-  if (!deleteTarget.value) return
+  if (!deleteTarget.value)
+    return
   deleting.value = true
   try {
     await $fetch(`/api/customers/${deleteTarget.value._id}`, { method: 'DELETE' })
     toast.success('Customer deleted')
-    clients.value = clients.value.filter(c => c._id !== deleteTarget.value._id)
     deleteTarget.value = null
-  } catch (e: any) {
+    await fetchClients(page.value)
+  }
+  catch (e: any) {
     toast.error('Failed to delete', { description: e?.message })
-  } finally {
+  }
+  finally {
     deleting.value = false
   }
 }
@@ -183,7 +201,8 @@ const TYPE_STYLE: Record<string, string> = {
 }
 
 function displayType(t: string) {
-  if (!t) return '—'
+  if (!t)
+    return '—'
   return t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
@@ -223,13 +242,6 @@ const columns = [
   </ClientOnly>
 
   <div class="space-y-4">
-    <!-- Count badge -->
-    <div class="flex items-center gap-2">
-      <span class="text-xs text-muted-foreground font-bold tabular-nums">
-        {{ filteredClients.length }} customer{{ filteredClients.length !== 1 ? 's' : '' }}
-        <span v-if="search" class="text-muted-foreground/60"> matching "{{ search }}"</span>
-      </span>
-    </div>
 
     <!-- Loading -->
     <div v-if="loading" class="space-y-2">
@@ -238,12 +250,16 @@ const columns = [
 
     <!-- Empty -->
     <div
-      v-else-if="filteredClients.length === 0"
+      v-else-if="clients.length === 0"
       class="flex flex-col items-center justify-center py-16 text-center border bg-card rounded-xl border-dashed"
     >
       <Icon name="i-lucide-users" class="size-10 text-muted-foreground/20 mb-4" />
-      <h3 class="font-bold text-lg mb-1">{{ search ? 'No results found' : 'No customers' }}</h3>
-      <p class="text-sm text-muted-foreground mb-4">{{ search ? 'Try a different search term.' : 'Add your first customer.' }}</p>
+      <h3 class="font-bold text-lg mb-1">
+        {{ search ? 'No results found' : 'No customers' }}
+      </h3>
+      <p class="text-sm text-muted-foreground mb-4">
+        {{ search ? 'Try a different search term.' : 'Add your first customer.' }}
+      </p>
       <button
         v-if="!search"
         class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-all"
@@ -272,12 +288,14 @@ const columns = [
                   <Icon :name="sortIcon(col.key)" class="size-3" :class="sortField === col.key ? 'text-primary' : 'opacity-30'" />
                 </div>
               </th>
-              <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-right">Actions</th>
+              <th class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-right">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border/30">
             <tr
-              v-for="c in filteredClients"
+              v-for="c in clients"
               :key="c._id"
               class="group hover:bg-muted/10 transition-colors"
             >
@@ -338,7 +356,7 @@ const columns = [
       <!-- Mobile Cards -->
       <div class="block lg:hidden p-3 space-y-2 bg-muted/20">
         <div
-          v-for="c in filteredClients"
+          v-for="c in clients"
           :key="c._id"
           class="border border-border/60 rounded-xl p-3.5 bg-card shadow-sm"
         >
@@ -347,7 +365,9 @@ const columns = [
               <Icon name="i-lucide-user" class="size-4 text-primary" />
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-bold truncate">{{ c.name || '—' }}</p>
+              <p class="text-sm font-bold truncate">
+                {{ c.name || '—' }}
+              </p>
               <span
                 v-if="c.type"
                 class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold capitalize border"
@@ -388,6 +408,30 @@ const columns = [
         </div>
       </div>
     </div>
+
+    <!-- Pagination -->
+    <div v-if="!loading && totalPages > 1" class="flex items-center justify-between pt-2">
+      <span class="text-xs text-muted-foreground">
+        Showing {{ clients.length }} of {{ total }} customers
+      </span>
+      <div class="flex items-center gap-2">
+        <button
+          class="h-8 px-3 rounded-lg border border-input text-xs font-medium hover:bg-muted/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          :disabled="page <= 1"
+          @click="fetchClients(page - 1)"
+        >
+          ← Prev
+        </button>
+        <span class="text-xs text-muted-foreground tabular-nums">{{ page }} / {{ totalPages }}</span>
+        <button
+          class="h-8 px-3 rounded-lg border border-input text-xs font-medium hover:bg-muted/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          :disabled="page >= totalPages"
+          @click="fetchClients(page + 1)"
+        >
+          Next →
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ Create / Edit Dialog ═══ -->
@@ -400,7 +444,9 @@ const columns = [
           </div>
           <div>
             <DialogTitle>{{ editingId ? 'Edit Customer' : 'Add Customer' }}</DialogTitle>
-            <DialogDescription class="text-xs mt-0.5">{{ editingId ? 'Update customer details' : 'Add a new customer to the master database' }}</DialogDescription>
+            <DialogDescription class="text-xs mt-0.5">
+              {{ editingId ? 'Update customer details' : 'Add a new customer to the master database' }}
+            </DialogDescription>
           </div>
         </div>
       </DialogHeader>
@@ -443,7 +489,9 @@ const columns = [
             v-model="form.type"
             class="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
           >
-            <option v-for="opt in TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            <option v-for="opt in TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
           </select>
         </div>
 
@@ -482,7 +530,9 @@ const columns = [
       </div>
 
       <DialogFooter class="pt-4 gap-2">
-        <Button variant="outline" @click="showDialog = false">Cancel</Button>
+        <Button variant="outline" @click="showDialog = false">
+          Cancel
+        </Button>
         <Button :disabled="saving" @click="saveCustomer">
           <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
           {{ editingId ? 'Save Changes' : 'Add Customer' }}
@@ -501,7 +551,9 @@ const columns = [
           </div>
           <div>
             <DialogTitle>Delete Customer</DialogTitle>
-            <DialogDescription class="text-xs mt-0.5">This action cannot be undone</DialogDescription>
+            <DialogDescription class="text-xs mt-0.5">
+              This action cannot be undone
+            </DialogDescription>
           </div>
         </div>
       </DialogHeader>
@@ -509,7 +561,9 @@ const columns = [
         Are you sure you want to delete <span class="font-bold text-foreground">{{ deleteTarget?.name }}</span>? Their contracts and pipeline data will not be removed.
       </p>
       <DialogFooter class="gap-2">
-        <Button variant="outline" @click="deleteTarget = null">Cancel</Button>
+        <Button variant="outline" @click="deleteTarget = null">
+          Cancel
+        </Button>
         <Button variant="destructive" :disabled="deleting" @click="doDelete">
           <Icon v-if="deleting" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
           Delete

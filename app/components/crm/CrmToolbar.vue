@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const props = withDefaults(defineProps<{
   searchQuery?: string

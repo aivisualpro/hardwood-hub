@@ -2,6 +2,13 @@
 import type { Project } from './data/projects'
 import { cn } from '~/lib/utils'
 
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  'select-project': [projectId: string | null]
+  'select-stage': [projectId: string, stageId: string | null]
+}>()
+
 const { t } = useLocale()
 
 interface Props {
@@ -12,13 +19,6 @@ interface Props {
   stageCounts: Record<string, number>
   isCollapsed: boolean
 }
-
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  'select-project': [projectId: string | null]
-  'select-stage': [projectId: string, stageId: string | null]
-}>()
 
 const expandedProjects = ref<Set<string>>(new Set())
 
@@ -62,7 +62,6 @@ const totalTasks = computed(() => {
 
 <template>
   <div class="flex flex-col h-full">
-
     <!-- All Tasks option -->
     <div class="px-2 pt-2">
       <button
@@ -85,7 +84,9 @@ const totalTasks = computed(() => {
             <TooltipTrigger as-child>
               <Icon name="lucide:layers" class="size-4" />
             </TooltipTrigger>
-            <TooltipContent side="right">{{ t('tasks.allProjects') }} ({{ totalTasks }})</TooltipContent>
+            <TooltipContent side="right">
+              {{ t('tasks.allProjects') }} ({{ totalTasks }})
+            </TooltipContent>
           </Tooltip>
         </template>
       </button>
