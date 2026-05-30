@@ -1,9 +1,9 @@
+import { CrmSubmission } from '../../models/CrmSubmission'
 /**
  * GET /api/crm/stats
  * Returns aggregate stats for the CRM dashboard
  */
 import { connectDB } from '../../utils/mongoose'
-import { CrmSubmission } from '../../models/CrmSubmission'
 
 export default defineEventHandler(async () => {
   await connectDB()

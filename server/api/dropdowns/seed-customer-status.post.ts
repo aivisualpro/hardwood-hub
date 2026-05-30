@@ -8,6 +8,8 @@ import { Dropdown } from '../../models/Dropdown'
  */
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin } from '../../utils/requireRole'
+import { logger } from '../../utils/logger'
+const log = logger('[seed-customer-status.post]')
 
 export default defineEventHandler(async (event) => {
   requireAdmin(event)
@@ -17,7 +19,7 @@ export default defineEventHandler(async (event) => {
   const stages: string[] = await Customer.distinct('stage')
   const uniqueStages = stages.filter(s => s && s.trim()).sort()
 
-  console.log(`[Dropdown Seed] Found ${uniqueStages.length} unique customer statuses:`, uniqueStages)
+  log.info(`[Dropdown Seed] Found ${uniqueStages.length} unique customer statuses:`, uniqueStages)
 
   // 2. Build options array with ObjectIds
   const options = uniqueStages.map((stage, idx) => ({

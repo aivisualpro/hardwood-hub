@@ -2,22 +2,27 @@ import { defineEventHandler } from 'h3'
 import { CrmSubmission } from '../../models/CrmSubmission'
 import { Customer } from '../../models/Customer'
 import { connectDB } from '../../utils/mongoose'
+import { requireAdmin, requireManager } from '../../utils/requireRole'
 
 export default defineEventHandler(async () => {
   await connectDB()
+  requireAdmin(event)
   const submissions = await CrmSubmission.find().sort({ createdAt: 1 })
   let count = 0
-  
+
   for (const sub of submissions) {
-    if (!sub.email && !sub.phone) continue
-    
+    if (!sub.email && !sub.phone)
+      continue
+
     // Attempt to find existing customer by email or phone
     const filter: any[] = []
-    if (sub.email) filter.push({ email: sub.email })
-    if (sub.phone) filter.push({ phone: sub.phone })
-    
+    if (sub.email)
+      filter.push({ email: sub.email })
+    if (sub.phone)
+      filter.push({ phone: sub.phone })
+
     let existing = await Customer.findOne({ $or: filter })
-    
+
     if (!existing) {
       existing = new Customer({
         name: sub.name,
@@ -37,7 +42,8 @@ export default defineEventHandler(async () => {
       })
       count++
       await existing.save()
-    } else {
+    }
+    else {
       // Update missing fields
       let modified = false
       if (!existing.name && sub.name) { existing.name = sub.name; modified = true }
@@ -47,19 +53,21 @@ export default defineEventHandler(async () => {
       if (!existing.city && sub.city) { existing.city = sub.city; modified = true }
       if (!existing.state && sub.state) { existing.state = sub.state; modified = true }
       if (!existing.zip && sub.zip) { existing.zip = sub.zip; modified = true }
-      
+
       if (!existing.tags || !existing.tags.includes('crm-lead')) {
-        if (!existing.tags) existing.tags = []
+        if (!existing.tags)
+          existing.tags = []
         existing.tags.push('crm-lead')
         modified = true
       }
-      
+
       if (!existing.stage || existing.stage !== 'contact made') {
         existing.stage = 'contact made'
         modified = true
       }
-      
-      if (modified) await existing.save()
+
+      if (modified)
+        await existing.save()
     }
   }
 

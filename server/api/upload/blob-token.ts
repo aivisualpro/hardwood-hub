@@ -19,11 +19,11 @@ export default defineEventHandler(async (event) => {
     })
 
     return jsonResponse
-  } catch (error: any) {
+  }
+  catch (error: any) {
     throw createError({
       statusCode: 400,
       message: error.message,
     })
   }
 })
-

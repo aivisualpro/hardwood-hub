@@ -9,6 +9,8 @@
  * 3. Register a new webhook subscription if none exists
  */
 import { Buffer } from 'node:buffer'
+import { logger } from '../../utils/logger'
+const log = logger('[calendly-webhook-setup.post]')
 
 const WEBHOOK_CALLBACK_URL = 'https://www.a2hardwood.com/api/crm/webhook'
 const WEBHOOK_EVENTS = ['invitee.created', 'invitee.canceled']
@@ -23,14 +25,16 @@ export default defineEventHandler(async () => {
 
   // 1. Get user URI from JWT
   const parts = token.split('.')
-  if (parts.length < 2) return { success: false, error: 'Invalid token format' }
+  if (parts.length < 2)
+    return { success: false, error: 'Invalid token format' }
 
   const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'))
   const userUuid = payload.user_uuid
-  if (!userUuid) return { success: false, error: 'Could not find user_uuid in token' }
+  if (!userUuid)
+    return { success: false, error: 'Could not find user_uuid in token' }
 
   const userUri = `https://api.calendly.com/users/${userUuid}`
-  console.log('[Calendly Webhook Setup] User URI:', userUri)
+  log.info('[Calendly Webhook Setup] User URI:', userUri)
 
   // 2. Discover organization URI
   let organizationUri = ''
@@ -39,22 +43,25 @@ export default defineEventHandler(async () => {
   try {
     const res = await fetch(
       `https://api.calendly.com/organization_memberships?user=${encodeURIComponent(userUri)}`,
-      { headers: { 'Authorization': `Bearer ${token}` } }
+      { headers: { Authorization: `Bearer ${token}` } },
     )
     if (res.ok) {
       const data = await res.json()
       const orgUri = data.collection?.[0]?.organization
       if (typeof orgUri === 'string') {
         organizationUri = orgUri
-      } else if (orgUri?.uri) {
+      }
+      else if (orgUri?.uri) {
         organizationUri = orgUri.uri
       }
-      console.log('[Calendly Webhook Setup] Org from memberships:', organizationUri)
-    } else {
-      console.warn('[Calendly Webhook Setup] /organization_memberships failed:', res.status)
+      log.info('[Calendly Webhook Setup] Org from memberships:', organizationUri)
     }
-  } catch (e: any) {
-    console.warn('[Calendly Webhook Setup] /organization_memberships error:', e.message)
+    else {
+      log.warn('[Calendly Webhook Setup] /organization_memberships failed:', res.status)
+    }
+  }
+  catch (e: any) {
+    log.warn('[Calendly Webhook Setup] /organization_memberships error:', e.message)
   }
 
   // Method 2: Try to extract from event_types response
@@ -62,7 +69,7 @@ export default defineEventHandler(async () => {
     try {
       const res = await fetch(
         `https://api.calendly.com/event_types?user=${encodeURIComponent(userUri)}&count=1`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       )
       if (res.ok) {
         const data = await res.json()
@@ -80,10 +87,11 @@ export default defineEventHandler(async () => {
             organizationUri = ownerUri
           }
         }
-        console.log('[Calendly Webhook Setup] Org from event_types:', organizationUri)
+        log.info('[Calendly Webhook Setup] Org from event_types:', organizationUri)
       }
-    } catch (e: any) {
-      console.warn('[Calendly Webhook Setup] event_types fallback error:', e.message)
+    }
+    catch (e: any) {
+      log.warn('[Calendly Webhook Setup] event_types fallback error:', e.message)
     }
   }
 
@@ -99,15 +107,15 @@ export default defineEventHandler(async () => {
   try {
     const res = await fetch(
       `https://api.calendly.com/webhook_subscriptions?organization=${encodeURIComponent(organizationUri)}&user=${encodeURIComponent(userUri)}&scope=user`,
-      { headers: { 'Authorization': `Bearer ${token}` } }
+      { headers: { Authorization: `Bearer ${token}` } },
     )
     if (res.ok) {
       const data = await res.json()
       const existing = data.collection?.find(
-        (w: any) => w.callback_url === WEBHOOK_CALLBACK_URL && w.state === 'active'
+        (w: any) => w.callback_url === WEBHOOK_CALLBACK_URL && w.state === 'active',
       )
       if (existing) {
-        console.log('[Calendly Webhook Setup] Webhook already registered:', existing.uri)
+        log.info('[Calendly Webhook Setup] Webhook already registered:', existing.uri)
         return {
           success: true,
           message: 'Webhook already registered and active',
@@ -117,8 +125,9 @@ export default defineEventHandler(async () => {
         }
       }
     }
-  } catch (e: any) {
-    console.warn('[Calendly Webhook Setup] List check error:', e.message)
+  }
+  catch (e: any) {
+    log.warn('[Calendly Webhook Setup] List check error:', e.message)
   }
 
   // 4. Register new webhook subscription
@@ -140,7 +149,7 @@ export default defineEventHandler(async () => {
   const result = await createRes.json()
 
   if (!createRes.ok) {
-    console.error('[Calendly Webhook Setup] Registration failed:', JSON.stringify(result))
+    log.error('[Calendly Webhook Setup] Registration failed:', JSON.stringify(result))
     return {
       success: false,
       error: `Webhook registration failed (${createRes.status})`,
@@ -148,7 +157,7 @@ export default defineEventHandler(async () => {
     }
   }
 
-  console.log('[Calendly Webhook Setup] ✅ Webhook registered successfully!')
+  log.info('[Calendly Webhook Setup] ✅ Webhook registered successfully!')
   return {
     success: true,
     message: 'Webhook registered successfully! New Calendly bookings will now sync automatically.',

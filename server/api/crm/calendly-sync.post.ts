@@ -1,3 +1,7 @@
+import { CrmSubmission } from '../../models/CrmSubmission'
+import { Customer } from '../../models/Customer'
+import { Pipeline } from '../../models/Pipeline'
+import { fetchCalendlyAppointments } from '../../utils/calendly'
 /**
  * POST /api/crm/calendly-sync
  * Lightweight Calendly-only sync endpoint.
@@ -5,10 +9,8 @@
  * Much faster than the full /api/crm/sync which also syncs Gravity Forms.
  */
 import { connectDB } from '../../utils/mongoose'
-import { CrmSubmission } from '../../models/CrmSubmission'
-import { Customer } from '../../models/Customer'
-import { Pipeline } from '../../models/Pipeline'
-import { fetchCalendlyAppointments } from '../../utils/calendly'
+import { logger } from '../../utils/logger'
+const log = logger('[calendly-sync.post]')
 
 export default defineEventHandler(async () => {
   await connectDB()
@@ -22,9 +24,9 @@ export default defineEventHandler(async () => {
   let totalUpdated = 0
 
   try {
-    console.log('[Calendly Sync] Starting lightweight Calendly sync...')
+    log.info('[Calendly Sync] Starting lightweight Calendly sync...')
     const calendlyApps = await fetchCalendlyAppointments()
-    console.log(`[Calendly Sync] Fetched ${calendlyApps.length} appointments from Calendly API`)
+    log.info(`[Calendly Sync] Fetched ${calendlyApps.length} appointments from Calendly API`)
 
     for (const parsed of calendlyApps) {
       const result = await CrmSubmission.updateOne(
@@ -39,8 +41,10 @@ export default defineEventHandler(async () => {
         // Migrate unique new CRM submissions into both Customer and Pipeline collections
         if (parsed.email || parsed.phone) {
           const query: any[] = []
-          if (parsed.email) query.push({ email: parsed.email })
-          if (parsed.phone) query.push({ phone: parsed.phone })
+          if (parsed.email)
+            query.push({ email: parsed.email })
+          if (parsed.phone)
+            query.push({ phone: parsed.phone })
 
           const customerData = {
             name: parsed.name,
@@ -54,7 +58,7 @@ export default defineEventHandler(async () => {
             zip: parsed.zip,
             notes: `Synced from Calendly: ${parsed.formName}. Message: ${parsed.message}`,
             stage: 'contact made',
-            initialContactDate: parsed.dateSubmitted
+            initialContactDate: parsed.dateSubmitted,
           }
 
           const existsInCustomer = await Customer.exists({ $or: query })
@@ -66,12 +70,13 @@ export default defineEventHandler(async () => {
             await Pipeline.create(customerData)
           }
         }
-      } else if (result.modifiedCount > 0) {
+      }
+      else if (result.modifiedCount > 0) {
         totalUpdated++
       }
     }
 
-    console.log(`[Calendly Sync] Done. New: ${totalNew}, Updated: ${totalUpdated}, Total: ${calendlyApps.length}`)
+    log.info(`[Calendly Sync] Done. New: ${totalNew}, Updated: ${totalUpdated}, Total: ${calendlyApps.length}`)
 
     return {
       success: true,
@@ -79,8 +84,9 @@ export default defineEventHandler(async () => {
       updated: totalUpdated,
       total: calendlyApps.length,
     }
-  } catch (err: any) {
-    console.error('[Calendly Sync] Error:', err.message || err)
+  }
+  catch (err: any) {
+    log.error('[Calendly Sync] Error:', err.message || err)
     return {
       success: false,
       error: err.message || String(err),

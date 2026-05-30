@@ -1,31 +1,34 @@
-import { generatePdfFromHtml } from '../../../utils/pdf-generator'
-import { compressImagesInHtml } from '../../../utils/image-compressor'
+import { Readable } from 'node:stream'
+import { v2 as cloudinary } from 'cloudinary'
 // @ts-ignore: IDE cache invalidation workaround
 import { PDFDocument } from 'pdf-lib'
-import { v2 as cloudinary } from 'cloudinary'
-import { connectDB } from '../../../utils/mongoose'
-import { Contract } from '../../../models/Contract'
 import { AppSetting } from '../../../models/AppSetting'
+import { Contract } from '../../../models/Contract'
 import { ContractTemplate } from '../../../models/ContractTemplate'
+import { compressImagesInHtml } from '../../../utils/image-compressor'
+import { connectDB } from '../../../utils/mongoose'
+
+import { generatePdfFromHtml } from '../../../utils/pdf-generator'
+import { logger } from '../../../utils/logger'
+const log = logger('[id.get]')
 
 // Vercel serverless body cap is ~4.5MB on Hobby and 6MB on Pro for non-streamed
 // responses. Anything bigger we route through Cloudinary and 302 the user.
 const VERCEL_BODY_LIMIT_BYTES = 4 * 1024 * 1024 // 4MB safe ceiling
 
-const safeFetch = async (url: string, timeoutMs = 8000, options: RequestInit = {}) => {
+async function safeFetch(url: string, timeoutMs = 8000, options: RequestInit = {}) {
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(url, { ...options, signal: controller.signal })
     clearTimeout(id)
     return res
-  } catch (err) {
+  }
+  catch (err) {
     clearTimeout(id)
     throw err
   }
 }
-
-import { Readable } from 'stream'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -67,7 +70,7 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*company_city\s*\}\}/gi, company?.city || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_state\s*\}\}/gi, company?.state || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_zip\s*\}\}/gi, company?.zip || '')
-    mergedHTML = mergedHTML.replace(/\{\{\s*company_phone[1]?\s*\}\}/gi, company?.phone1 || company?.phone || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_phone1?\s*\}\}/gi, company?.phone1 || company?.phone || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_phone2\s*\}\}/gi, company?.phone2 || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_website\s*\}\}/gi, company?.website || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/gi, company?.email || '')
@@ -79,7 +82,8 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*company_logo\s*\}\}/g, companyLogoImg)
 
     mergedHTML = mergedHTML.replace(/<table[\s\S]*?<\/table>/gi, (tableHTML: string) => {
-      if (tableHTML.includes('Signature') && tableHTML.includes('____')) return ''
+      if (tableHTML.includes('Signature') && tableHTML.includes('____'))
+        return ''
       return tableHTML
     })
 
@@ -100,8 +104,8 @@ export default defineEventHandler(async (event) => {
         <div style="page-break-before: always; margin-top: 40px; text-align: center;">
           <h2 style="font-size: 1.5rem; font-weight: 700; color: #111; margin-bottom: 20px; text-align: left;">Attached Pictures</h2>
           ${contract.attachedGalleryImages.map((imgUrl: string) => {
-            const optimizedUrl = imgUrl.includes('cloudinary.com') ? imgUrl.replace('/upload/', '/upload/q_60,f_jpg,w_800/') : imgUrl;
-            return `<img src="${optimizedUrl}" style="max-width: 100%; max-height: 800px; object-fit: contain; margin-bottom: 24px; border-radius: 8px; border: 1px solid #ccc; page-break-inside: avoid; display: block;" />`;
+            const optimizedUrl = imgUrl.includes('cloudinary.com') ? imgUrl.replace('/upload/', '/upload/q_60,f_jpg,w_800/') : imgUrl
+            return `<img src="${optimizedUrl}" style="max-width: 100%; max-height: 800px; object-fit: contain; margin-bottom: 24px; border-radius: 8px; border: 1px solid #ccc; page-break-inside: avoid; display: block;" />`
           }).join('')}
         </div>
       `
@@ -233,17 +237,19 @@ export default defineEventHandler(async (event) => {
         quality: 55,
         format: 'jpeg',
       })
-      console.log(`[pdf-download] HTML before/after compress: ${(pdfHTML.length / 1024).toFixed(0)}KB → ${(compressedHTML.length / 1024).toFixed(0)}KB`)
-    } catch (compressErr: any) {
-      console.warn('[pdf-download] Image compression failed, using raw HTML:', compressErr?.message)
+      log.info(`[pdf-download] HTML before/after compress: ${(pdfHTML.length / 1024).toFixed(0)}KB → ${(compressedHTML.length / 1024).toFixed(0)}KB`)
+    }
+    catch (compressErr: any) {
+      log.warn('[pdf-download] Image compression failed, using raw HTML:', compressErr?.message)
     }
 
     let pdfBuffer: Buffer
     try {
       pdfBuffer = await generatePdfFromHtml(compressedHTML)
-      console.log(`[pdf-download] Puppeteer PDF size: ${(pdfBuffer.length / 1024 / 1024).toFixed(2)}MB`)
-    } catch (err: any) {
-      console.error('[pdf-download] Puppeteer error:', err)
+      log.info(`[pdf-download] Puppeteer PDF size: ${(pdfBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+    }
+    catch (err: any) {
+      log.error('[pdf-download] Puppeteer error:', err)
       throw createError({
         statusCode: 500,
         statusMessage: err?.message || 'PDF generation crashed',
@@ -265,10 +271,12 @@ export default defineEventHandler(async (event) => {
               fetchOptions.headers = { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
             }
             const fetchRes = await safeFetch(contract.attachedPdf, 15000, fetchOptions)
-            if (!fetchRes.ok) throw new Error(`Fetch failed: ${fetchRes.statusText}`)
+            if (!fetchRes.ok)
+              throw new Error(`Fetch failed: ${fetchRes.statusText}`)
             const arrayBuffer = await fetchRes.arrayBuffer()
             attachedPdfBuffer = Buffer.from(arrayBuffer)
-          } else {
+          }
+          else {
             const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '')
             attachedPdfBuffer = Buffer.from(attachedBase64, 'base64')
           }
@@ -276,15 +284,17 @@ export default defineEventHandler(async (event) => {
           const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer, { ignoreEncryption: true })
           const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices())
           copiedPages.forEach((page: any) => mainPdf.addPage(page))
-        } catch (mergeErr) {
-          console.error('[pdf-download] Failed to merge attached PDF:', mergeErr)
+        }
+        catch (mergeErr) {
+          log.error('[pdf-download] Failed to merge attached PDF:', mergeErr)
         }
       }
 
       finalPdfBuffer = Buffer.from(await mainPdf.save({ useObjectStreams: true }))
-      console.log(`[pdf-download] Final PDF after pdf-lib: ${(finalPdfBuffer.length / 1024 / 1024).toFixed(2)}MB`)
-    } catch (compressErr) {
-      console.error('[pdf-download] pdf-lib compression failed, using raw buffer:', compressErr)
+      log.info(`[pdf-download] Final PDF after pdf-lib: ${(finalPdfBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+    }
+    catch (compressErr) {
+      log.error('[pdf-download] pdf-lib compression failed, using raw buffer:', compressErr)
       finalPdfBuffer = pdfBuffer
     }
 
@@ -294,16 +304,17 @@ export default defineEventHandler(async (event) => {
     setResponseHeader(event, 'Content-Disposition', `attachment; filename="${filename}.pdf"`)
 
     if (finalPdfBuffer.length > VERCEL_BODY_LIMIT_BYTES) {
-      console.log(`[pdf-download] PDF over ${VERCEL_BODY_LIMIT_BYTES} bytes → Streaming response`)
+      log.info(`[pdf-download] PDF over ${VERCEL_BODY_LIMIT_BYTES} bytes → Streaming response`)
       return sendStream(event, Readable.from(finalPdfBuffer))
     }
 
     return finalPdfBuffer
-  } catch (err: any) {
-    console.error('[CRITICAL PDF ERROR]', err)
+  }
+  catch (err: any) {
+    log.error('[CRITICAL PDF ERROR]', err)
     throw createError({
       statusCode: 500,
-      statusMessage: 'PDF Error: ' + (err.message || String(err)),
+      statusMessage: `PDF Error: ${err.message || String(err)}`,
       data: err.stack,
     })
   }

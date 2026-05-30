@@ -3,6 +3,9 @@ import { createSessionToken } from '../../lib/session'
 import { Employee } from '../../models/Employee'
 // POST /api/auth/google — verify Google credential and create a session
 import { connectDB } from '../../utils/mongoose'
+import { rateLimit } from '../../utils/rateLimit'
+import { logger } from '../../utils/logger'
+const log = logger('[google.post]')
 
 /**
  * A1 fix: require GOOGLE_CLIENT_ID unconditionally at module load time.
@@ -58,6 +61,8 @@ async function verifyGoogleToken(credential: string): Promise<{
 }
 
 export default defineEventHandler(async (event) => {
+  // H3: 10 login attempts per minute per IP — brute-force protection
+  rateLimit(event, { max: 10, windowMs: 60_000, key: `login:${event.node.req.socket?.remoteAddress ?? 'unknown'}` })
   await connectDB()
 
   if (event.method !== 'POST')

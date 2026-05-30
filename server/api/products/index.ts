@@ -1,6 +1,32 @@
-import { defineEventHandler, readBody, getQuery } from 'h3'
+import { defineEventHandler, getQuery, readBody } from 'h3'
 import { Product } from '../../models/Product'
 import { connectDB } from '../../utils/mongoose'
+import { requireManager } from '../../utils/requireRole'
+import { parseBody } from '../../utils/validation'
+import { z } from 'zod'
+
+// Product schema — validates all writable product fields
+const ProductWriteSchema = z.object({
+  sku: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
+  color: z.string().max(200).optional(),
+  type: z.string().max(200).optional(),
+  vendor: z.string().max(200).optional(),
+  manufacturer: z.string().max(200).optional(),
+  styleName: z.string().max(200).optional(),
+  colorName: z.string().max(200).optional(),
+  price: z.number().nonnegative().optional(),
+  cost: z.number().nonnegative().optional(),
+  unit: z.string().max(50).optional(),
+  width: z.number().nonnegative().optional(),
+  thickness: z.number().nonnegative().optional(),
+  species: z.string().max(200).optional(),
+  finish: z.string().max(200).optional(),
+  images: z.array(z.string().url()).optional(),
+  tags: z.array(z.string().max(100)).optional(),
+  notes: z.string().max(5000).optional(),
+  isActive: z.boolean().optional(),
+}).strict()
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -9,8 +35,8 @@ export default defineEventHandler(async (event) => {
   if (method === 'GET') {
     const query = getQuery(event)
     const search = (query.search as string) || ''
-    const page = parseInt(query.page as string) || 1
-    const limit = parseInt(query.limit as string) || 50
+    const page = Number.parseInt(query.page as string) || 1
+    const limit = Number.parseInt(query.limit as string) || 50
     const skip = (page - 1) * limit
 
     const filter: any = {}
@@ -41,8 +67,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (method === 'POST') {
-    const body = await readBody(event)
-    const product = new Product(body)
+    requireManager(event)
+    const raw = await readBody(event)
+    const data = parseBody(ProductWriteSchema, raw)
+    const product = new Product(data)
     await product.save()
     return { success: true, data: product }
   }

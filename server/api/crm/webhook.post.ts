@@ -1,3 +1,12 @@
+import type { ICrmSubmission } from '../../models/CrmSubmission'
+import { CrmSubmission } from '../../models/CrmSubmission'
+import { parseGFEntry } from '../../utils/gfFieldMapping'
+import { gfGetForm } from '../../utils/gravityForms'
+import { logActivity } from '../../utils/logActivity'
+import { connectDB } from '../../utils/mongoose'
+import { rateLimit } from '../../utils/rateLimit'
+import { logger } from '../../utils/logger'
+const log = logger('[webhook.post]')
 /**
  * POST /api/crm/webhook
  * Real-time sync from Gravity Forms.
@@ -9,23 +18,19 @@
  * 4. Set Request Method to: POST
  * 5. Set Format to: JSON
  */
-import { connectDB } from '../../utils/mongoose'
-import { gfGetForm } from '../../utils/gravityForms'
-import { parseGFEntry } from '../../utils/gfFieldMapping'
-import { CrmSubmission, ICrmSubmission } from '../../models/CrmSubmission'
-import { logActivity } from '../../utils/logActivity'
-
 
 export default defineEventHandler(async (event) => {
+  // H3: 100 webhook calls per minute per IP — DoS protection
+  rateLimit(event, { max: 100, windowMs: 60_000 })
   await connectDB()
 
   const entry = await readBody(event)
 
   // 1. Calendly Webhook Integration
   if (entry?.event && entry.event.startsWith('invitee.')) {
-    console.log(`[CRM Webhook] Received Calendly webhook: ${entry.event}`)
+    log.info(`[CRM Webhook] Received Calendly webhook: ${entry.event}`)
     // Use lightweight Calendly-only sync instead of full GF sync
-    $fetch('/api/crm/calendly-sync', { method: 'POST' }).catch(e => console.error('Calendly webhook sync failed:', e))
+    $fetch('/api/crm/calendly-sync', { method: 'POST' }).catch(e => log.error('Calendly webhook sync failed:', e))
     return { success: true, message: 'Calendly sync triggered' }
   }
 
@@ -35,20 +40,20 @@ export default defineEventHandler(async (event) => {
   }
 
   const formId = Number(entry.form_id)
-  
+
   try {
     // Fetch form definition to get correct field labels for parsing
     const form = await gfGetForm(formId)
     const formFields = form?.fields || []
-    
+
     // Parse using our canonical mapping logic
     const parsed = parseGFEntry(entry, formFields)
-    
+
     // Upsert into MongoDB
     const result = await CrmSubmission.findOneAndUpdate(
       { gfEntryId: parsed.gfEntryId },
       { $set: parsed },
-      { upsert: true, new: true, lean: true }
+      { upsert: true, new: true, lean: true },
     ) as ICrmSubmission | null
 
     // Log Activity for new lead
@@ -62,22 +67,23 @@ export default defineEventHandler(async (event) => {
       metadata: {
         formId,
         entryId: entry.id,
-      }
+      },
     })
- 
-    console.log(`[CRM Webhook] Synced entry #${entry.id} from Form #${entry.form_id} (${parsed.formName})`)
+
+    log.info(`[CRM Webhook] Synced entry #${entry.id} from Form #${entry.form_id} (${parsed.formName})`)
 
     return {
       success: true,
       id: result?._id,
       gfEntryId: entry.id,
-      action: result ? 'sync' : 'ignored'
+      action: result ? 'sync' : 'ignored',
     }
-  } catch (err: any) {
-    console.error(`[CRM Webhook Error] Form ${formId}:`, err.message)
+  }
+  catch (err: any) {
+    log.error(`[CRM Webhook Error] Form ${formId}:`, err.message)
     throw createError({
       statusCode: 500,
-      message: `Failed to sync webhook entry: ${err.message}`
+      message: `Failed to sync webhook entry: ${err.message}`,
     })
   }
 })

@@ -14,6 +14,8 @@
 import { v2 as cloudinary } from 'cloudinary'
 // @ts-ignore
 import { PDFDocument } from 'pdf-lib'
+import { logger } from '../../utils/logger'
+const log = logger('[compress-pdf]')
 
 async function compressPdfBuffer(input: Buffer): Promise<Buffer> {
   try {
@@ -29,8 +31,9 @@ async function compressPdfBuffer(input: Buffer): Promise<Buffer> {
       addDefaultPage: false,
     })
     return Buffer.from(out)
-  } catch (e: any) {
-    console.warn('[compress-pdf] pdf-lib pass failed, returning input:', e.message)
+  }
+  catch (e: any) {
+    log.warn('[compress-pdf] pdf-lib pass failed, returning input:', e.message)
     return input
   }
 }
@@ -38,10 +41,10 @@ async function compressPdfBuffer(input: Buffer): Promise<Buffer> {
 async function uploadCompressedToCloudinary(
   buffer: Buffer,
   folder: string,
-): Promise<{ url: string; publicId: string }> {
-  const fs = await import('fs')
-  const path = await import('path')
-  const os = await import('os')
+): Promise<{ url: string, publicId: string }> {
+  const fs = await import('node:fs')
+  const path = await import('node:path')
+  const os = await import('node:os')
 
   const tmp = path.join(
     os.tmpdir(),
@@ -64,8 +67,10 @@ async function uploadCompressedToCloudinary(
       )
     })
     return { url: result.secure_url, publicId: result.public_id }
-  } finally {
-    try { fs.unlinkSync(tmp) } catch (e) { /* ignore */ }
+  }
+  finally {
+    try { fs.unlinkSync(tmp) }
+    catch (e) { /* ignore */ }
   }
 }
 
@@ -82,9 +87,10 @@ async function tryDeleteCloudinaryAsset(publicId: string) {
         (err, res) => (err ? reject(err) : resolve(res)),
       )
     })
-    console.log(`[compress-pdf] Deleted original: ${publicId}`)
-  } catch (e: any) {
-    console.warn(`[compress-pdf] Could not delete original ${publicId}:`, e?.message)
+    log.info(`[compress-pdf] Deleted original: ${publicId}`)
+  }
+  catch (e: any) {
+    log.warn(`[compress-pdf] Could not delete original ${publicId}:`, e?.message)
   }
 }
 
@@ -92,7 +98,7 @@ async function tryDeleteCloudinaryAsset(publicId: string) {
 function publicIdFromUrl(url: string): string | null {
   // e.g. https://res.cloudinary.com/<cloud>/raw/upload/v1735000000/<folder>/<name>.pdf
   const match = url.match(/\/upload\/(?:v\d+\/)?(.+)$/)
-  return match ? match[1] : null
+  return match ? (match[1] ?? null) : null
 }
 
 export default defineEventHandler(async (event) => {
@@ -115,7 +121,7 @@ export default defineEventHandler(async (event) => {
   try {
     // ─── Path A: URL input (recommended for any size) ────────────
     if (body?.url) {
-      console.log(`[compress-pdf] URL mode → ${body.url.slice(0, 80)}…`)
+      log.info(`[compress-pdf] URL mode → ${body.url.slice(0, 80)}…`)
 
       const fetchRes = await fetch(body.url)
       if (!fetchRes.ok) {
@@ -123,20 +129,21 @@ export default defineEventHandler(async (event) => {
       }
       const original = Buffer.from(await fetchRes.arrayBuffer())
       const inputMB = (original.length / 1024 / 1024).toFixed(2)
-      console.log(`[compress-pdf] Downloaded original: ${inputMB}MB`)
+      log.info(`[compress-pdf] Downloaded original: ${inputMB}MB`)
 
       const compressed = await compressPdfBuffer(original)
       const outputMB = (compressed.length / 1024 / 1024).toFixed(2)
       const ratio = ((1 - compressed.length / original.length) * 100).toFixed(1)
-      console.log(`[compress-pdf] ${inputMB}MB → ${outputMB}MB (${ratio}% smaller)`)
+      log.info(`[compress-pdf] ${inputMB}MB → ${outputMB}MB (${ratio}% smaller)`)
 
       const uploaded = await uploadCompressedToCloudinary(compressed, targetFolder)
-      console.log(`[compress-pdf] Compressed copy: ${uploaded.url}`)
+      log.info(`[compress-pdf] Compressed copy: ${uploaded.url}`)
 
       // Best-effort: clean up the uncompressed original to save storage
       if (body.deleteOriginal !== false) {
         const origPid = publicIdFromUrl(body.url)
-        if (origPid) await tryDeleteCloudinaryAsset(origPid)
+        if (origPid)
+          await tryDeleteCloudinaryAsset(origPid)
       }
 
       return {
@@ -153,14 +160,14 @@ export default defineEventHandler(async (event) => {
       const base64Data = body.file.replace(/^data:application\/pdf;base64,/, '')
       const original = Buffer.from(base64Data, 'base64')
       const inputMB = (original.length / 1024 / 1024).toFixed(2)
-      console.log(`[compress-pdf] base64 mode, ${inputMB}MB`)
+      log.info(`[compress-pdf] base64 mode, ${inputMB}MB`)
 
       const compressed = await compressPdfBuffer(original)
       const outputMB = (compressed.length / 1024 / 1024).toFixed(2)
-      console.log(`[compress-pdf] ${inputMB}MB → ${outputMB}MB`)
+      log.info(`[compress-pdf] ${inputMB}MB → ${outputMB}MB`)
 
       const uploaded = await uploadCompressedToCloudinary(compressed, targetFolder)
-      console.log(`[compress-pdf] Uploaded: ${uploaded.url}`)
+      log.info(`[compress-pdf] Uploaded: ${uploaded.url}`)
 
       return {
         success: true,
@@ -175,8 +182,9 @@ export default defineEventHandler(async (event) => {
       statusCode: 400,
       message: 'Provide either { url } (preferred) or { file } (base64)',
     })
-  } catch (e: any) {
-    console.error('[compress-pdf] Error:', e?.message, e?.stack)
+  }
+  catch (e: any) {
+    log.error('[compress-pdf] Error:', e?.message, e?.stack)
     throw createError({
       statusCode: 500,
       message: `PDF compression/upload failed: ${e?.message || String(e)}`,

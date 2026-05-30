@@ -1,10 +1,10 @@
+import { CrmSubmission } from '../../models/CrmSubmission'
 /**
  * GET /api/crm/submissions
  * Returns CRM submissions, filterable by ?type=...&status=...&search=...
  * Supports pagination with ?page=1&limit=50
  */
 import { connectDB } from '../../utils/mongoose'
-import { CrmSubmission } from '../../models/CrmSubmission'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -26,13 +26,17 @@ export default defineEventHandler(async (event) => {
       filter.gfFormId = 0
     }
   }
-  if (status) filter.status = status
+  if (status)
+    filter.status = status
   const andConditions: any[] = []
 
   if (email || phone) {
-    if (email && phone) andConditions.push({ $or: [{ email }, { phone }] })
-    else if (email) andConditions.push({ email })
-    else if (phone) andConditions.push({ phone })
+    if (email && phone)
+      andConditions.push({ $or: [{ email }, { phone }] })
+    else if (email)
+      andConditions.push({ email })
+    else if (phone)
+      andConditions.push({ phone })
   }
 
   if (search) {
@@ -42,7 +46,7 @@ export default defineEventHandler(async (event) => {
         { email: { $regex: search, $options: 'i' } },
         { phone: { $regex: search, $options: 'i' } },
         { message: { $regex: search, $options: 'i' } },
-      ]
+      ],
     })
   }
 

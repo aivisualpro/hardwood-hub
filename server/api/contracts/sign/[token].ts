@@ -1,22 +1,25 @@
+// @ts-ignore: IDE cache invalidation workaround
+import { PDFDocument } from 'pdf-lib'
+import { AppSetting } from '../../../models/AppSetting'
+import { Contract } from '../../../models/Contract'
+import { ContractTemplate } from '../../../models/ContractTemplate'
+import { compressImagesInHtml } from '../../../utils/image-compressor'
+import { connectDB } from '../../../utils/mongoose'
 // GET /api/contracts/sign/:token — fetch contract details for signing
 // POST /api/contracts/sign/:token — submit signature
 import { generatePdfFromHtml } from '../../../utils/pdf-generator'
-import { compressImagesInHtml } from '../../../utils/image-compressor'
-// @ts-ignore: IDE cache invalidation workaround
-import { PDFDocument } from 'pdf-lib'
-import { connectDB } from '../../../utils/mongoose'
-import { Contract } from '../../../models/Contract'
-import { AppSetting } from '../../../models/AppSetting'
-import { ContractTemplate } from '../../../models/ContractTemplate'
+import { logger } from '../../../utils/logger'
+const log = logger('[token]')
 
-const safeFetch = async (url: string, timeoutMs = 8000, options: RequestInit = {}) => {
+async function safeFetch(url: string, timeoutMs = 8000, options: RequestInit = {}) {
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(url, { ...options, signal: controller.signal })
     clearTimeout(id)
     return res
-  } catch (err) {
+  }
+  catch (err) {
     clearTimeout(id)
     throw err
   }
@@ -45,7 +48,7 @@ export default defineEventHandler(async (event) => {
     const template = await ContractTemplate.findById(contract.templateId).lean() as any
 
     let mergedHTML = contract.content || ''
-    
+
     // Replace custom variables (skip client variables so the frontend can render input fields in their place)
     if (contract.variableValues) {
       for (const [key, val] of Object.entries<string>(contract.variableValues)) {
@@ -54,11 +57,12 @@ export default defineEventHandler(async (event) => {
         const isClient = vDef?.scope === 'client'
 
         // Keep the placeholder intact for client variables so the Vue component can inject inputs
-        if (isClient) continue
-        
+        if (isClient)
+          continue
+
         let mergedVal = String(val || '')
         if (isSig && val) {
-           // For non-client signatures, or if we were replacing them
+          // For non-client signatures, or if we were replacing them
           mergedVal = `<img src="${val}" alt="Signature" style="max-height: 80px; object-fit: contain; vertical-align: middle;" />`
         }
 
@@ -87,7 +91,8 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(
       /<table[\s\S]*?<\/table>/gi,
       (tableHTML: string) => {
-        if (tableHTML.includes('Signature') && tableHTML.includes('____')) return ''
+        if (tableHTML.includes('Signature') && tableHTML.includes('____'))
+          return ''
         return tableHTML
       },
     )
@@ -155,7 +160,7 @@ export default defineEventHandler(async (event) => {
     const template = await ContractTemplate.findById(contract.templateId).lean() as any
 
     let mergedHTML = contract.content || ''
-    
+
     // Replace custom variables — plain inline text, no decorative boxes
     if (contract.variableValues) {
       for (const [key, val] of Object.entries<string>(contract.variableValues)) {
@@ -180,7 +185,7 @@ export default defineEventHandler(async (event) => {
     mergedHTML = mergedHTML.replace(/\{\{\s*company_city\s*\}\}/gi, company?.city || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_state\s*\}\}/gi, company?.state || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_zip\s*\}\}/gi, company?.zip || '')
-    mergedHTML = mergedHTML.replace(/\{\{\s*company_phone[1]?\s*\}\}/gi, company?.phone1 || company?.phone || '')
+    mergedHTML = mergedHTML.replace(/\{\{\s*company_phone1?\s*\}\}/gi, company?.phone1 || company?.phone || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_phone2\s*\}\}/gi, company?.phone2 || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_website\s*\}\}/gi, company?.website || '')
     mergedHTML = mergedHTML.replace(/\{\{\s*company_email\s*\}\}/gi, company?.email || '')
@@ -190,7 +195,8 @@ export default defineEventHandler(async (event) => {
 
     // Strip old signature markers
     mergedHTML = mergedHTML.replace(/<table[\s\S]*?<\/table>/gi, (tableHTML: string) => {
-      if (tableHTML.includes('Signature') && tableHTML.includes('____')) return ''
+      if (tableHTML.includes('Signature') && tableHTML.includes('____'))
+        return ''
       return tableHTML
     })
     const contractorSigImg2 = company?.signature
@@ -283,14 +289,14 @@ export default defineEventHandler(async (event) => {
     `
 
     mergedHTML += signatureSection
-    
+
     if (contract.attachedGalleryImages && contract.attachedGalleryImages.length > 0) {
       mergedHTML += `
         <div style="page-break-before: always; margin-top: 40px; text-align: center;">
           <h2 style="font-size: 1.5rem; font-weight: 700; color: #111; margin-bottom: 20px; text-align: left;">Attached Pictures</h2>
           ${contract.attachedGalleryImages.map((imgUrl: string) => {
-            const optimizedUrl = imgUrl.includes('cloudinary.com') ? imgUrl.replace('/upload/', '/upload/q_60,f_jpg,w_800/') : imgUrl;
-            return `<img src="${optimizedUrl}" style="max-width: 100%; max-height: 800px; object-fit: contain; margin-bottom: 24px; border-radius: 8px; border: 1px solid #ccc; page-break-inside: avoid; display: block;" />`;
+            const optimizedUrl = imgUrl.includes('cloudinary.com') ? imgUrl.replace('/upload/', '/upload/q_60,f_jpg,w_800/') : imgUrl
+            return `<img src="${optimizedUrl}" style="max-width: 100%; max-height: 800px; object-fit: contain; margin-bottom: 24px; border-radius: 8px; border: 1px solid #ccc; page-break-inside: avoid; display: block;" />`
           }).join('')}
         </div>
       `
@@ -321,7 +327,7 @@ export default defineEventHandler(async (event) => {
         </body>
         </html>
       `
-      
+
       let attachments: any[] = []
       try {
         // Strip out the background styles for the PDF to look like a clean document
@@ -367,77 +373,82 @@ export default defineEventHandler(async (event) => {
           format: 'jpeg',
         })
         const pdfBuffer = await generatePdfFromHtml(compressedPdfHTML)
-        
+
         // Always run through pdf-lib for compression
-        let finalPdfBuffer: Buffer;
+        let finalPdfBuffer: Buffer
         try {
-          const mainPdf = await PDFDocument.load(pdfBuffer);
+          const mainPdf = await PDFDocument.load(pdfBuffer)
 
           if (contract.attachedPdf) {
             try {
-              let attachedPdfBuffer: Buffer;
+              let attachedPdfBuffer: Buffer
               if (contract.attachedPdf.startsWith('http')) {
                 const fetchOptions: RequestInit = {}
                 if (contract.attachedPdf.includes('vercel-storage.com') || contract.attachedPdf.includes('vercel.com')) {
                   fetchOptions.headers = { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
                 }
-                const fetchRes = await safeFetch(contract.attachedPdf, 15000, fetchOptions);
-                if (!fetchRes.ok) throw new Error(`Fetch failed: ${fetchRes.statusText}`);
-                const arrayBuffer = await fetchRes.arrayBuffer();
-                attachedPdfBuffer = Buffer.from(arrayBuffer);
-              } else {
-                const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '');
-                attachedPdfBuffer = Buffer.from(attachedBase64, 'base64');
+                const fetchRes = await safeFetch(contract.attachedPdf, 15000, fetchOptions)
+                if (!fetchRes.ok)
+                  throw new Error(`Fetch failed: ${fetchRes.statusText}`)
+                const arrayBuffer = await fetchRes.arrayBuffer()
+                attachedPdfBuffer = Buffer.from(arrayBuffer)
               }
-              const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer);
-              const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices());
+              else {
+                const attachedBase64 = contract.attachedPdf.replace(/^data:application\/pdf;base64,/, '')
+                attachedPdfBuffer = Buffer.from(attachedBase64, 'base64')
+              }
+              const attachedPdfDoc = await PDFDocument.load(attachedPdfBuffer)
+              const copiedPages = await mainPdf.copyPages(attachedPdfDoc, attachedPdfDoc.getPageIndices())
               copiedPages.forEach((page: any) => {
-                mainPdf.addPage(page);
-              });
-            } catch (mergeErr) {
-              console.error('Failed to merge attached PDF:', mergeErr);
+                mainPdf.addPage(page)
+              })
+            }
+            catch (mergeErr) {
+              log.error('Failed to merge attached PDF:', mergeErr)
             }
           }
 
-          finalPdfBuffer = Buffer.from(await mainPdf.save({ useObjectStreams: true }));
-        } catch (compressErr) {
-          console.error('pdf-lib compression failed, using raw buffer:', compressErr);
-          finalPdfBuffer = pdfBuffer;
+          finalPdfBuffer = Buffer.from(await mainPdf.save({ useObjectStreams: true }))
+        }
+        catch (compressErr) {
+          log.error('pdf-lib compression failed, using raw buffer:', compressErr)
+          finalPdfBuffer = pdfBuffer
         }
 
         attachments = [{
           filename: `${contract.contractNumber || 'Contract'}_Signed.pdf`,
           content: finalPdfBuffer,
-          contentType: 'application/pdf'
+          contentType: 'application/pdf',
         }]
-      } catch (e) {
-        console.error('Failed to generate PDF:', e)
+      }
+      catch (e) {
+        log.error('Failed to generate PDF:', e)
       }
 
       // The combined PDF generated above already includes the attached PDF and gallery images.
       // So we do not need to attach them separately.
 
-      let finalEmailHTML = emailHTML;
-      let imgCidCounter = 1;
+      let finalEmailHTML = emailHTML
+      let imgCidCounter = 1
       finalEmailHTML = finalEmailHTML.replace(/src=["'](data:image\/[^;]+;base64,([^"']+))["']/gi, (match, fullDataUri, base64Data) => {
-        const cid = `inline-img-${imgCidCounter++}`;
+        const cid = `inline-img-${imgCidCounter++}`
         attachments.push({
           filename: `${cid}.png`,
           content: Buffer.from(base64Data, 'base64'),
-          cid: cid,
-          disposition: 'inline'
-        });
-        return `src="cid:${cid}"`;
-      });
+          cid,
+          disposition: 'inline',
+        })
+        return `src="cid:${cid}"`
+      })
 
       const { sendMail } = await import('../../../utils/mailer')
       await sendMail({
         to: contract.customerEmail,
         subject: `Signed Copy: ${contract.title}`,
         html: finalEmailHTML,
-        attachments
-      }).catch(err => {
-        console.error('Failed to send signed contract email:', err)
+        attachments,
+      }).catch((err) => {
+        log.error('Failed to send signed contract email:', err)
       })
     }
 

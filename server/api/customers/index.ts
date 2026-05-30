@@ -1,6 +1,8 @@
 import { defineEventHandler, readBody } from 'h3'
 import { Customer } from '../../models/Customer'
 import { connectDB } from '../../utils/mongoose'
+import { requireManager } from '../../utils/requireRole'
+import { CustomerCreateSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -39,8 +41,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (method === 'POST') {
-    const body = await readBody(event)
-    const newCustomer = new Customer(body)
+    requireManager(event)
+    const raw = await readBody(event)
+    const data = parseBody(CustomerCreateSchema, raw)
+    const newCustomer = new Customer(data)
     await newCustomer.save()
     return { success: true, data: newCustomer }
   }

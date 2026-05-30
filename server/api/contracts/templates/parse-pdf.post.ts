@@ -4,8 +4,12 @@
 // Uses GOOGLE_CLOUD_* credentials from .env (service account auth).
 
 import { GoogleGenAI } from '@google/genai'
+import { requireAdmin, requireManager } from '../../../utils/requireRole'
+import { logger } from '../../../utils/logger'
+const log = logger('[parse-pdf.post]')
 
 export default defineEventHandler(async (event) => {
+  requireManager(event)
   const body = await readBody(event)
   const { pdfBase64, fileName } = body
 
@@ -47,7 +51,8 @@ export default defineEventHandler(async (event) => {
           },
         },
       })
-    } else {
+    }
+    else {
       // Fallback to API key
       ai = new GoogleGenAI({ apiKey })
     }
@@ -127,18 +132,21 @@ Return your response as a valid JSON object with this exact structure:
     let parsed: any
     try {
       parsed = JSON.parse(text)
-    } catch {
+    }
+    catch {
       const cleanJson = text
         .replace(/^```(?:json)?\n?/i, '')
-        .replace(/\n?```$/i, '')
+        .replace(/\n?```$/, '')
         .trim()
       try {
         parsed = JSON.parse(cleanJson)
-      } catch {
+      }
+      catch {
         const braceMatch = cleanJson.match(/\{[\s\S]*\}/)
         if (braceMatch) {
           parsed = JSON.parse(braceMatch[0])
-        } else {
+        }
+        else {
           throw new Error('Could not parse AI response as JSON')
         }
       }
@@ -150,15 +158,16 @@ Return your response as a valid JSON object with this exact structure:
         html: parsed.html || '',
         variables: parsed.variables || [],
         templateName:
-          parsed.templateName ||
-          fileName?.replace(/\.pdf$/i, '') ||
-          'Imported Template',
+          parsed.templateName
+          || fileName?.replace(/\.pdf$/i, '')
+          || 'Imported Template',
         description: parsed.description || '',
         category: parsed.category || 'General',
       },
     }
-  } catch (error: any) {
-    console.error('PDF parsing error:', error)
+  }
+  catch (error: any) {
+    log.error('PDF parsing error:', error)
     throw createError({
       statusCode: 500,
       message: `Failed to parse PDF: ${error?.message || 'Unknown error'}`,

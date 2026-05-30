@@ -1,14 +1,16 @@
+import { Customer } from '../../models/Customer'
+import { Pipeline } from '../../models/Pipeline'
 /**
  * POST /api/pipeline/migrate
  * One-time migration: copies all documents from hardwoodDB_Customers → hardwoodDB_pipeline.
  * Safe to run multiple times — skips documents that already exist by _id.
  */
 import { connectDB } from '../../utils/mongoose'
-import { Customer } from '../../models/Customer'
-import { Pipeline } from '../../models/Pipeline'
+import { requireAdmin, requireManager } from '../../utils/requireRole'
 
 export default defineEventHandler(async () => {
   await connectDB()
+  requireAdmin(event)
 
   // 1. Get all existing customer docs (raw)
   const customers = await Customer.find().lean<any[]>()
@@ -20,11 +22,11 @@ export default defineEventHandler(async () => {
   // 2. Check which _ids already exist in Pipeline
   const existingIds = new Set(
     (await Pipeline.find().select('_id').lean<{ _id: any }[]>())
-      .map(d => String(d._id))
+      .map((d: any) => String(d._id)),
   )
 
   // 3. Filter out already-migrated docs
-  const toInsert = customers.filter(c => !existingIds.has(String(c._id)))
+  const toInsert = customers.filter((c: any) => !existingIds.has(String(c._id)))
 
   if (toInsert.length === 0) {
     return {

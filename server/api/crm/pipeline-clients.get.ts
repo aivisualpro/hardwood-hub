@@ -1,3 +1,6 @@
+import mongoose from 'mongoose'
+import { Dropdown } from '../../models/Dropdown'
+import { Pipeline } from '../../models/Pipeline'
 /**
  * GET /api/crm/pipeline-clients
  * Lightweight list of pipeline customers for dropdowns.
@@ -5,9 +8,6 @@
  * Returns _id, name, email, address/city.
  */
 import { connectDB } from '../../utils/mongoose'
-import { Pipeline } from '../../models/Pipeline'
-import { Dropdown } from '../../models/Dropdown'
-import mongoose from 'mongoose'
 
 export default defineEventHandler(async () => {
   await connectDB()
@@ -33,11 +33,11 @@ export default defineEventHandler(async () => {
   const docs = await Pipeline.find(filter)
     .select('_id name email address city')
     .sort({ name: 1 })
-    .lean<{ _id: any; name: string; email: string; address: string; city: string }[]>()
+    .lean<{ _id: any, name: string, email: string, address: string, city: string }[]>()
 
   return {
     success: true,
-    data: docs.map(d => ({
+    data: docs.map((d: any) => ({
       _id: String(d._id),
       name: d.name || '(No name)',
       email: d.email || '',

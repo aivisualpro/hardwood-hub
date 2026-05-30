@@ -5,6 +5,8 @@
 import { defineEventHandler, readBody } from 'h3'
 import { Pipeline } from '../../models/Pipeline'
 import { connectDB } from '../../utils/mongoose'
+import { requireManager } from '../../utils/requireRole'
+import { PipelineCreateSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -17,7 +19,8 @@ export default defineEventHandler(async (event) => {
     const limit = Math.min(1000, Math.max(1, Number(query.limit) || 1000))
 
     const filter: Record<string, any> = {}
-    if (customerId) filter.customerId = customerId
+    if (customerId)
+      filter.customerId = customerId
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -43,8 +46,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (method === 'POST') {
-    const body = await readBody(event)
-    const record = new Pipeline(body)
+    requireManager(event)
+    const raw = await readBody(event)
+    const data = parseBody(PipelineCreateSchema, raw)
+    const record = new Pipeline(data)
     await record.save()
     return { success: true, data: record }
   }

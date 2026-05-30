@@ -1,10 +1,10 @@
+import { CrmSubmission } from '../../models/CrmSubmission'
 /**
  * GET /api/crm/clients-list
  * Lightweight list for dropdowns — returns _id, name, address only.
  * Excludes archived submissions. Sorted by name A→Z.
  */
 import { connectDB } from '../../utils/mongoose'
-import { CrmSubmission } from '../../models/CrmSubmission'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -12,11 +12,11 @@ export default defineEventHandler(async (event) => {
   const docs = await CrmSubmission.find({ status: { $ne: 'archived' } })
     .select('_id name address city')
     .sort({ name: 1 })
-    .lean<{ _id: any; name: string; address: string; city: string }[]>()
+    .lean<{ _id: any, name: string, address: string, city: string }[]>()
 
   return {
     success: true,
-    data: docs.map(d => ({
+    data: docs.map((d: any) => ({
       _id: String(d._id),
       name: d.name || '(No name)',
       location: [d.address, d.city].filter(Boolean).join(', '),

@@ -1,6 +1,7 @@
 import { defineEventHandler, readBody } from 'h3'
 import { Product } from '../../models/Product'
 import { connectDB } from '../../utils/mongoose'
+import { requireAdmin, requireManager } from '../../utils/requireRole'
 
 /**
  * POST /api/products/import
@@ -9,6 +10,7 @@ import { connectDB } from '../../utils/mongoose'
  */
 export default defineEventHandler(async (event) => {
   await connectDB()
+  requireManager(event)
   const body = await readBody(event)
   const rows = body.rows
 
@@ -32,7 +34,7 @@ export default defineEventHandler(async (event) => {
 
     for (const f of NUM_FIELDS) {
       if (doc[f] !== undefined && doc[f] !== '') {
-        doc[f] = parseFloat(doc[f]) || 0
+        doc[f] = Number.parseFloat(doc[f]) || 0
       }
     }
 
@@ -42,7 +44,8 @@ export default defineEventHandler(async (event) => {
   try {
     const result = await Product.insertMany(cleaned, { ordered: false })
     return { success: true, imported: result.length }
-  } catch (err: any) {
+  }
+  catch (err: any) {
     // With ordered: false, some may have been inserted even if others failed
     const inserted = err.insertedDocs?.length || 0
     return {

@@ -1,12 +1,14 @@
 // POST /api/contracts/send-email
 // Sends contract to client for e-signing
-import crypto from 'crypto'
-import { connectDB } from '../../utils/mongoose'
+import crypto from 'node:crypto'
 import { Contract } from '../../models/Contract'
 import { sendMail } from '../../utils/mailer'
+import { connectDB } from '../../utils/mongoose'
+import { requireAdmin, requireManager } from '../../utils/requireRole'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
+  requireManager(event)
   const body = await readBody(event)
   const { contractId, overrideEmail } = body
 

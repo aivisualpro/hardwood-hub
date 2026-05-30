@@ -1,3 +1,9 @@
+import { CrmSubmission } from '../../models/CrmSubmission'
+import { Customer } from '../../models/Customer'
+import { Pipeline } from '../../models/Pipeline'
+import { fetchCalendlyAppointments } from '../../utils/calendly'
+import { parseGFEntry, SYNCED_FORM_IDS } from '../../utils/gfFieldMapping'
+import { gfGetAllEntries, gfGetForm } from '../../utils/gravityForms'
 /**
  * POST /api/crm/sync
  * Syncs all Gravity Forms entries into MongoDB.
@@ -5,12 +11,8 @@
  * Returns counts of new and existing entries.
  */
 import { connectDB } from '../../utils/mongoose'
-import { gfGetAllEntries, gfGetForm } from '../../utils/gravityForms'
-import { SYNCED_FORM_IDS, parseGFEntry } from '../../utils/gfFieldMapping'
-import { CrmSubmission } from '../../models/CrmSubmission'
-import { Customer } from '../../models/Customer'
-import { Pipeline } from '../../models/Pipeline'
-import { fetchCalendlyAppointments } from '../../utils/calendly'
+import { logger } from '../../utils/logger'
+const log = logger('[sync.post]')
 
 export default defineEventHandler(async () => {
   await connectDB()
@@ -44,46 +46,51 @@ export default defineEventHandler(async () => {
 
           // Migrate unique new CRM submissions into both Customer and Pipeline collections
           if (parsed.email || parsed.phone) {
-             const query: any[] = []
-             if (parsed.email) query.push({ email: parsed.email })
-             if (parsed.phone) query.push({ phone: parsed.phone })
-             
-             const customerData = {
-                name: parsed.name,
-                firstName: parsed.firstName,
-                lastName: parsed.lastName,
-                email: parsed.email,
-                phone: parsed.phone,
-                address: parsed.address,
-                city: parsed.city,
-                state: parsed.state,
-                zip: parsed.zip,
-                notes: `Synced from Gravity Forms: ${parsed.formName}. Message: ${parsed.message}`,
-                stage: 'contact made',
-                initialContactDate: parsed.dateSubmitted
-             }
+            const query: any[] = []
+            if (parsed.email)
+              query.push({ email: parsed.email })
+            if (parsed.phone)
+              query.push({ phone: parsed.phone })
 
-             const existsInCustomer = await Customer.exists({ $or: query })
-             if (!existsInCustomer) {
-                await Customer.create(customerData)
-             }
-             const existsInPipeline = await Pipeline.exists({ $or: query })
-             if (!existsInPipeline) {
-                await Pipeline.create(customerData)
-             }
+            const customerData = {
+              name: parsed.name,
+              firstName: parsed.firstName,
+              lastName: parsed.lastName,
+              email: parsed.email,
+              phone: parsed.phone,
+              address: parsed.address,
+              city: parsed.city,
+              state: parsed.state,
+              zip: parsed.zip,
+              notes: `Synced from Gravity Forms: ${parsed.formName}. Message: ${parsed.message}`,
+              stage: 'contact made',
+              initialContactDate: parsed.dateSubmitted,
+            }
+
+            const existsInCustomer = await Customer.exists({ $or: query })
+            if (!existsInCustomer) {
+              await Customer.create(customerData)
+            }
+            const existsInPipeline = await Pipeline.exists({ $or: query })
+            if (!existsInPipeline) {
+              await Pipeline.create(customerData)
+            }
           }
-        } else {
+        }
+        else {
           totalExisting++
         }
       }
-    } catch (err: any) {
+    }
+    catch (err: any) {
       const msg = err.message || String(err)
       // Provide helpful guidance if the API is not enabled
       if (msg.includes('404') || msg.includes('rest_no_route')) {
         errors.push(
           `Form ${formId}: API not reachable. Please enable the Gravity Forms REST API in WordPress Admin → Forms → Settings → REST API. Check the "Enable access to the API" checkbox and save.`,
         )
-      } else {
+      }
+      else {
         errors.push(`Form ${formId}: ${msg}`)
       }
     }
@@ -93,10 +100,10 @@ export default defineEventHandler(async () => {
   try {
     const config = useRuntimeConfig()
     if (config.calendlyAccessToken) {
-      console.log('[CRM Sync] Starting Calendly sync...')
+      log.info('[CRM Sync] Starting Calendly sync...')
       const calendlyApps = await fetchCalendlyAppointments(false) // full historical sync
-      console.log(`[CRM Sync] Calendly returned ${calendlyApps.length} appointments`)
-      
+      log.info(`[CRM Sync] Calendly returned ${calendlyApps.length} appointments`)
+
       for (const parsed of calendlyApps) {
         // Upsert: insert new, update existing
         const result = await CrmSubmission.updateOne(
@@ -110,44 +117,49 @@ export default defineEventHandler(async () => {
 
           // Migrate unique new CRM submissions into both Customer and Pipeline collections
           if (parsed.email || parsed.phone) {
-             const query: any[] = []
-             if (parsed.email) query.push({ email: parsed.email })
-             if (parsed.phone) query.push({ phone: parsed.phone })
-             
-             const customerData = {
-                name: parsed.name,
-                firstName: parsed.firstName,
-                lastName: parsed.lastName,
-                email: parsed.email,
-                phone: parsed.phone,
-                address: parsed.address,
-                city: parsed.city,
-                state: parsed.state,
-                zip: parsed.zip,
-                notes: `Synced from Calendly: ${parsed.formName}. Message: ${parsed.message}`,
-                stage: 'contact made',
-                initialContactDate: parsed.dateSubmitted
-             }
+            const query: any[] = []
+            if (parsed.email)
+              query.push({ email: parsed.email })
+            if (parsed.phone)
+              query.push({ phone: parsed.phone })
 
-             const existsInCustomer = await Customer.exists({ $or: query })
-             if (!existsInCustomer) {
-                await Customer.create(customerData)
-             }
-             const existsInPipeline = await Pipeline.exists({ $or: query })
-             if (!existsInPipeline) {
-                await Pipeline.create(customerData)
-             }
+            const customerData = {
+              name: parsed.name,
+              firstName: parsed.firstName,
+              lastName: parsed.lastName,
+              email: parsed.email,
+              phone: parsed.phone,
+              address: parsed.address,
+              city: parsed.city,
+              state: parsed.state,
+              zip: parsed.zip,
+              notes: `Synced from Calendly: ${parsed.formName}. Message: ${parsed.message}`,
+              stage: 'contact made',
+              initialContactDate: parsed.dateSubmitted,
+            }
+
+            const existsInCustomer = await Customer.exists({ $or: query })
+            if (!existsInCustomer) {
+              await Customer.create(customerData)
+            }
+            const existsInPipeline = await Pipeline.exists({ $or: query })
+            if (!existsInPipeline) {
+              await Pipeline.create(customerData)
+            }
           }
-        } else {
+        }
+        else {
           totalExisting++
         }
       }
-      console.log(`[CRM Sync] Calendly done. New: ${totalNew}, Existing: ${totalExisting}`)
-    } else {
-      console.warn('[CRM Sync] No CALENDLY_ACCESS_TOKEN found, skipping Calendly sync')
+      log.info(`[CRM Sync] Calendly done. New: ${totalNew}, Existing: ${totalExisting}`)
     }
-  } catch (err: any) {
-    console.error('[CRM Sync] Calendly Error:', err.message || err)
+    else {
+      log.warn('[CRM Sync] No CALENDLY_ACCESS_TOKEN found, skipping Calendly sync')
+    }
+  }
+  catch (err: any) {
+    log.error('[CRM Sync] Calendly Error:', err.message || err)
     errors.push(`Calendly Sync Error: ${err.message || String(err)}`)
   }
 

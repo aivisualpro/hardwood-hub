@@ -1,3 +1,4 @@
+import { Dropdown } from '../../models/Dropdown'
 /**
  * GET  /api/dropdowns        — list all dropdowns
  * GET  /api/dropdowns?name=X — get a specific dropdown by name
@@ -5,14 +6,16 @@
  * PUT  /api/dropdowns        — update a specific dropdown option
  */
 import { connectDB } from '../../utils/mongoose'
-import { Dropdown } from '../../models/Dropdown'
+import { requireAdmin, requireManager } from '../../utils/requireRole'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
+  requireAdmin(event)
 
   // Stringify ObjectId fields so they survive Nitro JSON serialization on Vercel
   const serializeDropdown = (dd: any) => {
-    if (!dd) return dd
+    if (!dd)
+      return dd
     return {
       ...dd,
       _id: String(dd._id),
@@ -48,7 +51,7 @@ export default defineEventHandler(async (event) => {
     const result = await Dropdown.findOneAndUpdate(
       { name: body.name },
       { $set: { name: body.name, options: body.options || [] } },
-      { upsert: true, new: true, lean: true }
+      { upsert: true, new: true, lean: true },
     )
 
     return { success: true, data: serializeDropdown(result) }
@@ -63,8 +66,8 @@ export default defineEventHandler(async (event) => {
         setFields[`options.$.${key}`] = val
       }
       await Dropdown.updateOne(
-        { _id: body.dropdownId, 'options._id': body.optionId },
-        { $set: setFields }
+        { '_id': body.dropdownId, 'options._id': body.optionId },
+        { $set: setFields },
       )
       const updated = await Dropdown.findById(body.dropdownId).lean()
       return { success: true, data: serializeDropdown(updated) }
@@ -74,7 +77,7 @@ export default defineEventHandler(async (event) => {
       const result = await Dropdown.findByIdAndUpdate(
         body._id,
         { $set: { name: body.name, options: body.options } },
-        { new: true, lean: true }
+        { new: true, lean: true },
       )
       return { success: true, data: serializeDropdown(result) }
     }
@@ -83,7 +86,7 @@ export default defineEventHandler(async (event) => {
       const result: any = await Dropdown.findByIdAndUpdate(
         body.dropdownId,
         { $set: { options: body.reorderedOptions } },
-        { new: true, lean: true }
+        { new: true, lean: true },
       )
       if (result?.options) {
         result.options.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
@@ -99,7 +102,7 @@ export default defineEventHandler(async (event) => {
     if (body.dropdownId && body.optionId) {
       await Dropdown.updateOne(
         { _id: body.dropdownId },
-        { $pull: { options: { _id: body.optionId } } }
+        { $pull: { options: { _id: body.optionId } } },
       )
       const updated = await Dropdown.findById(body.dropdownId).lean()
       return { success: true, data: serializeDropdown(updated) }
