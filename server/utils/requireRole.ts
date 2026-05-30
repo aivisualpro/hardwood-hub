@@ -16,10 +16,16 @@
  */
 
 export const ROLE_TIER: Record<string, number> = {
+  // Generic tiers (used by requireRole calls)
   'Staff': 1,
   'Manager': 2,
   'Admin': 3,
   'Super Admin': 4,
+
+  // Actual position values used by the app — mapped to the appropriate tier
+  'Crew member': 1,   // same as Staff
+  'Supervisor': 2,    // same as Manager (can manage crew, edit records)
+  'Finance': 3,       // same as Admin (needs full data access for reporting)
 }
 
 export type RoleLevel = keyof typeof ROLE_TIER
