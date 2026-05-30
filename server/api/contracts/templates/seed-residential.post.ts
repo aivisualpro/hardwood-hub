@@ -1,5 +1,6 @@
-import { connectDB } from '../../../utils/mongoose'
 import { ContractTemplate } from '../../../models/ContractTemplate'
+import { connectDB } from '../../../utils/mongoose'
+import { requireAdmin } from '../../../utils/requireRole'
 
 const CONTENT = `
 <div>
@@ -180,53 +181,54 @@ const CONTENT = `
 `
 
 const VARIABLES = [
-    { key: 'contract_number', label: 'Contract #', type: 'text', defaultValue: '', required: true },
-    { key: 'effective_date', label: 'Effective Date', type: 'date', defaultValue: '', required: true },
-    { key: 'work_start_date', label: 'Work Start Date', type: 'date', defaultValue: '', required: true },
-    { key: 'estimate_invoice_number', label: 'Estimate / Invoice #', type: 'text', defaultValue: '', required: true },
-    { key: 'additional_dates', label: 'Additional Dates', type: 'text', defaultValue: '', required: false },
-    { key: 'wood_delivery_date', label: 'Wood Delivery Date', type: 'date', defaultValue: '', required: false },
-    { key: 'completion_date', label: 'Completion Date', type: 'date', defaultValue: '', required: false },
-    { key: 'installation_address', label: 'Installation Address', type: 'textarea', defaultValue: '', required: true },
-    { key: 'service_description', label: 'Service Description', type: 'textarea', defaultValue: '', required: true },
-    { key: 'deposit_amount', label: 'Deposit Amount', type: 'currency', defaultValue: '', required: true },
-    { key: 'deposit_due_date', label: 'Deposit Due Date', type: 'text', defaultValue: 'Upon Acceptance', required: true },
-    { key: 'remaining_balance', label: 'Remaining Balance', type: 'currency', defaultValue: '', required: true },
-    { key: 'draw_1', label: 'Draw 1 Value', type: 'text', defaultValue: '', required: false },
-    { key: 'draw_2', label: 'Draw 2 Value', type: 'text', defaultValue: '', required: false },
-    { key: 'draw_3', label: 'Draw 3 Value', type: 'text', defaultValue: '', required: false },
-    { key: 'draw_4', label: 'Draw 4 Value', type: 'text', defaultValue: '', required: false },
-    { key: 'client_name', label: 'Client Name', type: 'text', defaultValue: '', required: true },
-    { key: 'initials_home_prep', label: 'Initials - Home Prep', type: 'text', defaultValue: '', required: true },
-    { key: 'initials_access', label: 'Initials - Access', type: 'text', defaultValue: '', required: true },
-    { key: 'initials_homeowner_resp', label: 'Initials - Homeowner Resp', type: 'text', defaultValue: '', required: true },
-    { key: 'initials_1', label: 'Initials - Policies', type: 'text', defaultValue: '', required: true },
-    { key: 'initials_2', label: 'Initials - Stain Selection', type: 'text', defaultValue: '', required: true },
-    { key: 'initials_3', label: 'Initials - Humidity', type: 'text', defaultValue: '', required: true },
-    { key: 'initials_4', label: 'Initials - Cancellation', type: 'text', defaultValue: '', required: true },
+  { key: 'contract_number', label: 'Contract #', type: 'text', defaultValue: '', required: true },
+  { key: 'effective_date', label: 'Effective Date', type: 'date', defaultValue: '', required: true },
+  { key: 'work_start_date', label: 'Work Start Date', type: 'date', defaultValue: '', required: true },
+  { key: 'estimate_invoice_number', label: 'Estimate / Invoice #', type: 'text', defaultValue: '', required: true },
+  { key: 'additional_dates', label: 'Additional Dates', type: 'text', defaultValue: '', required: false },
+  { key: 'wood_delivery_date', label: 'Wood Delivery Date', type: 'date', defaultValue: '', required: false },
+  { key: 'completion_date', label: 'Completion Date', type: 'date', defaultValue: '', required: false },
+  { key: 'installation_address', label: 'Installation Address', type: 'textarea', defaultValue: '', required: true },
+  { key: 'service_description', label: 'Service Description', type: 'textarea', defaultValue: '', required: true },
+  { key: 'deposit_amount', label: 'Deposit Amount', type: 'currency', defaultValue: '', required: true },
+  { key: 'deposit_due_date', label: 'Deposit Due Date', type: 'text', defaultValue: 'Upon Acceptance', required: true },
+  { key: 'remaining_balance', label: 'Remaining Balance', type: 'currency', defaultValue: '', required: true },
+  { key: 'draw_1', label: 'Draw 1 Value', type: 'text', defaultValue: '', required: false },
+  { key: 'draw_2', label: 'Draw 2 Value', type: 'text', defaultValue: '', required: false },
+  { key: 'draw_3', label: 'Draw 3 Value', type: 'text', defaultValue: '', required: false },
+  { key: 'draw_4', label: 'Draw 4 Value', type: 'text', defaultValue: '', required: false },
+  { key: 'client_name', label: 'Client Name', type: 'text', defaultValue: '', required: true },
+  { key: 'initials_home_prep', label: 'Initials - Home Prep', type: 'text', defaultValue: '', required: true },
+  { key: 'initials_access', label: 'Initials - Access', type: 'text', defaultValue: '', required: true },
+  { key: 'initials_homeowner_resp', label: 'Initials - Homeowner Resp', type: 'text', defaultValue: '', required: true },
+  { key: 'initials_1', label: 'Initials - Policies', type: 'text', defaultValue: '', required: true },
+  { key: 'initials_2', label: 'Initials - Stain Selection', type: 'text', defaultValue: '', required: true },
+  { key: 'initials_3', label: 'Initials - Humidity', type: 'text', defaultValue: '', required: true },
+  { key: 'initials_4', label: 'Initials - Cancellation', type: 'text', defaultValue: '', required: true },
 ]
 
 export default defineEventHandler(async (event) => {
-    await connectDB()
+  requireAdmin(event)
+  await connectDB()
 
-    if (event.method !== 'POST') {
-        throw createError({ statusCode: 405, message: 'Method not allowed' })
-    }
+  if (event.method !== 'POST') {
+    throw createError({ statusCode: 405, message: 'Method not allowed' })
+  }
 
-    const doc = await ContractTemplate.findOneAndUpdate(
-      { slug: 'residential-contract-updated' },
-      {
-        name: 'Residential Contract updated',
-        slug: 'residential-contract-updated',
-        description: 'Comprehensive residential construction contract including payments, schedule, warranty, and arbitration terms.',
-        content: CONTENT,
-        variables: VARIABLES,
-        category: 'Agreements',
-        isActive: true,
-        createdBy: 'system',
-      },
-      { upsert: true, new: true }
-    )
+  const doc = await ContractTemplate.findOneAndUpdate(
+    { slug: 'residential-contract-updated' },
+    {
+      name: 'Residential Contract updated',
+      slug: 'residential-contract-updated',
+      description: 'Comprehensive residential construction contract including payments, schedule, warranty, and arbitration terms.',
+      content: CONTENT,
+      variables: VARIABLES,
+      category: 'Agreements',
+      isActive: true,
+      createdBy: 'system',
+    },
+    { upsert: true, new: true },
+  )
 
-    return { success: true, message: 'Residential Contract updated template seeded', data: doc }
+  return { success: true, message: 'Residential Contract updated template seeded', data: doc }
 })

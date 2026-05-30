@@ -1,5 +1,6 @@
-import { connectDB } from '../../../utils/mongoose'
 import { ContractTemplate } from '../../../models/ContractTemplate'
+import { connectDB } from '../../../utils/mongoose'
+import { requireAdmin } from '../../../utils/requireRole'
 
 const CONTENT = `
 <style>
@@ -123,42 +124,39 @@ const CONTENT = `
 `
 
 const VARIABLES = [
-    { key: 'employee_name', label: 'Employee Name (Client)', type: 'text', defaultValue: '', required: true },
-    { key: 'writeup_date', label: 'Write Up Date', type: 'date', defaultValue: '', required: true },
-    { key: 'employee_id', label: 'Employee ID', type: 'text', defaultValue: '', required: false },
-    { key: 'job_title', label: 'Job Title', type: 'text', defaultValue: '', required: false },
-    { key: 'manager_name', label: 'Manager Name', type: 'text', defaultValue: '', required: true },
-    { key: 'department', label: 'Department', type: 'text', defaultValue: '', required: false },
-    { key: 'warning_type', label: 'Type of Warning (First/Second/Final)', type: 'text', defaultValue: 'First Warning', required: true },
-    { key: 'offenses', label: 'Offenses (Tardiness, Substandard Work, etc)', type: 'text', defaultValue: '', required: true },
-    { key: 'other_offense', label: 'Other Offense Details', type: 'text', defaultValue: 'N/A', required: false },
-    { key: 'infraction_desc', label: 'Description of Infraction', type: 'textarea', defaultValue: '', required: true },
-    { key: 'improvement_plan', label: 'Plan for Improvement', type: 'textarea', defaultValue: '', required: true },
-    { key: 'consequences', label: 'Consequences of Infractions', type: 'textarea', defaultValue: '', required: true },
-    { key: 'manager_signature', label: 'Manager Signature', type: 'signature', defaultValue: '', required: true },
+  { key: 'employee_name', label: 'Employee Name (Client)', type: 'text', defaultValue: '', required: true },
+  { key: 'writeup_date', label: 'Write Up Date', type: 'date', defaultValue: '', required: true },
+  { key: 'employee_id', label: 'Employee ID', type: 'text', defaultValue: '', required: false },
+  { key: 'job_title', label: 'Job Title', type: 'text', defaultValue: '', required: false },
+  { key: 'manager_name', label: 'Manager Name', type: 'text', defaultValue: '', required: true },
+  { key: 'department', label: 'Department', type: 'text', defaultValue: '', required: false },
+  { key: 'warning_type', label: 'Type of Warning (First/Second/Final)', type: 'text', defaultValue: 'First Warning', required: true },
+  { key: 'offenses', label: 'Offenses (Tardiness, Substandard Work, etc)', type: 'text', defaultValue: '', required: true },
+  { key: 'other_offense', label: 'Other Offense Details', type: 'text', defaultValue: 'N/A', required: false },
+  { key: 'infraction_desc', label: 'Description of Infraction', type: 'textarea', defaultValue: '', required: true },
+  { key: 'improvement_plan', label: 'Plan for Improvement', type: 'textarea', defaultValue: '', required: true },
+  { key: 'consequences', label: 'Consequences of Infractions', type: 'textarea', defaultValue: '', required: true },
+  { key: 'manager_signature', label: 'Manager Signature', type: 'signature', defaultValue: '', required: true },
 ]
 
 export default defineEventHandler(async (event) => {
-    await connectDB()
+  requireAdmin(event)
+  await connectDB()
 
-    if (event.method !== 'POST') {
-        throw createError({ statusCode: 405, message: 'Method not allowed' })
-    }
+  const doc = await ContractTemplate.findOneAndUpdate(
+    { slug: 'employee-write-up' },
+    {
+      name: 'Employee Write Up',
+      slug: 'employee-write-up',
+      description: 'Standard multi-step employee disciplinary write-up form with manager and employee signatures.',
+      content: CONTENT,
+      variables: VARIABLES,
+      category: 'HR',
+      isActive: true,
+      createdBy: 'system',
+    },
+    { upsert: true, new: true },
+  )
 
-    const doc = await ContractTemplate.findOneAndUpdate(
-      { slug: 'employee-write-up' },
-      {
-        name: 'Employee Write Up',
-        slug: 'employee-write-up',
-        description: 'Standard multi-step employee disciplinary write-up form with manager and employee signatures.',
-        content: CONTENT,
-        variables: VARIABLES,
-        category: 'HR',
-        isActive: true,
-        createdBy: 'system',
-      },
-      { upsert: true, new: true }
-    )
-
-    return { success: true, message: 'Employee Write Up template seeded', data: doc }
+  return { success: true, message: 'Employee Write Up template seeded', data: doc }
 })
