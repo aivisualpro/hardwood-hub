@@ -83,6 +83,7 @@ export default defineEventHandler(async (event) => {
 
     // Create new watch channel
     const channelId = crypto.randomUUID()
+    const channelToken = crypto.randomBytes(32).toString('hex') // secret for webhook verification
     const expiration = Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
 
     try {
@@ -93,6 +94,7 @@ export default defineEventHandler(async (event) => {
           method: 'POST',
           body: JSON.stringify({
             id: channelId,
+            token: channelToken,
             type: 'web_hook',
             address: `${baseUrl}/api/google-calendar/webhook`,
             expiration: String(expiration),
@@ -102,6 +104,7 @@ export default defineEventHandler(async (event) => {
 
       updates.calendarChannelId = watchData.id || channelId
       updates.calendarResourceId = watchData.resourceId || ''
+      updates.calendarChannelToken = channelToken
       updates.calendarChannelExpiry = new Date(Number(watchData.expiration) || expiration)
 
       watchResult = {

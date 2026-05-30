@@ -2,6 +2,8 @@
  * Task notification emails – fired on ANY status change
  */
 import { sendMail } from './mailer'
+import { logger } from './logger'
+const log = logger('[TaskNotify]')
 
 interface StatusChangePayload {
   title: string
@@ -82,7 +84,7 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
 
   const creatorEmail = await resolveCreatorEmail(createdByName)
   if (!creatorEmail) {
-    console.warn(`[TaskNotify] Could not resolve email for "${createdByName}", skipping notification`)
+    log.warn(`Could not resolve email for "${createdByName}", skipping notification`)
     return
   }
 
@@ -169,10 +171,10 @@ export async function notifyStatusChange(payload: StatusChangePayload) {
       subject: isDone ? `Task "${title}" is Done ✓` : `Task "${title}" moved to ${toLabel}`,
       html: emailHTML,
     })
-    console.log(`[TaskNotify] Status change email sent to ${creatorEmail} for task "${title}" (${fromLabel} → ${toLabel})`)
+    log.info(`Status change email sent to ${creatorEmail} for task "${title}" (${fromLabel} → ${toLabel})`)
   }
   catch (err) {
-    console.error(`[TaskNotify] Failed to send email to ${creatorEmail}`, err)
+    log.error(`Failed to send email to ${creatorEmail}`, err)
   }
 }
 
@@ -323,10 +325,10 @@ export async function notifyNewTask(payload: NewTaskPayload) {
       subject: `New Task Assigned: "${title}"`,
       html: emailHTML,
     })
-    console.log(`[TaskNotify] New task email sent to ${emails.join(', ')} for "${title}"`)
+    log.info(`New task email sent to ${emails.join(', ')} for "${title}"`)
   }
   catch (err) {
-    console.error(`[TaskNotify] Failed to send new task email`, err)
+    log.error('Failed to send new task email', err)
   }
 }
 
@@ -427,9 +429,9 @@ export async function notifyComment(payload: CommentPayload) {
       subject: `New comment on "${taskTitle}" by ${commentAuthor}`,
       html: emailHTML,
     })
-    console.log(`[TaskNotify] Comment email sent to ${targetEmails.join(', ')} for "${taskTitle}"`)
+    log.info(`Comment email sent to ${targetEmails.join(', ')} for "${taskTitle}"`)
   }
   catch (err) {
-    console.error(`[TaskNotify] Failed to send comment email`, err)
+    log.error('Failed to send comment email', err)
   }
 }

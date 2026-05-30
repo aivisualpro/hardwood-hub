@@ -5,16 +5,13 @@ import { Contract } from '../../models/Contract'
 import { sendMail } from '../../utils/mailer'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { ContractSendEmailSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
-  const body = await readBody(event)
-  const { contractId, overrideEmail } = body
-
-  if (!contractId) {
-    throw createError({ statusCode: 400, message: 'contractId is required' })
-  }
+  const raw = await readBody(event)
+  const { contractId, overrideEmail } = parseBody(ContractSendEmailSchema, raw)
 
   const contract = await Contract.findById(contractId)
   if (!contract) {

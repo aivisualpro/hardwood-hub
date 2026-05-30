@@ -1,18 +1,17 @@
 import { Workspace } from '../../models/Workspace'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { WorkspaceCreateSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireAdmin(event)
-  const id = getRouterParam(event, 'id')
+  const id = objectId(getRouterParam(event, 'id'))
 
   if (!id)
     throw createError({ statusCode: 400, message: 'ID is required' })
 
   if (event.method === 'PUT') {
-    const body = await readBody(event)
-
     const wp = await Workspace.findById(id)
     if (!wp)
       throw createError({ statusCode: 404, message: 'Workspace not found' })
@@ -22,14 +21,17 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 403, message: 'Cannot modify a locked workspace' })
     }
 
+    const raw = await readBody(event)
+    const data = parseBody(WorkspaceCreateSchema.partial(), raw)
+
     const doc = await Workspace.findByIdAndUpdate(
       id,
       {
-        name: body.name,
-        logo: body.logo,
-        plan: body.plan,
-        allowedMenus: body.allowedMenus,
-        menuPermissions: body.menuPermissions || {},
+        name: data.name,
+        logo: data.logo,
+        plan: data.plan,
+        allowedMenus: data.allowedMenus,
+        menuPermissions: data.menuPermissions || {},
       },
       { new: true },
     )

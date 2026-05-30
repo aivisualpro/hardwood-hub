@@ -1,5 +1,7 @@
 import { ActivityLog } from '../models/ActivityLog'
 import { connectDB } from './mongoose'
+import { logger } from './logger'
+const log = logger('[ActivityLog]')
 
 interface LogActivityParams {
   user: string
@@ -32,6 +34,6 @@ export async function logActivity(params: LogActivityParams) {
   }
   catch (err) {
     // Silently fail — never block the main request for logging
-    console.error('[ActivityLog] Failed to log:', err)
+    log.error('Failed to log:', err)
   }
 }

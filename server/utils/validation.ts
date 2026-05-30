@@ -382,13 +382,18 @@ export const ProjectCommunicationUpdateSchema = ProjectCommunicationWriteSchema.
 
 // ─── DROPDOWNS ────────────────────────────────────────────────────────────────
 
-export const DropdownWriteSchema = z.object({
-  type: z.string().min(1).max(100),
+export const DropdownOptionSchema = z.object({
   label: z.string().min(1).max(200),
   value: z.string().max(200).optional(),
   color: z.string().max(50).optional(),
+  icon: z.string().max(100).optional(),
   order: z.number().int().min(0).optional(),
-  parentId: MongoId.nullable().optional(),
+  category: z.string().max(100).optional(),
+})
+
+export const DropdownWriteSchema = z.object({
+  name: z.string().min(1, 'Dropdown name is required').max(200),
+  options: z.array(DropdownOptionSchema).optional().default([]),
 })
 
 export const DropdownUpdateSchema = DropdownWriteSchema.partial()
@@ -411,6 +416,7 @@ export const WorkspaceUpdateSchema = WorkspaceWriteSchema.partial()
 export const AppSettingsWriteSchema = z.object({
   key: z.string().min(1).max(100),
   value: z.unknown(),
+  description: z.string().max(500).optional().default(''),
   scope: z.string().max(100).optional(),
 })
 
@@ -484,3 +490,42 @@ export const ContractTemplateWriteSchema = z.object({
 })
 
 export const ContractTemplateUpdateSchema = ContractTemplateWriteSchema.partial()
+
+// ─── CUSTOM BONUS (Performance) ─────────────────────────────────────────────
+
+export const CustomBonusWriteSchema = z.object({
+  employee: MongoId,
+  subCategory: MongoId,
+  bonusAmount: z.number().nonnegative().max(1_000_000),
+  reason: z.string().max(2000).optional().default(''),
+  createdBy: MongoId.nullable().optional(),
+})
+
+// ─── CONTRACT SEND EMAIL ─────────────────────────────────────────────────────
+
+export const ContractSendEmailSchema = z.object({
+  contractId: MongoId,
+  overrideEmail: z.string().email().or(z.literal('')).optional(),
+})
+
+// ─── WORKSPACE (simplified — actual model has more fields) ───────────────────
+
+export const WorkspaceCreateSchema = z.object({
+  name: z.string().min(1, 'Workspace name is required').max(200),
+  logo: z.string().max(200).optional(),
+  plan: z.string().max(100).optional(),
+  allowedMenus: z.array(z.string().max(200)).optional().default([]),
+  menuPermissions: z.record(z.string(), z.unknown()).optional().default({}),
+})
+// WorkspaceUpdateSchema is already defined above (line ~407)
+
+// ─── UPLOAD ──────────────────────────────────────────────────────────────────
+
+export const CloudinaryUploadSchema = z.object({
+  file: z.string().min(1, 'No file provided'),
+  folder: z.string().max(200).optional(),
+})
+
+export const CompanyLogoUploadSchema = z.object({
+  file: z.string().min(1, 'No file provided'),
+})

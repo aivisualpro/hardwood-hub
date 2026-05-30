@@ -11,6 +11,8 @@
  */
 
 const BROWSERLESS_BASE = 'https://production-sfo.browserless.io'
+import { logger } from './logger'
+const log = logger('[pdf-generator]')
 
 export async function generatePdfFromHtml(htmlContent: string): Promise<Buffer> {
   const config = useRuntimeConfig()
@@ -44,7 +46,7 @@ export async function generatePdfFromHtml(htmlContent: string): Promise<Buffer> 
     },
   }
 
-  console.log('[pdf-generator] POST → Browserless …')
+  log.info('POST → Browserless …')
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -60,6 +62,6 @@ export async function generatePdfFromHtml(htmlContent: string): Promise<Buffer> 
 
   const arrayBuffer = await res.arrayBuffer()
   const pdfBuffer = Buffer.from(arrayBuffer)
-  console.log(`[pdf-generator] PDF bytes: ${(pdfBuffer.length / 1024).toFixed(0)}KB`)
+  log.info(`PDF bytes: ${(pdfBuffer.length / 1024).toFixed(0)}KB`)
   return pdfBuffer
 }

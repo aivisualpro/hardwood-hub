@@ -1,6 +1,8 @@
 import { Employee } from '../models/Employee'
 import { logActivity } from '../utils/logActivity'
 import { connectDB } from '../utils/mongoose'
+import { logger } from '../utils/logger'
+const log = logger('[Activity Middleware]')
 
 // Map of API routes to human-readable module names
 const moduleMap: Record<string, string> = {
@@ -168,7 +170,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     catch (err) {
-      console.error('[Activity Middleware]', err)
+      log.error(err)
     }
   })
 })

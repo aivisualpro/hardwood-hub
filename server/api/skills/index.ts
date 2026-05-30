@@ -3,6 +3,7 @@ import { Skill } from '../../models/Skill'
 // POST /api/skills         — create a skill
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { SkillWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -14,13 +15,12 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    const { skill, category, subCategory, description, level, icon, isRequired } = body
-    if (!skill || !category || !subCategory)
-      throw createError({ statusCode: 400, message: 'skill, category and subCategory are required' })
-    const doc = await Skill.create({ skill, category, subCategory, description, level, icon, isRequired: isRequired ?? false })
+    const raw = await readBody(event)
+    const data = parseBody(SkillWriteSchema, raw)
+    const doc = await Skill.create(data)
     return { success: true, data: doc }
   }
 
   throw createError({ statusCode: 405, message: 'Method not allowed' })
 })
+

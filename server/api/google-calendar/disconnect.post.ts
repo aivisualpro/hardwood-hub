@@ -65,6 +65,7 @@ export default defineEventHandler(async (event) => {
     calendarSyncToken: '',
     calendarChannelId: '',
     calendarResourceId: '',
+    calendarChannelToken: '',
     calendarChannelExpiry: null,
   })
 

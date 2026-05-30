@@ -7,6 +7,8 @@
  * Auto-detects which is available on first call.
  */
 import * as crypto from 'node:crypto'
+import { logger } from './logger'
+const log = logger('[GravityForms]')
 
 interface GFConfig {
   siteUrl: string
@@ -84,7 +86,7 @@ async function detectApiMode(cfg: GFConfig): Promise<'v2' | 'v1'> {
       const namespaces: string[] = nsData?.namespaces || []
       if (namespaces.includes('gf/v2')) {
         _apiMode = 'v2'
-        console.log('[GravityForms] Using REST API v2')
+        log.info('Using REST API v2')
         return 'v2'
       }
     }
@@ -93,7 +95,7 @@ async function detectApiMode(cfg: GFConfig): Promise<'v2' | 'v1'> {
 
   // Fallback to v1
   _apiMode = 'v1'
-  console.log('[GravityForms] REST API v2 not available, using Web API v1')
+  log.info('REST API v2 not available, using Web API v1')
   return 'v1'
 }
 

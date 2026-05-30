@@ -6,11 +6,12 @@ import { Contract } from '../../../models/Contract'
  */
 import { connectDB } from '../../../utils/mongoose'
 import { logger } from '../../../utils/logger'
+import { ContractUpdateSchema, objectId, parseBody } from '../../../utils/validation'
 const log = logger('[id]')
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  const id = getRouterParam(event, 'id')
+  const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'GET') {
     const doc = await Contract.findById(id).lean()
@@ -26,8 +27,9 @@ export default defineEventHandler(async (event) => {
     if (existing.status === 'signed') {
       throw createError({ statusCode: 403, message: 'Signed contracts cannot be modified.' })
     }
-    const body = await readBody(event)
-    const doc = await Contract.findByIdAndUpdate(id, body, { returnDocument: 'after' }).lean()
+    const raw = await readBody(event)
+    const data = parseBody(ContractUpdateSchema, raw)
+    const doc = await Contract.findByIdAndUpdate(id, data, { returnDocument: 'after' }).lean()
     return { success: true, data: doc }
   }
 

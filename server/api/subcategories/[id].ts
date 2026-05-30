@@ -3,11 +3,12 @@ import { SubCategory } from '../../models/SubCategory'
 // PUT    /api/subcategories/:id  — update predecessor (or any field)
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { SubcategoryWriteSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireAdmin(event)
-  const id = getRouterParam(event, 'id')
+  const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'GET') {
     const sub = await SubCategory.findById(id).lean()
@@ -17,20 +18,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'PUT') {
-    const body = await readBody(event)
-    const update: any = {}
-    if (body.name !== undefined)
-      update.subCategory = body.name // rename sub-category
-    if (body.predecessor !== undefined)
-      update.predecessor = body.predecessor
-    if (body.subCategory !== undefined)
-      update.subCategory = body.subCategory
-    if (body.description !== undefined)
-      update.description = body.description
-    if (body.bonusRules !== undefined)
-      update.bonusRules = body.bonusRules
+    const raw = await readBody(event)
+    const data = parseBody(SubcategoryWriteSchema.partial(), raw)
 
-    const updated = await SubCategory.findByIdAndUpdate(id, update, { returnDocument: 'after' }).lean()
+    const updated = await SubCategory.findByIdAndUpdate(id, data, { returnDocument: 'after' }).lean()
     if (!updated)
       throw createError({ statusCode: 404, message: 'SubCategory not found' })
     return { success: true, data: updated }
@@ -45,3 +36,4 @@ export default defineEventHandler(async (event) => {
 
   throw createError({ statusCode: 405, message: 'Method not allowed' })
 })
+

@@ -4,11 +4,12 @@ import { Category } from '../../models/Category'
 // DELETE /api/categories/:id
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { CategoryWriteSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireAdmin(event)
-  const id = getRouterParam(event, 'id')
+  const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'GET') {
     const cat = await Category.findById(id).lean()
@@ -18,18 +19,17 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'PUT') {
-    const body = await readBody(event)
-    const update: any = {}
-    if (body.name !== undefined)
-      update.category = body.name // 'category' is the DB field
-    if (body.description !== undefined)
-      update.description = body.description
-    if (body.icon !== undefined)
-      update.icon = body.icon
-    if (body.color !== undefined)
-      update.color = body.color
-    if (body.info !== undefined)
-      update.info = body.info
+    const raw = await readBody(event)
+    const data = parseBody(CategoryWriteSchema.partial(), raw)
+    const update: Record<string, any> = {}
+    if (data.category !== undefined)
+      update.category = data.category
+    if (data.icon !== undefined)
+      update.icon = data.icon
+    if (data.color !== undefined)
+      update.color = data.color
+    if (data.order !== undefined)
+      update.order = data.order
 
     const updated = await Category.findByIdAndUpdate(id, update, { returnDocument: 'after' }).lean()
     if (!updated)
@@ -46,3 +46,4 @@ export default defineEventHandler(async (event) => {
 
   throw createError({ statusCode: 405, message: 'Method not allowed' })
 })
+

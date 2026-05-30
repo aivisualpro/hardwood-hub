@@ -1,6 +1,7 @@
 import { Workspace } from '../../models/Workspace'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { WorkspaceCreateSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -25,17 +26,15 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    const { name, logo, plan, allowedMenus, menuPermissions } = body
-    if (!name)
-      throw createError({ statusCode: 400, message: 'Workspace name is required' })
+    const raw = await readBody(event)
+    const data = parseBody(WorkspaceCreateSchema, raw)
 
     const doc = await Workspace.create({
-      name,
-      logo: logo || 'i-lucide-building',
-      plan: plan || 'Workspace',
-      allowedMenus: allowedMenus || [],
-      menuPermissions: menuPermissions || {},
+      name: data.name,
+      logo: data.logo || 'i-lucide-building',
+      plan: data.plan || 'Workspace',
+      allowedMenus: data.allowedMenus || [],
+      menuPermissions: data.menuPermissions || {},
       isLocked: false,
     })
     return { success: true, data: doc }

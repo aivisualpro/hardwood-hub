@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import type { ICrmSubmission } from '../../models/CrmSubmission'
 import { CrmSubmission } from '../../models/CrmSubmission'
 import { parseGFEntry } from '../../utils/gfFieldMapping'
@@ -7,6 +8,36 @@ import { connectDB } from '../../utils/mongoose'
 import { rateLimit } from '../../utils/rateLimit'
 import { logger } from '../../utils/logger'
 const log = logger('[webhook.post]')
+
+/**
+ * Verify HMAC-SHA256 signature from the `x-webhook-signature` header.
+ * The Gravity Forms Webhooks add-on (or any upstream proxy) should send:
+ *   x-webhook-signature: sha256=<hex-encoded HMAC of the raw JSON body>
+ *
+ * If CRM_WEBHOOK_SECRET is not configured, verification is skipped with a warning.
+ */
+function verifyCrmSignature(event: any, rawBody: string): void {
+  const config = useRuntimeConfig()
+  const secret = (config.crmWebhookSecret as string) || ''
+
+  if (!secret) {
+    log.warn('CRM_WEBHOOK_SECRET not configured — webhook signature verification is DISABLED')
+    return
+  }
+
+  const sigHeader = getHeader(event, 'x-webhook-signature') || ''
+  if (!sigHeader) {
+    throw createError({ statusCode: 403, message: 'Missing x-webhook-signature header' })
+  }
+
+  // Accept format: "sha256=<hex>" or just "<hex>"
+  const provided = sigHeader.startsWith('sha256=') ? sigHeader.slice(7) : sigHeader
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
+
+  if (!crypto.timingSafeEqual(Buffer.from(provided, 'hex'), Buffer.from(expected, 'hex'))) {
+    throw createError({ statusCode: 403, message: 'Invalid webhook signature' })
+  }
+}
 /**
  * POST /api/crm/webhook
  * Real-time sync from Gravity Forms.
@@ -24,7 +55,10 @@ export default defineEventHandler(async (event) => {
   rateLimit(event, { max: 100, windowMs: 60_000 })
   await connectDB()
 
-  const entry = await readBody(event)
+  // Read raw body for HMAC verification, then parse
+  const rawBody = await readRawBody(event, 'utf-8') || ''
+  verifyCrmSignature(event, rawBody)
+  const entry = JSON.parse(rawBody || '{}')
 
   // 1. Calendly Webhook Integration
   if (entry?.event && entry.event.startsWith('invitee.')) {

@@ -3,6 +3,7 @@ import { SubCategory } from '../../models/SubCategory'
 // POST /api/subcategories — create
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { SubcategoryWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -18,13 +19,12 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    const { name, Category: cat, description, icon } = body
-    if (!name || !cat)
-      throw createError({ statusCode: 400, message: 'name and Category are required' })
-    const doc = await SubCategory.create({ subCategory: name, category: cat, description, icon })
+    const raw = await readBody(event)
+    const data = parseBody(SubcategoryWriteSchema, raw)
+    const doc = await SubCategory.create({ subCategory: data.subCategory, category: data.category, icon: data.icon, color: data.color, order: data.order })
     return { success: true, data: doc }
   }
 
   throw createError({ statusCode: 405, message: 'Method not allowed' })
 })
+

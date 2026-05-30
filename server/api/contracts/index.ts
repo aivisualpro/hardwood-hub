@@ -5,6 +5,7 @@ import { Pipeline } from '../../models/Pipeline'
  * POST /api/contracts — create a new contract
  */
 import { connectDB } from '../../utils/mongoose'
+import { ContractCreateSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -69,11 +70,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    if (!body.title)
-      throw createError({ statusCode: 400, message: 'Contract title is required' })
-    if (!body.customerId)
-      throw createError({ statusCode: 400, message: 'Customer is required' })
+    const raw = await readBody(event)
+    const body = parseBody(ContractCreateSchema, raw)
 
     // Extract from variableValues if provided, else from body directly
     const contractNumber = body.contractNumber || body.variableValues?.contract_number || `draft-${Date.now()}` // Fallback if missing

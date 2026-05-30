@@ -4,11 +4,12 @@ import { ContractTemplate } from '../../../models/ContractTemplate'
 // DELETE /api/contracts/templates/:id — delete a template
 import { connectDB } from '../../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../../utils/requireRole'
+import { ContractTemplateUpdateSchema, objectId, parseBody } from '../../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
-  const id = getRouterParam(event, 'id')
+  const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'GET') {
     const doc = await ContractTemplate.findById(id).lean()
@@ -18,8 +19,9 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'PUT') {
-    const body = await readBody(event)
-    const doc = await ContractTemplate.findByIdAndUpdate(id, body, { returnDocument: 'after' }).lean()
+    const raw = await readBody(event)
+    const data = parseBody(ContractTemplateUpdateSchema, raw)
+    const doc = await ContractTemplate.findByIdAndUpdate(id, data, { returnDocument: 'after' }).lean()
     if (!doc)
       throw createError({ statusCode: 404, message: 'Template not found' })
     return { success: true, data: doc }

@@ -1,18 +1,20 @@
 import { ProjectCommunication } from '../../models/ProjectCommunication'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { ProjectCommunicationUpdateSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
-  const id = getRouterParam(event, 'id')
+  const id = objectId(getRouterParam(event, 'id'))
 
   if (!id)
     throw createError({ statusCode: 400, message: 'ID is required' })
 
   if (event.method === 'PUT') {
-    const body = await readBody(event)
-    const doc = await ProjectCommunication.findByIdAndUpdate(id, body, { new: true })
+    const raw = await readBody(event)
+    const data = parseBody(ProjectCommunicationUpdateSchema, raw)
+    const doc = await ProjectCommunication.findByIdAndUpdate(id, data, { new: true })
     if (!doc)
       throw createError({ statusCode: 404, message: 'Not found' })
     return { success: true, data: doc }

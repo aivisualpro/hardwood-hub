@@ -2,6 +2,7 @@
 // Receives a base64 image from the client, uploads to Cloudinary, returns the secure URL
 // The client should send { file: <base64 data URL string> }
 import { v2 as cloudinary } from 'cloudinary'
+import { CloudinaryUploadSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
@@ -12,12 +13,8 @@ export default defineEventHandler(async (event) => {
     api_secret: config.cloudinaryApiSecret,
   })
 
-  const body = await readBody(event)
-  const { file, folder } = body // expects a data: URL string
-
-  if (!file) {
-    throw createError({ statusCode: 400, message: 'No file provided' })
-  }
+  const raw = await readBody(event)
+  const { file, folder } = parseBody(CloudinaryUploadSchema, raw)
 
   try {
     const result = await cloudinary.uploader.upload(file, {

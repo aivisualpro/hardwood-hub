@@ -5,6 +5,7 @@ import { Task } from '../../models/Task'
 import { logger } from '../../utils/logger'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
+import { TaskReorderSchema, parseBody } from '../../utils/validation'
 import { notifyStatusChange } from '../../utils/taskNotifications'
 
 const log = logger('[tasks/reorder]')
@@ -44,8 +45,8 @@ export default defineEventHandler(async (event) => {
   const callerPosition: string = session?.position ?? ''
   const isSuperAdmin = callerPosition === 'Super Admin'
 
-  const body = await readBody(event)
-  const updates: { _id: string, status: string, order: number }[] = body.updates || []
+  const raw = await readBody(event)
+  const { updates } = parseBody(TaskReorderSchema, raw)
 
   if (!updates.length)
     throw createError({ statusCode: 400, message: 'No updates provided' })

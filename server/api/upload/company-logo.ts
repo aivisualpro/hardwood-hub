@@ -2,6 +2,7 @@
 // Uploads a company logo to Cloudinary, returns the secure URL
 import { v2 as cloudinary } from 'cloudinary'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { CompanyLogoUploadSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   requireAdmin(event)
@@ -13,12 +14,8 @@ export default defineEventHandler(async (event) => {
     api_secret: config.cloudinaryApiSecret,
   })
 
-  const body = await readBody(event)
-  const { file } = body
-
-  if (!file) {
-    throw createError({ statusCode: 400, message: 'No file provided' })
-  }
+  const raw = await readBody(event)
+  const { file } = parseBody(CompanyLogoUploadSchema, raw)
 
   const result = await cloudinary.uploader.upload(file, {
     folder: 'hardwood-hub/company',

@@ -1,4 +1,6 @@
 import sharp from 'sharp'
+import { logger } from './logger'
+const log = logger('[img-compress]')
 
 interface CompressOptions {
   /** Max width in pixels (default 800) */
@@ -42,7 +44,7 @@ export async function compressImageUrl(
     clearTimeout(timer)
 
     if (!res.ok) {
-      console.warn(`[img-compress] Fetch failed (${res.status}) for: ${url.substring(0, 80)}...`)
+      log.warn(`Fetch failed (${res.status}) for: ${url.substring(0, 80)}...`)
       return url
     }
 
@@ -68,13 +70,13 @@ export async function compressImageUrl(
     const outputBuffer = await pipeline.toBuffer()
     const outputSize = outputBuffer.length
 
-    console.log(`[img-compress] ${url.substring(0, 60)}... | ${(inputSize / 1024).toFixed(0)}KB → ${(outputSize / 1024).toFixed(0)}KB (${format} q${quality} w${maxWidth})`)
+    log.info(`${url.substring(0, 60)}... | ${(inputSize / 1024).toFixed(0)}KB → ${(outputSize / 1024).toFixed(0)}KB (${format} q${quality} w${maxWidth})`)
 
     const b64 = outputBuffer.toString('base64')
     return `data:${mime};base64,${b64}`
   }
   catch (err: any) {
-    console.error(`[img-compress] FAILED for ${url.substring(0, 80)}: ${err?.message}`)
+    log.error(`FAILED for ${url.substring(0, 80)}: ${err?.message}`)
     return url
   }
 }
@@ -110,11 +112,11 @@ async function compressBase64DataUri(
     }
 
     const outputBuffer = await pipeline.toBuffer()
-    console.log(`[img-compress] data-uri | ${(inputSize / 1024).toFixed(0)}KB → ${(outputBuffer.length / 1024).toFixed(0)}KB`)
+    log.info(`data-uri | ${(inputSize / 1024).toFixed(0)}KB → ${(outputBuffer.length / 1024).toFixed(0)}KB`)
     return `data:${mime};base64,${outputBuffer.toString('base64')}`
   }
   catch (err: any) {
-    console.error(`[img-compress] data-uri FAILED: ${err?.message}`)
+    log.error(`data-uri FAILED: ${err?.message}`)
     return dataUri
   }
 }
@@ -140,7 +142,7 @@ export async function compressImagesInHtml(
     }
   }
 
-  console.log(`[img-compress] Found ${urls.size} unique images in HTML (${(html.length / 1024).toFixed(0)}KB HTML)`)
+  log.info(`Found ${urls.size} unique images in HTML (${(html.length / 1024).toFixed(0)}KB HTML)`)
 
   if (urls.size === 0)
     return html
@@ -187,7 +189,7 @@ export async function compressImagesInHtml(
       replacedCount++
   }
 
-  console.log(`[img-compress] Replaced ${replacedCount}/${urls.size} images. HTML: ${(html.length / 1024).toFixed(0)}KB → ${(result.length / 1024).toFixed(0)}KB`)
+  log.info(`Replaced ${replacedCount}/${urls.size} images. HTML: ${(html.length / 1024).toFixed(0)}KB → ${(result.length / 1024).toFixed(0)}KB`)
 
   return result
 }

@@ -1,5 +1,7 @@
 // Utility to sync Calendly appointments
 import { Buffer } from 'node:buffer'
+import { logger } from './logger'
+const log = logger('[Calendly]')
 
 const BATCH_SIZE = 2 // concurrent invitee requests per batch
 const BATCH_DELAY_MS = 1500 // delay between batches
@@ -19,14 +21,14 @@ async function fetchWithRetry(url: string, headers: Record<string, string>, retr
       return res
     if (res.status === 429) {
       const retryAfter = Number.parseInt(res.headers.get('retry-after') || '0') || (2 ** attempt) * 3
-      console.warn(`[Calendly] Rate limited, waiting ${retryAfter}s (attempt ${attempt + 1}/${retries})`)
+      log.warn(`Rate limited, waiting ${retryAfter}s (attempt ${attempt + 1}/${retries})`)
       await sleep(retryAfter * 1000)
       continue
     }
-    console.warn(`[Calendly] Fetch failed for ${url}: ${res.status}`)
+    log.warn(`Fetch failed for ${url}: ${res.status}`)
     return null
   }
-  console.warn(`[Calendly] Gave up after ${retries} retries: ${url}`)
+  log.warn(`Gave up after ${retries} retries: ${url}`)
   return null
 }
 
@@ -38,7 +40,7 @@ async function fetchWithRetry(url: string, headers: Record<string, string>, retr
 export async function fetchCalendlyAppointments(recentOnly = true) {
   // Prevent concurrent syncs from piling up
   if (isSyncing) {
-    console.log('[Calendly] Sync already in progress, skipping')
+    log.info('Sync already in progress, skipping')
     return []
   }
   isSyncing = true
@@ -81,7 +83,7 @@ async function _doFetch(recentOnly: boolean) {
   // Include future events too (upcoming appointments)
   const maxDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
 
-  console.log(`[Calendly] Starting sync (recentOnly=${recentOnly}, since=${minDate || 'all'})`)
+  log.info(`Starting sync (recentOnly=${recentOnly}, since=${minDate || 'all'})`)
 
   // Fetch scheduled events
   const allEvents: any[] = []
@@ -105,18 +107,18 @@ async function _doFetch(recentOnly: boolean) {
         params.set('page_token', nextPageToken)
 
       const url = `https://api.calendly.com/scheduled_events?${params.toString()}`
-      console.log(`[Calendly] Fetching events (status=${status}, page=${page})`)
+      log.info(`Fetching events (status=${status}, page=${page})`)
 
       const eventsRes = await fetchWithRetry(url, headers)
 
       if (!eventsRes) {
-        console.error(`[Calendly] Events fetch failed for status=${status}, page=${page}`)
+        log.error(`Events fetch failed for status=${status}, page=${page}`)
         break
       }
 
       const eventsData = await eventsRes.json()
       const events = eventsData.collection || []
-      console.log(`[Calendly] Got ${events.length} events (status=${status}, page=${page})`)
+      log.info(`Got ${events.length} events (status=${status}, page=${page})`)
 
       for (const event of events) {
         allEvents.push({ event, status })
@@ -129,7 +131,7 @@ async function _doFetch(recentOnly: boolean) {
     } while (nextPageToken)
   }
 
-  console.log(`[Calendly] Total events: ${allEvents.length}, fetching invitees in batches of ${BATCH_SIZE}...`)
+  log.info(`Total events: ${allEvents.length}, fetching invitees in batches of ${BATCH_SIZE}...`)
 
   // Process invitees in small batches
   const allAppointments: any[] = []
@@ -208,6 +210,6 @@ async function _doFetch(recentOnly: boolean) {
     }
   }
 
-  console.log(`[Calendly] Total appointments fetched: ${allAppointments.length}`)
+  log.info(`Total appointments fetched: ${allAppointments.length}`)
   return allAppointments
 }

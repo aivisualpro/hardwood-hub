@@ -5,7 +5,7 @@ import { Employee } from '../../models/Employee'
 import { Task } from '../../models/Task'
 import { logger } from '../../utils/logger'
 import { connectDB } from '../../utils/mongoose'
-import { objectId } from '../../utils/validation'
+import { TaskUpdateSchema, objectId, parseBody } from '../../utils/validation'
 import { notifyComment, notifyStatusChange } from '../../utils/taskNotifications'
 import { requireManager } from '../../utils/requireRole'
 
@@ -51,7 +51,8 @@ export default defineEventHandler(async (event) => {
   const isSuperAdmin = callerPosition === 'Super Admin'
 
   if (event.method === 'PUT') {
-    const body = await readBody(event)
+    const raw = await readBody(event)
+    const body: any = parseBody(TaskUpdateSchema, raw)
 
     log.info('PUT task id:', id)
 

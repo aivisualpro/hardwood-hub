@@ -1,6 +1,7 @@
 import { ProjectCommunication } from '../../models/ProjectCommunication'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { ProjectCommunicationWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -12,9 +13,9 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-
-    const doc = await ProjectCommunication.create(body)
+    const raw = await readBody(event)
+    const data = parseBody(ProjectCommunicationWriteSchema, raw)
+    const doc = await ProjectCommunication.create(data)
     return { success: true, data: doc }
   }
 

@@ -3,6 +3,7 @@ import { AppSetting } from '../../models/AppSetting'
 // POST /api/app-settings          — upsert a setting { key, value, description? }
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { AppSettingsWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -17,10 +18,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    const { key, value, description } = body
-    if (!key)
-      throw createError({ statusCode: 400, message: 'key is required' })
+    const raw = await readBody(event)
+    const { key, value, description } = parseBody(AppSettingsWriteSchema, raw)
 
     const doc = await AppSetting.findOneAndUpdate(
       { key },

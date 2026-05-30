@@ -4,11 +4,12 @@ import { Skill } from '../../models/Skill'
 // DELETE /api/skills/:id
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { SkillWriteSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireAdmin(event)
-  const id = getRouterParam(event, 'id')
+  const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'GET') {
     const skill = await Skill.findById(id).lean()
@@ -18,27 +19,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'PUT') {
-    const body = await readBody(event)
-    // Map frontend 'skill' field (real DB field name)
-    const update: any = {}
-    if (body.skill !== undefined)
-      update.skill = body.skill
-    if (body.description !== undefined)
-      update.description = body.description
-    if (body.level !== undefined)
-      update.level = body.level
-    if (body.icon !== undefined)
-      update.icon = body.icon
-    if (body.isRequired !== undefined)
-      update.isRequired = body.isRequired
-    if (body.category !== undefined)
-      update.category = body.category
-    if (body.subCategory !== undefined)
-      update.subCategory = body.subCategory
-    if (body.info !== undefined)
-      update.info = body.info
+    const raw = await readBody(event)
+    const data = parseBody(SkillWriteSchema.partial(), raw)
 
-    const updated = await Skill.findByIdAndUpdate(id, update, { returnDocument: 'after' }).lean()
+    const updated = await Skill.findByIdAndUpdate(id, data, { returnDocument: 'after' }).lean()
     if (!updated)
       throw createError({ statusCode: 404, message: 'Skill not found' })
     return { success: true, data: updated }
@@ -51,3 +35,4 @@ export default defineEventHandler(async (event) => {
 
   throw createError({ statusCode: 405, message: 'Method not allowed' })
 })
+

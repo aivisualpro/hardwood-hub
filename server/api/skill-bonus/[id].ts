@@ -3,15 +3,17 @@ import { SkillBonus } from '../../models/SkillBonus'
 // DELETE /api/skill-bonus/:id — delete
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { SkillBonusUpdateSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireAdmin(event)
-  const id = getRouterParam(event, 'id')
+  const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'PUT') {
-    const body = await readBody(event)
-    const doc = await SkillBonus.findByIdAndUpdate(id, body, { returnDocument: 'after' }).lean()
+    const raw = await readBody(event)
+    const data = parseBody(SkillBonusUpdateSchema, raw)
+    const doc = await SkillBonus.findByIdAndUpdate(id, data, { returnDocument: 'after' }).lean()
     if (!doc)
       throw createError({ statusCode: 404, message: 'Record not found' })
     return { success: true, data: doc }
@@ -26,3 +28,4 @@ export default defineEventHandler(async (event) => {
 
   throw createError({ statusCode: 405, message: 'Method not allowed' })
 })
+

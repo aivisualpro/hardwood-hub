@@ -9,6 +9,7 @@ import { SubCategory } from '../../models/SubCategory'
 //   Mastered requires existing Proficient from same reviewer on a prior date
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { PerformanceCreateSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -50,10 +51,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    const { employee, category, subCategory, skill, currentSkillLevel, createdBy } = body
-    if (!employee || !category || !subCategory || !skill)
-      throw createError({ statusCode: 400, message: 'employee, category, subCategory, and skill are required' })
+    const raw = await readBody(event)
+    const { employee, category, subCategory, skill, currentSkillLevel, createdBy } = parseBody(PerformanceCreateSchema, raw)
 
     // ─── Mastered guard: require Proficient from same reviewer on a prior date ───
     if (currentSkillLevel === 'Mastered') {

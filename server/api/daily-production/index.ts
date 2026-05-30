@@ -2,6 +2,7 @@ import { verifySessionToken } from '../../lib/session'
 import { DailyProduction } from '../../models/DailyProduction'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { DailyProductionWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -16,9 +17,10 @@ export default defineEventHandler(async (event) => {
     const token = getCookie(event, 'hardwood_session')
     const session = token ? verifySessionToken(token) : null
 
-    const body = await readBody(event)
+    const raw = await readBody(event)
+    const data = parseBody(DailyProductionWriteSchema, raw)
     const doc = await DailyProduction.create({
-      ...body,
+      ...data,
       createdBy: session?.id ?? null,
     })
     return { success: true, data: doc }

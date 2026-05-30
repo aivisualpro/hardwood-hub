@@ -12,6 +12,7 @@ const log = logger('[webhook.post]')
  *   x-goog-channel-id     — The channel ID you created
  *   x-goog-resource-id    — The resource being watched
  *   x-goog-resource-state — 'sync' (initial), 'exists' (changed), 'not_exists' (deleted)
+ *   x-goog-channel-token  — The secret token we passed when creating the watch channel
  *
  * IMPORTANT: Must respond 200 quickly; Google will retry on failure.
  * The webhook doesn't receive event data — just a notification that something changed.
@@ -24,10 +25,11 @@ export default defineEventHandler(async (event) => {
   const channelId = getHeader(event, 'x-goog-channel-id') || ''
   const resourceId = getHeader(event, 'x-goog-resource-id') || ''
   const resourceState = getHeader(event, 'x-goog-resource-state') || ''
+  const channelToken = getHeader(event, 'x-goog-channel-token') || ''
 
   log.info(`[Calendar Webhook] state=${resourceState} channel=${channelId} resource=${resourceId}`)
 
-  // Initial sync confirmation — just acknowledge
+  // Initial sync confirmation — just acknowledge (can't verify token yet)
   if (resourceState === 'sync') {
     return { ok: true }
   }
@@ -41,6 +43,12 @@ export default defineEventHandler(async (event) => {
       if (!emp?.calendarTokens) {
         log.warn('[Calendar Webhook] No employee found for channel:', channelId)
         return { ok: true }
+      }
+
+      // ── Verify channel token ──────────────────────────────────────
+      if (emp.calendarChannelToken && channelToken !== emp.calendarChannelToken) {
+        log.warn('[Calendar Webhook] Token mismatch — rejecting spoofed notification')
+        throw createError({ statusCode: 403, message: 'Invalid channel token' })
       }
 
       const tokens = decryptTokens(emp.calendarTokens)
@@ -80,7 +88,9 @@ export default defineEventHandler(async (event) => {
         }
       }
     }
-    catch (e) {
+    catch (e: any) {
+      // Re-throw 403 for spoofed tokens
+      if (e?.statusCode === 403) throw e
       log.error('[Calendar Webhook] Error processing notification:', e)
     }
   }
@@ -88,3 +98,4 @@ export default defineEventHandler(async (event) => {
   // Always return 200 quickly
   return { ok: true }
 })
+

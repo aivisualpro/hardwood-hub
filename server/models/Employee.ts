@@ -17,6 +17,7 @@ const EmployeeSchema = new mongoose.Schema(
     calendarSyncToken: { type: String, default: '' }, // For incremental sync
     calendarChannelId: { type: String, default: '' }, // Push notification channel ID
     calendarResourceId: { type: String, default: '' }, // Push notification resource ID
+    calendarChannelToken: { type: String, default: '' }, // Secret token for webhook verification
     calendarChannelExpiry: { type: Date }, // When push channel expires
   },
   { timestamps: true, collection: 'hardwoodDB_Employees' },

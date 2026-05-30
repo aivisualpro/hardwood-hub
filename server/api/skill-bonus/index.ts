@@ -3,6 +3,7 @@ import { SkillBonus } from '../../models/SkillBonus'
 // POST /api/skill-bonus   — create a skill bonus record
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { SkillBonusWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -14,19 +15,12 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    const { skillSet, reviewedTimes, supervisorCheck, bonusAmount } = body
-    if (!skillSet)
-      throw createError({ statusCode: 400, message: 'skillSet is required' })
-
-    const doc = await SkillBonus.create({
-      skillSet,
-      reviewedTimes: reviewedTimes ?? 1,
-      supervisorCheck: supervisorCheck ?? '',
-      bonusAmount: bonusAmount ?? 0,
-    })
+    const raw = await readBody(event)
+    const data = parseBody(SkillBonusWriteSchema, raw)
+    const doc = await SkillBonus.create(data)
     return { success: true, data: doc }
   }
 
   throw createError({ statusCode: 405, message: 'Method not allowed' })
 })
+

@@ -7,6 +7,7 @@ import { Dropdown } from '../../models/Dropdown'
  */
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { DropdownWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -43,10 +44,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    if (!body.name) {
-      throw createError({ statusCode: 400, message: 'name is required' })
-    }
+    const raw = await readBody(event)
+    const body = parseBody(DropdownWriteSchema, raw)
 
     const result = await Dropdown.findOneAndUpdate(
       { name: body.name },

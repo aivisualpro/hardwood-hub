@@ -3,6 +3,7 @@ import { Category } from '../../models/Category'
 // POST /api/categories — create
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { CategoryWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -14,11 +15,9 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    const { name, description, icon, color } = body
-    if (!name)
-      throw createError({ statusCode: 400, message: 'name is required' })
-    const doc = await Category.create({ name, description, icon, color })
+    const raw = await readBody(event)
+    const data = parseBody(CategoryWriteSchema, raw)
+    const doc = await Category.create({ category: data.category, icon: data.icon, color: data.color, order: data.order })
     return { success: true, data: doc }
   }
 

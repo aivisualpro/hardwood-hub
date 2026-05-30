@@ -4,6 +4,7 @@ import { ContractTemplate } from '../../../models/ContractTemplate'
 import { connectDB } from '../../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../../utils/requireRole'
 import { logger } from '../../../utils/logger'
+import { ContractTemplateWriteSchema, parseBody } from '../../../utils/validation'
 const log = logger('[index]')
 
 export default defineEventHandler(async (event) => {
@@ -16,9 +17,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
-    const body = await readBody(event)
-    if (!body.name)
-      throw createError({ statusCode: 400, message: 'Template name is required' })
+    const raw = await readBody(event)
+    const body = parseBody(ContractTemplateWriteSchema, raw)
 
     // Auto-generate slug from name
     let slug = body.slug || body.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
