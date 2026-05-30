@@ -3,7 +3,7 @@ import { ContractTemplate } from '../../../models/ContractTemplate'
 // PUT    /api/contracts/templates/:id — update a template
 // DELETE /api/contracts/templates/:id — delete a template
 import { connectDB } from '../../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requireAdmin, requireManager } from '../../../utils/requireRole'
 
 export default defineEventHandler(async (event) => {
   await connectDB()

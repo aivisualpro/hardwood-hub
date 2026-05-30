@@ -2,7 +2,7 @@ import { ContractTemplate } from '../../../models/ContractTemplate'
 // GET  /api/contracts/templates — list all templates
 // POST /api/contracts/templates — create a template
 import { connectDB } from '../../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requireAdmin, requireManager } from '../../../utils/requireRole'
 import { logger } from '../../../utils/logger'
 const log = logger('[index]')
 
