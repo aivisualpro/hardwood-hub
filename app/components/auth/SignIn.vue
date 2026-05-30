@@ -8,7 +8,8 @@ const googleClientId = config.public.googleClientId as string
 // Load Google Identity Services SDK
 function loadGoogleScript(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (window.google?.accounts) return resolve()
+    if (window.google?.accounts)
+      return resolve()
     const script = document.createElement('script')
     script.src = 'https://accounts.google.com/gsi/client'
     script.async = true
@@ -56,7 +57,8 @@ async function loginWithGoogle() {
         // Auto-click the rendered button
         setTimeout(() => {
           const btn = container.querySelector('div[role="button"]') as HTMLElement
-          if (btn) btn.click()
+          if (btn)
+            btn.click()
           else isLoading.value = false
         }, 200)
       }
@@ -78,12 +80,21 @@ async function handleGoogleResponse(response: { credential: string }) {
       body: { credential: response.credential },
     })
 
-    // Store user info as object — useCookie handles JSON serialization automatically
+    // 1. Write the hardwood_user cookie (kept for backward compat with older pages)
     const userCookie = useCookie('hardwood_user', { maxAge: 60 * 60 * 24 * 7 })
     userCookie.value = res.data
 
+    // 2. Populate the shared auth state immediately so the sidebar renders
+    //    on this navigation without waiting for a second load
+    const { setUser, fetchUser } = useAuth()
+    setUser(res.data)
+
     toast.success(`Welcome, ${res.data.employee}!`)
-    navigateTo('/my-profile')
+    await navigateTo('/my-profile')
+
+    // 3. Re-fetch from /api/auth/me to pick up any extra fields (workspace etc.)
+    //    after navigation so it doesn't block the redirect
+    fetchUser().catch(() => {})
   }
   catch (e: any) {
     const msg = e?.data?.message || e?.message || 'Login failed'

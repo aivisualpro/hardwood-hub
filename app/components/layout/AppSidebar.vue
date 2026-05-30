@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { NavGroup, NavLink, NavSectionTitle } from '~/types/nav'
 import type { TranslationKey } from '~/composables/useLocale'
+import type { NavGroup, NavLink, NavSectionTitle } from '~/types/nav'
 import { navMenu, navMenuBottom, navMenuConcepts } from '~/constants/menus'
 
 function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): any {
@@ -16,10 +16,35 @@ function getHeading(nav: { heading: string, headingKey?: string }) {
   return nav.headingKey ? t(nav.headingKey as TranslationKey) : nav.heading
 }
 
-const userCookie = useCookie<{ employee: string, email: string, position: string, profileImage: string, workspace?: string } | null>('hardwood_user')
+// ── Shared auth state (reactive, no cookie snapshot) ─────────────────────────
+const { user } = useAuth()
 
-const { data: workspacesRes } = await useFetch('/api/workspaces', { key: 'workspaces-list', immediate: !!userCookie.value })
+// ── Workspaces ────────────────────────────────────────────────────────────────
+// useAsyncData is SSR-safe and deduplicated by key.
+// We pass user.value?._id in the key so the fetch re-runs when the user changes.
+const { data: workspacesRes, refresh: refreshWorkspaces } = await useAsyncData(
+  'workspaces-list',
+  () => $fetch<any>('/api/workspaces', { headers: useRequestHeaders(['cookie']) }),
+  // Execute immediately — auth state is already populated by the auth plugin
+)
+
+// Re-fetch workspaces whenever the user identity changes (e.g. after login)
+watch(user, async (newUser) => {
+  if (newUser)
+    await refreshWorkspaces()
+})
+
 const allTeams = computed(() => workspacesRes.value?.data || [])
+
+// Filter workspaces to user's assigned one, if set
+const userTeams = computed(() => {
+  const userWs = user.value?.workspace
+  if (userWs) {
+    const matched = allTeams.value.filter((t: any) => t._id === userWs)
+    return matched.length > 0 ? matched : allTeams.value
+  }
+  return allTeams.value
+})
 
 const activeTeamId = useCookie<string>('active_workspace_id')
 const activeTeam = computed({
@@ -29,45 +54,53 @@ const activeTeam = computed({
   },
   set(val: any) {
     activeTeamId.value = val._id
-  }
+  },
 })
 
 function isAllowed(link?: string) {
-  if (!link) return false
+  if (!link)
+    return false
   const allowed = activeTeam.value?.allowedMenus || []
-  if (allowed.includes('*')) return true
+  if (allowed.includes('*'))
+    return true
   return allowed.includes(link)
 }
 
-// Nav Counts
-const { data: navCountsRes, refresh: refreshNavCounts } = await useFetch<any>('/api/nav/counts', { immediate: !!userCookie.value })
+// ── Nav Counts ────────────────────────────────────────────────────────────────
+const { data: navCountsRes, refresh: refreshNavCounts } = await useAsyncData(
+  'nav-counts',
+  () => $fetch<any>('/api/nav/counts', { headers: useRequestHeaders(['cookie']) }),
+)
+
+// Re-fetch nav counts whenever user changes
+watch(user, async (newUser) => {
+  if (newUser)
+    await refreshNavCounts()
+})
+
 const navCounts = computed<Record<string, number>>(() => navCountsRes.value?.data || {})
 
-// Poll for updates every 60 seconds
-let pollInterval: any
+// Poll for badge updates every 60 seconds
+let pollInterval: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
-  pollInterval = setInterval(refreshNavCounts, 60000)
+  pollInterval = setInterval(refreshNavCounts, 60_000)
 })
 onUnmounted(() => {
   clearInterval(pollInterval)
 })
 
+// ── Filtered nav menus ────────────────────────────────────────────────────────
 const filteredNavMenu = computed(() => {
   return navMenu.map(group => ({
     ...group,
     items: group.items.map((item: any) => {
       const newItem = { ...item }
       const count = navCounts.value[newItem.link]
-      if (count && count > 0) {
+      if (count && count > 0)
         newItem.badge = count
-      }
       return newItem
-    }).filter((item: any) => isAllowed(item.link))
+    }).filter((item: any) => isAllowed(item.link)),
   })).filter(group => group.items.length > 0)
-})
-
-const flattenedNavItems = computed(() => {
-  return filteredNavMenu.value.flatMap(group => group.items)
 })
 
 const filteredNavMenuConcepts = computed(() => {
@@ -76,11 +109,10 @@ const filteredNavMenuConcepts = computed(() => {
     items: navMenuConcepts.items.map((item: any) => {
       const newItem = { ...item }
       const count = navCounts.value[newItem.link]
-      if (count && count > 0) {
+      if (count && count > 0)
         newItem.badge = count
-      }
       return newItem
-    }).filter((item: any) => isAllowed(item.link))
+    }).filter((item: any) => isAllowed(item.link)),
   }
 })
 
@@ -88,44 +120,30 @@ const filteredNavMenuBottom = computed(() => {
   return navMenuBottom.map((item: any) => {
     const newItem = { ...item }
     const count = navCounts.value[newItem.link]
-    if (count && count > 0) {
+    if (count && count > 0)
       newItem.badge = count
-    }
     return newItem
   }).filter((item: any) => isAllowed(item.link))
 })
 
-
-
-// Filter workspaces: if the user has a workspace assigned, only show that one
-const userTeams = computed(() => {
-  const userWs = userCookie.value?.workspace
-  if (userWs) {
-    const matched = allTeams.value.filter((t: any) => t._id === userWs)
-    return matched.length > 0 ? matched : allTeams.value
-  }
-  return allTeams.value
-})
-
-const user = computed(() => {
-  const u = userCookie.value
+// ── User display info ─────────────────────────────────────────────────────────
+const userDisplay = computed(() => {
+  const u = user.value
   let avatar = u?.profileImage || ''
-  
+
   // Wipe legacy BigQuery image routes if they still exist in login cookie
-  if (avatar.includes('api/bigquery')) {
+  if (avatar.includes('api/bigquery'))
     avatar = ''
-  }
 
   return {
     name: u?.employee || 'Unknown User',
     email: u?.email || '',
     avatar,
-    position: u?.position || ''
+    position: u?.position || '',
   }
 })
 
 const { sidebar } = useAppSettings()
-
 const conceptsOpen = ref(false)
 </script>
 
@@ -147,10 +165,10 @@ const conceptsOpen = ref(false)
           <CollapsibleTrigger as-child>
             <SidebarGroupLabel class="cursor-pointer hover:text-foreground transition-colors select-none group/concepts">
               {{ getHeading(filteredNavMenuConcepts) }}
-              <Icon 
-                name="i-lucide-chevron-right" 
-                class="ml-auto size-3.5 text-muted-foreground/60 transition-transform duration-200" 
-                :class="conceptsOpen ? 'rotate-90' : ''" 
+              <Icon
+                name="i-lucide-chevron-right"
+                class="ml-auto size-3.5 text-muted-foreground/60 transition-transform duration-200"
+                :class="conceptsOpen ? 'rotate-90' : ''"
               />
             </SidebarGroupLabel>
           </CollapsibleTrigger>
@@ -164,7 +182,7 @@ const conceptsOpen = ref(false)
       </SidebarGroup>
     </SidebarContent>
     <SidebarFooter>
-      <LayoutSidebarNavFooter :user="user" />
+      <LayoutSidebarNavFooter :user="userDisplay" />
     </SidebarFooter>
     <SidebarRail />
   </Sidebar>

@@ -29,6 +29,7 @@ export default defineEventHandler(async (event) => {
       position: employee.position,
       profileImage: employee.profileImage,
       status: employee.status,
+      workspace: employee.workspace || '',
     },
   }
 })
