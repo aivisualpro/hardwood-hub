@@ -34,20 +34,25 @@ setHeader({
 
 const activeTab = ref('summary')
 
-// Data fetching — filter performance records for the target employee
-const { data: recordsData, pending: loadingRecords } = await useFetch('/api/performance', {
-  transform: (res: any) => res.data?.filter((r: any) => r.employee === profileUserId.value) || [],
-})
+// Data fetching — run ALL fetches in parallel to avoid SSR waterfall
+// (previously each `await useFetch` ran sequentially, adding up to several seconds)
+const [
+  { data: recordsData, pending: loadingRecords },
+  { data: treeData, pending: loadingTree },
+  { data: bonusRulesData, pending: loadingRules },
+] = await Promise.all([
+  useFetch('/api/performance', {
+    transform: (res: any) => res.data?.filter((r: any) => r.employee === profileUserId.value) || [],
+  }),
+  useFetch('/api/skills/tree', {
+    transform: (res: any) => res.data || [],
+  }),
+  useFetch('/api/skill-bonus', {
+    transform: (res: any) => res.data || [],
+  }),
+])
 
-const { data: treeData, pending: loadingTree } = await useFetch('/api/skills/tree', {
-  transform: (res: any) => res.data || [],
-})
-
-const { data: bonusRulesData, pending: loadingRules } = await useFetch('/api/skill-bonus', {
-  transform: (res: any) => res.data || [],
-})
-
-// Fetch custom bonuses (sub-category level)
+// Fetch custom bonuses (sub-category level) — also parallelized above
 const customBonuses = ref<any[]>([])
 async function fetchCustomBonuses() {
   try {
@@ -56,7 +61,8 @@ async function fetchCustomBonuses() {
   }
   catch { /* ignore */ }
 }
-await useAsyncData('profile-custom-bonuses', async () => { await fetchCustomBonuses(); return true })
+// Fire custom bonus fetch in parallel with the useFetch results settling
+await fetchCustomBonuses()
 
 // Utilities
 function levelIndex(lvl: string) {
