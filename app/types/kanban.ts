@@ -39,6 +39,7 @@ export interface Task {
     profileImage?: string
   }
   createdAt: Date | number | string
+  updatedAt?: Date | number | string
 }
 
 export interface NewTask extends Omit<Task, 'id' | 'createdAt' | 'assignees' | 'createdBy'> {

@@ -161,6 +161,7 @@ export function useKanban() {
       comments: t.comments || [],
       approvedBy: t.approvedBy || null,
       createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
     }
   }
 

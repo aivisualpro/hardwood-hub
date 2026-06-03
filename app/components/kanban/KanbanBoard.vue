@@ -447,12 +447,12 @@ function remainingDaysClass(dueDate: any): string {
   return 'bg-emerald-700 text-white'
 }
 
-function completedInDaysLabel(createdAt: any): string {
+function completedInDaysLabel(createdAt: any, completedAt: any): string {
   const created = new Date(createdAt)
   created.setHours(0, 0, 0, 0)
-  const now = new Date()
-  now.setHours(0, 0, 0, 0)
-  const diff = Math.ceil((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
+  const completed = completedAt ? new Date(completedAt) : new Date()
+  completed.setHours(0, 0, 0, 0)
+  const diff = Math.ceil((completed.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
   if (diff <= 0)
     return 'Completed today'
   if (diff === 1)
@@ -646,7 +646,7 @@ const PAGE_SIZE = 20
                         <Icon name="lucide:check-circle" class="size-3" />
                         <span>Done</span>
                       </div>
-                      <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-700 text-white">{{ completedInDaysLabel(t.createdAt) }}</span>
+                      <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-700 text-white">{{ completedInDaysLabel(t.createdAt, t.updatedAt) }}</span>
                     </div>
                     <div v-else-if="t.dueDate" class="flex items-center justify-between gap-2 mt-2">
                       <div class="flex items-center gap-1 text-[11px] text-muted-foreground">

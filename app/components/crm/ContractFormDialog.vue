@@ -537,6 +537,23 @@ function openForCustomer(customer: any) {
     loadCustomerGallery(customer._id)
 }
 
+// Computed: can the contract be submitted?
+const canSubmitContract = computed(() => {
+  if (!contractTitle.value.trim()) return false
+  if (!selectedCustomer.value || !selectedModalTemplate.value) return false
+  // Check all required template variables are filled
+  const vars = selectedModalTemplate.value.variables || []
+  for (const v of vars) {
+    if (!v.required) continue
+    // Skip auto-filled system variables
+    if (['company_name', 'companyName', 'client_name', 'clientName', 'customer_name', 'customerName'].includes(v.key)) continue
+    if (v.scope === 'client') continue
+    const val = variableValues.value[v.key]
+    if (!val || !String(val).trim()) return false
+  }
+  return true
+})
+
 defineExpose({ openCreateModal, openEditContract, openForCustomer })
 
 const seeding = ref(false)
@@ -547,7 +564,7 @@ async function seedChangeOrder() {}
   <!-- ═══════ CREATE CONTRACT MODAL ═══════ -->
   <!-- ═══════════════════════════════════════════════════════ -->
   <Dialog v-model:open="showCreateModal">
-    <DialogContent class="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+    <DialogContent class="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
       <!-- Modal Header -->
       <div class="px-6 pt-6 pb-4 border-b border-border/50">
         <div class="flex items-center gap-3 mb-4">
@@ -804,7 +821,7 @@ async function seedChangeOrder() {}
             </Button>
           </div>
 
-          <div v-else class="max-w-md mx-auto py-8 pb-64 space-y-6">
+          <div v-else class="py-8 pb-64 space-y-6">
             <div class="space-y-2">
               <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider block ml-1">Contract Template</Label>
               <div class="relative">
@@ -850,7 +867,7 @@ async function seedChangeOrder() {}
                         <Icon name="i-lucide-file-signature" class="size-4" />
                       </div>
                       <div class="flex-1 min-w-0">
-                        <p class="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors" :class="{ 'text-primary': selectedModalTemplate?._id === t._id }">
+                        <p class="text-sm font-bold text-foreground group-hover:text-primary transition-colors break-words" :class="{ 'text-primary': selectedModalTemplate?._id === t._id }">
                           {{ t.name }}
                         </p>
                       </div>
@@ -1141,10 +1158,10 @@ async function seedChangeOrder() {}
             Cancel
           </Button>
           <Button
-            v-if="createStep === 3"
+            v-if="createStep === 4"
             size="sm"
             class="shadow-lg shadow-primary/20"
-            :disabled="savingContract || isUploadingPdf || !contractTitle.trim()"
+            :disabled="savingContract || isUploadingPdf || !canSubmitContract"
             @click="saveContract"
           >
             <Icon v-if="savingContract || isUploadingPdf" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
