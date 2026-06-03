@@ -101,6 +101,20 @@ const GalleryItem = z.object({
   uploadedAt: z.coerce.date().optional(),
 })
 
+const DocumentFile = z.object({
+  url: z.string().url('File URL must be a valid URL'),
+  name: z.string().max(500).optional().default(''),
+  size: z.number().nonnegative().optional().default(0),
+  type: z.string().max(200).optional().default(''),
+})
+
+const DocumentItem = z.object({
+  date: z.coerce.date().optional(),
+  documentType: z.string().max(200).optional().default(''),
+  files: z.array(DocumentFile).optional().default([]),
+  uploadedAt: z.coerce.date().optional(),
+})
+
 // ─── CUSTOMER ─────────────────────────────────────────────────────────────────
 //
 // Writable fields from Customer model (read-only server fields excluded:
@@ -300,6 +314,7 @@ export const PipelineCreateSchema = z.object({
   tags: z.array(z.string().max(100)).optional().default([]),
   gallery: z.array(GalleryItem).optional().default([]),
   relatedContacts: z.array(RelatedContact).optional().default([]),
+  documents: z.array(DocumentItem).optional().default([]),
 })
 
 export const PipelineUpdateSchema = PipelineCreateSchema.partial()

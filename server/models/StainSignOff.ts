@@ -2,6 +2,10 @@ import type { Document } from 'mongoose'
 import mongoose, { Schema } from 'mongoose'
 
 export interface IStainSignOff extends Document {
+  customerId?: string
+  customerName?: string
+  projectId?: string
+  projectName?: string
   clientName?: string
   email?: string
   stainColorAdditive?: string[]
@@ -18,6 +22,10 @@ export interface IStainSignOff extends Document {
 
 const StainSignOffSchema = new Schema(
   {
+    customerId: { type: String, default: null },
+    customerName: { type: String, default: null },
+    projectId: { type: String, default: null },
+    projectName: { type: String, default: null },
     clientName: { type: String, default: null },
     email: { type: String, default: null },
     stainColorAdditive: { type: [String], default: [] },

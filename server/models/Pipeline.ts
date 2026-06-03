@@ -42,6 +42,17 @@ const PipelineSchema = new mongoose.Schema(
       preferredContact: { type: String, default: '' },
       address: { type: String, default: '' },
     }],
+    documents: [{
+      date: { type: Date, default: Date.now },
+      documentType: { type: String, default: '' },
+      files: [{
+        url: { type: String, required: true },
+        name: { type: String, default: '' },
+        size: { type: Number, default: 0 },
+        type: { type: String, default: '' },
+      }],
+      uploadedAt: { type: Date, default: Date.now },
+    }],
   },
   {
     timestamps: true,
@@ -95,6 +106,18 @@ export interface IPipeline {
     phones?: string[]
     preferredContact?: string
     address?: string
+  }>
+  documents?: Array<{
+    _id?: any
+    date: Date
+    documentType: string
+    files: Array<{
+      url: string
+      name: string
+      size?: number
+      type?: string
+    }>
+    uploadedAt: Date
   }>
   createdAt?: Date
   updatedAt?: Date

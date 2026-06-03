@@ -9,6 +9,10 @@ const { canCreate, canUpdate, canDelete } = usePermissions('/stain-sign-off')
 // ─── Types ───────────────────────────────────────────────
 interface StainSignOffRecord {
   _id: string
+  customerId: string | null
+  customerName: string | null
+  projectId: string | null
+  projectName: string | null
   clientName: string | null
   email: string | null
   stainColorAdditive: string[]
@@ -33,6 +37,10 @@ const editingId = ref<string | null>(null)
 
 function emptyForm() {
   return {
+    customerId: '' as string,
+    customerName: '' as string,
+    projectId: '' as string,
+    projectName: '' as string,
     clientName: '',
     email: '',
     stainColorAdditive: [] as string[],
@@ -50,23 +58,88 @@ function emptyForm() {
 const hasDrawnSignature = ref(false)
 const form = ref(emptyForm())
 
-// ─── Pipeline Clients Dropdown ───────────────────────────
-interface PipelineClient { _id: string, name: string, email: string, location: string }
-const { data: pipelineClientsRes } = await useFetch<{ success: boolean, data: PipelineClient[] }>('/api/crm/pipeline-clients', { key: 'pipeline-clients-stain' })
-const pipelineClients = computed(() => pipelineClientsRes.value?.data || [])
-const clientSearch = ref('')
-const clientDropdownOpen = ref(false)
-const filteredClients = computed(() => {
-  const q = clientSearch.value.toLowerCase().trim()
-  if (!q)
-    return pipelineClients.value
-  return pipelineClients.value.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.location.toLowerCase().includes(q))
+// ─── Customer Dropdown (from /api/customers) ─────────────
+interface CrmCustomer { _id: string, name: string, firstName?: string, lastName?: string, email: string, phone?: string, type?: string }
+const customers = ref<CrmCustomer[]>([])
+const loadingCustomers = ref(false)
+const customerSearch = ref('')
+const customerDropdownOpen = ref(false)
+
+async function fetchCustomers() {
+  loadingCustomers.value = true
+  try {
+    const res = await $fetch<{ success: boolean, data: CrmCustomer[] }>('/api/customers', { params: { limit: 500 } })
+    customers.value = res.data || []
+  }
+  catch { }
+  finally { loadingCustomers.value = false }
+}
+
+const filteredCustomers = computed(() => {
+  const q = customerSearch.value.toLowerCase().trim()
+  if (!q) return customers.value
+  return customers.value.filter(c =>
+    (c.name || '').toLowerCase().includes(q)
+    || (c.email || '').toLowerCase().includes(q)
+    || (c.phone || '').includes(q),
+  )
 })
-function selectClient(client: PipelineClient) {
-  form.value.clientName = client.name
-  form.value.email = client.email
-  clientDropdownOpen.value = false
-  clientSearch.value = ''
+
+function selectCustomer(c: CrmCustomer) {
+  form.value.customerId = c._id
+  form.value.customerName = c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim()
+  form.value.clientName = form.value.customerName
+  form.value.email = c.email || ''
+  // Reset project selection when customer changes
+  form.value.projectId = ''
+  form.value.projectName = ''
+  selectedProject.value = null
+  customerDropdownOpen.value = false
+  customerSearch.value = ''
+  // Load projects for the selected customer
+  fetchProjects(c._id)
+}
+
+// ─── Project Dropdown (from /api/pipeline?customerId=...) ─
+interface PipelineProject { _id: string, name: string, projectName?: string, email?: string, status?: string }
+const projects = ref<PipelineProject[]>([])
+const loadingProjects = ref(false)
+const projectSearch = ref('')
+const projectDropdownOpen = ref(false)
+const selectedProject = ref<PipelineProject | null>(null)
+
+async function fetchProjects(custId: string) {
+  loadingProjects.value = true
+  projects.value = []
+  try {
+    const res = await $fetch<{ success: boolean, data: PipelineProject[] }>('/api/pipeline', {
+      params: { limit: 200, customerId: custId },
+    })
+    projects.value = res.data || []
+  }
+  catch { }
+  finally { loadingProjects.value = false }
+}
+
+const filteredProjects = computed(() => {
+  const q = projectSearch.value.toLowerCase().trim()
+  if (!q) return projects.value
+  return projects.value.filter(p =>
+    (p.projectName || p.name || '').toLowerCase().includes(q),
+  )
+})
+
+function selectProject(p: PipelineProject) {
+  selectedProject.value = p
+  form.value.projectId = p._id
+  form.value.projectName = p.projectName || p.name || ''
+  projectDropdownOpen.value = false
+  projectSearch.value = ''
+}
+
+// Fetch customers on mount
+if (import.meta.client) {
+  fetchCustomers()
 }
 
 // ─── Stain Options ───────────────────────────────────────
@@ -142,7 +215,7 @@ const sections = computed(() => [
     id: 'client-info',
     title: 'Client Information',
     icon: 'i-lucide-user-circle',
-    description: 'Select client from pipeline and verify email',
+    description: 'Select customer and project from CRM',
     color: 'from-blue-500/20 to-blue-500/5 border-blue-500/30',
     iconColor: 'text-blue-400',
   },
@@ -268,7 +341,7 @@ onBeforeUnmount(() => {
 function isSectionDone(sectionId: string) {
   const f = form.value
   switch (sectionId) {
-    case 'client-info': return !!f.clientName && !!f.email
+    case 'client-info': return !!f.customerId && !!f.customerName
     case 'stain-selection': return f.stainColorAdditive.length > 0
     case 'terms': return f.isStainSamplesThrough && f.isScreensNotAnAccurate && f.isWoodNaturalProduct && f.isAnyChangesColorsYourExpense && f.isMaplePineOther
     case 'notes': return true // optional
@@ -456,6 +529,10 @@ function openEdit(rec: StainSignOffRecord) {
   hasDrawnSignature.value = !!merged.isSigned
   sessionSignatureDrawn.value = false
   activeTab.value = 'form'
+  // Load projects for the saved customer
+  if (merged.customerId) {
+    fetchProjects(merged.customerId as string)
+  }
 }
 
 function cancelEdit() {
@@ -464,10 +541,8 @@ function cancelEdit() {
 }
 
 async function saveRecord() {
-  if (!form.value.clientName)
-    return toast.error('Client Name is required')
-  if (!form.value.email)
-    return toast.error('Email is required')
+  if (!form.value.customerId)
+    return toast.error('Customer is required')
   if (form.value.stainColorAdditive.length === 0)
     return toast.error('Please select at least one stain color')
   if (!allTermsAccepted.value)
@@ -531,12 +606,14 @@ const showShareDialog = ref(false)
 const publicUrl = ref('')
 const isNativeShareSupported = ref(false)
 const generatingCard = ref(false)
+const isMounted = ref(false)
 
 onMounted(() => {
   publicUrl.value = `${window.location.origin}/public/stain-sign-off`
   if (navigator && 'share' in navigator) {
     isNativeShareSupported.value = true
   }
+  isMounted.value = true
 })
 
 // Draw a beautiful 1080x1080 image to share or download
@@ -684,75 +761,26 @@ async function copyLink() {
 
 <template>
   <div :class="activeTab === 'list' ? '' : 'h-[calc(100dvh-var(--content-offset))] overflow-hidden'">
-    <!-- ═════════ LIST VIEW ═════════ -->
-    <div v-if="activeTab === 'list'" class="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
-      <!-- Header -->
-      <div class="flex items-center justify-between gap-3">
-        <div class="min-w-0">
-          <h1 class="text-lg sm:text-2xl font-bold tracking-tight">
-            Stain Sign Off
-          </h1>
-          <p class="text-[10px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 hidden sm:block">
-            Manage client stain color selections and sign-off documents
-          </p>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm font-semibold border-primary/20 text-primary hover:bg-primary/5" @click="showShareDialog = true">
-            <Icon name="i-lucide-qr-code" class="mr-1 sm:mr-2 size-3.5 sm:size-4" />
+    <!-- Teleport action buttons to global header -->
+    <ClientOnly>
+      <Teleport v-if="isMounted" to="#header-toolbar">
+        <div class="flex items-center gap-2">
+          <Button variant="outline" size="sm" class="h-8 text-xs font-semibold border-primary/20 text-primary hover:bg-primary/5" @click="showShareDialog = true">
+            <Icon name="i-lucide-qr-code" class="mr-1.5 size-3.5" />
             <span class="hidden sm:inline">Share Link</span>
             <span class="sm:hidden">Share</span>
           </Button>
-          <Button v-if="canCreate()" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" @click="openCreate">
-            <Icon name="i-lucide-plus" class="mr-1 sm:mr-2 size-3.5 sm:size-4" />
+          <Button v-if="canCreate()" size="sm" class="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" @click="openCreate">
+            <Icon name="i-lucide-plus" class="mr-1.5 size-3.5" />
             <span class="hidden sm:inline">New Sign Off</span>
             <span class="sm:hidden">New</span>
           </Button>
         </div>
-      </div>
+      </Teleport>
+    </ClientOnly>
 
-      <!-- Summary Cards -->
-      <div class="grid grid-cols-3 gap-2 sm:gap-4">
-        <div class="rounded-xl border border-border/50 bg-card p-2.5 sm:p-4 flex items-center gap-2 sm:gap-4">
-          <div class="size-8 sm:size-11 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-blue-500/20 flex items-center justify-center shrink-0">
-            <Icon name="i-lucide-file-signature" class="size-3.5 sm:size-5 text-blue-400" />
-          </div>
-          <div class="min-w-0">
-            <p class="text-[9px] sm:text-xs text-muted-foreground font-medium truncate">
-              Today
-            </p>
-            <p class="text-lg sm:text-xl font-bold">
-              {{ todayCount }}
-            </p>
-          </div>
-        </div>
-        <div class="rounded-xl border border-border/50 bg-card p-2.5 sm:p-4 flex items-center gap-2 sm:gap-4">
-          <div class="size-8 sm:size-11 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center shrink-0">
-            <Icon name="i-lucide-check-circle-2" class="size-3.5 sm:size-5 text-emerald-400" />
-          </div>
-          <div class="min-w-0">
-            <p class="text-[9px] sm:text-xs text-muted-foreground font-medium truncate">
-              Signed
-            </p>
-            <p class="text-lg sm:text-xl font-bold">
-              {{ signedCount }}
-            </p>
-          </div>
-        </div>
-        <div class="rounded-xl border border-border/50 bg-card p-2.5 sm:p-4 flex items-center gap-2 sm:gap-4">
-          <div class="size-8 sm:size-11 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center shrink-0">
-            <Icon name="i-lucide-archive" class="size-3.5 sm:size-5 text-amber-400" />
-          </div>
-          <div class="min-w-0">
-            <p class="text-[9px] sm:text-xs text-muted-foreground font-medium truncate">
-              Total
-            </p>
-            <p class="text-lg sm:text-xl font-bold">
-              {{ totalRecords }}
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <!-- ═════════ LIST VIEW ═════════ -->
+    <div v-if="activeTab === 'list'" class="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <!-- Records Table -->
       <div class="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
         <div v-if="records.length === 0" class="p-12 sm:p-24 flex flex-col items-center justify-center text-center px-4">
@@ -1004,24 +1032,25 @@ async function copyLink() {
 
               <!-- Section Content -->
               <div class="px-3 sm:px-5 pb-4 sm:pb-6 space-y-4 sm:space-y-5">
-                <!-- ── Client Info (Dropdown from Pipeline) ── -->
+                <!-- ── Client Info (Customer + Project) ── -->
                 <template v-if="section.id === 'client-info'">
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                    <!-- Customer Dropdown -->
                     <div class="flex flex-col gap-1.5">
                       <Label class="flex items-center gap-1.5">
                         <Icon name="i-lucide-user" class="size-3.5 text-muted-foreground" />
-                        Client Name <span class="text-destructive">*</span>
+                        Customer <span class="text-destructive">*</span>
                       </Label>
-                      <Popover v-model:open="clientDropdownOpen">
+                      <Popover v-model:open="customerDropdownOpen">
                         <PopoverTrigger as-child>
                           <Button
                             variant="outline"
                             role="combobox"
-                            :aria-expanded="clientDropdownOpen"
+                            :aria-expanded="customerDropdownOpen"
                             class="h-9 sm:h-10 w-full justify-between font-normal"
-                            :class="!form.clientName && 'text-muted-foreground'"
+                            :class="!form.customerName && 'text-muted-foreground'"
                           >
-                            {{ form.clientName || 'Select client from pipeline...' }}
+                            {{ form.customerName || 'Select customer...' }}
                             <Icon name="i-lucide-chevrons-up-down" class="ml-2 size-3.5 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
@@ -1029,40 +1058,108 @@ async function copyLink() {
                           <div class="flex items-center border-b border-border/50 px-3">
                             <Icon name="i-lucide-search" class="mr-2 size-3.5 shrink-0 text-muted-foreground" />
                             <input
-                              v-model="clientSearch"
-                              placeholder="Search clients..."
+                              v-model="customerSearch"
+                              placeholder="Search customers..."
                               class="flex h-9 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
                             >
                           </div>
                           <div class="max-h-[240px] overflow-y-auto p-1">
-                            <div v-if="filteredClients.length === 0" class="py-6 text-center text-sm text-muted-foreground">
-                              No clients found.
+                            <div v-if="loadingCustomers" class="py-6 text-center text-sm text-muted-foreground">
+                              <Icon name="i-lucide-loader-2" class="size-4 animate-spin mx-auto mb-1" />
+                              Loading...
+                            </div>
+                            <div v-else-if="filteredCustomers.length === 0" class="py-6 text-center text-sm text-muted-foreground">
+                              No customers found.
                             </div>
                             <button
-                              v-for="client in filteredClients"
-                              :key="client._id"
+                              v-for="c in filteredCustomers"
+                              :key="c._id"
                               class="relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
-                              :class="form.clientName === client.name && 'bg-accent'"
-                              @click="selectClient(client)"
+                              :class="form.customerId === c._id && 'bg-accent'"
+                              @click="selectCustomer(c)"
                             >
                               <div class="size-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shrink-0">
-                                <span class="text-[10px] font-bold text-primary">{{ client.name.charAt(0).toUpperCase() }}</span>
+                                <span class="text-[10px] font-bold text-primary">{{ (c.name || c.firstName || '?').charAt(0).toUpperCase() }}</span>
                               </div>
                               <div class="flex-1 min-w-0">
                                 <p class="font-medium truncate">
-                                  {{ client.name }}
+                                  {{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() }}
                                 </p>
-                                <p v-if="client.location" class="text-[10px] text-muted-foreground truncate">
-                                  {{ client.location }}
+                                <p v-if="c.email" class="text-[10px] text-muted-foreground truncate">
+                                  {{ c.email }}
                                 </p>
                               </div>
-                              <Icon v-if="form.clientName === client.name" name="i-lucide-check" class="size-3.5 text-primary shrink-0" />
+                              <Icon v-if="form.customerId === c._id" name="i-lucide-check" class="size-3.5 text-primary shrink-0" />
                             </button>
                           </div>
                         </PopoverContent>
                       </Popover>
                     </div>
+
+                    <!-- Project Dropdown -->
                     <div class="flex flex-col gap-1.5">
+                      <Label class="flex items-center gap-1.5">
+                        <Icon name="i-lucide-folder-kanban" class="size-3.5 text-muted-foreground" />
+                        Project
+                      </Label>
+                      <Popover v-model:open="projectDropdownOpen">
+                        <PopoverTrigger as-child>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            :aria-expanded="projectDropdownOpen"
+                            :disabled="!form.customerId"
+                            class="h-9 sm:h-10 w-full justify-between font-normal"
+                            :class="!form.projectName && 'text-muted-foreground'"
+                          >
+                            {{ form.projectName || (form.customerId ? 'Select project...' : 'Select customer first') }}
+                            <Icon name="i-lucide-chevrons-up-down" class="ml-2 size-3.5 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent class="w-[var(--reka-popover-trigger-width)] p-0" align="start">
+                          <div class="flex items-center border-b border-border/50 px-3">
+                            <Icon name="i-lucide-search" class="mr-2 size-3.5 shrink-0 text-muted-foreground" />
+                            <input
+                              v-model="projectSearch"
+                              placeholder="Search projects..."
+                              class="flex h-9 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+                            >
+                          </div>
+                          <div class="max-h-[240px] overflow-y-auto p-1">
+                            <div v-if="loadingProjects" class="py-6 text-center text-sm text-muted-foreground">
+                              <Icon name="i-lucide-loader-2" class="size-4 animate-spin mx-auto mb-1" />
+                              Loading...
+                            </div>
+                            <div v-else-if="filteredProjects.length === 0" class="py-6 text-center text-sm text-muted-foreground">
+                              No projects found for this customer.
+                            </div>
+                            <button
+                              v-for="p in filteredProjects"
+                              :key="p._id"
+                              class="relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
+                              :class="form.projectId === p._id && 'bg-accent'"
+                              @click="selectProject(p)"
+                            >
+                              <div class="size-7 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center shrink-0">
+                                <Icon name="i-lucide-folder-kanban" class="size-3 text-amber-500" />
+                              </div>
+                              <div class="flex-1 min-w-0">
+                                <p class="font-medium truncate">
+                                  {{ p.projectName || p.name || 'Untitled Project' }}
+                                </p>
+                                <p v-if="p.status" class="text-[10px] text-muted-foreground truncate capitalize">
+                                  {{ p.status }}
+                                </p>
+                              </div>
+                              <Icon v-if="form.projectId === p._id" name="i-lucide-check" class="size-3.5 text-primary shrink-0" />
+                            </button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="flex flex-col gap-1.5 sm:col-span-2">
                       <Label for="ss-email" class="flex items-center gap-1.5">
                         <Icon name="i-lucide-mail" class="size-3.5 text-muted-foreground" />
                         Email

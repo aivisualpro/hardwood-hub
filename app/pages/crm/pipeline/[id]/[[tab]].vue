@@ -167,6 +167,7 @@ async function handleStageSelect(optionId: string) {
 const showEditCustomer = ref(false)
 const contractFormDialog = ref<any>(null)
 const galleryRef = ref<any>(null)
+const documentsRef = ref<any>(null)
 const relatedContactsRef = ref<any>(null)
 const showDeleteConfirm = ref(false)
 
@@ -752,21 +753,36 @@ function totalSqft(blocks: any[]) {
           </div>
         </div>
 
-        <!-- Placeholder Box 1 -->
-        <div class="bg-card rounded-2xl border border-dashed shadow-sm overflow-hidden">
-          <div class="px-5 py-3 border-b bg-muted/20 flex items-center gap-2 shrink-0">
-            <Icon name="i-lucide-box" class="size-4 text-muted-foreground/40 shrink-0" />
-            <h3 class="text-sm font-bold text-muted-foreground/40">
-              Coming Soon
-            </h3>
+        <!-- Documents Card -->
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+          <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-3 shrink-0">
+            <div class="flex items-center gap-2 shrink-0">
+              <Icon name="i-lucide-file-stack" class="size-4 text-rose-500 shrink-0" />
+              <h3 class="text-sm font-bold text-foreground">
+                Documents
+              </h3>
+              <span v-if="customer?.documents?.length" class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{{ customer.documents.length }}</span>
+            </div>
+            <button
+              v-if="customer && documentsRef && !documentsRef.showAddForm"
+              class="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold hover:bg-primary/90 transition-all"
+              @click="documentsRef.openAdd()"
+            >
+              <Icon name="i-lucide-plus" class="size-3" />
+              Add
+            </button>
           </div>
-          <div class="flex-1 flex flex-col items-center justify-center text-center gap-2">
-            <Icon name="i-lucide-plus-circle" class="size-8 text-muted-foreground/20" />
-            <p class="text-xs text-muted-foreground/40 font-medium">
-              More content coming here
+          <div v-if="customer" class="p-4">
+            <CrmCustomerDocuments ref="documentsRef" :customer="customer" @updated="onCustomerUpdated" />
+          </div>
+          <div v-else class="flex-1 flex flex-col items-center justify-center py-8 text-center">
+            <Icon name="i-lucide-file-stack" class="size-6 text-muted-foreground/30 mx-auto mb-2" />
+            <p class="text-xs text-muted-foreground">
+              No documents yet
             </p>
           </div>
         </div>
+
 
         <!-- Placeholder Box 2 -->
         <div class="bg-card rounded-2xl border border-dashed shadow-sm overflow-hidden">
