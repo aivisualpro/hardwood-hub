@@ -297,7 +297,7 @@ const selectedStageFilter = ref<string>((route.query.status as string) || 'all')
 const pipelinePage = ref(1)
 const pipelineTotalPages = ref(1)
 const pipelineTotal = ref(0)
-const PIPELINE_LIMIT = 50
+const PIPELINE_LIMIT = 0 // 0 = fetch all records
 
 async function fetchCustomers(targetPage = pipelinePage.value) {
   try {
