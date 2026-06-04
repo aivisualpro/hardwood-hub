@@ -26,6 +26,7 @@ const form = ref({
   zip: '',
   notes: '',
   stage: '',
+  status: '' as string,
   estimatedProjectDuration: '',
   totalEstimate: undefined as number | undefined,
   assignedTo: '',
@@ -37,6 +38,7 @@ const form = ref({
   projectAssignedTo: '',
   woodOrderDate: '',
   tags: '',
+  relatedContact: '' as string,
 })
 
 const isLoading = ref(false)
@@ -61,6 +63,7 @@ watch(() => props.modelValue, (isOpen) => {
         zip: props.customer.zip || '',
         notes: props.customer.notes || '',
         stage: props.customer.stage || '',
+        status: props.customer.status ? String(props.customer.status) : '',
         estimatedProjectDuration: props.customer.estimatedProjectDuration || '',
         totalEstimate: props.customer.totalEstimate || undefined,
         assignedTo: props.customer.assignedTo || '',
@@ -72,6 +75,7 @@ watch(() => props.modelValue, (isOpen) => {
         projectAssignedTo: props.customer.projectAssignedTo || '',
         woodOrderDate: props.customer.woodOrderDate ? (new Date(props.customer.woodOrderDate).toISOString().split('T')[0] || '') : '',
         tags: (props.customer.tags || []).join(', '),
+        relatedContact: props.customer.relatedContact || '',
       }
     }
     else {
@@ -89,6 +93,7 @@ watch(() => props.modelValue, (isOpen) => {
         zip: '',
         notes: '',
         stage: '',
+        status: '',
         estimatedProjectDuration: '',
         totalEstimate: undefined,
         assignedTo: '',
@@ -100,14 +105,15 @@ watch(() => props.modelValue, (isOpen) => {
         projectAssignedTo: '',
         woodOrderDate: '',
         tags: '',
+        relatedContact: '',
       }
     }
   }
 })
 
 async function submit() {
-  if (!form.value.firstName.trim() && !form.value.name.trim()) {
-    toast?.error?.('Please enter a First Name or Company Name')
+  if (!form.value.name.trim()) {
+    toast?.error?.('Please select a customer')
     return
   }
 
@@ -149,7 +155,7 @@ async function submit() {
     if (res.success) {
       emit('saved', res.data)
       emit('update:modelValue', false)
-      toast.success('Customer saved successfully')
+      toast.success('Project saved successfully')
     }
     else {
       toast.error(res.message || 'Failed to save customer')
@@ -287,8 +293,19 @@ function selectCustomer(cust: any) {
   form.value.city = cust.city || ''
   form.value.state = cust.state || ''
   form.value.zip = cust.zip || ''
+  form.value.relatedContact = ''
   activeDropdown.value = null
 }
+
+// ─── Related Contact from selected customer ────────────────
+const selectedCustomerObj = computed(() => {
+  if (!form.value.customerId) return null
+  return allCustomers.value.find((c: any) => c._id === form.value.customerId) || null
+})
+
+const selectedCustomerContacts = computed(() => {
+  return (selectedCustomerObj.value?.relatedContacts || []) as any[]
+})
 
 function clearCustomer() {
   form.value.customerId = ''
@@ -301,6 +318,7 @@ function clearCustomer() {
   form.value.city = ''
   form.value.state = ''
   form.value.zip = ''
+  form.value.relatedContact = ''
 }
 
 const filteredEmployees = computed(() => {
@@ -336,9 +354,9 @@ function toggleEmployee(emp: string) {
   <Dialog :open="modelValue" @update:open="emit('update:modelValue', $event)">
     <DialogContent class="sm:max-w-xl">
       <DialogHeader>
-        <DialogTitle>{{ customer ? 'Edit Customer' : 'New Customer' }}</DialogTitle>
+        <DialogTitle>{{ customer ? 'Edit Project' : 'Add Project' }}</DialogTitle>
         <DialogDescription>
-          {{ customer ? 'Update the details for this customer below.' : 'Fill in the details below to create a new customer.' }}
+          {{ customer ? 'Update the details for this project below.' : 'Fill in the details below to create a new project.' }}
         </DialogDescription>
       </DialogHeader>
 
@@ -384,24 +402,17 @@ function toggleEmployee(emp: string) {
             <Input v-model="form.projectName" placeholder="e.g. Kitchen Remodel" />
           </div>
 
-          <div class="space-y-2">
-            <Label>First Name <span class="text-destructive">*</span></Label>
-            <Input v-model="form.firstName" placeholder="John" required />
-          </div>
-
-          <div class="space-y-2">
-            <Label>Last Name</Label>
-            <Input v-model="form.lastName" placeholder="Doe" />
-          </div>
-
-          <div class="space-y-2">
-            <Label>Email</Label>
-            <Input v-model="form.email" type="email" placeholder="john@example.com" />
-          </div>
-
-          <div class="space-y-2">
-            <Label>Phone</Label>
-            <Input v-model="form.phone" placeholder="(555) 555-5555" />
+          <!-- Related Contact (only if customer has contacts) -->
+          <div v-if="form.customerId && selectedCustomerContacts.length > 0" class="space-y-2 col-span-2">
+            <Label>Related Contact</Label>
+            <select v-model="form.relatedContact" class="w-full h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+              <option value="">
+                Select a contact...
+              </option>
+              <option v-for="(rc, i) in selectedCustomerContacts" :key="i" :value="`${rc.firstName || ''} ${rc.lastName || ''}`.trim()">
+                {{ `${rc.firstName || ''} ${rc.lastName || ''}`.trim() }}{{ rc.title ? ` — ${rc.title}` : '' }}
+              </option>
+            </select>
           </div>
 
           <div class="space-y-2 relative" :class="activeDropdown === 'stage' ? 'z-50' : ''">

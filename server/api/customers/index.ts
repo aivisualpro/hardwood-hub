@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
 
     // ── Query ────────────────────────────────────────────────────────────────
     let q = Customer.find(filter)
-      .select('-gallery -relatedContacts -notes')
+      .select('-gallery -notes')
       .sort({ [safeSort]: sortDir })
     if (limit > 0) {
       q = q.skip(skip).limit(limit)

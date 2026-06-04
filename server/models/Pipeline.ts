@@ -26,6 +26,7 @@ const PipelineSchema = new mongoose.Schema(
     lastFollowUpSentOn: { type: Date, default: null },
     dateApproved: { type: Date, default: null },
     projectAssignedTo: { type: String, default: '' },
+    relatedContact: { type: String, default: '' },
     woodOrderDate: { type: Date, default: null },
     tags: [{ type: String }],
     gallery: [{
@@ -90,6 +91,7 @@ export interface IPipeline {
   lastFollowUpSentOn?: Date
   dateApproved?: Date
   projectAssignedTo?: string
+  relatedContact?: string
   woodOrderDate?: Date
   tags?: string[]
   gallery?: Array<{
