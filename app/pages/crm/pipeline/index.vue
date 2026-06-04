@@ -292,8 +292,9 @@ async function onStageDrop(e: DragEvent, stageId: string) {
 
 // ─── Client-only data fetch (server: false avoids SSR cookie context loss) ──
 // Search & filter state (declared here so fetchCustomers can read them)
-const searchQuery = ref('')
 const route = useRoute()
+const router = useRouter()
+const searchQuery = ref((route.query.search as string) || '')
 const selectedStageFilter = ref<string>((route.query.status as string) || 'all')
 
 // Pagination / infinite scroll state
@@ -432,6 +433,11 @@ watch(searchQuery, () => {
   if (pipelineSearchTimer)
     clearTimeout(pipelineSearchTimer)
   pipelineSearchTimer = setTimeout(() => {
+    // Sync search to URL
+    const query: Record<string, string> = {}
+    if (searchQuery.value.trim()) query.search = searchQuery.value.trim()
+    if (selectedStageFilter.value !== 'all') query.status = selectedStageFilter.value
+    router.replace({ query })
     fetchCustomers(1)
     fetchCounts()
   }, 300)
@@ -611,18 +617,22 @@ function selectFilter(id: string) {
   if (id !== 'all') {
     expandedStages.value[id] = true
   }
-  // Sync URL — use path-based routing
-  if (id === 'all') {
-    navigateTo('/crm/pipeline', { replace: true })
-  }
-  else {
-    navigateTo(`/crm/pipeline?status=${id}`, { replace: true })
-  }
+  // Sync URL — preserve search param
+  const query: Record<string, string> = {}
+  if (searchQuery.value.trim()) query.search = searchQuery.value.trim()
+  if (id !== 'all') query.status = id
+  navigateTo({ path: '/crm/pipeline', query }, { replace: true })
 }
 
 // Sync filter from URL on back/forward navigation
 watch(() => route.query.status, (val) => {
   selectedStageFilter.value = (val as string) || 'all'
+})
+
+// Sync search from URL on back/forward navigation
+watch(() => route.query.search, (val) => {
+  const v = (val as string) || ''
+  if (v !== searchQuery.value) searchQuery.value = v
 })
 </script>
 

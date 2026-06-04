@@ -49,10 +49,14 @@ const relatedContactsList = computed(() => {
   return allOwnerContacts.value
 })
 
-// Load customer data on mount if pipeline mode
-onMounted(() => {
-  if (isPipelineMode.value) fetchCustomer()
-})
+// Fetch customer data when pipeline mode becomes active or contactIds change
+watch(
+  [isPipelineMode, () => props.contactIds],
+  ([pm]) => {
+    if (pm) fetchCustomer()
+  },
+  { immediate: true },
+)
 
 const isEditing = ref(false)
 const editingIndex = ref<number | null>(null)
