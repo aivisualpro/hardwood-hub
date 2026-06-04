@@ -100,6 +100,7 @@ async function loadPageData() {
     fetchCustomerContracts()
     fetchRelatedStainSignOffs()
     fetchRelatedDailyProduction()
+    fetchRelatedProjects()
   }
 }
 
@@ -259,6 +260,31 @@ async function fetchRelatedDailyProduction() {
   }
 }
 
+// ─── Related Projects ────────────────────────────────────────────────
+const relatedProjects = ref<any[]>([])
+const loadingRelatedProjects = ref(false)
+
+async function fetchRelatedProjects() {
+  if (!customer.value?.name) { relatedProjects.value = []; return }
+  loadingRelatedProjects.value = true
+  try {
+    const res = await $fetch<any>('/api/pipeline', {
+      params: { search: customer.value.name, limit: 100 },
+    })
+    // Filter to exact name match (the API does regex, so refine client-side)
+    const name = customer.value.name.toLowerCase()
+    relatedProjects.value = (res.data || []).filter(
+      (r: any) => r.name && r.name.toLowerCase() === name,
+    )
+  }
+  catch {
+    console.error('Failed to load related projects')
+  }
+  finally {
+    loadingRelatedProjects.value = false
+  }
+}
+
 function formatStainColors(colors: string[]) {
   if (!colors?.length)
     return '—'
@@ -319,17 +345,26 @@ function totalSqft(blocks: any[]) {
     <!-- ── 3-column layout — cards scroll individually ──────────────────── -->
     <div class="flex h-[calc(100dvh-var(--header-height))] -mx-4 lg:-mx-6 overflow-hidden divide-x divide-border">
       <!-- ══ LEFT COLUMN — Details + Related Contacts ══════════════════════ -->
-      <div class="w-[32%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
-        <!-- Details Card -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+      <div class="w-[32%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-hidden">
+        <!-- ── Customer Details Card ─────────────────────────────────── -->
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center gap-2 shrink-0">
-            <Icon name="i-lucide-info" class="size-4 text-primary shrink-0" />
+            <Icon name="i-lucide-user" class="size-4 text-primary shrink-0" />
             <h3 class="text-sm font-bold text-foreground">
               Customer Details
             </h3>
           </div>
-          <div v-if="customer" class="px-5 py-4 space-y-3">
-            <!-- Contact -->
+          <div v-if="customer" class="px-5 py-4 space-y-3 flex-1 min-h-0 overflow-y-auto">
+            <!-- Customer Name -->
+            <div>
+              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                Customer Name
+              </p>
+              <p class="text-sm font-bold text-foreground">
+                {{ customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || '—' }}
+              </p>
+            </div>
+            <!-- Email & Phone -->
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
@@ -347,34 +382,98 @@ function totalSqft(blocks: any[]) {
               </div>
             </div>
             <!-- Address -->
-            <div v-if="customer.address || customer.city">
+            <div>
               <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
                 Address
               </p>
               <p class="text-xs text-foreground/80 font-medium leading-relaxed">
-                {{ [customer.address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ') || '—' }}
+                {{ customer.address || '—' }}
               </p>
             </div>
-            <!-- Assignment -->
+            <!-- City & State -->
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Assigned To
+                  City
                 </p>
                 <p class="text-xs font-semibold text-foreground">
-                  {{ customer.assignedTo || '—' }}
+                  {{ customer.city || '—' }}
                 </p>
               </div>
               <div>
                 <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Project Manager
+                  State
                 </p>
                 <p class="text-xs font-semibold text-foreground">
-                  {{ customer.projectAssignedTo || '—' }}
+                  {{ customer.state || '—' }}{{ customer.zip ? ` ${customer.zip}` : '' }}
                 </p>
               </div>
             </div>
-            <!-- Financial -->
+            <!-- Type & Source -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Type
+                </p>
+                <p class="text-xs font-semibold text-foreground">
+                  {{ customer.type || '—' }}
+                </p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Source
+                </p>
+                <p class="text-xs font-semibold text-foreground">
+                  {{ customer.source || 'Direct' }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div v-else class="px-5 py-8">
+            <div class="space-y-2 w-full">
+              <div v-for="i in 4" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${70 + Math.random() * 30}%`" />
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Project Details Card ──────────────────────────────────── -->
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+          <div class="px-5 py-3 border-b bg-muted/30 flex items-center gap-2 shrink-0">
+            <Icon name="i-lucide-folder-kanban" class="size-4 text-primary shrink-0" />
+            <h3 class="text-sm font-bold text-foreground">
+              Project Details
+            </h3>
+          </div>
+          <div v-if="customer" class="px-5 py-4 space-y-3 flex-1 min-h-0 overflow-y-auto">
+            <!-- Project Name -->
+            <div>
+              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                Project Name
+              </p>
+              <p class="text-sm font-bold text-foreground">
+                {{ customer.projectName || '—' }}
+              </p>
+            </div>
+            <!-- Stage & Duration -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Stage
+                </p>
+                <p class="text-xs font-bold uppercase tracking-wider" :style="getStageStyle()">
+                  {{ getStatusLabel() || '—' }}
+                </p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Estim. Project Duration
+                </p>
+                <p class="text-xs font-semibold text-foreground">
+                  {{ customer.estimatedProjectDuration || '—' }}
+                </p>
+              </div>
+            </div>
+            <!-- Financials -->
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
@@ -386,21 +485,49 @@ function totalSqft(blocks: any[]) {
               </div>
               <div>
                 <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Duration
+                  Labor + Sanding Materials
                 </p>
-                <p class="text-xs font-semibold text-foreground">
-                  {{ customer.estimatedProjectDuration || '—' }}
+                <p class="text-base font-black tabular-nums text-foreground">
+                  {{ customer.laborSandingTotal ? `$${customer.laborSandingTotal.toLocaleString()}` : '—' }}
                 </p>
               </div>
             </div>
-            <!-- Tags -->
-            <div v-if="customer.tags?.length">
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                Tags
-              </p>
-              <div class="flex flex-wrap gap-1">
-                <span v-for="tag in customer.tags" :key="tag" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-foreground border">{{ tag }}</span>
+            <!-- Assigned To & Project Assigned To -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Assigned To
+                </p>
+                <p class="text-xs font-semibold text-foreground">
+                  {{ customer.assignedTo || '—' }}
+                </p>
               </div>
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Project Assigned To
+                </p>
+                <p class="text-xs font-semibold text-foreground">
+                  {{ customer.projectAssignedTo || '—' }}
+                </p>
+              </div>
+            </div>
+            <!-- Views -->
+            <div>
+              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                Total Tracked Views
+              </p>
+              <p class="text-xs font-semibold text-foreground">
+                {{ customer.totalTrackedViews ?? 0 }}
+              </p>
+            </div>
+            <!-- Estimate Sent On -->
+            <div>
+              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                Estimate Sent On
+              </p>
+              <p class="text-xs font-semibold text-foreground">
+                {{ customer.estimateSentOn ? formatDate(customer.estimateSentOn) : '—' }}
+              </p>
             </div>
             <!-- Notes -->
             <div v-if="customer.notes">
@@ -417,63 +544,59 @@ function totalSqft(blocks: any[]) {
                 Key Dates
               </p>
               <div class="grid grid-cols-2 gap-2">
-                <div v-if="customer.initialContactDate">
+                <div>
                   <p class="text-[9px] text-muted-foreground uppercase tracking-wider">
                     Initial Contact
                   </p>
                   <p class="text-[11px] font-semibold">
-                    {{ formatDate(customer.initialContactDate) }}
+                    {{ customer.initialContactDate ? formatDate(customer.initialContactDate) : '—' }}
                   </p>
                 </div>
-                <div v-if="customer.estimateSentOn">
+                <div>
                   <p class="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Estimate Sent
+                    Last Follow-Up
                   </p>
                   <p class="text-[11px] font-semibold">
-                    {{ formatDate(customer.estimateSentOn) }}
+                    {{ customer.lastFollowUpSentOn ? formatDate(customer.lastFollowUpSentOn) : '—' }}
                   </p>
                 </div>
-                <div v-if="customer.dateApproved">
+                <div>
                   <p class="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Approved
+                    Date Approved
                   </p>
                   <p class="text-[11px] font-semibold">
-                    {{ formatDate(customer.dateApproved) }}
+                    {{ customer.dateApproved ? formatDate(customer.dateApproved) : '—' }}
                   </p>
                 </div>
-                <div v-if="customer.woodOrderDate">
+                <div>
                   <p class="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Wood Ordered
+                    Wood Order Date
                   </p>
                   <p class="text-[11px] font-semibold">
-                    {{ formatDate(customer.woodOrderDate) }}
-                  </p>
-                </div>
-                <div v-if="customer.lastFollowUpSentOn">
-                  <p class="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Last Follow-up
-                  </p>
-                  <p class="text-[11px] font-semibold">
-                    {{ formatDate(customer.lastFollowUpSentOn) }}
+                    {{ customer.woodOrderDate ? formatDate(customer.woodOrderDate) : '—' }}
                   </p>
                 </div>
               </div>
             </div>
-            <!-- Meta -->
-            <div class="pt-1 border-t border-border/50 grid grid-cols-2 gap-2 text-[10px] font-mono text-muted-foreground">
-              <div><span class="block text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Added</span>{{ customer.createdAt ? formatDate(customer.createdAt) : '—' }}</div>
-              <div><span class="block text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-0.5">Source</span>{{ customer.source || 'Direct' }}</div>
+            <!-- Tags -->
+            <div v-if="customer.tags?.length" class="pt-1 border-t border-border/50">
+              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                Tags
+              </p>
+              <div class="flex flex-wrap gap-1">
+                <span v-for="tag in customer.tags" :key="tag" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-foreground border">{{ tag }}</span>
+              </div>
             </div>
           </div>
-          <div v-else class="flex-1 px-5 py-8 flex items-center justify-center">
+          <div v-else class="px-5 py-8">
             <div class="space-y-2 w-full">
-              <div v-for="i in 6" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${70 + Math.random() * 30}%`" />
+              <div v-for="i in 5" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${70 + Math.random() * 30}%`" />
             </div>
           </div>
         </div>
 
         <!-- Related Contacts Card -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2 shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-contact" class="size-4 text-primary shrink-0" />
@@ -490,16 +613,16 @@ function totalSqft(blocks: any[]) {
               Add Contact
             </button>
           </div>
-          <div class="px-5 py-4">
+          <div class="px-5 py-4 flex-1 min-h-0 overflow-y-auto">
             <CrmCustomerRelatedContacts v-if="customer" ref="relatedContactsRef" :customer="customer" @updated="onCustomerUpdated" />
           </div>
         </div>
       </div>
 
       <!-- ══ MIDDLE COLUMN — Quotes + Estimates + Contracts ════════════════ -->
-      <div class="flex-1 min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
+      <div class="flex-1 min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-hidden">
         <!-- Related Quotes -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-ruler" class="size-4 text-emerald-500 shrink-0" />
@@ -518,7 +641,7 @@ function totalSqft(blocks: any[]) {
               No quote submissions
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50">
+          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
             <div v-for="item in relatedQuotes" :key="item._id" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
               <div class="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <Icon name="i-lucide-file-text" class="size-3.5 text-emerald-500" />
@@ -537,7 +660,7 @@ function totalSqft(blocks: any[]) {
         </div>
 
         <!-- Related Estimates -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-calculator" class="size-4 text-blue-500 shrink-0" />
@@ -556,7 +679,7 @@ function totalSqft(blocks: any[]) {
               No estimate submissions
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50">
+          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
             <div v-for="item in relatedEstimates" :key="item._id" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
               <div class="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
                 <Icon name="i-lucide-calculator" class="size-3.5 text-blue-500" />
@@ -575,7 +698,7 @@ function totalSqft(blocks: any[]) {
         </div>
 
         <!-- Related Contracts -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-file-signature" class="size-4 text-indigo-500 shrink-0" />
@@ -600,7 +723,7 @@ function totalSqft(blocks: any[]) {
               No contracts on file
             </p>
           </div>
-          <div v-else class="p-4">
+          <div v-else class="p-4 max-h-[240px] overflow-y-auto">
             <CrmContractsTable
               :contracts="customerContracts"
               :templates="templates"
@@ -613,8 +736,49 @@ function totalSqft(blocks: any[]) {
           </div>
         </div>
 
+        <!-- Related Projects -->
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+          <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <Icon name="i-lucide-kanban" class="size-4 text-emerald-500 shrink-0" />
+              <h3 class="text-sm font-bold text-foreground">
+                Related Projects
+              </h3>
+            </div>
+            <span v-if="relatedProjects.length" class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{{ relatedProjects.length }}</span>
+          </div>
+          <div v-if="loadingRelatedProjects" class="flex-1 px-5 py-4 space-y-2">
+            <div v-for="i in 2" :key="i" class="h-10 bg-muted/30 rounded-lg animate-pulse" />
+          </div>
+          <div v-else-if="relatedProjects.length === 0" class="flex-1 flex flex-col items-center justify-center py-8 text-center">
+            <Icon name="i-lucide-kanban" class="size-6 text-muted-foreground/30 mx-auto mb-2" />
+            <p class="text-xs text-muted-foreground">
+              No related projects
+            </p>
+          </div>
+          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
+            <NuxtLink
+              v-for="proj in relatedProjects"
+              :key="proj._id"
+              :to="`/crm/pipeline/${proj._id}`"
+              class="flex items-center gap-3 px-5 py-2.5 hover:bg-muted/20 transition-colors border-l-[3px]"
+              :class="proj._id === customerId ? 'border-l-emerald-500 bg-emerald-500/5' : 'border-l-transparent'"
+            >
+              <div class="w-6 h-6 rounded-md flex items-center justify-center shrink-0" :class="proj._id === customerId ? 'bg-emerald-500/15' : 'bg-muted/50'">
+                <Icon name="i-lucide-folder-kanban" class="size-3" :class="proj._id === customerId ? 'text-emerald-500' : 'text-muted-foreground'" />
+              </div>
+              <span class="text-xs font-bold text-foreground truncate min-w-0 flex-1">
+                {{ proj.projectName || proj.name || '—' }}
+                <span v-if="proj._id === customerId" class="ml-1 text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">(current)</span>
+              </span>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">{{ (proj.status && statusMap.get(String(proj.status))?.label) || proj.stage || '—' }}</span>
+              <span class="text-[10px] text-muted-foreground shrink-0">{{ proj.createdAt ? formatDate(proj.createdAt) : '—' }}</span>
+            </NuxtLink>
+          </div>
+        </div>
+
         <!-- Related Stain Sign Offs -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-stamp" class="size-4 text-amber-500 shrink-0" />
@@ -639,7 +803,7 @@ function totalSqft(blocks: any[]) {
               No stain sign-offs
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50">
+          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
             <NuxtLink v-for="item in relatedStainSignOffs" :key="item._id" to="/stain-sign-off" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
               <div class="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
                 <Icon name="i-lucide-stamp" class="size-3.5 text-amber-500" />
@@ -663,7 +827,7 @@ function totalSqft(blocks: any[]) {
         </div>
 
         <!-- Related Daily Production -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-clipboard-list" class="size-4 text-teal-500 shrink-0" />
@@ -688,7 +852,7 @@ function totalSqft(blocks: any[]) {
               No production records
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50">
+          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
             <NuxtLink v-for="item in relatedDailyProduction" :key="item._id" to="/daily-production" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
               <div class="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
                 <Icon name="i-lucide-calendar-days" class="size-3.5 text-teal-500" />
@@ -709,9 +873,9 @@ function totalSqft(blocks: any[]) {
       </div>
 
       <!-- ══ RIGHT COLUMN — Gallery + 2 TBD ════════════════════════════════ -->
-      <div class="w-[30%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
+      <div class="w-[30%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-hidden">
         <!-- Gallery Card -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-3 shrink-0">
             <div class="flex items-center gap-2 shrink-0">
               <Icon name="i-lucide-images" class="size-4 text-violet-500 shrink-0" />
@@ -742,7 +906,7 @@ function totalSqft(blocks: any[]) {
               </button>
             </div>
           </div>
-          <div v-if="customer" class="p-4">
+          <div v-if="customer" class="p-4 flex-1 min-h-0 overflow-y-auto">
             <CrmCustomerGallery ref="galleryRef" :customer="customer" @updated="onCustomerUpdated" />
           </div>
           <div v-else class="flex-1 flex flex-col items-center justify-center py-8 text-center">
@@ -754,7 +918,7 @@ function totalSqft(blocks: any[]) {
         </div>
 
         <!-- Documents Card -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-3 shrink-0">
             <div class="flex items-center gap-2 shrink-0">
               <Icon name="i-lucide-file-stack" class="size-4 text-rose-500 shrink-0" />
@@ -772,8 +936,8 @@ function totalSqft(blocks: any[]) {
               Add
             </button>
           </div>
-          <div v-if="customer" class="p-4">
-            <CrmCustomerDocuments ref="documentsRef" :customer="customer" @updated="onCustomerUpdated" />
+          <div v-if="customer" class="p-4 flex-1 min-h-0 overflow-y-auto">
+            <CrmCustomerDocuments ref="documentsRef" :customer="customer" />
           </div>
           <div v-else class="flex-1 flex flex-col items-center justify-center py-8 text-center">
             <Icon name="i-lucide-file-stack" class="size-6 text-muted-foreground/30 mx-auto mb-2" />

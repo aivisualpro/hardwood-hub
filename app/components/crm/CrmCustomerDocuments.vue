@@ -6,10 +6,6 @@ const props = defineProps<{
   customer: any
 }>()
 
-const emit = defineEmits<{
-  (e: 'updated', customer: any): void
-}>()
-
 // ─── Document Types ──────────────────────────────────────
 const DOCUMENT_TYPES = [
   'Contract',
@@ -24,6 +20,31 @@ const DOCUMENT_TYPES = [
   'Change Order',
   'Other',
 ] as const
+
+// ─── Documents from API ──────────────────────────────────
+const documents = ref<any[]>([])
+const loadingDocs = ref(false)
+
+async function fetchDocuments() {
+  if (!props.customer?._id) return
+  loadingDocs.value = true
+  try {
+    const res = await $fetch<any>('/api/documents', {
+      params: { projectId: props.customer._id },
+    })
+    documents.value = res.data || []
+  }
+  catch {
+    console.error('Failed to load documents')
+  }
+  finally {
+    loadingDocs.value = false
+  }
+}
+
+// Fetch on mount and whenever customer changes
+onMounted(fetchDocuments)
+watch(() => props.customer?._id, fetchDocuments)
 
 // ─── Add Document Form ───────────────────────────────────
 const showAddForm = ref(false)
@@ -117,22 +138,22 @@ async function uploadDocuments() {
     uploadProgress.value = 90
 
     if (uploadedFiles.length > 0) {
-      const currentDocs = props.customer.documents || []
-      const newDoc = {
-        date: newDocDate.value,
-        documentType: newDocType.value,
-        files: uploadedFiles,
-        uploadedAt: new Date().toISOString(),
-      }
-      const newDocs = [...currentDocs, newDoc]
-
-      const res = await $fetch<any>(`/api/pipeline/${props.customer._id}`, {
-        method: 'PUT',
-        body: { documents: newDocs },
+      // Create a new document record in the documents collection
+      const res = await $fetch<any>('/api/documents', {
+        method: 'POST',
+        body: {
+          projectId: props.customer._id,
+          customerId: props.customer.customerId || null,
+          date: newDocDate.value,
+          documentType: newDocType.value,
+          files: uploadedFiles,
+          uploadedAt: new Date().toISOString(),
+        },
       })
 
       if (res.success) {
-        emit('updated', res.data)
+        // Refresh the list
+        await fetchDocuments()
         toast.success(`${uploadedFiles.length} file(s) uploaded`)
         cancelAdd()
       }
@@ -150,30 +171,43 @@ async function uploadDocuments() {
   }
 }
 
-// ─── Delete ──────────────────────────────────────────────
+// ─── Delete Document ─────────────────────────────────────
 const showDeleteDialog = ref(false)
-const deleteIndex = ref(-1)
+const deleteDocId = ref<string | null>(null)
 
-function confirmDeleteDoc(idx: number) {
-  deleteIndex.value = idx
+function confirmDeleteDoc(docId: string) {
+  deleteDocId.value = docId
   showDeleteDialog.value = true
 }
 
 async function deleteDocument() {
   showDeleteDialog.value = false
-  const docs = [...(props.customer.documents || [])]
-  docs.splice(deleteIndex.value, 1)
+  if (!deleteDocId.value) return
   try {
-    const res = await $fetch<any>(`/api/pipeline/${props.customer._id}`, {
-      method: 'PUT',
-      body: { documents: docs },
+    const res = await $fetch<any>(`/api/documents/${deleteDocId.value}`, {
+      method: 'DELETE',
     })
     if (res.success) {
-      emit('updated', res.data)
+      await fetchDocuments()
       toast.success('Document deleted')
     }
   }
   catch { toast.error('Failed to delete document') }
+}
+
+// ─── Download All ────────────────────────────────────────
+function downloadAllFiles(doc: any) {
+  const files = doc.files || []
+  for (const file of files) {
+    const a = document.createElement('a')
+    a.href = file.url
+    a.download = file.name || 'download'
+    a.target = '_blank'
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -222,10 +256,10 @@ function thumbnailUrl(url: string, type: string) {
 
 // ─── File Preview Dialog ─────────────────────────────────
 const showPreview = ref(false)
-const previewFile = ref<{ url: string, name: string, size: number, type: string, docIdx: number, fileIdx: number } | null>(null)
+const previewFile = ref<{ url: string, name: string, size: number, type: string, docId: string, fileIdx: number } | null>(null)
 
-function openPreview(file: any, docIdx: number, fileIdx: number) {
-  previewFile.value = { ...file, docIdx, fileIdx }
+function openPreview(file: any, docId: string, fileIdx: number) {
+  previewFile.value = { ...file, docId, fileIdx }
   showPreview.value = true
 }
 
@@ -243,29 +277,29 @@ function downloadFile() {
 
 async function deleteSingleFile() {
   if (!previewFile.value) return
-  const { docIdx, fileIdx } = previewFile.value
-  const docs = [...(props.customer.documents || [])]
-  const doc = { ...docs[docIdx] }
+  const { docId, fileIdx } = previewFile.value
+
+  // Find the document in our local list
+  const doc = documents.value.find((d: any) => String(d._id) === docId)
+  if (!doc) return
+
   const files = [...(doc.files || [])]
   files.splice(fileIdx, 1)
 
-  if (files.length === 0) {
-    // Remove the entire document record if no files remain
-    docs.splice(docIdx, 1)
-  } else {
-    doc.files = files
-    docs[docIdx] = doc
-  }
-
   try {
-    const res = await $fetch<any>(`/api/pipeline/${props.customer._id}`, {
-      method: 'PUT',
-      body: { documents: docs },
-    })
-    if (res.success) {
-      emit('updated', res.data)
-      toast.success('File deleted')
+    if (files.length === 0) {
+      // Remove the entire document record if no files remain
+      await $fetch<any>(`/api/documents/${docId}`, { method: 'DELETE' })
     }
+    else {
+      // Update the document with remaining files
+      await $fetch<any>(`/api/documents/${docId}`, {
+        method: 'PUT',
+        body: { files },
+      })
+    }
+    await fetchDocuments()
+    toast.success('File deleted')
   }
   catch { toast.error('Failed to delete file') }
   finally {
@@ -388,16 +422,24 @@ defineExpose({
       </div>
     </div>
 
+    <!-- Loading state -->
+    <div v-if="loadingDocs" class="py-6 flex items-center justify-center">
+      <Icon name="i-lucide-loader-2" class="size-5 animate-spin text-muted-foreground/40" />
+    </div>
+
     <!-- Documents List -->
-    <template v-if="customer.documents?.length">
-      <div v-for="(doc, dIdx) in customer.documents" :key="doc._id || dIdx" class="rounded-xl border border-border/50 bg-card/50 overflow-hidden">
+    <template v-else-if="documents.length">
+      <div v-for="doc in documents" :key="doc._id" class="rounded-xl border border-border/50 bg-card/50 overflow-hidden">
         <!-- Row 1: Type · Date · File count · Delete -->
         <div class="px-3.5 py-2 flex items-center gap-2">
           <span class="text-xs font-bold text-foreground truncate">{{ doc.documentType || 'Document' }}</span>
           <span class="text-muted-foreground/40">·</span>
           <span class="text-[10px] text-muted-foreground whitespace-nowrap">{{ formatDate(doc.date) }}</span>
           <span class="ml-auto text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">{{ doc.files?.length || 0 }} file{{ (doc.files?.length || 0) !== 1 ? 's' : '' }}</span>
-          <button class="size-5 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-all shrink-0" @click="confirmDeleteDoc(Number(dIdx))">
+          <button class="size-5 rounded flex items-center justify-center text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-all shrink-0" title="Download all files" @click="downloadAllFiles(doc)">
+            <Icon name="i-lucide-download" class="size-3" />
+          </button>
+          <button class="size-5 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-all shrink-0" @click="confirmDeleteDoc(doc._id)">
             <Icon name="i-lucide-trash-2" class="size-3" />
           </button>
         </div>
@@ -409,7 +451,7 @@ defineExpose({
               :key="fIdx"
               class="group relative shrink-0 size-14 rounded-lg border border-border/50 bg-muted/30 overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all"
               :title="file.name || 'File'"
-              @click="openPreview(file, Number(dIdx), Number(fIdx))"
+              @click="openPreview(file, doc._id, Number(fIdx))"
             >
               <!-- Image / PDF thumbnail via Cloudinary -->
               <img
@@ -434,7 +476,7 @@ defineExpose({
     </template>
 
     <!-- Empty State -->
-    <div v-if="!customer.documents?.length && !showAddForm" class="flex flex-col items-center justify-center py-8 text-center">
+    <div v-else-if="!showAddForm" class="flex flex-col items-center justify-center py-8 text-center">
       <Icon name="i-lucide-file-stack" class="size-6 text-muted-foreground/30 mx-auto mb-2" />
       <p class="text-xs text-muted-foreground">
         No documents uploaded
@@ -534,4 +576,3 @@ defineExpose({
     </AlertDialog>
   </div>
 </template>
-

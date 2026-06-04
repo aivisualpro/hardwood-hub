@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const form = ref({
+  customerId: '' as string,
   name: '',
   projectName: '',
   firstName: '',
@@ -43,6 +44,7 @@ watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     if (props.customer) {
       form.value = {
+        customerId: props.customer.customerId || '',
         name: props.customer.name || '',
         projectName: props.customer.projectName || '',
         firstName: props.customer.firstName || '',
@@ -70,6 +72,7 @@ watch(() => props.modelValue, (isOpen) => {
     }
     else {
       form.value = {
+        customerId: '',
         name: '',
         projectName: '',
         firstName: '',
@@ -115,6 +118,8 @@ async function submit() {
 
     const payload = {
       ...form.value,
+      customerId: form.value.customerId || null,
+      customerName: form.value.name || '',
       firstName: form.value.firstName || fallbackFirstName,
       lastName: form.value.lastName || fallbackLastName,
       tags: form.value.tags ? form.value.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
@@ -203,6 +208,12 @@ watch(activeDropdown, (val) => {
       employeeSearchInput.value && employeeSearchInput.value.focus()
     }, 50)
   }
+  if (val === 'customer') {
+    customerSearch.value = ''
+    setTimeout(() => {
+      customerSearchInput.value && customerSearchInput.value.focus()
+    }, 50)
+  }
 })
 
 const filteredStageOptions = computed(() => {
@@ -239,6 +250,52 @@ function getStageClasses(stageName: string) {
 
 const { data: employeesRes } = await useFetch<any>('/api/employees')
 const employeesData = computed(() => employeesRes.value?.data || [])
+
+// ─── Customer dropdown ────────────────────────────────────
+const { data: customersRes } = await useFetch<any>('/api/customers', {
+  params: { limit: 200 },
+})
+const allCustomers = computed(() => customersRes.value?.data || [])
+const customerSearch = ref('')
+const customerSearchInput = ref<HTMLInputElement | null>(null)
+
+const filteredCustomers = computed(() => {
+  if (!customerSearch.value) return allCustomers.value
+  const s = customerSearch.value.toLowerCase()
+  return allCustomers.value.filter((c: any) =>
+    (c.name || '').toLowerCase().includes(s)
+    || (c.firstName || '').toLowerCase().includes(s)
+    || (c.lastName || '').toLowerCase().includes(s)
+    || (c.email || '').toLowerCase().includes(s),
+  )
+})
+
+function selectCustomer(cust: any) {
+  form.value.customerId = cust._id
+  form.value.name = cust.name || `${cust.firstName || ''} ${cust.lastName || ''}`.trim()
+  form.value.firstName = cust.firstName || ''
+  form.value.lastName = cust.lastName || ''
+  form.value.email = cust.email || ''
+  form.value.phone = cust.phone || ''
+  form.value.address = cust.address || ''
+  form.value.city = cust.city || ''
+  form.value.state = cust.state || ''
+  form.value.zip = cust.zip || ''
+  activeDropdown.value = null
+}
+
+function clearCustomer() {
+  form.value.customerId = ''
+  form.value.name = ''
+  form.value.firstName = ''
+  form.value.lastName = ''
+  form.value.email = ''
+  form.value.phone = ''
+  form.value.address = ''
+  form.value.city = ''
+  form.value.state = ''
+  form.value.zip = ''
+}
 
 const filteredEmployees = computed(() => {
   if (!employeeSearch.value)
@@ -279,11 +336,41 @@ function toggleEmployee(emp: string) {
         </DialogDescription>
       </DialogHeader>
 
-      <form class="space-y-4 py-4 max-h-[75vh] overflow-y-auto px-2" @submit.prevent="submit">
+      <form autocomplete="off" class="space-y-4 py-4 max-h-[75vh] overflow-y-auto px-2" @submit.prevent="submit">
         <div class="grid grid-cols-2 gap-4">
-          <div class="space-y-2 col-span-2">
-            <Label>Company / Display Name</Label>
-            <Input v-model="form.name" placeholder="Acme Corp" />
+          <!-- Customer dropdown -->
+          <div class="space-y-2 col-span-2 relative" :class="activeDropdown === 'customer' ? 'z-50' : ''">
+            <Label>Customer <span class="text-destructive">*</span></Label>
+            <div class="relative">
+              <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary h-9" @click.stop="activeDropdown = activeDropdown === 'customer' ? null : 'customer'">
+                <span :class="form.name ? 'text-foreground font-medium' : 'text-muted-foreground'">{{ form.name || 'Select customer...' }}</span>
+                <div class="flex items-center gap-1">
+                  <button v-if="form.customerId" type="button" class="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors" @click.stop="clearCustomer">
+                    <Icon name="i-lucide-x" class="size-3" />
+                  </button>
+                  <Icon name="i-lucide-chevron-down" class="size-4 opacity-50" />
+                </div>
+              </button>
+
+              <div v-if="activeDropdown === 'customer'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+              <div v-if="activeDropdown === 'customer'" class="absolute left-0 mt-1 top-full w-full bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div class="p-2 border-b border-border/50">
+                  <input ref="customerSearchInput" v-model="customerSearch" type="text" placeholder="Search customers..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop>
+                </div>
+                <div class="max-h-[200px] overflow-y-auto py-1.5">
+                  <button v-for="c in filteredCustomers" :key="c._id" type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center justify-between gap-2" @click.stop="selectCustomer(c)">
+                    <div class="min-w-0">
+                      <span class="block truncate font-medium" :class="form.customerId === c._id ? 'text-primary font-bold' : ''">{{ c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() }}</span>
+                      <span v-if="c.email" class="block text-[10px] text-muted-foreground truncate">{{ c.email }}</span>
+                    </div>
+                    <Icon v-if="form.customerId === c._id" name="i-lucide-check" class="size-4 text-primary shrink-0" />
+                  </button>
+                  <div v-if="!filteredCustomers.length" class="px-3 py-2 text-xs text-muted-foreground text-center">
+                    No customers found.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="space-y-2 col-span-2">
