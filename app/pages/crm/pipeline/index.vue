@@ -54,6 +54,7 @@ async function bulkDeleteSelected() {
     customers.value = customers.value.filter(c => !selectedIds.value.has(c._id))
     selectedIds.value = new Set()
     toast.success(`Deleted ${deleted} customer${deleted !== 1 ? 's' : ''}`)
+    fetchCounts() // refresh chevron counts
   }
   catch {
     toast.error('Failed to delete some customers')
@@ -197,6 +198,7 @@ async function handleStageSelect(customer: any, optionId: string) {
     })
     if (res.success) {
       toast.success('Status updated')
+      fetchCounts() // refresh chevron counts
     }
     else {
       toast.error('Failed to update status')
@@ -281,6 +283,7 @@ async function onStageDrop(e: DragEvent, stageId: string) {
       body: { status: stageId },
     })
     toast.success(`Moved to "${label}"`)
+    fetchCounts() // refresh chevron counts
   }
   catch {
     toast.error('Failed to update status')
@@ -293,13 +296,36 @@ const searchQuery = ref('')
 const route = useRoute()
 const selectedStageFilter = ref<string>((route.query.status as string) || 'all')
 
-// Pagination state
+// Pagination / infinite scroll state
 const pipelinePage = ref(1)
 const pipelineTotalPages = ref(1)
 const pipelineTotal = ref(0)
-const PIPELINE_LIMIT = 0 // 0 = fetch all records
+const PIPELINE_LIMIT = 50
+const isLoadingMore = ref(false)
+const scrollSentinel = ref<HTMLElement | null>(null)
 
-async function fetchCustomers(targetPage = pipelinePage.value) {
+// Aggregate counts from DB (for stage chevrons)
+const aggregateCounts = ref<Record<string, number>>({})
+const aggregateTotal = ref(0)
+
+async function fetchCounts() {
+  try {
+    const params = new URLSearchParams()
+    if (searchQuery.value?.trim())
+      params.set('search', searchQuery.value.trim())
+    const res = await $fetch<any>(`/api/pipeline/counts?${params.toString()}`)
+    if (res?.success) {
+      aggregateCounts.value = res.data.counts || {}
+      aggregateTotal.value = res.data.total || 0
+    }
+  }
+  catch { /* silent */ }
+}
+
+async function fetchCustomers(targetPage = 1, append = false) {
+  if (append) {
+    isLoadingMore.value = true
+  }
   try {
     const params = new URLSearchParams({
       page: String(targetPage),
@@ -310,7 +336,15 @@ async function fetchCustomers(targetPage = pipelinePage.value) {
 
     const res = await $fetch<any>(`/api/pipeline?${params.toString()}`)
     if (res?.success) {
-      customers.value = res.data || []
+      if (append) {
+        // Deduplicate — avoid adding records already in the list
+        const existingIds = new Set(customers.value.map((c: any) => c._id))
+        const newRecords = (res.data || []).filter((c: any) => !existingIds.has(c._id))
+        customers.value = [...customers.value, ...newRecords]
+      }
+      else {
+        customers.value = res.data || []
+      }
       pipelinePage.value = res.pagination?.page || 1
       pipelineTotalPages.value = res.pagination?.totalPages || 1
       pipelineTotal.value = res.pagination?.total || 0
@@ -319,11 +353,58 @@ async function fetchCustomers(targetPage = pipelinePage.value) {
   catch {
     toast.error('Failed to load pipeline')
   }
+  finally {
+    isLoadingMore.value = false
+  }
 }
 
+async function loadMore() {
+  if (isLoadingMore.value || pipelinePage.value >= pipelineTotalPages.value) return
+  await fetchCustomers(pipelinePage.value + 1, true)
+}
+
+// IntersectionObserver for infinite scroll
+let scrollObserver: IntersectionObserver | null = null
+
+onMounted(() => {
+  nextTick(() => {
+    if (!scrollSentinel.value) return
+    scrollObserver = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMore()
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    scrollObserver.observe(scrollSentinel.value)
+  })
+})
+
+onBeforeUnmount(() => {
+  scrollObserver?.disconnect()
+})
+
+// Watch for sentinel ref becoming available (after loading completes)
+watch(scrollSentinel, (el) => {
+  scrollObserver?.disconnect()
+  if (el) {
+    scrollObserver = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMore()
+        }
+      },
+      { rootMargin: '200px' },
+    )
+    scrollObserver.observe(el)
+  }
+})
+
 const { pending: loadingData } = useAsyncData('pipeline-page', async () => {
-  const [, statusRes, empRes] = await Promise.all([
+  const [, , statusRes, empRes] = await Promise.all([
     fetchCustomers(1),
+    fetchCounts(),
     $fetch<any>('/api/dropdowns?name=Customer Status'),
     $fetch<any>('/api/employees'),
   ])
@@ -345,16 +426,20 @@ const { pending: loadingData } = useAsyncData('pipeline-page', async () => {
   return true
 }, { server: false, lazy: true })
 
-// Debounce search — re-fetch page 1
+// Debounce search — re-fetch page 1 + refresh counts
 let pipelineSearchTimer: ReturnType<typeof setTimeout> | null = null
 watch(searchQuery, () => {
   if (pipelineSearchTimer)
     clearTimeout(pipelineSearchTimer)
-  pipelineSearchTimer = setTimeout(() => fetchCustomers(1), 300)
+  pipelineSearchTimer = setTimeout(() => {
+    fetchCustomers(1)
+    fetchCounts()
+  }, 300)
 })
 
 function onCustomerCreated(customer: any) {
-  fetchCustomers(pipelinePage.value)
+  fetchCustomers(1)
+  fetchCounts()
 }
 
 const employeesList = ref<any[]>([])
@@ -456,35 +541,24 @@ function normalizeStage(stageStr: string): string {
   return stageStr.trim().toLowerCase()
 }
 
-// Pipeline groupings for pipeline header counts (uses server-filtered `customers`)
+// Pipeline groupings for pipeline header counts (uses DB aggregate counts)
 const pipelineGroups = computed(() => {
   const stages = STAGES.value
-  const groups: Record<string, any[]> = {}
-  stages.forEach(s => groups[s.id] = [])
-  groups.uncategorized = []
+  const counts = aggregateCounts.value
 
-  // `customers` is already search-filtered by the server
-  const list = customers.value
-
-  list.forEach((c) => {
-    const statusId = c.status ? String(c.status) : null
-    if (!statusId) {
-      groups.uncategorized!.push(c)
-      return
-    }
-    if (groups[statusId]) {
-      groups[statusId]!.push(c)
-    }
-    else {
-      groups.uncategorized!.push(c)
-    }
-  })
+  // Compute uncategorized count: total - sum of all known stage counts
+  const knownIds = new Set(stages.map(s => s.id))
+  let knownSum = 0
+  for (const [id, c] of Object.entries(counts)) {
+    if (knownIds.has(id)) knownSum += c
+  }
+  const uncategorizedCount = (counts.uncategorized || 0) + (aggregateTotal.value - knownSum - (counts.uncategorized || 0))
 
   return [
-    { stage: { id: 'all', label: 'All', color: '' }, items: list },
-    ...stages.map(s => ({ stage: s, items: groups[s.id] || [] })),
-    { stage: { id: 'uncategorized', label: 'Uncategorized', color: '#737373' }, items: groups.uncategorized },
-  ].filter(g => g.stage.id === 'all' || g.items.length > 0)
+    { stage: { id: 'all', label: 'All', color: '' }, count: aggregateTotal.value },
+    ...stages.map(s => ({ stage: s, count: counts[s.id] || 0 })),
+    { stage: { id: 'uncategorized', label: 'Uncategorized', color: '#737373' }, count: uncategorizedCount },
+  ].filter(g => g.stage.id === 'all' || g.count > 0)
 })
 
 // Table grouping (applies both search AND tab filters)
@@ -628,7 +702,7 @@ watch(() => route.query.status, (val) => {
           <div v-if="selectedStageFilter === g.stage.id" class="relative flex items-center justify-center h-12 pl-6 pr-6">
             <!-- INVISIBLE TEXT FORCING EXACT WIDTH -->
             <div class="flex flex-col items-center justify-center pt-0.5 opacity-0 pointer-events-none">
-              <span class="font-bold text-[13px] leading-tight">{{ g.items.length }}</span>
+              <span class="font-bold text-[13px] leading-tight">{{ g.count }}</span>
               <span class="text-[8px] uppercase tracking-wider leading-[1.1] text-center max-w-[90px] line-clamp-2 whitespace-normal">{{ g.stage.label }}</span>
             </div>
 
@@ -643,7 +717,7 @@ watch(() => route.query.status, (val) => {
               class="absolute inset-[2.5px] transition-all flex flex-col items-center justify-center pt-0.5 brightness-110"
               :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'hsl(var(--primary))' }"
             >
-              <span class="font-bold text-[13px] leading-tight text-white">{{ g.items.length }}</span>
+              <span class="font-bold text-[13px] leading-tight text-white">{{ g.count }}</span>
               <span class="text-[8px] uppercase tracking-wider text-center max-w-[90px] leading-[1.1] line-clamp-2 whitespace-normal font-bold text-white" :title="g.stage.label">{{ g.stage.label }}</span>
             </div>
           </div>
@@ -654,7 +728,7 @@ watch(() => route.query.status, (val) => {
             :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'hsl(var(--primary))' }"
           >
             <div class="flex flex-col items-center justify-center pt-0.5">
-              <span class="font-bold text-[13px] leading-tight text-white">{{ g.items.length }}</span>
+              <span class="font-bold text-[13px] leading-tight text-white">{{ g.count }}</span>
               <span class="text-[8px] uppercase tracking-wider leading-[1.1] text-center max-w-[90px] line-clamp-2 whitespace-normal font-bold text-white" :title="g.stage.label">{{ g.stage.label }}</span>
             </div>
           </div>
@@ -972,6 +1046,20 @@ watch(() => route.query.status, (val) => {
             </tr>
           </tbody>
         </table>
+
+        <!-- Infinite Scroll Sentinel -->
+        <div ref="scrollSentinel" class="h-1 w-full" />
+
+        <!-- Loading More Indicator -->
+        <div v-if="isLoadingMore" class="flex items-center justify-center gap-2 py-4">
+          <Icon name="i-lucide-loader-2" class="size-4 animate-spin text-primary" />
+          <span class="text-xs font-medium text-muted-foreground">Loading more...</span>
+        </div>
+
+        <!-- All Loaded Message -->
+        <div v-else-if="pipelinePage >= pipelineTotalPages && customers.length > 0" class="py-3 text-center">
+          <span class="text-[11px] font-medium text-muted-foreground/60">Showing {{ customers.length }} of {{ pipelineTotal }} records</span>
+        </div>
       </div>
 
       <!-- Mobile Card View -->

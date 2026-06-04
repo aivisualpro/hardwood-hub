@@ -21,9 +21,8 @@ export default defineEventHandler(async (event) => {
 
     // ── Pagination ────────────────────────────────────────────────────────────
     const page = Math.max(1, Number.parseInt(query.page as string) || 1)
-    const rawLimit = Number.parseInt(query.limit as string)
-    const limit = rawLimit === 0 ? 0 : Math.min(100, Math.max(1, rawLimit || 25))
-    const skip = limit > 0 ? (page - 1) * limit : 0
+    const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit as string) || 50))
+    const skip = (page - 1) * limit
 
     // ── Filters ───────────────────────────────────────────────────────────────
     const customerId = query.customerId as string | undefined
@@ -66,15 +65,13 @@ export default defineEventHandler(async (event) => {
       return { success: true, data: serialized }
     }
 
-    let q = Pipeline.find(filter)
-      .select('-gallery -relatedContacts -notes')
-      .sort({ createdAt: -1 })
-    if (limit > 0) {
-      q = q.skip(skip).limit(limit)
-    }
-
     const [records, total] = await Promise.all([
-      q.lean(),
+      Pipeline.find(filter)
+        .select('-gallery -relatedContacts -notes')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       Pipeline.countDocuments(filter),
     ])
 
@@ -90,9 +87,9 @@ export default defineEventHandler(async (event) => {
       data: serialized,
       pagination: {
         page,
-        limit: limit || total,
+        limit,
         total,
-        totalPages: limit > 0 ? Math.ceil(total / limit) : 1,
+        totalPages: Math.ceil(total / limit),
       },
     }
   }
