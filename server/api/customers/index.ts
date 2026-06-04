@@ -21,8 +21,9 @@ export default defineEventHandler(async (event) => {
 
     // ── Pagination ──────────────────────────────────────────────────────────
     const page = Math.max(1, Number.parseInt(query.page as string) || 1)
-    const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit as string) || 25))
-    const skip = (page - 1) * limit
+    const rawLimit = Number.parseInt(query.limit as string)
+    const limit = rawLimit === 0 ? 0 : Math.min(500, Math.max(1, rawLimit || 25))
+    const skip = limit > 0 ? (page - 1) * limit : 0
 
     // ── Filters ──────────────────────────────────────────────────────────────
     const search = (query.search as string | undefined)?.trim()
@@ -56,13 +57,15 @@ export default defineEventHandler(async (event) => {
       filter.status = status
 
     // ── Query ────────────────────────────────────────────────────────────────
+    let q = Customer.find(filter)
+      .select('-gallery -relatedContacts -notes')
+      .sort({ [safeSort]: sortDir })
+    if (limit > 0) {
+      q = q.skip(skip).limit(limit)
+    }
+
     const [customers, total] = await Promise.all([
-      Customer.find(filter)
-        .select('-gallery -relatedContacts -notes')
-        .sort({ [safeSort]: sortDir })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      q.lean(),
       Customer.countDocuments(filter),
     ])
 
@@ -78,9 +81,9 @@ export default defineEventHandler(async (event) => {
       data: serialized,
       pagination: {
         page,
-        limit,
+        limit: limit || total,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: limit > 0 ? Math.ceil(total / limit) : 1,
       },
     }
   }

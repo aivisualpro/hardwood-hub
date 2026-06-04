@@ -132,6 +132,8 @@ const CustomerWritable = {
   zip: z.string().max(20).optional().default(''),
   notes: z.string().max(10_000).optional().default(''),
   stage: z.string().max(100).optional().default(''),
+  // type is a Mongo ObjectId ref to a Dropdown option — accept string or null
+  type: MongoId.nullable().optional(),
   // status is a Mongo ObjectId ref to a Dropdown doc — accept string or null
   status: MongoId.nullable().optional(),
   estimatedProjectDuration: z.string().max(100).optional().default(''),

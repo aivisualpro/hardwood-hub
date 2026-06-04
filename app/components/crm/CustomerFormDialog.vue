@@ -4,6 +4,7 @@ import { toast } from 'vue-sonner'
 const props = defineProps<{
   modelValue: boolean
   customer?: any
+  apiPrefix?: string
 }>()
 
 const emit = defineEmits<{
@@ -42,6 +43,9 @@ const isLoading = ref(false)
 
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
+    // Refresh customer list to ensure all records are available
+    refreshCustomers()
+
     if (props.customer) {
       form.value = {
         customerId: props.customer.customerId || '',
@@ -109,7 +113,8 @@ async function submit() {
 
   isLoading.value = true
   try {
-    const url = props.customer ? `/api/pipeline/${props.customer._id}` : '/api/pipeline'
+    const base = props.apiPrefix || '/api/pipeline'
+    const url = props.customer ? `${base}/${props.customer._id}` : base
     const method = props.customer ? 'PUT' : 'POST'
 
     const nameParts = form.value.name ? form.value.name.split(' ') : []
@@ -252,8 +257,9 @@ const { data: employeesRes } = await useFetch<any>('/api/employees')
 const employeesData = computed(() => employeesRes.value?.data || [])
 
 // ─── Customer dropdown ────────────────────────────────────
-const { data: customersRes } = await useFetch<any>('/api/customers', {
-  params: { limit: 200 },
+const { data: customersRes, refresh: refreshCustomers } = await useFetch<any>('/api/customers', {
+  key: 'all-customers-dropdown',
+  params: { limit: 0 },
 })
 const allCustomers = computed(() => customersRes.value?.data || [])
 const customerSearch = ref('')

@@ -74,7 +74,7 @@ async function fetchCustomers() {
   loadingCustomers.value = true
   try {
     const res = await $fetch<{ success: boolean, data: any[] }>('/api/customers', {
-      params: { limit: 200, search: customerSearch.value || undefined },
+      params: { limit: 0, search: customerSearch.value || undefined },
     })
     customers.value = res.data || []
   }

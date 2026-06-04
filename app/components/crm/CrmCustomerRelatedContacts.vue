@@ -4,6 +4,7 @@ import { toast } from 'vue-sonner'
 
 const props = defineProps<{
   customer: any
+  apiPrefix?: string
 }>()
 
 const emit = defineEmits(['updated'])
@@ -120,7 +121,8 @@ async function saveContact() {
       updatedContacts.push(cleanedContact)
     }
 
-    const res = await $fetch<any>(`/api/pipeline/${customerId.value}`, {
+    const base = props.apiPrefix || '/api/pipeline'
+    const res = await $fetch<any>(`${base}/${customerId.value}`, {
       method: 'PUT',
       body: { relatedContacts: updatedContacts },
     })
@@ -150,7 +152,8 @@ async function deleteContact(index: number) {
     const updatedContacts = props.customer.relatedContacts ? [...props.customer.relatedContacts] : []
     updatedContacts.splice(index, 1)
 
-    const res = await $fetch<any>(`/api/pipeline/${customerId.value}`, {
+    const base = props.apiPrefix || '/api/pipeline'
+    const res = await $fetch<any>(`${base}/${customerId.value}`, {
       method: 'PUT',
       body: { relatedContacts: updatedContacts },
     })

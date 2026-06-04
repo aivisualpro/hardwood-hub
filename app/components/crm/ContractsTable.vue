@@ -363,7 +363,7 @@ async function downloadPDF(ct: any) {
                     <Icon v-else-if="ct.status === 'sent'" name="i-lucide-mail-check" class="size-3.5" />
                     <Icon v-else name="i-lucide-send" class="size-3.5" />
                   </button>
-                  <button v-if="ct.status !== 'signed'" class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Edit" @click.stop="emit('edit', ct)">
+                  <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Edit" @click.stop="emit('edit', ct)">
                     <Icon name="i-lucide-pencil" class="size-3.5" />
                   </button>
                   <button v-if="ct.status !== 'signed'" class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete" @click.stop="deleteContract(ct._id, ct.status)">
@@ -492,7 +492,7 @@ async function downloadPDF(ct: any) {
               </button>
             </div>
             <div class="flex gap-1.5 shrink-0">
-              <button v-if="ct.status !== 'signed'" class="size-8 rounded-lg border bg-background flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shadow-xs" @click.stop="emit('edit', ct)">
+              <button class="size-8 rounded-lg border bg-background flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shadow-xs" @click.stop="emit('edit', ct)">
                 <Icon name="i-lucide-pencil" class="size-3.5" />
               </button>
               <button v-if="ct.status !== 'signed'" class="size-8 rounded-lg border border-red-500/20 bg-red-500/5 flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-colors shadow-xs" @click.stop="deleteContract(ct._id, ct.status)">
