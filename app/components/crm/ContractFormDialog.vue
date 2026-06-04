@@ -418,6 +418,12 @@ function openCreateModal() {
   fetchCustomers()
 }
 
+function goToStep(n: number) {
+  if (n >= createStep.value) return // can only go back
+  createStep.value = n
+  if (n === 1 && !customers.value.length) fetchCustomers()
+  if (n === 2 && selectedCustomer.value?._id && !projects.value.length) fetchProjects(selectedCustomer.value._id)
+}
 async function openEditContract(ct: any) {
   try {
     toast.loading('Fetching contract details...', { id: 'fetch-contract' })
@@ -442,6 +448,18 @@ async function openEditContract(ct: any) {
       content: fullCt.content,
       variables: Object.keys(fullCt.variableValues || {}).map(k => ({ key: k, label: k, type: 'text' })),
     } as any
+
+    // Pre-load customers and projects so user can change them when navigating back
+    fetchCustomers()
+    if (fullCt.customerId) {
+      fetchProjects(fullCt.customerId).then(() => {
+        // Pre-select the project if projectId exists
+        if (fullCt.projectId) {
+          const proj = projects.value.find((p: any) => p._id === fullCt.projectId)
+          if (proj) selectedProject.value = proj
+        }
+      })
+    }
 
     createStep.value = 4
     showCreateModal.value = true
@@ -597,7 +615,7 @@ async function seedChangeOrder() {}
               : createStep > step.n
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25'
                 : 'bg-muted/40 text-muted-foreground border border-transparent'"
-            @click="step.n < createStep && (createStep = step.n)"
+            @click="goToStep(step.n)"
           >
             <div
               class="size-6 rounded-md flex items-center justify-center shrink-0"
@@ -1148,7 +1166,7 @@ async function seedChangeOrder() {}
 
       <!-- Modal Footer -->
       <div class="px-6 py-4 border-t border-border/50 flex items-center justify-between bg-muted/10">
-        <Button v-if="createStep > 1" variant="ghost" size="sm" @click="createStep--">
+        <Button v-if="createStep > 1" variant="ghost" size="sm" @click="goToStep(createStep - 1)">
           <Icon name="i-lucide-arrow-left" class="mr-1.5 size-3.5" />
           Back
         </Button>

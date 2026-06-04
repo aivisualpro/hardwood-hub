@@ -5,12 +5,54 @@ import { toast } from 'vue-sonner'
 const props = defineProps<{
   customer: any
   apiPrefix?: string
+  // Pipeline mode: show only contacts whose _id is in contactIds
+  pipelineId?: string
+  contactIds?: string[]
 }>()
 
 const emit = defineEmits(['updated'])
 
 const customerId = computed(() => props.customer?._id)
-const relatedContactsList = computed(() => (props.customer?.relatedContacts || []) as any[])
+
+// In pipeline mode, we need the actual customer data to resolve contacts
+const customerData = ref<any>(null)
+
+// Fetch the actual customer to get relatedContacts when in pipeline mode
+async function fetchCustomer() {
+  if (!props.pipelineId || !props.customer?.customerId) return
+  try {
+    const res = await $fetch<any>(`/api/customers/${props.customer.customerId}`)
+    if (res.success) customerData.value = res.data
+  } catch { /* ignore */ }
+}
+
+// Whether we're in pipeline mode (showing only contactIds from customer's relatedContacts)
+const isPipelineMode = computed(() => !!props.pipelineId && !!props.customer?.customerId)
+
+// The customer who owns the relatedContacts sub-docs
+const ownerCustomer = computed(() => isPipelineMode.value ? customerData.value : null)
+
+// All relatedContacts from the owner (customer record) or fallback to pipeline's own
+const allOwnerContacts = computed(() => {
+  if (isPipelineMode.value && ownerCustomer.value) {
+    return (ownerCustomer.value.relatedContacts || []) as any[]
+  }
+  return (props.customer?.relatedContacts || []) as any[]
+})
+
+// The visible contacts list: filtered by contactIds in pipeline mode
+const relatedContactsList = computed(() => {
+  if (isPipelineMode.value && props.contactIds) {
+    const ids = new Set(props.contactIds.map(id => String(id)))
+    return allOwnerContacts.value.filter((c: any) => c._id && ids.has(String(c._id)))
+  }
+  return allOwnerContacts.value
+})
+
+// Load customer data on mount if pipeline mode
+onMounted(() => {
+  if (isPipelineMode.value) fetchCustomer()
+})
 
 const isEditing = ref(false)
 const editingIndex = ref<number | null>(null)
@@ -105,35 +147,80 @@ async function saveContact() {
     return
   isLoading.value = true
   try {
-    const updatedContacts = props.customer.relatedContacts ? [...props.customer.relatedContacts] : []
-
-    // Clean up empty emails and phones
     const cleanedContact = {
       ...form.value,
       emails: form.value.emails.filter(e => e.trim() !== ''),
       phones: form.value.phones.filter(p => p.trim() !== ''),
     }
 
-    if (editingIndex.value !== null) {
-      updatedContacts[editingIndex.value] = cleanedContact
-    }
-    else {
-      updatedContacts.push(cleanedContact)
-    }
+    if (isPipelineMode.value && ownerCustomer.value) {
+      // Pipeline mode: save to the CUSTOMER's relatedContacts
+      const updatedContacts = ownerCustomer.value.relatedContacts ? [...ownerCustomer.value.relatedContacts] : []
 
-    const base = props.apiPrefix || '/api/pipeline'
-    const res = await $fetch<any>(`${base}/${customerId.value}`, {
-      method: 'PUT',
-      body: { relatedContacts: updatedContacts },
-    })
+      if (editingIndex.value !== null) {
+        // Find the actual index in the customer's full contacts array
+        const visibleContact = relatedContactsList.value[editingIndex.value]
+        const realIndex = updatedContacts.findIndex((c: any) => String(c._id) === String(visibleContact._id))
+        if (realIndex >= 0) updatedContacts[realIndex] = cleanedContact
+      } else {
+        updatedContacts.push(cleanedContact)
+      }
 
-    if (res.success) {
-      toast.success(editingIndex.value !== null ? 'Contact updated' : 'Contact added')
-      emit('updated', res.data)
-      isEditing.value = false
-    }
-    else {
-      toast.error('Failed to save contact')
+      // Save to customer
+      const custRes = await $fetch<any>(`/api/customers/${props.customer.customerId}`, {
+        method: 'PUT',
+        body: { relatedContacts: updatedContacts },
+      })
+
+      if (custRes.success) {
+        customerData.value = custRes.data
+
+        // If adding a new contact, also add the new _id to pipeline's contactIds
+        if (editingIndex.value === null) {
+          const newContacts = custRes.data.relatedContacts || []
+          const lastContact = newContacts[newContacts.length - 1]
+          if (lastContact?._id) {
+            const currentIds = props.contactIds ? [...props.contactIds] : []
+            currentIds.push(String(lastContact._id))
+            const pipeRes = await $fetch<any>(`/api/pipeline/${props.pipelineId}`, {
+              method: 'PUT',
+              body: { contactIds: currentIds },
+            })
+            if (pipeRes.success) {
+              emit('updated', pipeRes.data)
+            }
+          }
+        } else {
+          // Just re-emit the pipeline data refresh
+          emit('updated', props.customer)
+        }
+        toast.success(editingIndex.value !== null ? 'Contact updated' : 'Contact added')
+        isEditing.value = false
+      } else {
+        toast.error('Failed to save contact')
+      }
+    } else {
+      // Original mode: save to the entity directly (pipeline/customer)
+      const updatedContacts = props.customer.relatedContacts ? [...props.customer.relatedContacts] : []
+      if (editingIndex.value !== null) {
+        updatedContacts[editingIndex.value] = cleanedContact
+      } else {
+        updatedContacts.push(cleanedContact)
+      }
+
+      const base = props.apiPrefix || '/api/pipeline'
+      const res = await $fetch<any>(`${base}/${customerId.value}`, {
+        method: 'PUT',
+        body: { relatedContacts: updatedContacts },
+      })
+
+      if (res.success) {
+        toast.success(editingIndex.value !== null ? 'Contact updated' : 'Contact added')
+        emit('updated', res.data)
+        isEditing.value = false
+      } else {
+        toast.error('Failed to save contact')
+      }
     }
   }
   catch (err) {
@@ -145,25 +232,44 @@ async function saveContact() {
 }
 
 async function deleteContact(index: number) {
-  if (!confirm('Are you sure you want to delete this contact?'))
+  if (!confirm('Are you sure you want to remove this contact?'))
     return
   isLoading.value = true
   try {
-    const updatedContacts = props.customer.relatedContacts ? [...props.customer.relatedContacts] : []
-    updatedContacts.splice(index, 1)
+    if (isPipelineMode.value) {
+      // Pipeline mode: remove from pipeline's contactIds (don't delete from customer)
+      const visibleContact = relatedContactsList.value[index]
+      const currentIds = props.contactIds ? [...props.contactIds] : []
+      const removeIdx = currentIds.findIndex(id => String(id) === String(visibleContact._id))
+      if (removeIdx >= 0) currentIds.splice(removeIdx, 1)
 
-    const base = props.apiPrefix || '/api/pipeline'
-    const res = await $fetch<any>(`${base}/${customerId.value}`, {
-      method: 'PUT',
-      body: { relatedContacts: updatedContacts },
-    })
+      const res = await $fetch<any>(`/api/pipeline/${props.pipelineId}`, {
+        method: 'PUT',
+        body: { contactIds: currentIds },
+      })
+      if (res.success) {
+        toast.success('Contact removed from project')
+        emit('updated', res.data)
+      } else {
+        toast.error('Failed to remove contact')
+      }
+    } else {
+      // Original mode: delete from the entity
+      const updatedContacts = props.customer.relatedContacts ? [...props.customer.relatedContacts] : []
+      updatedContacts.splice(index, 1)
 
-    if (res.success) {
-      toast.success('Contact deleted')
-      emit('updated', res.data)
-    }
-    else {
-      toast.error('Failed to delete contact')
+      const base = props.apiPrefix || '/api/pipeline'
+      const res = await $fetch<any>(`${base}/${customerId.value}`, {
+        method: 'PUT',
+        body: { relatedContacts: updatedContacts },
+      })
+
+      if (res.success) {
+        toast.success('Contact deleted')
+        emit('updated', res.data)
+      } else {
+        toast.error('Failed to delete contact')
+      }
     }
   }
   catch (err) {
@@ -271,7 +377,7 @@ defineExpose({ openAdd, isEditing })
             <button class="p-1.5 text-muted-foreground hover:text-primary rounded-md transition-colors" title="Edit" @click="openEdit(idx, contact)">
               <Icon name="i-lucide-pencil" class="size-3.5" />
             </button>
-            <button class="p-1.5 text-muted-foreground hover:text-destructive rounded-md transition-colors" title="Delete" @click="deleteContact(idx)">
+            <button class="p-1.5 text-muted-foreground hover:text-destructive rounded-md transition-colors" :title="isPipelineMode ? 'Remove from project' : 'Delete'" @click="deleteContact(idx)">
               <Icon name="i-lucide-trash-2" class="size-3.5" />
             </button>
           </div>

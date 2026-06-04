@@ -74,6 +74,11 @@ export default defineEventHandler(async (event) => {
       ...c,
       _id: String(c._id),
       status: c.status ? String(c.status) : null,
+      type: c.type ? String(c.type) : null,
+      relatedContacts: (c.relatedContacts || []).map((rc: any) => ({
+        ...rc,
+        _id: rc._id ? String(rc._id) : undefined,
+      })),
     }))
 
     return {

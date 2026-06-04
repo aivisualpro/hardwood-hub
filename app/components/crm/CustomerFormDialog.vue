@@ -25,7 +25,6 @@ const form = ref({
   state: '',
   zip: '',
   notes: '',
-  stage: '',
   status: '' as string,
   estimatedProjectDuration: '',
   totalEstimate: undefined as number | undefined,
@@ -38,7 +37,7 @@ const form = ref({
   projectAssignedTo: '',
   woodOrderDate: '',
   tags: '',
-  relatedContact: '' as string,
+  contactIds: [] as string[],
 })
 
 const isLoading = ref(false)
@@ -62,7 +61,6 @@ watch(() => props.modelValue, (isOpen) => {
         state: props.customer.state || '',
         zip: props.customer.zip || '',
         notes: props.customer.notes || '',
-        stage: props.customer.stage || '',
         status: props.customer.status ? String(props.customer.status) : '',
         estimatedProjectDuration: props.customer.estimatedProjectDuration || '',
         totalEstimate: props.customer.totalEstimate || undefined,
@@ -75,7 +73,7 @@ watch(() => props.modelValue, (isOpen) => {
         projectAssignedTo: props.customer.projectAssignedTo || '',
         woodOrderDate: props.customer.woodOrderDate ? (new Date(props.customer.woodOrderDate).toISOString().split('T')[0] || '') : '',
         tags: (props.customer.tags || []).join(', '),
-        relatedContact: props.customer.relatedContact || '',
+        contactIds: (props.customer.contactIds || []).map((id: any) => String(id)),
       }
     }
     else {
@@ -92,7 +90,6 @@ watch(() => props.modelValue, (isOpen) => {
         state: '',
         zip: '',
         notes: '',
-        stage: '',
         status: '',
         estimatedProjectDuration: '',
         totalEstimate: undefined,
@@ -105,7 +102,7 @@ watch(() => props.modelValue, (isOpen) => {
         projectAssignedTo: '',
         woodOrderDate: '',
         tags: '',
-        relatedContact: '',
+        contactIds: [],
       }
     }
   }
@@ -170,34 +167,44 @@ async function submit() {
   }
 }
 
-const STAGES = [
-  { id: 'contact made', label: 'contact made', bg: 'bg-[#FFD966]', text: 'text-black', border: 'border-[#FFD966]' },
-  { id: 'Needs estimate', label: 'Needs estimate', bg: 'bg-[#FFE599]', text: 'text-black', border: 'border-[#FFE599]' },
-  { id: 'Estimate sent', label: 'Estimate sent', bg: 'bg-[#F6B26B]', text: 'text-black', border: 'border-[#F6B26B]' },
-  { id: 'Changes requested', label: 'Changes requested', bg: 'bg-[#4A86E8]', text: 'text-white', border: 'border-[#4A86E8]' },
-  { id: 'Follow-Up Sent', label: 'Follow-Up Sent', bg: 'bg-[#E06666]', text: 'text-white', border: 'border-[#E06666]' },
-  { id: 'Needs Sched', label: 'Needs Sched', bg: 'bg-[#EA9999]', text: 'text-black', border: 'border-[#EA9999]' },
-  { id: 'Needs Contr', label: 'Needs Contr', bg: 'bg-[#B4A7D6]', text: 'text-black', border: 'border-[#B4A7D6]' },
-  { id: 'Waiting for sign', label: 'Waiting for Si...', bg: 'bg-[#8E7CC3]', text: 'text-white', border: 'border-[#8E7CC3]' },
-  { id: 'Needs Deposit', label: 'Needs Deposit', bg: 'bg-[#3D85C6]', text: 'text-white', border: 'border-[#3D85C6]' },
-  { id: 'Needs wood', label: 'Needs wood', bg: 'bg-[#0B5394]', text: 'text-white', border: 'border-[#0B5394]' },
-  { id: 'Needs Crew', label: 'Needs Crew', bg: 'bg-[#76A5AF]', text: 'text-black', border: 'border-[#76A5AF]' },
-  { id: 'Project In Rev', label: 'Project Is Re...', bg: 'bg-[#45818E]', text: 'text-white', border: 'border-[#45818E]' },
-  { id: 'Project In Pro', label: 'Project In Pro...', bg: 'bg-[#38761D]', text: 'text-white', border: 'border-[#38761D]' },
-  { id: 'needs follow', label: 'needs follow', bg: 'bg-[#6AA84F]', text: 'text-white', border: 'border-[#6AA84F]' },
-  { id: 'inspection do', label: 'inspection do...', bg: 'bg-[#93C47D]', text: 'text-black', border: 'border-[#93C47D]' },
-  { id: 'Waiting for P', label: 'Waiting for P...', bg: 'bg-[#8FCE00]', text: 'text-black', border: 'border-[#8FCE00]' },
-  { id: 'lost', label: 'lost', bg: 'bg-[#999999]', text: 'text-white', border: 'border-[#999999]' },
-]
+// ─── Dynamic Status dropdown (same as pipeline detail) ────
+interface StatusOption { _id: string, label: string, value: string, color: string, icon: string, order: number }
+const statusDropdownOptions = ref<StatusOption[]>([])
 
-function normalizeStage(stageStr: string): string {
-  if (!stageStr)
-    return ''
-  let s = stageStr.trim().toLowerCase()
-  s = s.replace('neads', 'needs')
-  s = s.replace(/needs estimate\s*$/, 'needs estimate')
-  return s
-}
+const { data: statusDropdownRes } = await useFetch<any>('/api/dropdowns?name=Customer Status', {
+  key: 'customer-status-dropdown-form',
+})
+watch(statusDropdownRes, (val) => {
+  if (val?.data?.options) statusDropdownOptions.value = val.data.options
+  else if (val?.data && Array.isArray(val.data)) {
+    const match = val.data.find((dd: any) => dd.name === 'Customer Status')
+    if (match?.options) statusDropdownOptions.value = match.options
+  }
+}, { immediate: true })
+
+const statusMap = computed(() => {
+  const m = new Map<string, StatusOption>()
+  for (const o of statusDropdownOptions.value) m.set(String(o._id), o)
+  return m
+})
+
+// Build status options from the dropdown
+const statusSelectOptions = computed(() => {
+  return statusDropdownOptions.value.map(o => ({
+    id: String(o._id),
+    label: o.label,
+    color: o.color || '#6366f1',
+  }))
+})
+
+// Resolve current status display
+const currentStatusDisplay = computed(() => {
+  if (form.value.status) {
+    const opt = statusMap.value.get(form.value.status)
+    if (opt) return { label: opt.label, color: opt.color }
+  }
+  return null
+})
 
 const activeDropdown = ref<string | null>(null)
 const stageSearch = ref('')
@@ -207,7 +214,7 @@ const employeeSearch = ref('')
 const employeeSearchInput = ref<HTMLInputElement | null>(null)
 
 watch(activeDropdown, (val) => {
-  if (val === 'stage') {
+  if (val === 'status') {
     stageSearch.value = ''
     setTimeout(() => {
       stageSearchInput.value && stageSearchInput.value.focus()
@@ -225,15 +232,22 @@ watch(activeDropdown, (val) => {
       customerSearchInput.value && customerSearchInput.value.focus()
     }, 50)
   }
+  if (val === 'contact') {
+    contactSearch.value = ''
+    showAddContactForm.value = false
+    setTimeout(() => {
+      contactSearchInput.value && contactSearchInput.value.focus()
+    }, 50)
+  }
 })
 
-const filteredStageOptions = computed(() => {
-  let all = [...STAGES]
-  if (form.value.stage) {
-    const exactVal = form.value.stage.trim()
-    const found = all.find(x => normalizeStage(x.id) === normalizeStage(exactVal))
-    if (!found && exactVal) {
-      all.push({ id: exactVal, label: exactVal, bg: 'bg-muted/80', text: 'text-foreground', border: 'border-border' })
+const filteredStatusOptions = computed(() => {
+  let all = [...statusSelectOptions.value]
+  // If current status doesn't match any option, add it
+  if (form.value.status) {
+    const found = all.find(x => x.id === form.value.status)
+    if (!found && currentStatusDisplay.value) {
+      all.push({ id: form.value.status, label: currentStatusDisplay.value.label, color: currentStatusDisplay.value.color || '' })
     }
   }
   if (!stageSearch.value)
@@ -242,21 +256,11 @@ const filteredStageOptions = computed(() => {
   return all.filter(s => s.label.toLowerCase().includes(sub))
 })
 
-function handleStageSelect(newStage: string) {
-  if (!newStage.trim())
+function handleStatusSelect(optionId: string) {
+  if (!optionId.trim())
     return
-  form.value.stage = newStage.trim()
+  form.value.status = optionId
   activeDropdown.value = null
-}
-
-function getStageClasses(stageName: string) {
-  if (!stageName)
-    return 'bg-muted text-muted-foreground border-border'
-  const norm = normalizeStage(stageName)
-  const found = STAGES.find(s => normalizeStage(s.id) === norm)
-  if (found)
-    return `${found.bg} ${found.text} border ${found.border}`
-  return 'bg-muted/80 text-foreground border-border'
 }
 
 const { data: employeesRes } = await useFetch<any>('/api/employees')
@@ -293,7 +297,7 @@ function selectCustomer(cust: any) {
   form.value.city = cust.city || ''
   form.value.state = cust.state || ''
   form.value.zip = cust.zip || ''
-  form.value.relatedContact = ''
+  form.value.contactIds = []
   activeDropdown.value = null
 }
 
@@ -307,6 +311,110 @@ const selectedCustomerContacts = computed(() => {
   return (selectedCustomerObj.value?.relatedContacts || []) as any[]
 })
 
+const contactSearch = ref('')
+const contactSearchInput = ref<HTMLInputElement | null>(null)
+const showAddContactForm = ref(false)
+const addContactLoading = ref(false)
+
+const newContactForm = ref({
+  firstName: '',
+  lastName: '',
+  title: '',
+  emails: [''],
+  phones: [''],
+})
+
+const filteredContacts = computed(() => {
+  if (!contactSearch.value) return selectedCustomerContacts.value
+  const s = contactSearch.value.toLowerCase()
+  return selectedCustomerContacts.value.filter((rc: any) => {
+    const name = `${rc.firstName || ''} ${rc.lastName || ''}`.toLowerCase()
+    return name.includes(s) || (rc.title || '').toLowerCase().includes(s)
+  })
+})
+
+function getContactId(rc: any): string {
+  return rc._id ? String(rc._id) : ''
+}
+
+function getContactLabel(rc: any): string {
+  return `${rc.firstName || ''} ${rc.lastName || ''}`.trim()
+}
+
+function toggleContact(rc: any) {
+  const id = getContactId(rc)
+  if (!id) return
+  const idx = form.value.contactIds.indexOf(id)
+  if (idx >= 0) {
+    form.value.contactIds.splice(idx, 1)
+  } else {
+    form.value.contactIds.push(id)
+  }
+}
+
+function isContactSelected(rc: any): boolean {
+  return form.value.contactIds.includes(getContactId(rc))
+}
+
+function getSelectedContactNames(): string {
+  return form.value.contactIds.map(id => {
+    const rc = selectedCustomerContacts.value.find((c: any) => String(c._id) === id)
+    return rc ? getContactLabel(rc) : ''
+  }).filter(Boolean).join(', ')
+}
+
+function clearContacts() {
+  form.value.contactIds = []
+}
+
+function openAddContactForm() {
+  newContactForm.value = { firstName: '', lastName: '', title: '', emails: [''], phones: [''] }
+  showAddContactForm.value = true
+}
+
+async function saveNewContact() {
+  if (!newContactForm.value.firstName.trim()) {
+    toast?.error?.('First name is required')
+    return
+  }
+  addContactLoading.value = true
+  try {
+    const updatedContacts = [...selectedCustomerContacts.value, {
+      firstName: newContactForm.value.firstName.trim(),
+      lastName: newContactForm.value.lastName.trim(),
+      title: newContactForm.value.title.trim(),
+      emails: newContactForm.value.emails.filter(e => e.trim()),
+      phones: newContactForm.value.phones.filter(p => p.trim()),
+    }]
+
+    const res = await $fetch<any>(`/api/customers/${form.value.customerId}`, {
+      method: 'PUT',
+      body: { relatedContacts: updatedContacts },
+    })
+
+    if (res.success) {
+      toast.success('Contact added')
+      const custIdx = allCustomers.value.findIndex((c: any) => c._id === form.value.customerId)
+      if (custIdx !== -1 && res.data?.relatedContacts) {
+        allCustomers.value[custIdx].relatedContacts = res.data.relatedContacts
+      }
+      // Auto-select the newly added contact by finding its new _id
+      const newContacts = res.data?.relatedContacts || []
+      const lastContact = newContacts[newContacts.length - 1]
+      if (lastContact?._id) {
+        form.value.contactIds.push(String(lastContact._id))
+      }
+      showAddContactForm.value = false
+    } else {
+      toast.error('Failed to add contact')
+    }
+  } catch {
+    toast.error('Error adding contact')
+  } finally {
+    addContactLoading.value = false
+  }
+}
+
 function clearCustomer() {
   form.value.customerId = ''
   form.value.name = ''
@@ -318,7 +426,7 @@ function clearCustomer() {
   form.value.city = ''
   form.value.state = ''
   form.value.zip = ''
-  form.value.relatedContact = ''
+  form.value.contactIds = []
 }
 
 const filteredEmployees = computed(() => {
@@ -402,44 +510,117 @@ function toggleEmployee(emp: string) {
             <Input v-model="form.projectName" placeholder="e.g. Kitchen Remodel" />
           </div>
 
-          <!-- Related Contact (only if customer has contacts) -->
-          <div v-if="form.customerId && selectedCustomerContacts.length > 0" class="space-y-2 col-span-2">
-            <Label>Related Contact</Label>
-            <select v-model="form.relatedContact" class="w-full h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary">
-              <option value="">
-                Select a contact...
-              </option>
-              <option v-for="(rc, i) in selectedCustomerContacts" :key="i" :value="`${rc.firstName || ''} ${rc.lastName || ''}`.trim()">
-                {{ `${rc.firstName || ''} ${rc.lastName || ''}`.trim() }}{{ rc.title ? ` — ${rc.title}` : '' }}
-              </option>
-            </select>
+          <!-- Related Contacts (multi-select, shown when a customer is selected) -->
+          <div v-if="form.customerId" class="space-y-2 col-span-2 relative" :class="activeDropdown === 'contact' ? 'z-50' : ''">
+            <Label>Related Contacts</Label>
+            <div class="relative">
+              <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] h-auto" @click.stop="activeDropdown = activeDropdown === 'contact' ? null : 'contact'">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span v-if="!form.contactIds.length" class="text-muted-foreground">Select contacts...</span>
+                  <template v-else>
+                    <span v-for="cId in form.contactIds" :key="cId" class="text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">
+                      {{ selectedCustomerContacts.find((c: any) => String(c._id) === cId) ? getContactLabel(selectedCustomerContacts.find((c: any) => String(c._id) === cId)) : cId }}
+                    </span>
+                  </template>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button v-if="form.contactIds.length" type="button" class="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors" @click.stop="clearContacts">
+                    <Icon name="i-lucide-x" class="size-3" />
+                  </button>
+                  <Icon name="i-lucide-chevron-down" class="size-4 opacity-50" />
+                </div>
+              </button>
+
+              <div v-if="activeDropdown === 'contact'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+              <div v-if="activeDropdown === 'contact'" class="absolute left-0 mt-1 top-full w-full bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                <!-- Search -->
+                <div class="p-2 border-b border-border/50">
+                  <input ref="contactSearchInput" v-model="contactSearch" type="text" placeholder="Search contacts..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop>
+                </div>
+
+                <!-- Add New Contact inline form -->
+                <div v-if="showAddContactForm" class="p-3 border-b border-border/50 space-y-2" @click.stop>
+                  <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary mb-1">
+                    <Icon name="i-lucide-user-plus" class="size-3.5" />
+                    New Contact
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <input v-model="newContactForm.firstName" type="text" placeholder="First Name *" class="w-full bg-background border border-border/50 rounded px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary">
+                    <input v-model="newContactForm.lastName" type="text" placeholder="Last Name" class="w-full bg-background border border-border/50 rounded px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary">
+                  </div>
+                  <input v-model="newContactForm.title" type="text" placeholder="Title / Role" class="w-full bg-background border border-border/50 rounded px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary">
+                  <input v-model="newContactForm.emails[0]" type="email" placeholder="Email" class="w-full bg-background border border-border/50 rounded px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary">
+                  <input v-model="newContactForm.phones[0]" type="text" placeholder="Phone" class="w-full bg-background border border-border/50 rounded px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary">
+                  <div class="flex items-center gap-2 pt-1">
+                    <button type="button" :disabled="addContactLoading" class="px-3 py-1 text-xs font-semibold text-primary-foreground bg-primary rounded disabled:opacity-50" @click.stop="saveNewContact">
+                      {{ addContactLoading ? 'Saving...' : 'Save Contact' }}
+                    </button>
+                    <button type="button" class="px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground" @click.stop="showAddContactForm = false">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Contact list (multi-select checkboxes) -->
+                <div class="max-h-[200px] overflow-y-auto py-1.5">
+                  <button v-for="(rc, i) in filteredContacts" :key="i" type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center justify-between gap-2" @click.stop="toggleContact(rc)">
+                    <div class="min-w-0 flex items-center gap-2">
+                      <div class="size-4 rounded border shrink-0 flex items-center justify-center transition-colors" :class="isContactSelected(rc) ? 'bg-primary border-primary' : 'border-input'">
+                        <Icon v-if="isContactSelected(rc)" name="i-lucide-check" class="size-3 text-primary-foreground" />
+                      </div>
+                      <div class="min-w-0">
+                        <span class="block truncate font-medium" :class="isContactSelected(rc) ? 'text-primary' : ''">{{ getContactLabel(rc) }}</span>
+                        <span v-if="rc.title" class="block text-[10px] text-muted-foreground truncate">{{ rc.title }}</span>
+                      </div>
+                    </div>
+                  </button>
+                  <div v-if="!filteredContacts.length && !showAddContactForm" class="px-3 py-2 text-xs text-muted-foreground text-center">
+                    No contacts found.
+                  </div>
+                </div>
+
+                <!-- Add New button -->
+                <div v-if="!showAddContactForm" class="p-1.5 border-t border-border/50">
+                  <button type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-semibold rounded" @click.stop="openAddContactForm">
+                    <Icon name="i-lucide-plus" class="size-4" />
+                    Add New Contact
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="space-y-2 relative" :class="activeDropdown === 'stage' ? 'z-50' : ''">
-            <Label>Stage</Label>
+          <div class="space-y-2 relative" :class="activeDropdown === 'status' ? 'z-50' : ''">
+            <Label>Status</Label>
             <div class="relative">
-              <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary h-9" @click.stop="activeDropdown = activeDropdown === 'stage' ? null : 'stage'">
+              <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary h-9" @click.stop="activeDropdown = activeDropdown === 'status' ? null : 'status'">
                 <div class="flex items-center gap-2">
-                  <div class="size-2 rounded-full ring-1 ring-border shadow-xs" :class="getStageClasses(form.stage)" />
-                  <span :class="form.stage ? 'text-foreground font-bold uppercase tracking-wider text-[10px]' : 'text-muted-foreground'">{{ form.stage || 'Select stage...' }}</span>
+                  <div
+                    class="size-2 rounded-full ring-1 ring-border shadow-xs"
+                    :style="currentStatusDisplay?.color ? { backgroundColor: currentStatusDisplay.color } : {}"
+                  />
+                  <span :class="currentStatusDisplay ? 'text-foreground font-bold uppercase tracking-wider text-[10px]' : 'text-muted-foreground'">{{ currentStatusDisplay?.label || 'Select status...' }}</span>
                 </div>
                 <Icon name="i-lucide-chevron-down" class="size-4 opacity-50" />
               </button>
 
-              <div v-if="activeDropdown === 'stage'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
-              <div v-if="activeDropdown === 'stage'" class="absolute left-0 mt-1 top-full w-full bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div v-if="activeDropdown === 'status'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+              <div v-if="activeDropdown === 'status'" class="absolute left-0 mt-1 top-full w-full bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div class="p-2 border-b border-border/50">
-                  <input ref="stageSearchInput" v-model="stageSearch" type="text" placeholder="Search or add fresh..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop @keydown.enter.prevent="handleStageSelect(stageSearch)">
+                  <input ref="stageSearchInput" v-model="stageSearch" type="text" placeholder="Search statuses..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop>
                 </div>
                 <div class="max-h-[200px] overflow-y-auto py-1.5">
-                  <button v-for="st in filteredStageOptions" :key="st.id" type="button" class="w-full text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2" @click.stop="handleStageSelect(st.id)">
-                    <div class="size-2 rounded-full shadow-inner ring-1 ring-border" :class="st.bg" />
-                    <span class="truncate">{{ st.label }}</span>
+                  <button v-for="st in filteredStatusOptions" :key="st.id" type="button" class="w-full text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2" @click.stop="handleStatusSelect(st.id)">
+                    <div
+                      class="size-2 rounded-full shadow-inner ring-1 ring-border"
+                      :style="st.color ? { backgroundColor: st.color } : {}"
+                    />
+                    <span class="truncate" :class="form.status === st.id ? 'text-primary' : ''">{{ st.label }}</span>
+                    <Icon v-if="form.status === st.id" name="i-lucide-check" class="size-3 text-primary ml-auto shrink-0" />
                   </button>
-                  <button v-if="stageSearch && !filteredStageOptions.find(s => s.id.toLowerCase() === stageSearch.toLowerCase())" type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap" @click.stop="handleStageSelect(stageSearch)">
-                    <Icon name="i-lucide-plus" class="size-4 shrink-0" />
-                    <span class="truncate">Add "{{ stageSearch }}"</span>
-                  </button>
+                  <div v-if="!filteredStatusOptions.length" class="px-3 py-2 text-xs text-muted-foreground text-center">
+                    No statuses found.
+                  </div>
                 </div>
               </div>
             </div>

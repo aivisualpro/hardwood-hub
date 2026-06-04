@@ -15,7 +15,7 @@ const PipelineSchema = new mongoose.Schema(
     state: { type: String, default: '' },
     zip: { type: String, default: '' },
     notes: { type: String, default: '' },
-    stage: { type: String, default: '' },
+
     status: { type: mongoose.Schema.Types.ObjectId, default: null },
     estimatedProjectDuration: { type: String, default: '' },
     totalEstimate: { type: Number, default: null },
@@ -26,7 +26,7 @@ const PipelineSchema = new mongoose.Schema(
     lastFollowUpSentOn: { type: Date, default: null },
     dateApproved: { type: Date, default: null },
     projectAssignedTo: { type: String, default: '' },
-    relatedContact: { type: String, default: '' },
+    contactIds: [{ type: mongoose.Schema.Types.ObjectId }],
     woodOrderDate: { type: Date, default: null },
     tags: [{ type: String }],
     gallery: [{
@@ -80,7 +80,7 @@ export interface IPipeline {
   state: string
   zip: string
   notes: string
-  stage?: string
+
   status?: any
   estimatedProjectDuration?: string
   totalEstimate?: number
@@ -91,7 +91,7 @@ export interface IPipeline {
   lastFollowUpSentOn?: Date
   dateApproved?: Date
   projectAssignedTo?: string
-  relatedContact?: string
+  contactIds?: any[]
   woodOrderDate?: Date
   tags?: string[]
   gallery?: Array<{

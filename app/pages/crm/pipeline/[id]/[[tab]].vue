@@ -614,7 +614,7 @@ function totalSqft(blocks: any[]) {
             </button>
           </div>
           <div class="px-5 py-4 flex-1 min-h-0 overflow-y-auto">
-            <CrmCustomerRelatedContacts v-if="customer" ref="relatedContactsRef" :customer="customer" @updated="onCustomerUpdated" />
+            <CrmCustomerRelatedContacts v-if="customer" ref="relatedContactsRef" :customer="customer" :pipeline-id="customerId" :contact-ids="(customer.contactIds || []).map((id: any) => String(id))" @updated="onCustomerUpdated" />
           </div>
         </div>
       </div>

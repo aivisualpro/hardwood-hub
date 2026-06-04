@@ -131,7 +131,7 @@ const CustomerWritable = {
   state: z.string().max(100).optional().default(''),
   zip: z.string().max(20).optional().default(''),
   notes: z.string().max(10_000).optional().default(''),
-  stage: z.string().max(100).optional().default(''),
+
   // type is a Mongo ObjectId ref to a Dropdown option — accept string or null
   type: MongoId.nullable().optional(),
   // status is a Mongo ObjectId ref to a Dropdown doc — accept string or null
@@ -144,7 +144,7 @@ const CustomerWritable = {
   lastFollowUpSentOn: z.coerce.date().nullable().optional(),
   dateApproved: z.coerce.date().nullable().optional(),
   projectAssignedTo: z.string().max(200).optional().default(''),
-  relatedContact: z.string().max(200).optional().default(''),
+  contactIds: z.array(MongoId).optional().default([]),
   woodOrderDate: z.coerce.date().nullable().optional(),
   tags: z.array(z.string().max(100)).optional().default([]),
   gallery: z.array(GalleryItem).optional().default([]),
@@ -303,7 +303,7 @@ export const PipelineCreateSchema = z.object({
   state: z.string().max(100).optional().default(''),
   zip: z.string().max(20).optional().default(''),
   notes: z.string().max(10_000).optional().default(''),
-  stage: z.string().max(100).optional().default(''),
+
   status: MongoId.nullable().optional(),
   estimatedProjectDuration: z.string().max(100).optional().default(''),
   totalEstimate: z.number().nonnegative().nullable().optional(),
@@ -313,7 +313,7 @@ export const PipelineCreateSchema = z.object({
   lastFollowUpSentOn: z.coerce.date().nullable().optional(),
   dateApproved: z.coerce.date().nullable().optional(),
   projectAssignedTo: z.string().max(200).optional().default(''),
-  relatedContact: z.string().max(200).optional().default(''),
+  contactIds: z.array(MongoId).optional().default([]),
   woodOrderDate: z.coerce.date().nullable().optional(),
   tags: z.array(z.string().max(100)).optional().default([]),
   gallery: z.array(GalleryItem).optional().default([]),
