@@ -231,7 +231,7 @@ if (import.meta.client && _asyncData.value && !contractData.value) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
+  <div class="h-full overflow-y-auto min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30">
     <!-- Error -->
     <div v-if="error && !contractData" class="flex items-center justify-center min-h-screen px-4">
       <div class="max-w-md w-full text-center">
