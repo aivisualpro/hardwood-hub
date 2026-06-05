@@ -45,7 +45,7 @@ const userTeams = computed(() => {
   const userWs = user.value?.workspace
   if (userWs) {
     // Strict filter — don't fall back to all teams
-    return allTeams.value.filter((t: any) => t._id === userWs)
+    return allTeams.value.filter((t: any) => String(t._id) === String(userWs))
   }
   return allTeams.value
 })
@@ -53,7 +53,7 @@ const userTeams = computed(() => {
 const activeTeamId = useCookie<string>('active_workspace_id')
 const activeTeam = computed({
   get() {
-    const t = userTeams.value.find((t: any) => t._id === activeTeamId.value)
+    const t = userTeams.value.find((t: any) => String(t._id) === String(activeTeamId.value))
     if (t) return t
     if (userTeams.value[0]) return userTeams.value[0]
 

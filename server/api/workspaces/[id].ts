@@ -76,6 +76,11 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // Field-level permissions — always editable, only $set when present
+    if (data.fieldPermissions !== undefined) {
+      $set.fieldPermissions = data.fieldPermissions
+    }
+
     if (Object.keys($set).length === 0) {
       return { success: true, data: wp }
     }

@@ -7,6 +7,7 @@ import { Pipeline } from '../../models/Pipeline'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
+import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { PipelineCreateSchema, parseBody } from '../../utils/validation'
 
 function escapeRegex(s: string): string {
@@ -64,7 +65,7 @@ export default defineEventHandler(async (event) => {
         customerId: c.customerId ? String(c.customerId) : null,
         status: c.status ? String(c.status) : null,
       }))
-      return { success: true, data: serialized }
+      return { success: true, data: stripHiddenFields(event, '/crm/pipeline', serialized) }
     }
 
     const [records, total] = await Promise.all([
@@ -86,7 +87,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      data: serialized,
+      data: stripHiddenFields(event, '/crm/pipeline', serialized),
       pagination: {
         page,
         limit,
@@ -100,7 +101,8 @@ export default defineEventHandler(async (event) => {
     requireManager(event)
     const raw = await readBody(event)
     const data = parseBody(PipelineCreateSchema, raw)
-    const record = new Pipeline(data)
+    const cleaned = sanitizeWriteBody(event, '/crm/pipeline', data)
+    const record = new Pipeline(cleaned)
     await record.save()
     return { success: true, data: record }
   }

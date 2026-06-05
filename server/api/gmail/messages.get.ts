@@ -7,6 +7,7 @@ import { Employee } from '../../models/Employee'
  * Query params: folder (INBOX|SENT|DRAFT|TRASH|STARRED), maxResults, pageToken, q (search)
  */
 import { connectDB } from '../../utils/mongoose'
+import { requirePermission } from '../../utils/requirePermission'
 import { logger } from '../../utils/logger'
 const log = logger('[messages.get]')
 
@@ -20,6 +21,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Invalid session' })
 
   await connectDB()
+  await requirePermission(event, '/email')
   const employee = await Employee.findById(session.id).select('gmailTokens').lean<any>()
 
   if (!employee?.gmailTokens) {

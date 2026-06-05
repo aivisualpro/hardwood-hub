@@ -12,9 +12,11 @@ import { SubCategory } from '../../models/SubCategory'
 import { Task } from '../../models/Task'
 // GET /api/dashboard/stats — aggregated dashboard metrics
 import { connectDB } from '../../utils/mongoose'
+import { requirePermission } from '../../utils/requirePermission'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   await connectDB()
+  await requirePermission(event, '/admin/dashboard', 'read')
 
   // Run all queries in parallel for speed
   const [

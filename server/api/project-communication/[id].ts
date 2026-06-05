@@ -1,11 +1,11 @@
 import { ProjectCommunication } from '../../models/ProjectCommunication'
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { ProjectCommunicationUpdateSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireManager(event)
+  await requirePermission(event, '/project-communication')
   const id = objectId(getRouterParam(event, 'id'))
 
   if (!id)

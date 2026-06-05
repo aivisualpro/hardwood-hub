@@ -2,7 +2,8 @@ import { Employee } from '../../models/Employee'
 // GET /api/employees  — paginated list with search
 // POST /api/employees — create
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
+import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { EmployeeCreateSchema, parseBody } from '../../utils/validation'
 
 function escapeRegex(s: string): string {
@@ -11,7 +12,7 @@ function escapeRegex(s: string): string {
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireAdmin(event)
+  await requirePermission(event, '/hr/employees')
 
   if (event.method === 'GET') {
     const query = getQuery(event)
@@ -44,7 +45,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      data: employees,
+      data: stripHiddenFields(event, '/hr/employees', employees as any[]),
       pagination: {
         page,
         limit,
@@ -57,7 +58,8 @@ export default defineEventHandler(async (event) => {
   if (event.method === 'POST') {
     const raw = await readBody(event)
     const data = parseBody(EmployeeCreateSchema, raw)
-    const doc = await Employee.create(data)
+    const cleaned = sanitizeWriteBody(event, '/hr/employees', data)
+    const doc = await Employee.create(cleaned)
     return { success: true, data: doc }
   }
 

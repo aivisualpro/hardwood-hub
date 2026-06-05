@@ -6,6 +6,7 @@ import { connectDB } from '../../utils/mongoose'
 import { notifyNewTask } from '../../utils/taskNotifications'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
+import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { TaskCreateSchema, parseBody } from '../../utils/validation'
 
 const POPULATE_FIELDS = [
@@ -33,7 +34,7 @@ export default defineEventHandler(async (event) => {
         Task.find({ status }).sort({ dueDate: 1, createdAt: -1 }).skip(skip).limit(limit).populate(POPULATE_FIELDS).lean<any[]>(),
         Task.countDocuments({ status }),
       ])
-      return { success: true, data: tasks, total, hasMore: skip + tasks.length < total }
+      return { success: true, data: stripHiddenFields(event, '/tasks', tasks), total, hasMore: skip + tasks.length < total }
     }
 
     // Load all columns (initial load) — limited per column
@@ -48,27 +49,30 @@ export default defineEventHandler(async (event) => {
       columns[s] = { tasks, total, hasMore: tasks.length < total }
     }))
 
-    return { success: true, columns }
+    return { success: true, columns: Object.fromEntries(
+      Object.entries(columns).map(([s, col]) => [s, { ...col, tasks: stripHiddenFields(event, '/tasks', col.tasks) }]),
+    ) }
   }
 
   if (event.method === 'POST') {
     const raw = await readBody(event)
     const body = parseBody(TaskCreateSchema, raw)
+    const cleaned = sanitizeWriteBody(event, '/tasks', body as Record<string, any>)
 
     try {
       const maxOrderDoc = await Task.findOne({ status: body.status || 'todo' }).sort({ order: -1 }).select('order').lean<any>()
       const order = (maxOrderDoc?.order ?? -1) + 1
 
       let doc = await Task.create({
-        title: body.title,
-        description: body.description ?? '',
-        priority: body.priority ?? 'medium',
-        assignees: body.assignees ?? [],
-        createdBy: body.createdBy ?? null,
-        dueDate: body.dueDate ?? null,
-        status: body.status ?? 'todo',
-        labels: body.labels ?? [],
-        subtasks: body.subtasks ?? [],
+        title: cleaned.title,
+        description: cleaned.description ?? '',
+        priority: cleaned.priority ?? 'medium',
+        assignees: cleaned.assignees ?? [],
+        createdBy: cleaned.createdBy ?? null,
+        dueDate: cleaned.dueDate ?? null,
+        status: cleaned.status ?? 'todo',
+        labels: cleaned.labels ?? [],
+        subtasks: cleaned.subtasks ?? [],
         comments: [],
         order,
       })

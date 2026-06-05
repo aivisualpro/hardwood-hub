@@ -3,6 +3,7 @@ import { Product } from '../../models/Product'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
+import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { parseBody } from '../../utils/validation'
 import { z } from 'zod'
 
@@ -63,7 +64,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      data,
+      data: stripHiddenFields(event, '/crm/products', data as any[]),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     }
   }
@@ -72,7 +73,8 @@ export default defineEventHandler(async (event) => {
     requireManager(event)
     const raw = await readBody(event)
     const data = parseBody(ProductWriteSchema, raw)
-    const product = new Product(data)
+    const cleaned = sanitizeWriteBody(event, '/crm/products', data)
+    const product = new Product(cleaned)
     await product.save()
     return { success: true, data: product }
   }

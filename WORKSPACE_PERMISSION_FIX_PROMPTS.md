@@ -282,3 +282,156 @@ Two cleanups:
 Verify: editing+saving the Admin workspace keeps allowedMenus = ['*']; a normal CRUD page with
 read-only permission shows no add/edit/delete buttons.
 ```
+
+---
+---
+
+# ROUND 3 — Coverage gap, ObjectId, + Field-Level Security
+
+> **Re-audit of 9–11:** Prompt 9 ✅ wired into 23 routes, Prompt 10 ✅ middleware self-fetches the
+> workspace list, Prompt 11 ✅ wildcard admin preserved. BUT the Prompt 9 list was INCOMPLETE — these
+> CRUD areas were never listed and are still UNGATED: **employees, daily-production,
+> project-communication, performance, bonus-distribution, email/gmail.** Worse, `/api/employees`
+> uses `requireAdmin`, so a non-admin (e.g. Supervisor) with the Employees menu still gets 403.
+> Prompts 12–13 close this. Prompts 14–17 add field-level security.
+
+---
+
+## Prompt 12 — Gate the remaining CRUD routes + unlock Employees for workspace control
+
+```
+requirePermission is wired into 23 routes but several CRUD areas were missed, and
+server/api/employees/index.ts + [id].ts use requireAdmin — which means a non-admin granted the
+Employees menu via their workspace STILL gets 403 (the menu permission is meaningless server-side).
+
+Fix:
+1. In server/api/employees/index.ts and server/api/employees/[id].ts, REPLACE the requireAdmin(event)
+   call with: await requirePermission(event, '/hr/employees')  (op auto-derives from method).
+   Keep requireAdmin only on server/api/employees/set-all-active.post.ts (bulk admin op).
+2. Add await requirePermission(event, '<route>') after connectDB() in:
+   - server/api/daily-production/index.ts, [id].ts          → '/daily-production'
+   - server/api/project-communication/index.ts, [id].ts     → '/project-communication'
+   - server/api/performance/index.ts                        → '/hr/employee-performance'
+   - server/api/bonus-distribution/[employeeId].ts          → '/hr/employees-bonus-report' (op 'read')
+   - server/api/gmail/messages.get.ts, gmail/messages/[id].ts → '/email'
+   - server/api/dashboard/stats.get.ts                      → '/admin/dashboard' (op 'read')
+Leave ungated: auth/*, nav/counts, google-calendar/callback|webhook, gmail OAuth callback/status/
+disconnect.
+
+Verify: Supervisor "Thomas Russell" (non-admin) in a workspace that grants read on /hr/employees can
+GET /api/employees (200) but DELETE /api/employees/[id] returns 403. Remove the Employees menu from
+that workspace → GET /api/employees returns 403. Admin still has full access.
+```
+
+---
+
+## Prompt 13 — Make workspace-id handling ObjectId-safe
+
+```
+The employees.workspace field is a Mongoose ObjectId (default null), but server/api/auth/me.get.ts
+returns it as `workspace: employee.workspace || ''` without stringifying, and the client compares it
+with === against workspace _id strings. If serialization ever yields a non-string, the user's
+workspace won't match any team and they fall through to the deny fallback (sees nothing).
+
+Fix:
+1. server/api/auth/me.get.ts → return `workspace: employee.workspace ? String(employee.workspace) : ''`.
+2. app/composables/usePermissions.ts and app/components/layout/AppSidebar.vue → coerce both sides of
+   every workspace-id comparison: use String(t._id) === String(userWs) and
+   String(t._id) === String(activeTeamId.value).
+3. server/utils/requirePermission.ts already resolves via Employee.findById(session.id).workspace
+   (ObjectId) → Workspace.findById(...) — leave as is.
+
+Verify: a user whose employees.workspace is an ObjectId resolves to their real workspace (not the
+"No Access" fallback) and the sidebar shows their granted menus.
+```
+
+---
+
+## Field-Level Security (new) — Prompts 14–17
+
+**Concept:** keep `menuPermissions` (per-menu CRUD) unchanged; ADD a separate `fieldPermissions`
+that controls individual fields *within* a menu. Each field has a mode: `hidden` | `read` | `edit`.
+A field not listed inherits the menu (edit if the menu grants update, else read). Your example:
+grant read+update on `/hr/employees` but set the `workspace` field to `read` (visible, not editable)
+or `hidden`. Run 14 → 15 → 16 → 17 in order.
+
+## Prompt 14 — Field-level security: model, validation, field registry
+
+```
+Add field-level permissions to workspaces, additively (do not change menuPermissions).
+
+1. server/models/Workspace.ts: add field
+   fieldPermissions: { type: Schema.Types.Mixed, default: {} }
+   and add `fieldPermissions: Record<string, Record<string, 'hidden'|'read'|'edit'>>` to IWorkspace.
+
+2. server/utils/validation.ts: add
+   const FieldModeEnum = z.enum(['hidden', 'read', 'edit'])
+   and add to BOTH WorkspaceCreateSchema (with .optional().default({})) and WorkspaceUpdateSchema
+   (.optional(), no default):
+   fieldPermissions: z.record(z.string(), z.record(z.string(), FieldModeEnum))
+
+3. server/api/workspaces/index.ts (POST) and [id].ts (PUT): persist fieldPermissions the same way as
+   menuPermissions (in PUT, only $set it when present).
+
+4. Create app/constants/routeFields.ts exporting ROUTE_FIELDS:
+   Record<string, { key: string, label: string }[]> listing the gateable fields per menu. Seed it
+   with /hr/employees: name, email, position, status, workspace, basePay; and add entries for the
+   other CRUD routes' main editable fields (pipeline, products, tasks, contracts). Sensitive tokens
+   (gmailTokens, calendarTokens, etc.) must NOT be listed (they are never exposed anyway).
+
+Verify: creating/updating a workspace with
+fieldPermissions: { '/hr/employees': { workspace: 'read', basePay: 'hidden' } } saves and round-trips.
+```
+
+## Prompt 15 — Field-level security: admin UI in the workspace editor
+
+```
+In app/pages/admin/general-settings/[[tab]].vue workspace editor, under each menu that has an entry
+in ROUTE_FIELDS (import from app/constants/routeFields.ts), render a field-permission sub-section:
+for every field show a 3-way control (Hidden / View / Edit) bound to
+wpForm.value.fieldPermissions[menuId][fieldKey]. Only show it when the menu is enabled and its
+menuPermissions include 'read'. Add helpers fieldMode(menuId, field) / setFieldMode(menuId, field, mode).
+Default unset = 'edit' if the menu has 'update', else 'read'. Clamp: never allow 'edit' if the menu
+lacks update. Persist fieldPermissions in saveWorkspace() (it already sends the whole wpForm).
+
+Verify: on a workspace, expand the Employees menu, set "workspace" = View and "basePay" = Hidden,
+save, reopen the editor — selections persist.
+```
+
+## Prompt 16 — Field-level security: frontend enforcement
+
+```
+Extend app/composables/usePermissions.ts with:
+  fieldMode(field: string, routePath?: string): 'hidden' | 'read' | 'edit'
+Logic: read the active workspace fieldPermissions[route][field]; if unset, return 'edit' when
+can('update', route) else 'read' when can('read', route) else 'hidden'; clamp 'edit'→'read' if the
+menu lacks update, and anything→'hidden' if the menu lacks read.
+
+Apply it on the Employees page first (app/pages/hr/employees.vue): for each gateable field, hide the
+table column and the form input when fieldMode === 'hidden', and render the input disabled/readonly
+when fieldMode === 'read'. Use the same pattern for the other pages listed in ROUTE_FIELDS.
+
+Verify: a workspace with workspace='read', basePay='hidden' on /hr/employees shows the employees
+table WITHOUT a basePay column, and the edit form shows the Workspace field disabled and no basePay
+field.
+```
+
+## Prompt 17 — Field-level security: server enforcement (must-have)
+
+```
+Field rules must be enforced on the server, not just hidden in the UI.
+
+1. Create server/utils/applyFieldPermissions.ts exporting:
+   - stripHiddenFields(event, routePath, doc|docs): removes fields whose mode is 'hidden' from GET
+     responses (single object or array).
+   - sanitizeWrite(event, routePath, body): for POST/PUT, deletes any key whose mode is 'read' or
+     'hidden' so it can't be changed; return the cleaned body. Reuse resolveWorkspace + the field
+     registry; admin-tier users bypass.
+2. Wire into server/api/employees/index.ts ([GET] map results through stripHiddenFields; [POST] run
+   body through sanitizeWrite) and server/api/employees/[id].ts ([GET] strip; [PUT] sanitize). Then
+   apply the same two calls to the other CRUD routes that have ROUTE_FIELDS entries.
+
+Verify: as the workspace=read/basePay=hidden user, GET /api/employees responses contain NO basePay,
+and a direct PUT /api/employees/[id] with { basePay: 999, workspace: '<other>' } is ignored for those
+fields (server drops them) while permitted fields still update. Admin can change everything.
+```

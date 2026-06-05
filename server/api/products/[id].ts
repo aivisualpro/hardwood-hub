@@ -3,6 +3,7 @@ import { Product } from '../../models/Product'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
+import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { objectId, parseBody } from '../../utils/validation'
 import { z } from 'zod'
 
@@ -36,14 +37,15 @@ export default defineEventHandler(async (event) => {
     const product = await Product.findById(id)
     if (!product)
       return { success: false, error: 'Not found' }
-    return { success: true, data: product }
+    return { success: true, data: stripHiddenFields(event, '/crm/products', product.toObject()) }
   }
 
   if (method === 'PUT') {
     requireManager(event)
     const raw = await readBody(event)
     const data = parseBody(ProductUpdateSchema, raw)
-    const updated = await Product.findByIdAndUpdate(id, { $set: data }, { new: true })
+    const cleaned = sanitizeWriteBody(event, '/crm/products', data)
+    const updated = await Product.findByIdAndUpdate(id, { $set: cleaned }, { new: true })
     return { success: true, data: updated }
   }
 

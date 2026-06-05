@@ -4,7 +4,7 @@ import { toast } from 'vue-sonner'
 const { setHeader } = usePageHeader()
 setHeader({ title: 'Employees', icon: 'i-lucide-users', description: 'Manage your team members' })
 
-const { canCreate, canUpdate, canDelete } = usePermissions('/hr/employees')
+const { canCreate, canUpdate, canDelete, fieldMode } = usePermissions('/hr/employees')
 
 function notify(title: string, description: string, variant?: string) {
   if (variant === 'destructive')
@@ -347,7 +347,7 @@ async function toggleStatus(emp: Employee) {
               {{ emp.status || 'Active' }}
             </span>
           </div>
-          <div v-if="workspaceName(emp.workspace)" class="flex items-center justify-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1">
+          <div v-if="fieldMode('workspace') !== 'hidden' && workspaceName(emp.workspace)" class="flex items-center justify-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1">
             <Icon name="i-lucide-building" class="size-2.5 sm:size-3 text-muted-foreground/60" />
             <span class="text-[9px] sm:text-[10px] text-muted-foreground truncate">{{ workspaceName(emp.workspace) }}</span>
           </div>
@@ -448,21 +448,21 @@ async function toggleStatus(emp: Employee) {
           </div>
 
           <!-- Name -->
-          <div class="flex flex-col gap-1.5">
+          <div v-if="fieldMode('employee') !== 'hidden'" class="flex flex-col gap-1.5">
             <Label for="emp-name">Full Name</Label>
-            <Input id="emp-name" v-model="form.employee" placeholder="John Doe" />
+            <Input id="emp-name" v-model="form.employee" placeholder="John Doe" :disabled="fieldMode('employee') === 'read'" />
           </div>
 
           <!-- Email -->
-          <div class="flex flex-col gap-1.5">
+          <div v-if="fieldMode('email') !== 'hidden'" class="flex flex-col gap-1.5">
             <Label for="emp-email">Email</Label>
-            <Input id="emp-email" v-model="form.email" type="email" placeholder="john@hardwoodhub.com" />
+            <Input id="emp-email" v-model="form.email" type="email" placeholder="john@hardwoodhub.com" :disabled="fieldMode('email') === 'read'" />
           </div>
 
           <!-- Position -->
-          <div class="flex flex-col gap-1.5">
+          <div v-if="fieldMode('position') !== 'hidden'" class="flex flex-col gap-1.5">
             <Label for="emp-position">Position</Label>
-            <Select v-model="form.position">
+            <Select v-model="form.position" :disabled="fieldMode('position') === 'read'">
               <SelectTrigger id="emp-position">
                 <SelectValue placeholder="Select a position" />
               </SelectTrigger>
@@ -484,9 +484,9 @@ async function toggleStatus(emp: Employee) {
           </div>
 
           <!-- Workspace -->
-          <div class="flex flex-col gap-1.5">
+          <div v-if="fieldMode('workspace') !== 'hidden'" class="flex flex-col gap-1.5">
             <Label for="emp-workspace">Workspace</Label>
-            <Select v-model="form.workspace">
+            <Select v-model="form.workspace" :disabled="fieldMode('workspace') === 'read'">
               <SelectTrigger id="emp-workspace">
                 <SelectValue placeholder="Select a workspace" />
               </SelectTrigger>
@@ -502,11 +502,11 @@ async function toggleStatus(emp: Employee) {
           </div>
 
           <!-- Base Pay -->
-          <div class="flex flex-col gap-1.5">
+          <div v-if="fieldMode('basePay') !== 'hidden'" class="flex flex-col gap-1.5">
             <Label for="emp-basepay">Base Pay (USD)</Label>
             <div class="relative">
               <Icon name="i-lucide-dollar-sign" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-4" />
-              <Input id="emp-basepay" v-model.number="form.basePay" type="number" placeholder="0.00" min="0" step="0.01" class="pl-9" />
+              <Input id="emp-basepay" v-model.number="form.basePay" type="number" placeholder="0.00" min="0" step="0.01" class="pl-9" :disabled="fieldMode('basePay') === 'read'" />
             </div>
           </div>
         </div>

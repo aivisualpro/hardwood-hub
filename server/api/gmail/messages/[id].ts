@@ -6,6 +6,7 @@ import { Employee } from '../../../models/Employee'
  * GET /api/gmail/messages/:id — Get full message content
  */
 import { connectDB } from '../../../utils/mongoose'
+import { requirePermission } from '../../../utils/requirePermission'
 
 export default defineEventHandler(async (event) => {
   const token = getCookie(event, 'hardwood_session')
@@ -21,6 +22,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Message ID required' })
 
   await connectDB()
+  await requirePermission(event, '/email')
   const employee = await Employee.findById(session.id).select('gmailTokens').lean<any>()
   if (!employee?.gmailTokens)
     throw createError({ statusCode: 400, message: 'Gmail not connected' })

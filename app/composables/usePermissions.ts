@@ -35,10 +35,10 @@ export function usePermissions(routeOverride?: string) {
     // Filter to user's assigned workspace if set
     const userWs = user.value?.workspace
     const teams = userWs
-      ? allTeams.filter((t: any) => t._id === userWs)
+      ? allTeams.filter((t: any) => String(t._id) === String(userWs))
       : allTeams
 
-    const t = teams.find((t: any) => t._id === activeTeamId.value)
+    const t = teams.find((t: any) => String(t._id) === String(activeTeamId.value))
     if (t) return t
     if (teams[0]) return teams[0]
 
@@ -89,12 +89,45 @@ export function usePermissions(routeOverride?: string) {
   function canUpdate(routePath?: string) { return can('update', routePath) }
   function canDelete(routePath?: string) { return can('delete', routePath) }
 
+  /**
+   * Resolve a field's visibility mode within a menu:
+   * - 'edit'   → field is visible and editable
+   * - 'read'   → field is visible but disabled/readonly
+   * - 'hidden' → field is not shown at all
+   *
+   * If fieldPermissions has no entry for the field, defaults to:
+   *   'edit' if menu grants update, else 'read' if grants read, else 'hidden'.
+   * The result is clamped: 'edit' → 'read' if menu lacks update;
+   * anything → 'hidden' if menu lacks read.
+   */
+  function fieldMode(field: string, routePath?: string): 'hidden' | 'read' | 'edit' {
+    const ws = activeTeam.value
+    const target = routePath || currentRoute.value
+    const menuHasUpdate = can('update', target)
+    const menuHasRead = can('read', target)
+
+    // If no read at all, the whole menu is hidden
+    if (!menuHasRead) return 'hidden'
+
+    const stored = ws?.fieldPermissions?.[target]?.[field] as string | undefined
+
+    if (stored) {
+      if (stored === 'edit' && !menuHasUpdate) return 'read'
+      if (stored === 'hidden') return 'hidden'
+      return stored as 'hidden' | 'read' | 'edit'
+    }
+
+    // Default: inherit from menu level
+    return menuHasUpdate ? 'edit' : 'read'
+  }
+
   return {
     can,
     canCreate,
     canRead,
     canUpdate,
     canDelete,
+    fieldMode,
     activeTeam,
   }
 }

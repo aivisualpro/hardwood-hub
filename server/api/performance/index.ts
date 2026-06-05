@@ -8,12 +8,12 @@ import { SubCategory } from '../../models/SubCategory'
 //   New behavior: each level creates a separate record per employee+skill+createdBy+level
 //   Mastered requires existing Proficient from same reviewer on a prior date
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { PerformanceCreateSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireManager(event)
+  await requirePermission(event, '/hr/employee-performance')
 
   if (event.method === 'GET') {
     const [records, employees, categories, subCategories, skills] = await Promise.all([

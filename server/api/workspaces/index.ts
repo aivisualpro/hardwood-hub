@@ -42,6 +42,7 @@ export default defineEventHandler(async (event) => {
       plan: data.plan || 'Workspace',
       allowedMenus: menus,
       menuPermissions: perms,
+      fieldPermissions: data.fieldPermissions || {},
       isLocked: false,
     })
     return { success: true, data: doc }

@@ -3,6 +3,7 @@ import { toast } from 'vue-sonner'
 import draggable from 'vuedraggable'
 
 import { navMenu, navMenuBottom, navMenuConcepts } from '~/constants/menus'
+import { ROUTE_FIELDS } from '~/constants/routeFields'
 
 const { setHeader } = usePageHeader()
 setHeader({ title: 'General Settings', icon: 'i-lucide-settings', description: 'Configure system-wide preferences' })
@@ -23,6 +24,7 @@ interface WorkspaceRecord {
   plan: string
   allowedMenus: string[]
   menuPermissions: Record<string, string[]>
+  fieldPermissions: Record<string, Record<string, string>>
   isLocked: boolean
 }
 
@@ -71,6 +73,7 @@ function emptyWpForm() {
     plan: '',
     allowedMenus: [] as string[],
     menuPermissions: {} as Record<string, string[]>,
+    fieldPermissions: {} as Record<string, Record<string, string>>,
   }
 }
 const wpForm = ref(emptyWpForm())
@@ -1153,6 +1156,7 @@ function openWpEdit(rec: WorkspaceRecord) {
     plan: rec.plan,
     allowedMenus: [...rec.allowedMenus],
     menuPermissions: JSON.parse(JSON.stringify(rec.menuPermissions || {})),
+    fieldPermissions: JSON.parse(JSON.stringify(rec.fieldPermissions || {})),
   }
   editingWpId.value = rec._id
   showWpModal.value = true
@@ -1264,12 +1268,48 @@ function toggleMenu(menuId: string) {
   if (idx >= 0) {
     wpForm.value.allowedMenus.splice(idx, 1)
     delete wpForm.value.menuPermissions[menuId]
+    delete wpForm.value.fieldPermissions[menuId]
   }
   else {
     wpForm.value.allowedMenus.push(menuId)
     wpForm.value.menuPermissions[menuId] = [...getCaps(menuId).ops]
   }
 }
+
+// ─── Field-level permission helpers ──────────────────────
+function fieldMode(menuId: string, fieldKey: string): string {
+  const stored = wpForm.value.fieldPermissions?.[menuId]?.[fieldKey]
+  const menuHasUpdate = hasPerm(menuId, 'update')
+  const menuHasRead = hasPerm(menuId, 'read')
+
+  if (stored) {
+    // Clamp: never allow 'edit' if menu lacks update
+    if (stored === 'edit' && !menuHasUpdate) return 'read'
+    // Clamp: anything → 'hidden' if menu lacks read
+    if (!menuHasRead) return 'hidden'
+    return stored
+  }
+
+  // Default: 'edit' if menu grants update, else 'read'
+  if (menuHasUpdate) return 'edit'
+  if (menuHasRead) return 'read'
+  return 'hidden'
+}
+
+function setFieldMode(menuId: string, fieldKey: string, mode: string) {
+  if (!wpForm.value.fieldPermissions[menuId])
+    wpForm.value.fieldPermissions[menuId] = {}
+
+  // Clamp: never allow 'edit' if menu lacks update
+  const clamped = (mode === 'edit' && !hasPerm(menuId, 'update')) ? 'read' : mode
+  wpForm.value.fieldPermissions[menuId][fieldKey] = clamped
+}
+
+const FIELD_MODES = [
+  { value: 'hidden', label: 'Hidden', icon: 'i-lucide-eye-off', color: 'bg-red-500/15 text-red-500 border-red-500/30' },
+  { value: 'read', label: 'View', icon: 'i-lucide-eye', color: 'bg-blue-500/15 text-blue-500 border-blue-500/30' },
+  { value: 'edit', label: 'Edit', icon: 'i-lucide-pencil', color: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30' },
+]
 
 const availableMenus = computed(() => {
   const menus: { id: string, title: string, group: string }[] = []
@@ -2428,6 +2468,46 @@ const WpIconsList = [
                           {{ OP_META[op]?.label ?? op }}
                           <Icon v-if="op === 'read'" name="i-lucide-lock" class="size-2 opacity-50" />
                         </button>
+                      </div>
+                    </div>
+
+                    <!-- Field-level permission sub-section -->
+                    <div
+                      v-if="wpForm.allowedMenus.includes(item.id) && hasPerm(item.id, 'read') && ROUTE_FIELDS[item.id]?.length"
+                      class="px-4 pb-3 pt-0 ml-11"
+                    >
+                      <div class="border border-border/40 rounded-lg overflow-hidden mt-1">
+                        <div class="px-3 py-1.5 bg-muted/30 border-b border-border/30 flex items-center gap-1.5">
+                          <Icon name="i-lucide-shield" class="size-3 text-muted-foreground/70" />
+                          <span class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Field Permissions</span>
+                        </div>
+                        <div class="divide-y divide-border/20">
+                          <div
+                            v-for="field in ROUTE_FIELDS[item.id]"
+                            :key="field.key"
+                            class="flex items-center justify-between px-3 py-2 gap-2"
+                          >
+                            <span class="text-xs font-medium text-foreground/80 min-w-0 truncate">{{ field.label }}</span>
+                            <div class="flex items-center rounded-lg border border-border/40 overflow-hidden shrink-0">
+                              <button
+                                v-for="fm in FIELD_MODES"
+                                :key="fm.value"
+                                class="inline-flex items-center gap-1 px-2 py-1 text-[9px] font-semibold uppercase tracking-wider transition-all"
+                                :class="[
+                                  fieldMode(item.id, field.key) === fm.value
+                                    ? fm.color
+                                    : 'text-muted-foreground/40 hover:text-muted-foreground/60 hover:bg-muted/30',
+                                  fm.value === 'edit' && !hasPerm(item.id, 'update') ? 'opacity-30 pointer-events-none' : 'cursor-pointer',
+                                ]"
+                                :title="fm.value === 'edit' && !hasPerm(item.id, 'update') ? 'Menu lacks Edit permission' : `Set ${field.label} to ${fm.label}`"
+                                @click.stop="setFieldMode(item.id, field.key, fm.value)"
+                              >
+                                <Icon :name="fm.icon" class="size-2.5" />
+                                {{ fm.label }}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

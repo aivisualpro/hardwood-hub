@@ -8,6 +8,7 @@ import { connectDB } from '../../utils/mongoose'
 import { TaskUpdateSchema, objectId, parseBody } from '../../utils/validation'
 import { notifyComment, notifyStatusChange } from '../../utils/taskNotifications'
 import { requirePermission } from '../../utils/requirePermission'
+import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { requireManager } from '../../utils/requireRole'
 
 const log = logger('[tasks/id]')
@@ -55,6 +56,9 @@ export default defineEventHandler(async (event) => {
   if (event.method === 'PUT') {
     const raw = await readBody(event)
     const body: any = parseBody(TaskUpdateSchema, raw)
+
+    // Field-level security: remove read/hidden fields before processing
+    sanitizeWriteBody(event, '/tasks', body)
 
     log.info('PUT task id:', id)
 
@@ -167,7 +171,7 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    return { success: true, data: doc }
+    return { success: true, data: stripHiddenFields(event, '/tasks', doc) }
   }
 
   if (event.method === 'DELETE') {

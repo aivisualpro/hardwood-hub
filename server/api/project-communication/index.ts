@@ -1,11 +1,11 @@
 import { ProjectCommunication } from '../../models/ProjectCommunication'
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { ProjectCommunicationWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireManager(event)
+  await requirePermission(event, '/project-communication')
 
   if (event.method === 'GET') {
     const docs = await ProjectCommunication.find().sort({ createdAt: -1 }).lean<any[]>()

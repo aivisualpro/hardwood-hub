@@ -8,6 +8,7 @@ import { Pipeline } from '../../models/Pipeline'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
+import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { PipelineUpdateSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
@@ -20,14 +21,15 @@ export default defineEventHandler(async (event) => {
     const record = await Pipeline.findById(id).lean()
     if (!record)
       return { success: false, error: 'Not found' }
-    return { success: true, data: record }
+    return { success: true, data: stripHiddenFields(event, '/crm/pipeline', record) }
   }
 
   if (method === 'PUT') {
     requireManager(event)
     const raw = await readBody(event)
     const data = parseBody(PipelineUpdateSchema, raw)
-    const updated = await Pipeline.findByIdAndUpdate(id, { $set: data }, { new: true })
+    const cleaned = sanitizeWriteBody(event, '/crm/pipeline', data)
+    const updated = await Pipeline.findByIdAndUpdate(id, { $set: cleaned }, { new: true })
     return { success: true, data: updated }
   }
 

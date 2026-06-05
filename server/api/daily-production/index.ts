@@ -1,12 +1,12 @@
 import { verifySessionToken } from '../../lib/session'
 import { DailyProduction } from '../../models/DailyProduction'
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { DailyProductionWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireManager(event)
+  await requirePermission(event, '/daily-production')
 
   if (event.method === 'GET') {
     const docs = await DailyProduction.find().sort({ createdAt: -1 }).lean<any[]>()

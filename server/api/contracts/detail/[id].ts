@@ -6,6 +6,7 @@ import { Contract } from '../../../models/Contract'
  */
 import { connectDB } from '../../../utils/mongoose'
 import { requirePermission } from '../../../utils/requirePermission'
+import { stripHiddenFields, sanitizeWriteBody } from '../../../utils/applyFieldPermissions'
 import { logger } from '../../../utils/logger'
 import { ContractUpdateSchema, objectId, parseBody } from '../../../utils/validation'
 const log = logger('[id]')
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event) => {
     const doc = await Contract.findById(id).lean()
     if (!doc)
       throw createError({ statusCode: 404, message: 'Contract not found' })
-    return { success: true, data: doc }
+    return { success: true, data: stripHiddenFields(event, '/crm/contracts', doc) }
   }
 
   if (event.method === 'PUT') {
@@ -31,7 +32,8 @@ export default defineEventHandler(async (event) => {
     }
     const raw = await readBody(event)
     const data = parseBody(ContractUpdateSchema, raw)
-    const doc = await Contract.findByIdAndUpdate(id, data, { returnDocument: 'after' }).lean()
+    const cleaned = sanitizeWriteBody(event, '/crm/contracts', data)
+    const doc = await Contract.findByIdAndUpdate(id, cleaned, { returnDocument: 'after' }).lean()
     return { success: true, data: doc }
   }
 

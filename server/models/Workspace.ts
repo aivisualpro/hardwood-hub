@@ -7,6 +7,7 @@ export interface IWorkspace extends Document {
   plan: string
   allowedMenus: string[]
   menuPermissions: Record<string, string[]>
+  fieldPermissions: Record<string, Record<string, 'hidden' | 'read' | 'edit'>>
   isLocked: boolean
 }
 
@@ -17,6 +18,7 @@ const WorkspaceSchema = new Schema(
     plan: { type: String, default: 'Workspace' },
     allowedMenus: { type: [String], default: [] },
     menuPermissions: { type: Schema.Types.Mixed, default: {} },
+    fieldPermissions: { type: Schema.Types.Mixed, default: {} },
     isLocked: { type: Boolean, default: false },
   },
   { timestamps: true },

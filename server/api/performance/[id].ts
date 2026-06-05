@@ -2,12 +2,12 @@ import { EmpSkillPerformance } from '../../models/EmpSkillPerformance'
 // PUT    /api/performance/:id — update a performance record
 // DELETE /api/performance/:id — delete a performance record
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { PerformanceUpdateSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireManager(event)
+  await requirePermission(event, '/hr/employee-performance')
   const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'PUT') {

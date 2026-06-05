@@ -6,6 +6,7 @@ import { Pipeline } from '../../models/Pipeline'
  */
 import { connectDB } from '../../utils/mongoose'
 import { requirePermission } from '../../utils/requirePermission'
+import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { ContractCreateSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
@@ -66,7 +67,7 @@ export default defineEventHandler(async (event) => {
 
     return {
       success: true,
-      data,
+      data: stripHiddenFields(event, '/crm/contracts', data as any[]),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     }
   }
@@ -74,11 +75,12 @@ export default defineEventHandler(async (event) => {
   if (event.method === 'POST') {
     const raw = await readBody(event)
     const body = parseBody(ContractCreateSchema, raw)
+    const cleaned = sanitizeWriteBody(event, '/crm/contracts', body)
 
     // Extract from variableValues if provided, else from body directly
-    const contractNumber = body.contractNumber || body.variableValues?.contract_number || `draft-${Date.now()}` // Fallback if missing
+    const contractNumber = cleaned.contractNumber || cleaned.variableValues?.contract_number || `draft-${Date.now()}` // Fallback if missing
 
-    const doc = await Contract.create({ ...body, contractNumber })
+    const doc = await Contract.create({ ...cleaned, contractNumber })
     return { success: true, data: doc }
   }
 

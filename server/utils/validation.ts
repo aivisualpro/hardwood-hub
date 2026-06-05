@@ -524,6 +524,7 @@ export const ContractSendEmailSchema = z.object({
 
 // Strict type for permission ops
 const CrudOpEnum = z.enum(['create', 'read', 'update', 'delete'])
+const FieldModeEnum = z.enum(['hidden', 'read', 'edit'])
 
 export const WorkspaceCreateSchema = z.object({
   name: z.string().min(1, 'Workspace name is required').max(200),
@@ -531,6 +532,7 @@ export const WorkspaceCreateSchema = z.object({
   plan: z.string().max(100).optional(),
   allowedMenus: z.array(z.string().max(200)).optional().default([]),
   menuPermissions: z.record(z.string(), z.array(CrudOpEnum)).optional().default({}),
+  fieldPermissions: z.record(z.string(), z.record(z.string(), FieldModeEnum)).optional().default({}),
 })
 
 // Update schema: NO defaults — omitted fields are left untouched in DB
@@ -540,6 +542,7 @@ export const WorkspaceUpdateSchema = z.object({
   plan: z.string().max(100).optional(),
   allowedMenus: z.array(z.string().max(200)).optional(),
   menuPermissions: z.record(z.string(), z.array(CrudOpEnum)).optional(),
+  fieldPermissions: z.record(z.string(), z.record(z.string(), FieldModeEnum)).optional(),
 })
 
 // ─── UPLOAD ──────────────────────────────────────────────────────────────────

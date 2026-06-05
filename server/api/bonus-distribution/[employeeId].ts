@@ -1,10 +1,10 @@
 import { BonusDistribution } from '../../models/BonusDistribution'
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireAdmin(event)
+  await requirePermission(event, '/hr/employees-bonus-report', 'read')
   const employeeId = getRouterParam(event, 'employeeId')
 
   if (!employeeId) {
