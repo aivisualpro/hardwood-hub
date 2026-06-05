@@ -2,6 +2,7 @@ import { Workspace } from '../../models/Workspace'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin } from '../../utils/requireRole'
 import { WorkspaceCreateSchema, parseBody } from '../../utils/validation'
+import { deriveAllowedMenus } from '../../utils/workspaceSync'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -29,12 +30,18 @@ export default defineEventHandler(async (event) => {
     const raw = await readBody(event)
     const data = parseBody(WorkspaceCreateSchema, raw)
 
+    // Auto-derive allowedMenus from menuPermissions to keep them in sync
+    const perms = data.menuPermissions || {}
+    const menus = Object.keys(perms).length > 0
+      ? deriveAllowedMenus(perms)
+      : (data.allowedMenus || [])
+
     const doc = await Workspace.create({
       name: data.name,
       logo: data.logo || 'i-lucide-building',
       plan: data.plan || 'Workspace',
-      allowedMenus: data.allowedMenus || [],
-      menuPermissions: data.menuPermissions || {},
+      allowedMenus: menus,
+      menuPermissions: perms,
       isLocked: false,
     })
     return { success: true, data: doc }

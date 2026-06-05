@@ -2,6 +2,8 @@
 import { format } from 'date-fns'
 import { toast } from 'vue-sonner'
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/crm/pipeline')
+
 definePageMeta({
   key: route => route.params.id as string,
 })
@@ -330,11 +332,11 @@ function totalSqft(blocks: any[]) {
             </div>
           </div>
 
-          <button class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20" @click="showEditCustomer = true">
+          <button v-if="canUpdate()" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20" @click="showEditCustomer = true">
             <Icon name="i-lucide-pencil" class="size-3.5" />
             <span class="hidden sm:inline">Edit</span>
           </button>
-          <button class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all" @click="showDeleteConfirm = true">
+          <button v-if="canDelete()" class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all" @click="showDeleteConfirm = true">
             <Icon name="i-lucide-trash-2" class="size-3.5" />
             <span class="hidden sm:inline">Delete</span>
           </button>
