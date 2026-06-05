@@ -134,6 +134,7 @@ function removePdfVariable(idx: number) {
 }
 
 const { setHeader } = usePageHeader()
+const { canCreate, canUpdate, canDelete } = usePermissions('/crm/contracts')
 
 // Initial header state
 setHeader({
@@ -655,7 +656,7 @@ const TYPE_ICONS: Record<string, string> = {
             >
           </div>
           <button
-            v-if="activeTab === 'list'"
+            v-if="activeTab === 'list' && canCreate()"
             class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
             @click="openCreateModal"
           >
@@ -1052,7 +1053,7 @@ const TYPE_ICONS: Record<string, string> = {
                     </div>
                     <div class="flex items-center gap-1">
                       <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-muted text-muted-foreground">{{ tmpl.category }}</span>
-                      <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100" @click.stop="deleteTemplate(tmpl._id)">
+                      <button v-if="canDelete()" class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100" @click.stop="deleteTemplate(tmpl._id)">
                         <Icon name="i-lucide-trash-2" class="size-3.5" />
                       </button>
                     </div>

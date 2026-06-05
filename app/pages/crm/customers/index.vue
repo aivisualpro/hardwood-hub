@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/crm/pipeline')
+
 const { setHeader } = usePageHeader()
 setHeader({
   title: 'Customers',
@@ -361,6 +363,7 @@ watch(filterDropdownOpen, (val) => {
           </div>
         </div>
         <button
+          v-if="canCreate()"
           class="inline-flex items-center gap-1.5 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-sm"
           @click="openCreate"
         >
@@ -391,7 +394,7 @@ watch(filterDropdownOpen, (val) => {
         {{ search ? 'Try a different search term.' : 'Add your first customer.' }}
       </p>
       <button
-        v-if="!search"
+        v-if="!search && canCreate()"
         class="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-all"
         @click="openCreate"
       >
@@ -464,6 +467,7 @@ watch(filterDropdownOpen, (val) => {
               <td class="px-4 py-3">
                 <div class="flex items-center justify-end gap-1 transition-opacity">
                   <button
+                    v-if="canUpdate()"
                     class="size-7 rounded-lg flex items-center justify-center hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
                     title="Edit"
                     @click.stop="openEdit(c)"
@@ -471,6 +475,7 @@ watch(filterDropdownOpen, (val) => {
                     <Icon name="i-lucide-pencil" class="size-3.5" />
                   </button>
                   <button
+                    v-if="canDelete()"
                     class="size-7 rounded-lg flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                     title="Delete"
                     @click.stop="confirmDelete(c)"
@@ -509,12 +514,14 @@ watch(filterDropdownOpen, (val) => {
             </div>
             <div class="flex items-center gap-1">
               <button
+                v-if="canUpdate()"
                 class="size-7 rounded-lg flex items-center justify-center hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
                 @click="openEdit(c)"
               >
                 <Icon name="i-lucide-pencil" class="size-3.5" />
               </button>
               <button
+                v-if="canDelete()"
                 class="size-7 rounded-lg flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                 @click="confirmDelete(c)"
               >

@@ -14,6 +14,8 @@ import '@vue-flow/minimap/dist/style.css'
 const { setHeader } = usePageHeader()
 setHeader({ title: 'Category Tree', icon: 'i-lucide-git-merge', description: 'Visually manage sub-categories and predecessor logic' })
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/admin/skills')
+
 // ─── State ───────────────────────────────────────────────
 const allNodes = ref<any[]>([])
 const allEdges = ref<any[]>([])

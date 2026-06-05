@@ -25,6 +25,8 @@ import { toast } from 'vue-sonner'
 const { setHeader } = usePageHeader()
 setHeader({ title: 'Daily Production Log', icon: 'i-lucide-clipboard-list', description: 'Log daily crew production for Ann Arbor Hardwoods' })
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/daily-production')
+
 // ─── Constants ────────────────────────────────────────────
 // Employees loaded from API
 const employees = ref<{ _id: string, employee: string }[]>([])
@@ -1608,6 +1610,7 @@ onMounted(async () => {
             <!-- Actions -->
             <div class="flex items-center justify-between pt-1 border-t border-border/30">
               <button
+                v-if="canUpdate()"
                 class="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
                 @click="openEdit(entry)"
               >
@@ -1615,6 +1618,7 @@ onMounted(async () => {
                 Edit
               </button>
               <button
+                v-if="canDelete()"
                 class="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
                 @click="deleteRecord(entry._id!)"
               >

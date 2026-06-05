@@ -4,6 +4,8 @@ import { toast } from 'vue-sonner'
 const { setHeader } = usePageHeader()
 setHeader({ title: 'Employee Performance', icon: 'i-lucide-bar-chart-3', description: 'Track and manage employee skill assessments' })
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/hr/employee-performance')
+
 // ─── Types ───────────────────────────────────────────────
 interface Employee { _id: string, employee: string, profileImage: string }
 interface SkillNode { _id: string, name: string, isRequired: boolean, category: string, subCategory: string, info?: string }
@@ -1662,6 +1664,7 @@ async function deleteSelected() {
               </span>
               <div class="w-px h-4 sm:h-5 bg-border" />
               <Button
+                v-if="canDelete()"
                 variant="destructive"
                 size="sm"
                 class="h-7 sm:h-8 text-xs"

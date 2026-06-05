@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/crm/pipeline')
+
 const { setHeader } = usePageHeader()
 setHeader({
   title: 'Pipeline',
@@ -652,7 +654,7 @@ watch(() => route.query.search, (val) => {
           </div>
           <!-- Bulk Delete (shown when items selected) -->
           <button
-            v-if="selectedIds.size > 0"
+            v-if="selectedIds.size > 0 && canDelete()"
             class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-destructive/10 text-destructive text-xs sm:text-sm font-bold hover:bg-destructive/20 transition-all shrink-0 border border-destructive/30"
             @click="showBulkDeleteConfirm = true"
           >
@@ -661,6 +663,7 @@ watch(() => route.query.search, (val) => {
             <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-destructive/20 tabular-nums">{{ selectedIds.size }}</span>
           </button>
           <button
+            v-if="canCreate()"
             class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
             @click="showCreateModal = true"
           >

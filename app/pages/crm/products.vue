@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 
+const { canCreate, canUpdate, canDelete } = usePermissions('/crm/products')
+
 const { setHeader } = usePageHeader()
 setHeader({
   title: 'Products & Services',
@@ -470,6 +472,7 @@ const formSections = [
           >
         </div>
         <button
+          v-if="canCreate()"
           class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg border bg-card text-foreground text-xs sm:text-sm font-bold hover:bg-muted transition-all shrink-0"
           @click="showImportDialog = true"
         >
@@ -477,6 +480,7 @@ const formSections = [
           <span class="hidden sm:inline">Import CSV</span>
         </button>
         <button
+          v-if="canCreate()"
           class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
           @click="openCreate"
         >
@@ -708,10 +712,10 @@ const formSections = [
               <!-- Actions (sticky right) -->
               <td class="py-2.5 px-4 sticky right-0 bg-card group-hover:bg-muted/20 z-10 transition-colors">
                 <div class="flex items-center gap-0.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button class="size-7 rounded-md flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" @click="openEdit(item)">
+                  <button v-if="canUpdate()" class="size-7 rounded-md flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" @click="openEdit(item)">
                     <Icon name="i-lucide-pencil" class="size-3.5" />
                   </button>
-                  <button class="size-7 rounded-md flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" @click="deleteProduct(item._id)">
+                  <button v-if="canDelete()" class="size-7 rounded-md flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" @click="deleteProduct(item._id)">
                     <Icon name="i-lucide-trash-2" class="size-3.5" />
                   </button>
                 </div>
