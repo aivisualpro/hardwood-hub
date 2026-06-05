@@ -2,12 +2,12 @@ import { AppSetting } from '../../models/AppSetting'
 // GET  /api/app-settings          — list all settings
 // POST /api/app-settings          — upsert a setting { key, value, description? }
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { AppSettingsWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireAdmin(event)
+  // No blanket requireAdmin — individual methods check below
 
   if (event.method === 'GET') {
     const docs = await AppSetting.find().lean() as any[]
@@ -18,6 +18,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
+    await requirePermission(event, '/admin/general-settings', 'update')
     const raw = await readBody(event)
     const { key, value, description } = parseBody(AppSettingsWriteSchema, raw)
 

@@ -435,3 +435,124 @@ Verify: as the workspace=read/basePay=hidden user, GET /api/employees responses 
 and a direct PUT /api/employees/[id] with { basePay: 999, workspace: '<other>' } is ignored for those
 fields (server drops them) while permitted fields still update. Admin can change everything.
 ```
+
+---
+---
+
+# ROUND 4 — Runtime crash (503 / service worker) + "empty workspace = all access"
+
+> **Diagnosis of the errors in your screenshot/logs:**
+> 1. **503 / `Headers Timeout Error`** — `app/middleware/permissions.global.ts` does
+>    `await useAsyncData(() => $fetch('/api/workspaces'))` INSIDE route middleware during SSR. Calling
+>    your own API over loopback from middleware deadlocks the dev server → timeout → 503. (Regression
+>    from Prompt 10.)
+> 2. **`Failed to convert value to 'Response'` / `a redirected response was used for a request whose
+>    redirect mode is not "follow"`** — `public/sw.js` re-fetches navigation requests; when middleware/
+>    auth returns a 302 redirect (SSR), the service worker can't handle the redirected response and
+>    throws. The redirects on `/` and `/admin/general-settings/workspaces` come from the permission
+>    guard + auth redirect.
+> 3. **Empty workspace = all-access is being denied.** Your convention: an employee with an EMPTY
+>    `workspace` field is a super-user who can switch into any workspace to preview it. But the current
+>    fail-closed logic only grants that to position Admin/Super Admin and the server `requirePermission`
+>    returns 403 for an empty workspace. So your non-admin tester gets blocked.
+>
+> Run **Prompt 18 first** (stops the crash), then **19** (empty = all-access), then **20** (optional preview).
+
+---
+
+## Prompt 18 — Stop the SSR deadlock and the service-worker redirect crash
+
+```
+Two files cause the 503s and the "Failed to convert value to 'Response'" / "redirected response …
+redirect mode not follow" console errors.
+
+A) app/middleware/permissions.global.ts — REMOVE the loopback fetch and run the guard client-side
+   only. Rewrite so it:
+   - returns immediately on the server: `if (import.meta.server) return`
+   - keeps the exempt list (/login, /my-profile, /, /public*, /sign*)
+   - returns if no user
+   - returns if user.workspace is empty (super-user — see Prompt 19) or position is Admin/Super Admin
+   - resolves routePath via resolveRoutePath(); returns if null
+   - reads the workspace list from the cache WITHOUT fetching: `const { data } = useNuxtData('workspaces-list')`
+   - if `!data.value` → return (be lenient; do NOT redirect — the server APIs already enforce via
+     requirePermission, so this guard is UX only)
+   - otherwise `const { can } = usePermissions(); if (!can('read', routePath)) return navigateTo('/my-profile')`
+   DELETE the `await useAsyncData('workspaces-list', () => $fetch('/api/workspaces', ...))` block entirely.
+   (AppSidebar.vue still fetches 'workspaces-list' during SSR, so the cache is populated from the payload
+   on hard refresh — no loopback needed here.)
+
+B) public/sw.js — stop intercepting navigations and bump the cache version:
+   - at the top of the `fetch` listener, after the non-GET check, add:
+       if (event.request.mode === 'navigate') return   // let the browser handle page loads/redirects
+   - only cache.put when response.status === 200 AND response.type !== 'opaqueredirect' AND !response.redirected
+   - remove '/' from STATIC_ASSETS (caching a redirecting '/' makes install fail)
+   - change CACHE_NAME from 'aivisualpro-v1' to 'aivisualpro-v2' so the new worker activates
+
+Verify: `npm run dev`, hard-refresh the app once (to update the service worker). No more 503 /
+Headers Timeout in the node log, and the console no longer shows "Failed to convert value to
+'Response'" or "redirected response … redirect mode not follow". Navigating to a disallowed page
+client-side still redirects to /my-profile.
+```
+
+---
+
+## Prompt 19 — "Empty workspace = all access" on BOTH client and server
+
+```
+Convention: an employee whose `workspace` field is empty/null is a super-user with access to ALL
+workspaces (and can switch into any to preview it). Make this true on client and server. Keep the
+fail-closed behavior ONLY for the different case where a workspace IS assigned but can't be resolved.
+
+1. app/composables/usePermissions.ts — rewrite the activeTeam computed:
+   const userWs = user.value?.workspace
+   if (userWs) {
+     const mine = allTeams.find(t => String(t._id) === String(userWs))
+     if (mine) return mine
+     return { allowedMenus: [], menuPermissions: {} }   // assigned but missing → fail closed
+   }
+   // EMPTY workspace = super-user. If a workspace is selected, preview it; else full wildcard.
+   const selected = allTeams.find(t => String(t._id) === String(activeTeamId.value))
+   if (selected) return selected
+   return { allowedMenus: ['*'], menuPermissions: {} }
+   Remove the isAdminTier-gated empty fallback. In can(), the `if (!ws) return isAdminTier.value`
+   line can stay as a harmless guard.
+
+2. server/utils/requirePermission.ts — distinguish empty vs missing in resolveWorkspace:
+   - when `!employee.workspace`, set event.context._workspaceEmpty = true and return null
+   In requirePermission(), replace the `if (!ws)` block with:
+   if (!ws) {
+     if (event.context._workspaceEmpty) return   // empty workspace = all access (super-user)
+     if (isAdmin) return                          // admin with no workspace = allowed
+     throw createError({ statusCode: 403, message: `Permission denied: no workspace for ${routePath}.` })
+   }
+
+3. app/middleware/permissions.global.ts — ensure it returns early for empty-workspace users
+   (already added in Prompt 18: `if (!user.value.workspace) return`).
+
+SECURITY NOTE (intended behavior): any employee with an empty workspace now has FULL access. Make sure
+every employee who must be restricted has a workspace assigned; leave workspace empty only for
+owners/testers.
+
+Verify: log in as the non-admin tester whose employees.workspace is empty. They can open every menu,
+all API calls return 200, and the workspace switcher in the sidebar lists all workspaces. Selecting a
+restricted workspace makes the sidebar + CRUD buttons reflect that workspace's permissions.
+```
+
+---
+
+## Prompt 20 — (Optional) Make the empty-workspace preview enforce on the server too
+
+```
+Right now an empty-workspace super-user previews a selected workspace only visually (menus/buttons),
+while the server still allows everything (they're a super-user). If you want the preview to ALSO be
+enforced server-side so it behaves exactly like that workspace:
+
+In server/utils/requirePermission.ts resolveWorkspace(), when employee.workspace is empty, read the
+`active_workspace_id` cookie (getCookie(event, 'active_workspace_id')); if it is set, load THAT
+workspace and use it for the permission check instead of returning all-access. If the cookie is unset
+or the workspace isn't found, fall back to all-access. Gate this behind the empty-workspace case only,
+so assigned users are unaffected.
+
+Verify: empty-workspace tester selects a read-only workspace, then a direct DELETE on a gated API
+returns 403 (matching the previewed restrictions); clearing the selection restores full access.
+```

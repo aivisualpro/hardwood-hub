@@ -2,13 +2,11 @@ import { SkillBonus } from '../../models/SkillBonus'
 // PUT    /api/skill-bonus/:id — update
 // DELETE /api/skill-bonus/:id — delete
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
 import { SkillBonusUpdateSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireAdmin(event)
   await requirePermission(event, '/admin/skills')
   const id = objectId(getRouterParam(event, 'id'))
 
