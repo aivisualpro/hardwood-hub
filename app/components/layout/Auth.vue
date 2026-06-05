@@ -17,34 +17,20 @@ defineProps<{
       class="relative hidden lg:flex flex-col w-[45%] min-h-dvh overflow-hidden"
       :class="reverse ? 'order-2' : 'order-1'"
     >
-      <!-- Background image -->
+      <!-- Background -->
+      <div class="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950" />
+      <!-- Company logo/image -->
       <img
         src="/hardwood image.png"
         alt="Hardwood craftsmanship"
-        class="absolute inset-0 w-full h-full object-cover object-center"
+        class="absolute inset-0 w-full h-full object-contain p-8 opacity-15"
       >
       <!-- Gradient overlays -->
-      <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
-      <div class="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
 
       <!-- Content on image -->
       <div class="relative z-10 flex flex-col h-full p-10">
-        <!-- Logo + name -->
-        <div class="flex items-center gap-3">
-          <img
-            src="/hardwood logo.png"
-            alt="Hardwood Hub"
-            class="size-11 rounded-xl shadow-lg"
-          >
-          <div>
-            <h2 class="text-white font-bold text-lg tracking-tight">
-              Hardwood Hub
-            </h2>
-            <p class="text-white/50 text-xs font-medium">
-              Workforce Management
-            </p>
-          </div>
-        </div>
+
 
         <!-- Spacer -->
         <div class="flex-1" />

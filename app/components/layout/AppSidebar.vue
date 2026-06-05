@@ -25,7 +25,7 @@ const { user } = useAuth()
 const { data: workspacesRes, refresh: refreshWorkspaces } = await useAsyncData(
   'workspaces-list',
   () => $fetch<any>('/api/workspaces', { headers: useRequestHeaders(['cookie']) }),
-  // Execute immediately — auth state is already populated by the auth plugin
+  { server: false },
 )
 
 // Re-fetch workspaces whenever the user identity changes (e.g. after login)
@@ -70,6 +70,7 @@ function isAllowed(link?: string) {
 const { data: navCountsRes, refresh: refreshNavCounts } = await useAsyncData(
   'nav-counts',
   () => $fetch<any>('/api/nav/counts', { headers: useRequestHeaders(['cookie']) }),
+  { server: false },
 )
 
 // Re-fetch nav counts whenever user changes

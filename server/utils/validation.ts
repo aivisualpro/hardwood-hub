@@ -331,6 +331,8 @@ export const EmployeeCreateSchema = z.object({
   position: z.string().min(1, 'Position is required').max(100),
   profileImage: z.string().max(2000).optional().default(''),
   status: z.enum(['Active', 'Inactive']).optional().default('Active'),
+  basePay: z.number().nonnegative().optional().default(0),
+  workspace: MongoId.nullable().optional(),
 })
 
 export const EmployeeUpdateSchema = z.object({
@@ -339,6 +341,8 @@ export const EmployeeUpdateSchema = z.object({
   position: z.string().min(1).max(100).optional(),
   profileImage: z.string().max(2000).optional(),
   status: z.enum(['Active', 'Inactive']).optional(),
+  basePay: z.number().nonnegative().optional(),
+  workspace: MongoId.nullable().optional(),
   sessionEpoch: z.never({ message: 'sessionEpoch cannot be set directly' }).optional(),
   $inc: z.never({ message: '$inc cannot be sent from the client' }).optional(),
 })
