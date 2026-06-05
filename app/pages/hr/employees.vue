@@ -212,7 +212,7 @@ async function saveEmployee() {
 
   saving.value = true
   try {
-    const payload = { ...form.value, workspace: form.value.workspace === 'none' ? '' : form.value.workspace }
+    const payload = { ...form.value, workspace: form.value.workspace === 'none' ? null : form.value.workspace }
     if (isEditing.value && editId.value) {
       await $fetch(`/api/employees/${editId.value}`, { method: 'PUT', body: payload })
       notify('Updated', `${form.value.employee} updated successfully`)

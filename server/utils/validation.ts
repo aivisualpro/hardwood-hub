@@ -421,18 +421,7 @@ export const DropdownWriteSchema = z.object({
 
 export const DropdownUpdateSchema = DropdownWriteSchema.partial()
 
-// ─── WORKSPACES ───────────────────────────────────────────────────────────────
 
-export const WorkspaceWriteSchema = z.object({
-  name: z.string().min(1, 'Workspace name is required').max(200),
-  slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with dashes'),
-  allowedMenus: z.array(z.string().max(200)).optional().default([]),
-  allowedRoles: z.array(z.string().max(100)).optional().default([]),
-  isDefault: z.boolean().optional().default(false),
-  settings: z.record(z.string(), z.unknown()).optional().default({}),
-})
-
-export const WorkspaceUpdateSchema = WorkspaceWriteSchema.partial()
 
 // ─── APP SETTINGS ─────────────────────────────────────────────────────────────
 
@@ -533,14 +522,25 @@ export const ContractSendEmailSchema = z.object({
 
 // ─── WORKSPACE (simplified — actual model has more fields) ───────────────────
 
+// Strict type for permission ops
+const CrudOpEnum = z.enum(['create', 'read', 'update', 'delete'])
+
 export const WorkspaceCreateSchema = z.object({
   name: z.string().min(1, 'Workspace name is required').max(200),
   logo: z.string().max(200).optional(),
   plan: z.string().max(100).optional(),
   allowedMenus: z.array(z.string().max(200)).optional().default([]),
-  menuPermissions: z.record(z.string(), z.unknown()).optional().default({}),
+  menuPermissions: z.record(z.string(), z.array(CrudOpEnum)).optional().default({}),
 })
-// WorkspaceUpdateSchema is already defined above (line ~407)
+
+// Update schema: NO defaults — omitted fields are left untouched in DB
+export const WorkspaceUpdateSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  logo: z.string().max(200).optional(),
+  plan: z.string().max(100).optional(),
+  allowedMenus: z.array(z.string().max(200)).optional(),
+  menuPermissions: z.record(z.string(), z.array(CrudOpEnum)).optional(),
+})
 
 // ─── UPLOAD ──────────────────────────────────────────────────────────────────
 

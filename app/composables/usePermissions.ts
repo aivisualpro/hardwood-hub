@@ -22,19 +22,33 @@ export function usePermissions(routeOverride?: string) {
   const { user } = useAuth()
   const route = useRoute()
 
+  // Admin-tier positions that get wildcard access when no workspace is assigned
+  const ADMIN_POSITIONS = ['Super Admin', 'Admin']
+
+  const isAdminTier = computed(() =>
+    ADMIN_POSITIONS.includes(user.value?.position || ''),
+  )
+
   const activeTeam = computed(() => {
     const allTeams: any[] = workspacesRes.value?.data || []
 
     // Filter to user's assigned workspace if set
     const userWs = user.value?.workspace
     const teams = userWs
-      ? (allTeams.filter((t: any) => t._id === userWs).length > 0
-          ? allTeams.filter((t: any) => t._id === userWs)
-          : allTeams)
+      ? allTeams.filter((t: any) => t._id === userWs)
       : allTeams
 
     const t = teams.find((t: any) => t._id === activeTeamId.value)
-    return t || teams[0] || { allowedMenus: ['*'], menuPermissions: {} }
+    if (t) return t
+    if (teams[0]) return teams[0]
+
+    // Fallback: no workspace resolved
+    // FAIL CLOSED: only admin-tier users with no assigned workspace get wildcard
+    if (!userWs && isAdminTier.value)
+      return { allowedMenus: ['*'], menuPermissions: {} }
+
+    // Everyone else: deny all
+    return { allowedMenus: [], menuPermissions: {} }
   })
 
   const currentRoute = computed(() => routeOverride || route.path)
@@ -48,7 +62,7 @@ export function usePermissions(routeOverride?: string) {
   function can(op: 'create' | 'read' | 'update' | 'delete', routePath?: string): boolean {
     const ws = activeTeam.value
     if (!ws)
-      return true // no workspace context → allow all
+      return isAdminTier.value // fail closed for non-admins
 
     const allowed: string[] = ws.allowedMenus || []
     const perms: Record<string, string[]> = ws.menuPermissions || {}

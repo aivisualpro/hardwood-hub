@@ -1,11 +1,10 @@
 import { Workspace } from '../../models/Workspace'
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requireAdmin } from '../../utils/requireRole'
 import { WorkspaceCreateSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireAdmin(event)
 
   if (event.method === 'GET') {
     const docs = await Workspace.find().sort({ createdAt: 1 }).lean<any[]>()
@@ -26,6 +25,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (event.method === 'POST') {
+    requireAdmin(event)
     const raw = await readBody(event)
     const data = parseBody(WorkspaceCreateSchema, raw)
 

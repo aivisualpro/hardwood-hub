@@ -36,12 +36,16 @@ watch(user, async (newUser) => {
 
 const allTeams = computed(() => workspacesRes.value?.data || [])
 
+// Admin-tier positions that get wildcard access when no workspace is assigned
+const ADMIN_POSITIONS = ['Super Admin', 'Admin']
+const isAdminTier = computed(() => ADMIN_POSITIONS.includes(user.value?.position || ''))
+
 // Filter workspaces to user's assigned one, if set
 const userTeams = computed(() => {
   const userWs = user.value?.workspace
   if (userWs) {
-    const matched = allTeams.value.filter((t: any) => t._id === userWs)
-    return matched.length > 0 ? matched : allTeams.value
+    // Strict filter — don't fall back to all teams
+    return allTeams.value.filter((t: any) => t._id === userWs)
   }
   return allTeams.value
 })
@@ -50,7 +54,16 @@ const activeTeamId = useCookie<string>('active_workspace_id')
 const activeTeam = computed({
   get() {
     const t = userTeams.value.find((t: any) => t._id === activeTeamId.value)
-    return t || userTeams.value[0] || { name: 'Admin Workspace', logo: 'i-lucide-shield-check', plan: 'Full Access', allowedMenus: ['*'] }
+    if (t) return t
+    if (userTeams.value[0]) return userTeams.value[0]
+
+    // FAIL CLOSED: wildcard only for admin-tier with no assigned workspace
+    const userWs = user.value?.workspace
+    if (!userWs && isAdminTier.value)
+      return { name: 'Admin Workspace', logo: 'i-lucide-shield-check', plan: 'Full Access', allowedMenus: ['*'] }
+
+    // Everyone else: deny all
+    return { name: 'No Access', logo: 'i-lucide-lock', plan: 'Restricted', allowedMenus: [] }
   },
   set(val: any) {
     activeTeamId.value = val._id
