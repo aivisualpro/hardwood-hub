@@ -53,7 +53,23 @@ async function resolveWorkspace(event: any): Promise<any> {
   // Store position from DB (more current than token) on context
   event.context._employeePosition = employee.position || session.position || ''
 
-  if (!employee.workspace) return null // no workspace assigned
+  if (!employee.workspace) {
+    event.context._workspaceEmpty = true // empty workspace = super-user
+
+    // If the super-user is previewing a specific workspace via the switcher,
+    // load it so permission checks are enforced server-side too.
+    const previewId = getCookie(event, 'active_workspace_id')
+    if (previewId) {
+      const preview = await Workspace.findById(previewId).lean<any>()
+      if (preview) {
+        event.context._workspace = preview
+        return preview
+      }
+    }
+
+    // No preview selected (or not found) → full access
+    return null
+  }
 
   // Load the workspace document
   const ws = await Workspace.findById(employee.workspace).lean<any>()
@@ -115,13 +131,11 @@ export async function requirePermission(
   const ws = await resolveWorkspace(event)
 
   if (!ws) {
-    // No workspace resolved
-    // Admin-tier users with no assigned workspace → allow (wildcard)
-    if (isAdmin) return
-    // Non-admin with no workspace → deny
+    if (event.context._workspaceEmpty) return // empty workspace = all access (super-user)
+    if (isAdmin) return                        // admin with no workspace = allowed
     throw createError({
       statusCode: 403,
-      message: `Permission denied: no workspace access for ${routePath} [${operation}].`,
+      message: `Permission denied: no workspace for ${routePath}.`,
     })
   }
 

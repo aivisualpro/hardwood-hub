@@ -31,24 +31,20 @@ export function usePermissions(routeOverride?: string) {
 
   const activeTeam = computed(() => {
     const allTeams: any[] = workspacesRes.value?.data || []
-
-    // Filter to user's assigned workspace if set
     const userWs = user.value?.workspace
-    const teams = userWs
-      ? allTeams.filter((t: any) => String(t._id) === String(userWs))
-      : allTeams
 
-    const t = teams.find((t: any) => String(t._id) === String(activeTeamId.value))
-    if (t) return t
-    if (teams[0]) return teams[0]
+    if (userWs) {
+      // Workspace IS assigned → find it or fail closed
+      const mine = allTeams.find((t: any) => String(t._id) === String(userWs))
+      if (mine) return mine
+      return { allowedMenus: [], menuPermissions: {} } // assigned but missing → deny all
+    }
 
-    // Fallback: no workspace resolved
-    // FAIL CLOSED: only admin-tier users with no assigned workspace get wildcard
-    if (!userWs && isAdminTier.value)
-      return { allowedMenus: ['*'], menuPermissions: {} }
-
-    // Everyone else: deny all
-    return { allowedMenus: [], menuPermissions: {} }
+    // EMPTY workspace = super-user.
+    // If a workspace is selected via the switcher, preview it; else full wildcard.
+    const selected = allTeams.find((t: any) => String(t._id) === String(activeTeamId.value))
+    if (selected) return selected
+    return { allowedMenus: ['*'], menuPermissions: {} }
   })
 
   const currentRoute = computed(() => routeOverride || route.path)

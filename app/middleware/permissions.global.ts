@@ -7,12 +7,15 @@
  * If read is not granted for the destination route, redirects to /my-profile.
  * Skips public/auth pages, user profile, and infrastructure pages.
  *
- * IMPORTANT: We eagerly load the workspace list here using the same cache key
- * ('workspaces-list') that AppSidebar.vue uses. This guarantees the data exists
- * during SSR and hard-refresh — useAsyncData dedupes by key so the sidebar
- * won't re-fetch.
+ * CLIENT-SIDE ONLY — this guard is UX-only.  The server APIs already enforce
+ * permissions via requirePermission(), so we never need to fetch here.
+ * AppSidebar.vue populates 'workspaces-list' during SSR; on the client the
+ * Nuxt payload hydrates useNuxtData so the cache is available immediately.
  */
-export default defineNuxtRouteMiddleware(async (to) => {
+export default defineNuxtRouteMiddleware((to) => {
+  // ── Server: nothing to do — the real enforcement is in the API layer ──────
+  if (import.meta.server) return
+
   // ── Skip pages that don't need permission checks ──────────────────────────
   const exempt = [
     '/login',
@@ -31,24 +34,21 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const { user } = useAuth()
   if (!user.value) return // auth middleware will redirect to /login
 
-  // ── Admin-tier users bypass permission checks ─────────────────────────────
+  // ── Super-user / Admin-tier users bypass permission checks ────────────────
   const ADMIN_POSITIONS = ['Super Admin', 'Admin']
-  if (ADMIN_POSITIONS.includes(user.value.position || '')) return
+  if (
+    !user.value.workspace
+    || ADMIN_POSITIONS.includes(user.value.position || '')
+  )
+    return
 
   // ── Check read permission for this route ──────────────────────────────────
-  // Normalize the path: strip dynamic segments to match the base route
-  // e.g. /crm/pipeline/abc123/contacts → /crm/pipeline
-  // e.g. /crm/contracts/list → /crm/contracts
   const routePath = resolveRoutePath(to.path)
   if (!routePath) return // unmapped route → allow (e.g. /components, /calendar)
 
-  // ── Ensure workspace list is loaded before checking permissions ────────────
-  // Uses the SAME cache key as AppSidebar.vue so the fetch is deduplicated.
-  // Without this, on hard refresh the cache is empty and non-admin users are
-  // wrongly denied because usePermissions reads from this cache.
-  await useAsyncData('workspaces-list', () =>
-    $fetch<any>('/api/workspaces', { headers: useRequestHeaders(['cookie']) }),
-  )
+  // ── Read workspace list from the shared cache (no fetch) ──────────────────
+  const { data } = useNuxtData('workspaces-list')
+  if (!data.value) return // cache not yet populated — be lenient
 
   const { can } = usePermissions()
   if (!can('read', routePath)) {

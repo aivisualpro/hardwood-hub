@@ -1,6 +1,5 @@
-const CACHE_NAME = 'aivisualpro-v1'
+const CACHE_NAME = 'aivisualpro-v2'
 const STATIC_ASSETS = [
-  '/',
   '/favicon.ico',
   '/logo-192.png',
   '/logo-512.png',
@@ -36,11 +35,19 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET')
     return
 
+  // Let the browser handle page loads / redirects natively
+  if (event.request.mode === 'navigate')
+    return
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful responses
-        if (response.status === 200) {
+        // Only cache clean 200 responses (no redirects, no opaque redirects)
+        if (
+          response.status === 200
+          && response.type !== 'opaqueredirect'
+          && !response.redirected
+        ) {
           const clone = response.clone()
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, clone)
