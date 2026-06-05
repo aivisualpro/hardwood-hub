@@ -2,6 +2,7 @@ import { defineEventHandler, readMultipartFormData } from 'h3'
 import { Customer } from '../../models/Customer'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 
 function parseCSV(text: string) {
   let isInsideQuote = false
@@ -53,6 +54,7 @@ function parseCSV(text: string) {
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
+  await requirePermission(event, '/crm/pipeline')
 
   const formData = await readMultipartFormData(event)
   if (!formData || formData.length === 0) {

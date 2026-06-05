@@ -2,6 +2,7 @@ import { defineEventHandler, readBody } from 'h3'
 import { Product } from '../../models/Product'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { objectId, parseBody } from '../../utils/validation'
 import { z } from 'zod'
 
@@ -27,6 +28,7 @@ const ProductUpdateSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   await connectDB()
+  await requirePermission(event, '/crm/products')
   const method = event.node.req.method
   const id = objectId(event.context.params?.id)
 

@@ -6,6 +6,7 @@ import { defineEventHandler, readBody } from 'h3'
 import { Pipeline } from '../../models/Pipeline'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { PipelineCreateSchema, parseBody } from '../../utils/validation'
 
 function escapeRegex(s: string): string {
@@ -14,6 +15,7 @@ function escapeRegex(s: string): string {
 
 export default defineEventHandler(async (event) => {
   await connectDB()
+  await requirePermission(event, '/crm/pipeline')
   const method = event.node.req.method
 
   if (method === 'GET') {

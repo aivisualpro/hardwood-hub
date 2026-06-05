@@ -1,11 +1,13 @@
 import { StainSignOff } from '../../models/StainSignOff'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { StainSignOffUpdateSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
+  await requirePermission(event, '/external/stain-sign-off')
   const id = objectId(getRouterParam(event, 'id'))
 
   if (!id)

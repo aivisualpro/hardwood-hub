@@ -5,10 +5,12 @@ import { Pipeline } from '../../models/Pipeline'
  * POST /api/contracts — create a new contract
  */
 import { connectDB } from '../../utils/mongoose'
+import { requirePermission } from '../../utils/requirePermission'
 import { ContractCreateSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
+  await requirePermission(event, '/crm/contracts')
 
   if (event.method === 'GET') {
     const query = getQuery(event)

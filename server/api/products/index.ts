@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery, readBody } from 'h3'
 import { Product } from '../../models/Product'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { parseBody } from '../../utils/validation'
 import { z } from 'zod'
 
@@ -30,6 +31,7 @@ const ProductWriteSchema = z.object({
 
 export default defineEventHandler(async (event) => {
   await connectDB()
+  await requirePermission(event, '/crm/products')
   const method = event.node.req.method
 
   if (method === 'GET') {

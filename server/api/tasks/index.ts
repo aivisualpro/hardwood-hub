@@ -5,6 +5,7 @@ import { Task } from '../../models/Task'
 import { connectDB } from '../../utils/mongoose'
 import { notifyNewTask } from '../../utils/taskNotifications'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { TaskCreateSchema, parseBody } from '../../utils/validation'
 
 const POPULATE_FIELDS = [
@@ -16,6 +17,7 @@ const POPULATE_FIELDS = [
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
+  await requirePermission(event, '/tasks')
   // Ensure Employee model is registered for populate
   Employee
 

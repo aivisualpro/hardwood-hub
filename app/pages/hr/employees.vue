@@ -267,23 +267,22 @@ async function toggleStatus(emp: Employee) {
 </script>
 
 <template>
-  <ClientOnly>
-    <Teleport to="#page-header-actions">
-      <div class="flex items-center gap-2">
-        <div class="relative min-w-0 sm:w-64">
-          <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5 sm:size-4" />
-          <Input v-model="searchQuery" placeholder="Search employees…" class="pl-8 sm:pl-9 h-8 sm:h-9 text-xs sm:text-sm" />
-        </div>
-        <Button v-if="canCreate()" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3 shrink-0" @click="openCreate">
-          <Icon name="i-lucide-plus" class="mr-1 sm:mr-2 size-3.5 sm:size-4" />
-          <span class="hidden xs:inline">Add Employee</span>
-          <span class="xs:hidden">Add</span>
-        </Button>
-      </div>
-    </Teleport>
-  </ClientOnly>
-
   <div class="w-full flex flex-col gap-4 sm:gap-6">
+    <ClientOnly>
+      <Teleport to="#header-toolbar">
+        <div class="flex items-center gap-2">
+          <div class="relative min-w-0 sm:w-64">
+            <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-muted-foreground size-3.5 sm:size-4" />
+            <Input v-model="searchQuery" placeholder="Search employees…" class="pl-8 sm:pl-9 h-8 sm:h-9 text-xs sm:text-sm" />
+          </div>
+          <Button v-if="canCreate()" size="sm" class="h-8 sm:h-9 text-xs sm:text-sm px-2.5 sm:px-3 shrink-0" @click="openCreate">
+            <Icon name="i-lucide-plus" class="mr-1 sm:mr-2 size-3.5 sm:size-4" />
+            <span class="hidden xs:inline">Add Employee</span>
+            <span class="xs:hidden">Add</span>
+          </Button>
+        </div>
+      </Teleport>
+    </ClientOnly>
 
     <!-- Empty state -->
     <div v-if="employees.length === 0 && !loading" class="flex flex-col items-center justify-center py-16 sm:py-24 gap-3 sm:gap-4 text-center px-4">

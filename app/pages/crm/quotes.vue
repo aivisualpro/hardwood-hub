@@ -8,6 +8,8 @@ setHeader({
   description: 'Flooring quote submissions',
 })
 
+const { canUpdate } = usePermissions('/crm/flooring-estimate')
+
 const {
   items,
   isLoading,
@@ -92,6 +94,7 @@ async function handleStatusUpdate(id: string, status: string) {
           </ClientOnly>
           <!-- Sync -->
           <button
+            v-if="canUpdate()"
             class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all disabled:opacity-50 shrink-0 shadow-lg shadow-primary/20"
             :disabled="isSyncing"
             @click="handleSync"

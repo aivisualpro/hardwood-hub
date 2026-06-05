@@ -4,11 +4,13 @@ import { ContractTemplate } from '../../../models/ContractTemplate'
 // DELETE /api/contracts/templates/:id — delete a template
 import { connectDB } from '../../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../../utils/requireRole'
+import { requirePermission } from '../../../utils/requirePermission'
 import { ContractTemplateUpdateSchema, objectId, parseBody } from '../../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
+  await requirePermission(event, '/crm/contracts')
   const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'GET') {

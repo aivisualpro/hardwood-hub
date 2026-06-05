@@ -3,11 +3,13 @@ import { SubCategory } from '../../models/SubCategory'
 // POST /api/subcategories — create
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { SubcategoryWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireAdmin(event)
+  await requirePermission(event, '/admin/skills')
 
   if (event.method === 'GET') {
     const query = getQuery(event)

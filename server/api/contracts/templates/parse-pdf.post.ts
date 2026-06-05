@@ -5,11 +5,13 @@
 
 import { GoogleGenAI } from '@google/genai'
 import { requireAdmin, requireManager } from '../../../utils/requireRole'
+import { requirePermission } from '../../../utils/requirePermission'
 import { logger } from '../../../utils/logger'
 const log = logger('[parse-pdf.post]')
 
 export default defineEventHandler(async (event) => {
   requireManager(event)
+  await requirePermission(event, '/crm/contracts')
   const body = await readBody(event)
   const { pdfBase64, fileName } = body
 

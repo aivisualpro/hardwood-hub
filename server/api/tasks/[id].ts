@@ -7,6 +7,7 @@ import { logger } from '../../utils/logger'
 import { connectDB } from '../../utils/mongoose'
 import { TaskUpdateSchema, objectId, parseBody } from '../../utils/validation'
 import { notifyComment, notifyStatusChange } from '../../utils/taskNotifications'
+import { requirePermission } from '../../utils/requirePermission'
 import { requireManager } from '../../utils/requireRole'
 
 const log = logger('[tasks/id]')
@@ -37,6 +38,7 @@ function getObjectIdString(val: any): string | null {
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
+  await requirePermission(event, '/tasks')
   Employee // ensure model registered
 
   // C4: validate route param

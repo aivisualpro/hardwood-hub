@@ -3,11 +3,13 @@ import { SubCategory } from '../../models/SubCategory'
 // PUT    /api/subcategories/:id  — update predecessor (or any field)
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { SubcategoryWriteSchema, objectId, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireAdmin(event)
+  await requirePermission(event, '/admin/skills')
   const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'GET') {

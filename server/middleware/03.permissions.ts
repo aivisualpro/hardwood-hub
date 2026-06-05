@@ -12,8 +12,14 @@ import { requirePermission } from '../utils/requirePermission'
 /**
  * Map API path prefixes to frontend route paths.
  * Order matters: more specific patterns must come first.
+ *
+ * A route can be a single string OR an array of strings.
+ * For reads (GET): access is granted if the user has read on ANY route in the array.
+ * For writes (POST/PUT/DELETE): access is granted if ANY route allows the operation.
+ * This handles shared data APIs (e.g. /api/employees is needed by both /hr/employees
+ * and /hr/employee-performance).
  */
-const API_TO_ROUTE: [RegExp, string][] = [
+const API_TO_ROUTE: [RegExp, string | string[]][] = [
   // ── Admin ─────────────────────────────────────────────
   [/^\/api\/skills/, '/admin/skills'],
   [/^\/api\/categories/, '/admin/skills'],
@@ -22,10 +28,12 @@ const API_TO_ROUTE: [RegExp, string][] = [
   [/^\/api\/dashboard/, '/admin/dashboard'],
 
   // ── HR ────────────────────────────────────────────────
-  [/^\/api\/employees/, '/hr/employees'],
+  // /api/employees is shared: used by employee list, performance, daily-production, etc.
+  [/^\/api\/employees/, ['/hr/employees', '/hr/employee-performance', '/daily-production']],
   [/^\/api\/performance/, '/hr/employee-performance'],
   [/^\/api\/bonus-distribution/, '/hr/employees-bonus-report'],
-  [/^\/api\/skill-bonus/, '/hr/employees-bonus-report'],
+  // /api/skill-bonus is used by both bonus-report and employee-performance pages
+  [/^\/api\/skill-bonus/, ['/hr/employees-bonus-report', '/hr/employee-performance']],
 
   // ── Project Management ────────────────────────────────
   [/^\/api\/tasks/, '/tasks'],
@@ -72,9 +80,11 @@ function isExempt(url: string): boolean {
   return false
 }
 
-function resolveRoute(apiPath: string): string | null {
+function resolveRoutes(apiPath: string): string[] | null {
   for (const [pattern, route] of API_TO_ROUTE) {
-    if (pattern.test(apiPath)) return route
+    if (pattern.test(apiPath)) {
+      return Array.isArray(route) ? route : [route]
+    }
   }
   return null
 }
@@ -91,10 +101,27 @@ export default defineEventHandler(async (event) => {
   // Skip if no session (02.apiAuth.ts already handles 401)
   if (!event.context?.session) return
 
-  // Resolve which frontend route this API maps to
-  const frontendRoute = resolveRoute(url)
-  if (!frontendRoute) return // unmapped API → no permission check (safe default for infra)
+  // Resolve which frontend route(s) this API maps to
+  const routes = resolveRoutes(url)
+  if (!routes || routes.length === 0) return // unmapped API → no permission check
 
-  // Enforce permission
-  await requirePermission(event, frontendRoute)
+  // For single-route mappings, use exact check (strict)
+  if (routes.length === 1) {
+    await requirePermission(event, routes[0]!)
+    return
+  }
+
+  // For multi-route mappings (shared APIs), succeed if ANY route grants access
+  let lastError: any = null
+  for (const route of routes) {
+    try {
+      await requirePermission(event, route)
+      return // at least one route allows it → pass
+    }
+    catch (e) {
+      lastError = e
+    }
+  }
+  // None of the routes allowed it → throw the last error
+  throw lastError
 })

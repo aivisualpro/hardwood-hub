@@ -5,6 +5,7 @@ import { Task } from '../../models/Task'
 import { logger } from '../../utils/logger'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { TaskReorderSchema, parseBody } from '../../utils/validation'
 import { notifyStatusChange } from '../../utils/taskNotifications'
 
@@ -36,6 +37,7 @@ function getObjectIdString(val: any): string | null {
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
+  await requirePermission(event, '/tasks', 'update')
   Employee // ensure model registered
 
   // C1 fix: derive caller identity from the verified session token — not from

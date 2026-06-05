@@ -6,8 +6,13 @@
  *
  * If read is not granted for the destination route, redirects to /my-profile.
  * Skips public/auth pages, user profile, and infrastructure pages.
+ *
+ * IMPORTANT: We eagerly load the workspace list here using the same cache key
+ * ('workspaces-list') that AppSidebar.vue uses. This guarantees the data exists
+ * during SSR and hard-refresh — useAsyncData dedupes by key so the sidebar
+ * won't re-fetch.
  */
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware(async (to) => {
   // ── Skip pages that don't need permission checks ──────────────────────────
   const exempt = [
     '/login',
@@ -36,6 +41,14 @@ export default defineNuxtRouteMiddleware((to) => {
   // e.g. /crm/contracts/list → /crm/contracts
   const routePath = resolveRoutePath(to.path)
   if (!routePath) return // unmapped route → allow (e.g. /components, /calendar)
+
+  // ── Ensure workspace list is loaded before checking permissions ────────────
+  // Uses the SAME cache key as AppSidebar.vue so the fetch is deduplicated.
+  // Without this, on hard refresh the cache is empty and non-admin users are
+  // wrongly denied because usePermissions reads from this cache.
+  await useAsyncData('workspaces-list', () =>
+    $fetch<any>('/api/workspaces', { headers: useRequestHeaders(['cookie']) }),
+  )
 
   const { can } = usePermissions()
   if (!can('read', routePath)) {

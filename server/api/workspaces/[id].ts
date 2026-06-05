@@ -49,12 +49,31 @@ export default defineEventHandler(async (event) => {
     // Permission fields — always editable
     if (data.menuPermissions !== undefined) {
       $set.menuPermissions = data.menuPermissions
-      // Auto-derive allowedMenus from menuPermissions to keep them in sync
-      $set.allowedMenus = deriveAllowedMenus(data.menuPermissions)
+
+      // Guard: if this is the locked admin workspace with wildcard access,
+      // NEVER overwrite allowedMenus — keep ['*'] so admins retain global access.
+      // Without this, deriveAllowedMenus would replace ['*'] with a derived list
+      // whenever the admin workspace is saved with normal/empty menuPermissions.
+      const hasWildcard = Array.isArray(wp.allowedMenus) && wp.allowedMenus.includes('*')
+      if (wp.isLocked && hasWildcard) {
+        // Explicitly preserve the wildcard — do not call deriveAllowedMenus
+        $set.allowedMenus = ['*']
+      }
+      else {
+        // Normal workspace: auto-derive allowedMenus from menuPermissions
+        $set.allowedMenus = deriveAllowedMenus(data.menuPermissions)
+      }
     }
     else if (data.allowedMenus !== undefined) {
       // If only allowedMenus is sent without menuPermissions, just set it
-      $set.allowedMenus = data.allowedMenus
+      // But still protect the locked wildcard workspace
+      const hasWildcard = Array.isArray(wp.allowedMenus) && wp.allowedMenus.includes('*')
+      if (wp.isLocked && hasWildcard) {
+        $set.allowedMenus = ['*']
+      }
+      else {
+        $set.allowedMenus = data.allowedMenus
+      }
     }
 
     if (Object.keys($set).length === 0) {

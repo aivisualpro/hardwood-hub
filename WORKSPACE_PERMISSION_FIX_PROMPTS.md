@@ -1,5 +1,19 @@
 # Workspace Permission Fix — AI Agent Prompts
 
+> **Verification status (round 2):**
+> - ✅ Prompt 1 (GET open / write admin-only) — done
+> - ✅ Prompt 2 (fail-closed defaults) — done
+> - ⚠️ **Prompt 3 (server enforcement) — HALF DONE. `requirePermission.ts` was created but wired into 0 routes → not active. See Prompt 9.**
+> - ⚠️ **Prompt 4 (route guard) — BROKEN. Relies on a cache only the sidebar fills, which loads after middleware → non-admins get wrongly bounced to /my-profile on refresh/deep-link. See Prompt 10.**
+> - ✅ Prompt 5 (no-default update schema + CrudOp validation) — done
+> - ✅ Prompt 6 (duplicate schema removed) — done
+> - ✅ Prompt 7 (UI gating) — expanded 7→14 pages; verify the rest in Prompt 11
+> - ✅ Prompt 8 (sync + locked editable) — done; one edge case in Prompt 11
+>
+> **Run Prompts 9 and 10 — they are the unfinished critical work.**
+
+---
+
 Run these in order. Each is self-contained. Don't skip 1–3; they are the root cause.
 
 ---
@@ -177,4 +191,94 @@ Fix:
 
 Verify: toggling a menu's read off in the editor removes it from the sidebar AND blocks the page;
 the Admin/locked workspace can have its menus edited but not renamed.
+```
+
+---
+---
+
+# ROUND 2 — Unfinished / broken (run these)
+
+## Prompt 9 — Actually WIRE requirePermission into the CRUD routes (Prompt 3 was not finished)
+
+```
+server/utils/requirePermission.ts exists and is correct, but grep shows it is imported/called in
+ZERO routes — so server-side permission enforcement does nothing and the API can still be bypassed.
+Finish the job: call it at the top of every data CRUD handler (after connectDB), passing the
+frontend route path that matches the ROUTE_CAPS keys in
+app/pages/admin/general-settings/[[tab]].vue. Let the op auto-derive from the HTTP method.
+
+Wire these files (path → route arg):
+- server/api/tasks/index.ts, [id].ts, reorder.post.ts            → '/tasks'
+- server/api/pipeline/index.ts, [id].ts                          → '/crm/pipeline'
+- server/api/customers/index.ts, [id].ts, import.post.ts         → '/crm/pipeline'
+- server/api/products/index.ts, [id].ts, import.post.ts          → '/crm/products'
+- server/api/subcategories/index.ts, [id].ts                     → '/admin/skills'
+- server/api/stain-sign-off/index.ts, [id].ts                    → '/external/stain-sign-off'
+- server/api/contracts/index.ts, detail/[id].ts, templates/*     → '/crm/contracts'
+- server/api/project-communication* (if present)                 → '/project-communication'
+- server/api/skill-bonus* (if present)                           → '/admin/skills'
+
+Example for server/api/tasks/[id].ts:
+  import { requirePermission } from '../../utils/requirePermission'
+  // inside the handler, after await connectDB():
+  await requirePermission(event, '/tasks')   // op derived from method (GET/POST/PUT/DELETE)
+
+Do NOT add it to: server/api/auth/*, /api/nav/*, /api/upload/*, /api/version, /api/crm/webhook,
+/api/google-calendar/callback|webhook, contract public sign routes, or the /api/workspaces routes
+(those already use requireAdmin). For seed/migrate endpoints, gate with requireAdmin instead.
+
+Verify: as a non-admin in a workspace that grants only 'read' on /tasks, a direct
+DELETE /api/tasks/[id] returns 403, and a direct POST /api/tasks returns 403, even though the UI
+hides the buttons. As an admin, all still work. grep 'requirePermission' server/api should now list
+every CRUD route.
+```
+
+---
+
+## Prompt 10 — Fix the route guard: it redirects valid users because the workspace list isn't loaded yet
+
+```
+app/middleware/permissions.global.ts calls usePermissions().can('read', route), and usePermissions
+reads the workspace list from useNuxtData('workspaces-list'). But that cache is ONLY populated by
+app/components/layout/AppSidebar.vue, which mounts AFTER route middleware runs. So on a hard refresh
+or direct deep-link, the cache is empty when the guard runs, a non-admin resolves to the deny
+fallback, and they get wrongly redirected to /my-profile even on pages they ARE allowed to see.
+
+Fix: make the guard load the workspace list itself before checking, using the SAME cache key so the
+sidebar reuses it (useAsyncData dedupes by key). In permissions.global.ts, before calling
+usePermissions:
+
+  await useAsyncData('workspaces-list', () =>
+    $fetch('/api/workspaces', { headers: useRequestHeaders(['cookie']) }))
+
+Then call usePermissions().can('read', routePath) as now. This guarantees the data exists during
+SSR and client navigation. Keep the admin-tier bypass and the unmapped-route allow.
+
+Verify: log in as a non-admin with access to /tasks but NOT /hr/employees. Hard-refresh on /tasks →
+page loads (no redirect). Directly visit /hr/employees → redirected to /my-profile. Admin sees
+everything. No redirect loop on /my-profile.
+```
+
+---
+
+## Prompt 11 — Finish UI gating coverage + guard the wildcard admin workspace (verification pass)
+
+```
+Two cleanups:
+
+1. usePermissions is now used in 14 pages, but confirm every remaining CRUD page gates its buttons.
+   Check these (add canCreate/canUpdate/canDelete guards if they have create/edit/delete actions and
+   their route is in ROUTE_CAPS): /email, /sales/invoices, /crm/appointments, /crm/flooring-estimate.
+   Pure read-only pages (/admin/dashboard, /admin/activities, /reports/*, /hr/employees-bonus-report)
+   only need the route-level read guard from Prompt 10 — no button changes.
+
+2. Protect the locked Admin (wildcard) workspace from losing its '*'. In server/api/workspaces/[id].ts
+   PUT, deriveAllowedMenus(data.menuPermissions) runs whenever menuPermissions is sent; if the locked
+   Admin workspace is saved with an empty/normal menuPermissions, its allowedMenus ['*'] gets
+   overwritten and admins lose global access. Add a guard: if wp.isLocked AND wp.allowedMenus
+   includes '*', do not overwrite allowedMenus — keep ['*'] regardless of derived value. Alternatively,
+   block editing menuPermissions on the wildcard admin workspace entirely.
+
+Verify: editing+saving the Admin workspace keeps allowedMenus = ['*']; a normal CRUD page with
+read-only permission shows no add/edit/delete buttons.
 ```

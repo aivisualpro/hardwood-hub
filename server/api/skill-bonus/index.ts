@@ -3,11 +3,13 @@ import { SkillBonus } from '../../models/SkillBonus'
 // POST /api/skill-bonus   — create a skill bonus record
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { SkillBonusWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireAdmin(event)
+  await requirePermission(event, '/admin/skills')
 
   if (event.method === 'GET') {
     const docs = await SkillBonus.find().sort({ createdAt: -1 }).lean<any[]>()

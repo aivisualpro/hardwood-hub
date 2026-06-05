@@ -3,6 +3,7 @@ import { ContractTemplate } from '../../../models/ContractTemplate'
 // POST /api/contracts/templates — create a template
 import { connectDB } from '../../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../../utils/requireRole'
+import { requirePermission } from '../../../utils/requirePermission'
 import { logger } from '../../../utils/logger'
 import { ContractTemplateWriteSchema, parseBody } from '../../../utils/validation'
 const log = logger('[index]')
@@ -10,6 +11,7 @@ const log = logger('[index]')
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
+  await requirePermission(event, '/crm/contracts')
 
   if (event.method === 'GET') {
     const docs = await ContractTemplate.find().sort({ createdAt: -1 }).lean()

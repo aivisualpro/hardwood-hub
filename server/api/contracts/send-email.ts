@@ -5,11 +5,13 @@ import { Contract } from '../../models/Contract'
 import { sendMail } from '../../utils/mailer'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 import { ContractSendEmailSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
+  await requirePermission(event, '/crm/contracts', 'update')
   const raw = await readBody(event)
   const { contractId, overrideEmail } = parseBody(ContractSendEmailSchema, raw)
 

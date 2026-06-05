@@ -5,12 +5,14 @@ import { Contract } from '../../../models/Contract'
  * DELETE /api/contracts/detail/:id — delete a contract
  */
 import { connectDB } from '../../../utils/mongoose'
+import { requirePermission } from '../../../utils/requirePermission'
 import { logger } from '../../../utils/logger'
 import { ContractUpdateSchema, objectId, parseBody } from '../../../utils/validation'
 const log = logger('[id]')
 
 export default defineEventHandler(async (event) => {
   await connectDB()
+  await requirePermission(event, '/crm/contracts')
   const id = objectId(getRouterParam(event, 'id'))
 
   if (event.method === 'GET') {

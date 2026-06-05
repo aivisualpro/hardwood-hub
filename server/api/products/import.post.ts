@@ -2,6 +2,7 @@ import { defineEventHandler, readBody } from 'h3'
 import { Product } from '../../models/Product'
 import { connectDB } from '../../utils/mongoose'
 import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requirePermission } from '../../utils/requirePermission'
 
 /**
  * POST /api/products/import
@@ -11,6 +12,7 @@ import { requireAdmin, requireManager } from '../../utils/requireRole'
 export default defineEventHandler(async (event) => {
   await connectDB()
   requireManager(event)
+  await requirePermission(event, '/crm/products')
   const body = await readBody(event)
   const rows = body.rows
 
