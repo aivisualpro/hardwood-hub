@@ -42,7 +42,9 @@ export function useAuth() {
     try {
       const res = await $fetch<{ success: boolean, data: AuthUser }>('/api/auth/me', {
         headers: useRequestHeaders(['cookie']),
+        ignoreResponseError: true,
       })
+      if (!res?.success) throw new Error('Not authenticated')
       user.value = res.data
       return res.data
     }
