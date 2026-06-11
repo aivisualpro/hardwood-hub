@@ -433,7 +433,7 @@ function totalSqft(blocks: any[]) {
           </div>
           <div v-else class="px-5 py-8">
             <div class="space-y-2 w-full">
-              <div v-for="i in 4" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${70 + Math.random() * 30}%`" />
+              <div v-for="i in 4" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${[88, 75, 92, 80][i - 1]}%`" />
             </div>
           </div>
         </div>
@@ -592,7 +592,7 @@ function totalSqft(blocks: any[]) {
           </div>
           <div v-else class="px-5 py-8">
             <div class="space-y-2 w-full">
-              <div v-for="i in 5" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${70 + Math.random() * 30}%`" />
+              <div v-for="i in 5" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${[85, 72, 90, 78, 82][i - 1]}%`" />
             </div>
           </div>
         </div>
