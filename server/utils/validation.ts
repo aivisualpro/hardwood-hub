@@ -354,12 +354,12 @@ export const PerformanceCreateSchema = z.object({
   category: MongoId,
   subCategory: MongoId,
   skill: MongoId,
-  currentSkillLevel: z.enum(['Beginner', 'Developing', 'Proficient', 'Mastered']),
+  currentSkillLevel: z.enum(['Needs Improvement', 'Beginner', 'Developing', 'Proficient', 'Mastered']),
   createdBy: MongoId,
 })
 
 export const PerformanceUpdateSchema = z.object({
-  currentSkillLevel: z.enum(['Beginner', 'Developing', 'Proficient', 'Mastered']).optional(),
+  currentSkillLevel: z.enum(['Needs Improvement', 'Beginner', 'Developing', 'Proficient', 'Mastered']).optional(),
   notes: z.string().max(2000).optional(),
 })
 
@@ -502,6 +502,73 @@ export const ContractTemplateWriteSchema = z.object({
 })
 
 export const ContractTemplateUpdateSchema = ContractTemplateWriteSchema.partial()
+
+// ─── ESTIMATE ─────────────────────────────────────────────────────────────────
+
+/** POST /api/estimates — create an estimate */
+export const EstimateCreateSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(500),
+  customerId: MongoId,
+  projectId: MongoId.nullable().optional(),
+  customerName: z.string().max(200).optional().default(''),
+  customerEmail: z.string().email().or(z.literal('')).optional().default(''),
+  customerPhone: z.string().max(30).optional().default(''),
+  customerAddress: z.string().max(300).optional().default(''),
+  templateId: MongoId.optional(),
+  templateName: z.string().max(200).optional().default(''),
+  variableValues: z.record(z.string(), z.unknown()).optional().default({}),
+  content: z.string().max(500_000).optional().default(''),
+  attachedPdf: z.string().max(5_000_000).optional().default(''), // URL or small base64
+  attachedGalleryImages: z.array(z.string()).optional().default([]),
+  notes: z.string().max(10_000).optional().default(''),
+  createdBy: z.string().max(200).optional().default(''),
+  estimateNumber: z.string().max(100).optional(),
+})
+
+/** PUT /api/estimates/detail/:id — update an estimate */
+export const EstimateUpdateSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  projectId: MongoId.nullable().optional(),
+  customerName: z.string().max(200).optional(),
+  customerEmail: z.string().email().or(z.literal('')).optional(),
+  customerPhone: z.string().max(30).optional(),
+  customerAddress: z.string().max(300).optional(),
+  templateId: MongoId.optional(),
+  templateName: z.string().max(200).optional(),
+  variableValues: z.record(z.string(), z.unknown()).optional(),
+  content: z.string().max(500_000).optional(),
+  attachedPdf: z.string().max(5_000_000).optional(),
+  attachedGalleryImages: z.array(z.string()).optional(),
+  mergedPdfUrl: z.string().url().or(z.literal('')).optional(),
+  mergedPdfGeneratedAt: z.coerce.date().nullable().optional(),
+  status: z.enum(['draft', 'sent', 'completed', 'cancelled']).optional(),
+  notes: z.string().max(10_000).optional(),
+})
+
+// ─── ESTIMATE TEMPLATE ───────────────────────────────────────────────────────
+
+const EstimateTemplateVariable = z.object({
+  key: z.string().min(1).max(100),
+  label: z.string().min(1).max(200),
+  type: z.enum(['text', 'date', 'number', 'currency', 'textarea', 'select']).optional().default('text'),
+  defaultValue: z.string().max(1000).optional().default(''),
+  options: z.array(z.string().max(200)).optional().default([]),
+  required: z.boolean().optional().default(false),
+  scope: z.enum(['template']).optional().default('template'),
+})
+
+export const EstimateTemplateWriteSchema = z.object({
+  name: z.string().min(1, 'Template name is required').max(300),
+  slug: z.string().max(200).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with dashes').optional(),
+  description: z.string().max(5000).optional().default(''),
+  content: z.string().max(500_000).optional().default(''),
+  variables: z.array(EstimateTemplateVariable).optional().default([]),
+  category: z.string().max(100).optional().default('General'),
+  isActive: z.boolean().optional().default(true),
+  createdBy: z.string().max(200).optional().default(''),
+})
+
+export const EstimateTemplateUpdateSchema = EstimateTemplateWriteSchema.partial()
 
 // ─── CUSTOM BONUS (Performance) ─────────────────────────────────────────────
 

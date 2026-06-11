@@ -138,7 +138,7 @@ function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') 
 </script>
 
 <template>
-  <div>
+  <div class="h-full overflow-hidden -mx-4 lg:-mx-6">
     <!-- ── Header toolbar: Edit + Delete ────────────────────────────── -->
     <ClientOnly>
       <Teleport to="#header-toolbar">
@@ -156,9 +156,9 @@ function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') 
     </ClientOnly>
 
     <!-- ── 3-column layout ─────────────────────────────────────────── -->
-    <div class="flex h-[calc(100dvh-var(--header-height))] -mx-4 lg:-mx-6 overflow-hidden divide-x divide-border">
+    <div class="flex h-full overflow-hidden divide-x divide-border">
       <!-- ══ LEFT COLUMN — Customer Details + Related Contacts ══════ -->
-      <div class="w-[32%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-hidden">
+      <div class="w-[32%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
         <!-- ── Customer Details Card ──────────────────────────────── -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center gap-2 shrink-0">
@@ -317,7 +317,7 @@ function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') 
       </div>
 
       <!-- ══ MIDDLE COLUMN — Contracts + Related Projects ══════════════ -->
-      <div class="flex-1 min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-hidden">
+      <div class="flex-1 min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
         <!-- Related Contracts -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
@@ -344,7 +344,7 @@ function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') 
               No contracts on file
             </p>
           </div>
-          <div v-else class="p-4 max-h-[300px] overflow-y-auto">
+          <div v-else class="p-4 max-h-[240px] overflow-y-auto">
             <CrmContractsTable
               :contracts="customerContracts"
               :templates="templates"
@@ -377,7 +377,7 @@ function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') 
               No related projects
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50 max-h-[300px] overflow-y-auto">
+          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
             <NuxtLink
               v-for="proj in relatedProjects"
               :key="proj._id"
@@ -398,7 +398,7 @@ function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') 
       </div>
 
       <!-- ══ RIGHT COLUMN — Gallery + Documents ════════════════════════ -->
-      <div class="w-[30%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-hidden">
+      <div class="w-[30%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
         <!-- Gallery Card -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-3 shrink-0">

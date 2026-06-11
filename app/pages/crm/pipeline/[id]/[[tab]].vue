@@ -301,7 +301,7 @@ function totalSqft(blocks: any[]) {
 </script>
 
 <template>
-  <div>
+  <div class="h-full overflow-hidden -mx-4 lg:-mx-6">
     <!-- ── Header toolbar: status pill + Edit + Delete ─────────────────── -->
     <ClientOnly>
       <Teleport to="#header-toolbar">
@@ -345,9 +345,9 @@ function totalSqft(blocks: any[]) {
     </ClientOnly>
 
     <!-- ── 3-column layout — cards scroll individually ──────────────────── -->
-    <div class="flex h-[calc(100dvh-var(--header-height))] -mx-4 lg:-mx-6 overflow-hidden divide-x divide-border">
+    <div class="flex h-full overflow-hidden divide-x divide-border">
       <!-- ══ LEFT COLUMN — Details + Related Contacts ══════════════════════ -->
-      <div class="w-[32%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-hidden">
+      <div class="w-[32%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
         <!-- ── Customer Details Card ─────────────────────────────────── -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center gap-2 shrink-0">
@@ -622,7 +622,7 @@ function totalSqft(blocks: any[]) {
       </div>
 
       <!-- ══ MIDDLE COLUMN — Quotes + Estimates + Contracts ════════════════ -->
-      <div class="flex-1 min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-hidden">
+      <div class="flex-1 min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
         <!-- Related Quotes -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
@@ -875,7 +875,7 @@ function totalSqft(blocks: any[]) {
       </div>
 
       <!-- ══ RIGHT COLUMN — Gallery + 2 TBD ════════════════════════════════ -->
-      <div class="w-[30%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-hidden">
+      <div class="w-[30%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
         <!-- Gallery Card -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-3 shrink-0">
