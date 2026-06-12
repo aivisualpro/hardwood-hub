@@ -360,6 +360,97 @@ if (import.meta.client && _asyncData.value && !contractData.value) {
         </div>
       </div>
 
+      <!-- ═══════ EXHIBITS — Attached PDF & Gallery Images ═══════ -->
+      <div
+        v-if="contractData.attachedPdf || (contractData.attachedGalleryImages && contractData.attachedGalleryImages.length > 0)"
+        class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8"
+      >
+        <div class="px-6 sm:px-8 py-5 border-b border-slate-100 bg-slate-50/50">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <svg class="size-5 text-amber-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+            Exhibits
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">
+            The following
+            <template v-if="contractData.attachedPdf && contractData.attachedGalleryImages?.length">
+              1 document and {{ contractData.attachedGalleryImages.length }} image{{ contractData.attachedGalleryImages.length === 1 ? '' : 's' }} are attached as exhibits
+            </template>
+            <template v-else-if="contractData.attachedPdf">
+              1 document is attached as an exhibit
+            </template>
+            <template v-else>
+              {{ contractData.attachedGalleryImages.length }} image{{ contractData.attachedGalleryImages.length === 1 ? '' : 's' }} {{ contractData.attachedGalleryImages.length === 1 ? 'is' : 'are' }} attached as an exhibit
+            </template>
+            to this contract.
+          </p>
+        </div>
+
+        <div class="p-6 sm:p-8 space-y-8">
+          <!-- Attached PDF -->
+          <div v-if="contractData.attachedPdf">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="size-8 rounded-lg bg-red-50 flex items-center justify-center">
+                <svg class="size-4 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+              </div>
+              <h3 class="text-sm font-bold text-slate-700">Exhibit A — Attached Document (PDF)</h3>
+            </div>
+            <!-- PDF Embed Viewer -->
+            <div class="w-full rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+              <iframe
+                :src="`/api/contracts/sign/pdf/${token}`"
+                class="w-full border-0"
+                style="min-height: 600px;"
+                title="Attached PDF Document"
+              />
+              <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <span class="text-xs text-slate-500">If the document does not load, use the link to download.</span>
+                <a
+                  :href="`/api/contracts/sign/pdf/${token}`"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
+                  <svg class="size-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                  Download PDF
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attached Gallery Images -->
+          <div v-if="contractData.attachedGalleryImages && contractData.attachedGalleryImages.length > 0">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="size-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                <svg class="size-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+              </div>
+              <h3 class="text-sm font-bold text-slate-700">
+                {{ contractData.attachedPdf ? 'Exhibit B' : 'Exhibit A' }} — Attached Pictures
+                <span class="text-xs font-normal text-slate-400 ml-1">({{ contractData.attachedGalleryImages.length }})</span>
+              </h3>
+            </div>
+            <div class="space-y-6">
+              <div
+                v-for="(imgUrl, idx) in contractData.attachedGalleryImages"
+                :key="idx"
+                class="rounded-xl border border-slate-200 overflow-hidden bg-slate-50"
+              >
+                <div class="px-4 py-2 bg-slate-50 border-b border-slate-100">
+                  <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Image {{ Number(idx) + 1 }} of {{ contractData.attachedGalleryImages.length }}</span>
+                </div>
+                <div class="flex items-center justify-center p-4 bg-white">
+                  <img
+                    :src="imgUrl.includes('cloudinary.com') ? imgUrl.replace('/upload/', '/upload/q_auto,f_auto,w_900/') : imgUrl"
+                    :alt="`Exhibit image ${Number(idx) + 1}`"
+                    class="max-w-full max-h-[700px] object-contain rounded-lg"
+                    loading="lazy"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Client Signature Section -->
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-6 sm:px-8 py-5 border-b border-slate-100 bg-slate-50/50">

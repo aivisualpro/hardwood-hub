@@ -61,6 +61,7 @@ watch(showCreateModal, (val) => {
 // ─── Create/Edit Contract Modal ───────────────────────────────
 
 const editingContractId = ref<string | null>(null)
+const editingContractStatus = ref<string>('')
 const createStep = ref(1) // 1=customer, 2=project, 3=template, 4=variables+confirm
 const savingContract = ref(false)
 
@@ -402,6 +403,7 @@ function selectModalTemplate(t: any) {
 function openCreateModal() {
   showCreateModal.value = true
   editingContractId.value = null
+  editingContractStatus.value = ''
   createStep.value = 1
   selectedCustomer.value = null
   selectedProject.value = null
@@ -430,7 +432,13 @@ async function openEditContract(ct: any) {
     const res = await $fetch<{ success: boolean, data: any }>(`/api/contracts/detail/${ct._id}`)
     const fullCt = res.data
 
+    if (fullCt.status === 'signed') {
+      toast.warning('This contract has been signed and cannot be modified.')
+      return
+    }
+
     editingContractId.value = fullCt._id
+    editingContractStatus.value = fullCt.status || ''
     contractTitle.value = fullCt.title
     selectedCustomer.value = { _id: fullCt.customerId, name: fullCt.customerName, email: fullCt.customerEmail, phone: fullCt.customerPhone } as any
     variableValues.value = { ...fullCt.variableValues }
@@ -485,6 +493,10 @@ async function saveContract() {
     toast.error('Contract Number is required')
     return
   }
+  if (editingContractId.value && editingContractStatus.value === 'signed') {
+    toast.error('Signed contracts cannot be modified.')
+    return
+  }
 
   savingContract.value = true
   try {
@@ -527,7 +539,8 @@ async function saveContract() {
     emit('saved')
   }
   catch (e: any) {
-    toast.error(editingContractId.value ? 'Failed to update contract' : 'Failed to create contract', { description: e?.message })
+    const serverMsg = e?.data?.message || e?.statusMessage || e?.message || 'Unknown error'
+    toast.error(editingContractId.value ? 'Failed to update contract' : 'Failed to create contract', { description: serverMsg })
   }
   finally {
     savingContract.value = false

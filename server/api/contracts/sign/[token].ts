@@ -122,6 +122,8 @@ export default defineEventHandler(async (event) => {
         createdAt: contract.createdAt,
         alreadySigned: contract.status === 'signed' || !!contract.customerSignature,
         company,
+        attachedPdf: contract.attachedPdf || '',
+        attachedGalleryImages: contract.attachedGalleryImages || [],
       },
     }
   }
