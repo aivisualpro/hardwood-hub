@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 
+const { user } = useAuth()
+const isSuperAdmin = computed(() => user.value?.email === 'adeel@annarborhardwoods.com')
+
 const props = defineProps<{
   contracts: any[]
   templates: any[]
@@ -42,7 +45,7 @@ function displayTemplateName(name: string): string {
 // ─── Actions ─────────────────────────────────────────────
 
 async function deleteContract(id: string, status?: string) {
-  if (status === 'signed') {
+  if (status === 'signed' && !isSuperAdmin.value) {
     toast.error('Cannot delete', { description: 'Signed contracts cannot be deleted.' })
     return
   }
@@ -366,7 +369,7 @@ async function downloadPDF(ct: any) {
                   <button class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors" title="Edit" @click.stop="emit('edit', ct)">
                     <Icon name="i-lucide-pencil" class="size-3.5" />
                   </button>
-                  <button v-if="ct.status !== 'signed'" class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete" @click.stop="deleteContract(ct._id, ct.status)">
+                  <button v-if="ct.status !== 'signed' || isSuperAdmin" class="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" title="Delete" @click.stop="deleteContract(ct._id, ct.status)">
                     <Icon name="i-lucide-trash-2" class="size-3.5" />
                   </button>
                 </div>
@@ -495,7 +498,7 @@ async function downloadPDF(ct: any) {
               <button class="size-8 rounded-lg border bg-background flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shadow-xs" @click.stop="emit('edit', ct)">
                 <Icon name="i-lucide-pencil" class="size-3.5" />
               </button>
-              <button v-if="ct.status !== 'signed'" class="size-8 rounded-lg border border-red-500/20 bg-red-500/5 flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-colors shadow-xs" @click.stop="deleteContract(ct._id, ct.status)">
+              <button v-if="ct.status !== 'signed' || isSuperAdmin" class="size-8 rounded-lg border border-red-500/20 bg-red-500/5 flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-colors shadow-xs" @click.stop="deleteContract(ct._id, ct.status)">
                 <Icon name="i-lucide-trash-2" class="size-3.5" />
               </button>
             </div>

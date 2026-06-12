@@ -42,7 +42,10 @@ export default defineEventHandler(async (event) => {
     if (!doc)
       return { success: true }
     if (doc.status === 'signed') {
-      throw createError({ statusCode: 403, message: 'Signed contracts cannot be deleted.' })
+      const sessionEmail = event.context?.session?.email || ''
+      if (sessionEmail !== 'adeel@annarborhardwoods.com') {
+        throw createError({ statusCode: 403, message: 'Signed contracts cannot be deleted.' })
+      }
     }
     // Cleanup Vercel Blobs if attached
     if (doc.attachedPdf && (doc.attachedPdf.includes('vercel-storage.com') || doc.attachedPdf.includes('vercel.com'))) {
