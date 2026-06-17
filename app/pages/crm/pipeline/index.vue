@@ -336,6 +336,9 @@ async function fetchCustomers(targetPage = 1, append = false) {
     })
     if (searchQuery.value?.trim())
       params.set('search', searchQuery.value.trim())
+    // Send stage filter to server so pagination applies within the filtered set
+    if (selectedStageFilter.value && selectedStageFilter.value !== 'all' && selectedStageFilter.value !== 'uncategorized')
+      params.set('status', selectedStageFilter.value)
 
     const res = await $fetch<any>(`/api/pipeline?${params.toString()}`)
     if (res?.success) {
@@ -624,6 +627,8 @@ function selectFilter(id: string) {
   if (searchQuery.value.trim()) query.search = searchQuery.value.trim()
   if (id !== 'all') query.status = id
   navigateTo({ path: '/crm/pipeline', query }, { replace: true })
+  // Re-fetch from page 1 with server-side status filter
+  fetchCustomers(1)
 }
 
 // Sync filter from URL on back/forward navigation

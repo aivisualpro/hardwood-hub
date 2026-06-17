@@ -116,10 +116,15 @@ export default defineNuxtConfig({
     // create/edit/delete). SWR served a stale list for up to 30s after writes,
     // so refreshes showed the old status even though Mongo was already updated.
     // Edge cache also doesn't vary by ?page/?search/?status query params.
+    // NOTE: '/api/workspaces' SWR removed — workspaces/permissions are edited in
+    // admin settings and must reflect immediately. SWR served a stale list for up
+    // to 60s after a save, so edits appeared to revert on refresh (Mongo was fine).
+    '/api/dashboard/stats': { swr: 15 },
+    // ⚠️ '/api/skills/tree' and '/api/app-settings' are still SWR-cached below and
+    // are ALSO user-editable — expect the same "edit doesn't show for up to a
+    // minute" behaviour there. Remove them too if you hit it.
     '/api/skills/tree': { swr: 60 },
     '/api/app-settings': { swr: 120 },
-    '/api/dashboard/stats': { swr: 15 },
-    '/api/workspaces': { swr: 60 },
     // NOTE: '/api/dropdowns' SWR removed — Vercel edge cache doesn't vary by
     // query params, so ?name=X requests got the full-list cached response.
   },
