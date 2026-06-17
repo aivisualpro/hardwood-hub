@@ -18,6 +18,7 @@ export default defineEventHandler(async (event) => {
     const status = query.status as string | undefined
     const search = query.search as string | undefined
     const customerId = query.customerId as string | undefined
+    const projectId = query.projectId as string | undefined
     const page = Math.max(1, Number(query.page) || 1)
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50))
 
@@ -26,6 +27,8 @@ export default defineEventHandler(async (event) => {
       filter.status = status
     if (customerId)
       filter.customerId = customerId
+    if (projectId)
+      filter.projectId = projectId
     if (search) {
       filter.$or = [
         { estimateNumber: { $regex: search, $options: 'i' } },

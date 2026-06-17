@@ -622,3 +622,38 @@ export const CloudinaryUploadSchema = z.object({
 export const CompanyLogoUploadSchema = z.object({
   file: z.string().min(1, 'No file provided'),
 })
+
+// ─── CHANGE ORDERS ───────────────────────────────────────────────────────────
+
+export const ChangeOrderCreateSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(500),
+  customerId: MongoId,
+  projectId: MongoId.nullable().optional(),
+  customerName: z.string().max(200).optional().default(''),
+  customerEmail: z.string().email().or(z.literal('')).optional().default(''),
+  customerPhone: z.string().max(30).optional().default(''),
+  customerAddress: z.string().max(300).optional().default(''),
+  projectName: z.string().max(200).optional().default(''),
+  templateId: MongoId.optional(),
+  templateName: z.string().max(200).optional().default(''),
+  variableValues: z.record(z.string(), z.unknown()).optional().default({}),
+  content: z.string().max(500_000).optional().default(''),
+  notes: z.string().max(10_000).optional().default(''),
+  createdBy: z.string().max(200).optional().default(''),
+  changeOrderNumber: z.string().max(100).optional(),
+})
+
+export const ChangeOrderUpdateSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  projectId: MongoId.nullable().optional(),
+  customerName: z.string().max(200).optional(),
+  customerEmail: z.string().email().or(z.literal('')).optional(),
+  customerPhone: z.string().max(30).optional(),
+  customerAddress: z.string().max(300).optional(),
+  projectName: z.string().max(200).optional(),
+  templateId: MongoId.optional(),
+  templateName: z.string().max(200).optional(),
+  variableValues: z.record(z.string(), z.unknown()).optional(),
+  content: z.string().max(500_000).optional(),
+  notes: z.string().max(10_000).optional(),
+})

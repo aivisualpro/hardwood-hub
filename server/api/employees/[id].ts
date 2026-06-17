@@ -22,7 +22,13 @@ export default defineEventHandler(async (event) => {
   if (event.method === 'PUT') {
     const raw = await readBody(event)
     const data = parseBody(EmployeeUpdateSchema, raw)
-    const cleaned = sanitizeWriteBody(event, '/hr/employees', data)
+    // Status-only updates (toggle) are route-level actions already gated by
+    // requirePermission — skip field-level sanitization so workspace field
+    // permissions don't silently strip the status field.
+    const isStatusToggle = Object.keys(data).length === 1 && 'status' in data
+    const cleaned = isStatusToggle ? data : sanitizeWriteBody(event, '/hr/employees', data)
+    if (Object.keys(cleaned).length === 0)
+      throw createError({ statusCode: 403, message: 'You do not have permission to update these fields' })
     const updated = await Employee.findByIdAndUpdate(id, { $set: cleaned }, { returnDocument: 'after', runValidators: true }).lean()
     if (!updated)
       throw createError({ statusCode: 404, message: 'Employee not found' })

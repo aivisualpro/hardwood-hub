@@ -132,6 +132,12 @@ export default defineEventHandler(async (event) => {
       changelogEntries.push({ field, oldValue: oldVal, newValue: newVal, changedBy, changedAt: now })
     }
 
+    // ── Completion date tracking ──
+    if (body.status === 'done' && oldDoc.status !== 'done')
+      body.completionDate = new Date()
+    else if (body.status && body.status !== 'done' && oldDoc.status === 'done')
+      body.completionDate = null
+
     const updateOps: any = { $set: { ...body } }
     if (changelogEntries.length)
       updateOps.$push = { changelog: { $each: changelogEntries } }

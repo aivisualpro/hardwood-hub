@@ -1,5 +1,6 @@
 // POST /api/estimates/send-email
 // Sends estimate to client via email with PDF + images as attachments
+import crypto from 'node:crypto'
 import { Estimate } from '../../models/Estimate'
 import { EstimateTemplate } from '../../models/EstimateTemplate'
 import { AppSetting } from '../../models/AppSetting'
@@ -50,13 +51,21 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Customer has no email address' })
   }
 
+  // Generate response token for Approve/Change Request/Decline buttons
+  const responseToken = crypto.randomBytes(32).toString('hex')
+
   // Update estimate status
   estimate.status = 'sent'
   estimate.sentAt = new Date()
+  estimate.responseToken = responseToken
   if (overrideEmail?.trim()) {
     estimate.customerEmail = overrideEmail.trim()
   }
   await estimate.save()
+
+  // Build the response URLs
+  const host = getRequestURL(event).origin
+  const responseBaseUrl = `${host}/public/estimate-response/${responseToken}`
 
   // Load company settings for branding
   const settingsDoc = await AppSetting.findOne({ key: 'companyProfile' }).lean() as any
@@ -285,6 +294,26 @@ export default defineEventHandler(async (event) => {
                   <div style="font-size: 14px; line-height: 1.7; color: #374151;">
                     ${mergedHTML}
                   </div>
+                </td>
+              </tr>
+
+              <!-- Response Buttons -->
+              <tr>
+                <td style="padding: 8px 40px 32px; text-align: center;">
+                  <p style="color: #6b7280; font-size: 13px; margin: 0 0 16px; font-weight: 500;">Please review and respond:</p>
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td align="center" style="padding: 0 4px;">
+                        <a href="${responseBaseUrl}?action=approve" target="_blank" style="display: inline-block; background: #059669; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: 10px; min-width: 100px; text-align: center; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">✅ Approve</a>
+                      </td>
+                      <td align="center" style="padding: 0 4px;">
+                        <a href="${responseBaseUrl}?action=change_request" target="_blank" style="display: inline-block; background: #d97706; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: 10px; min-width: 100px; text-align: center; box-shadow: 0 2px 8px rgba(217,119,6,0.3);">✏️ Changes</a>
+                      </td>
+                      <td align="center" style="padding: 0 4px;">
+                        <a href="${responseBaseUrl}?action=decline" target="_blank" style="display: inline-block; background: #dc2626; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: 10px; min-width: 100px; text-align: center; box-shadow: 0 2px 8px rgba(220,38,38,0.3);">❌ Decline</a>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
 

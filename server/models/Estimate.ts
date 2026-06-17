@@ -37,10 +37,20 @@ const EstimateSchema = new mongoose.Schema(
     // Sent tracking
     sentAt: { type: Date, default: null },
 
+    // Token for public estimate response page (Approve/Change Request/Decline)
+    responseToken: { type: String, default: '', index: true },
+
+    // Client response (filled when customer clicks Approve/Change Request/Decline)
+    clientResponse: {
+      action: { type: String, enum: ['approved', 'change_request', 'declined', ''], default: '' },
+      message: { type: String, default: '' },
+      respondedAt: { type: Date, default: null },
+    },
+
     // Status
     status: {
       type: String,
-      enum: ['draft', 'sent', 'completed', 'cancelled'],
+      enum: ['draft', 'sent', 'approved', 'change_request', 'declined', 'completed', 'cancelled'],
       default: 'draft',
     },
 

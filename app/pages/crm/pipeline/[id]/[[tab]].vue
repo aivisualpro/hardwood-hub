@@ -35,7 +35,36 @@ const loadingAllSubmissions = ref(false)
 
 // ─── Computed slices per column ────────────────────────────────────────────
 const relatedQuotes = computed(() => allSubmissions.value.filter(s => s.type === 'flooring-estimate'))
-const relatedEstimates = computed(() => allSubmissions.value.filter(s => s.type === 'fast-quote'))
+const relatedFastQuotes = computed(() => allSubmissions.value.filter(s => s.type === 'fast-quote'))
+
+// ─── Related Estimates (from hardwoodDB_Estimates collection) ──────────────
+const relatedEstimates = ref<any[]>([])
+const loadingEstimates = ref(false)
+
+const ESTIMATE_STATUS_COLORS: Record<string, string> = {
+  draft: 'bg-zinc-500/15 text-zinc-500',
+  sent: 'bg-blue-500/15 text-blue-500',
+  approved: 'bg-emerald-500/15 text-emerald-600',
+  change_request: 'bg-amber-500/15 text-amber-600',
+  declined: 'bg-red-500/15 text-red-500',
+  completed: 'bg-green-500/15 text-green-600',
+  cancelled: 'bg-red-500/15 text-red-500',
+}
+const ESTIMATE_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft', sent: 'Sent', approved: 'Approved',
+  change_request: 'Change Request', declined: 'Declined',
+  completed: 'Completed', cancelled: 'Cancelled',
+}
+
+async function fetchRelatedEstimates() {
+  loadingEstimates.value = true
+  try {
+    const res = await $fetch<any>(`/api/estimates?projectId=${customerId}&limit=100`)
+    relatedEstimates.value = res.data || []
+  }
+  catch { console.error('Failed to load estimates') }
+  finally { loadingEstimates.value = false }
+}
 
 async function fetchAllData(email: string, phone: string) {
   if (!email && !phone) { allSubmissions.value = []; return }
@@ -100,6 +129,7 @@ async function loadPageData() {
     updateHeader(customer.value)
     fetchAllData(customer.value.email, customer.value.phone)
     fetchCustomerContracts()
+    fetchRelatedEstimates()
     fetchRelatedStainSignOffs()
     fetchRelatedDailyProduction()
     fetchRelatedProjects()
@@ -661,41 +691,51 @@ function totalSqft(blocks: any[]) {
           </div>
         </div>
 
-        <!-- Related Estimates -->
+        <!-- Related Estimates (from hardwoodDB_Estimates) -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
-              <Icon name="i-lucide-calculator" class="size-4 text-blue-500 shrink-0" />
+              <Icon name="i-lucide-file-text" class="size-4 text-blue-500 shrink-0" />
               <h3 class="text-sm font-bold text-foreground">
                 Related Estimates
               </h3>
             </div>
             <span v-if="relatedEstimates.length" class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{{ relatedEstimates.length }}</span>
           </div>
-          <div v-if="loadingAllSubmissions" class="flex-1 px-5 py-4 space-y-2">
+          <div v-if="loadingEstimates" class="flex-1 px-5 py-4 space-y-2">
             <div v-for="i in 3" :key="i" class="h-10 bg-muted/30 rounded-lg animate-pulse" />
           </div>
           <div v-else-if="relatedEstimates.length === 0" class="flex-1 flex flex-col items-center justify-center py-8 text-center">
-            <Icon name="i-lucide-calculator" class="size-6 text-muted-foreground/30 mx-auto mb-2" />
+            <Icon name="i-lucide-file-text" class="size-6 text-muted-foreground/30 mx-auto mb-2" />
             <p class="text-xs text-muted-foreground">
-              No estimate submissions
+              No estimates for this project
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
-            <div v-for="item in relatedEstimates" :key="item._id" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+          <div v-else class="divide-y divide-border/50 max-h-[280px] overflow-y-auto">
+            <NuxtLink
+              v-for="est in relatedEstimates"
+              :key="est._id"
+              to="/crm/estimates/list"
+              class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors"
+            >
               <div class="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                <Icon name="i-lucide-calculator" class="size-3.5 text-blue-500" />
+                <Icon name="i-lucide-file-text" class="size-3.5 text-blue-500" />
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-bold text-foreground truncate">
-                  {{ item.name || 'Anonymous' }}
+                  {{ est.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || est.estimateNumber }}
                 </p>
                 <p class="text-[10px] text-muted-foreground">
-                  {{ formatDate(item.dateSubmitted) }}
+                  #{{ est.estimateNumber }} · {{ est.customerName || '—' }} · {{ formatDate(est.createdAt) }}
                 </p>
               </div>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize shrink-0" :class="submissionStatusClass(item.status)">{{ item.status }}</span>
-            </div>
+              <span
+                class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                :class="ESTIMATE_STATUS_COLORS[est.status] || 'bg-muted text-muted-foreground'"
+              >
+                {{ ESTIMATE_STATUS_LABELS[est.status] || est.status }}
+              </span>
+            </NuxtLink>
           </div>
         </div>
 

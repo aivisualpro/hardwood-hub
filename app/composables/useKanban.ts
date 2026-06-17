@@ -162,6 +162,7 @@ export function useKanban() {
       approvedBy: t.approvedBy || null,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
+      completionDate: t.completionDate,
     }
   }
 

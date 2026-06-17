@@ -1,3 +1,4 @@
+import type { SortOrder } from 'mongoose'
 import { Employee } from '../../models/Employee'
 import { Task } from '../../models/Task'
 // GET  /api/tasks          — list tasks, grouped by status, with pagination per column
@@ -30,8 +31,9 @@ export default defineEventHandler(async (event) => {
 
     if (status) {
       // Load specific column with pagination
+      const sort: Record<string, SortOrder> = status === 'done' ? { completionDate: -1 } : { dueDate: 1, createdAt: -1 }
       const [tasks, total] = await Promise.all([
-        Task.find({ status }).sort({ dueDate: 1, createdAt: -1 }).skip(skip).limit(limit).populate(POPULATE_FIELDS).lean<any[]>(),
+        Task.find({ status }).sort(sort).skip(skip).limit(limit).populate(POPULATE_FIELDS).lean<any[]>(),
         Task.countDocuments({ status }),
       ])
       return { success: true, data: stripHiddenFields(event, '/tasks', tasks), total, hasMore: skip + tasks.length < total }
@@ -42,8 +44,9 @@ export default defineEventHandler(async (event) => {
     const columns: Record<string, { tasks: any[], total: number, hasMore: boolean }> = {}
 
     await Promise.all(statuses.map(async (s) => {
+      const sort: Record<string, SortOrder> = s === 'done' ? { completionDate: -1 } : { dueDate: 1, createdAt: -1 }
       const [tasks, total] = await Promise.all([
-        Task.find({ status: s }).sort({ dueDate: 1, createdAt: -1 }).limit(limit).populate(POPULATE_FIELDS).lean<any[]>(),
+        Task.find({ status: s }).sort(sort).limit(limit).populate(POPULATE_FIELDS).lean<any[]>(),
         Task.countDocuments({ status: s }),
       ])
       columns[s] = { tasks, total, hasMore: tasks.length < total }

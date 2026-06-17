@@ -123,6 +123,13 @@ export default defineEventHandler(async (event) => {
       setFields.approvedBy = null
 
     const oldTask = oldStatusMap.get(u._id)
+
+    // Track completion date
+    if (u.status === 'done' && oldTask?.status !== 'done')
+      setFields.completionDate = now
+    else if (u.status !== 'done' && oldTask?.status === 'done')
+      setFields.completionDate = null
+
     const changelogEntry = oldTask && oldTask.status !== u.status
       ? { field: 'status', oldValue: oldTask.status, newValue: u.status, changedBy, changedAt: now }
       : null

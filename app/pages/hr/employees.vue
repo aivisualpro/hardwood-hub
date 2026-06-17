@@ -256,8 +256,11 @@ async function toggleStatus(emp: Employee) {
   const prev = emp.status
   emp.status = newStatus // optimistic
   try {
-    await $fetch(`/api/employees/${emp._id}`, { method: 'PUT', body: { status: newStatus } })
-    notify('Status updated', `${emp.employee} is now ${newStatus}`)
+    const res = await $fetch<{ success: boolean, data: Employee }>(`/api/employees/${emp._id}`, { method: 'PUT', body: { status: newStatus } })
+    // Use the server-confirmed status to avoid stale display after refresh
+    if (res.data?.status)
+      emp.status = res.data.status
+    notify('Status updated', `${emp.employee} is now ${emp.status}`)
   }
   catch (e: any) {
     emp.status = prev
@@ -344,7 +347,7 @@ async function toggleStatus(emp: Employee) {
               class="text-[9px] sm:text-[10px] font-semibold"
               :class="emp.status === 'Active' ? 'text-emerald-400' : 'text-muted-foreground'"
             >
-              {{ emp.status || 'Active' }}
+              {{ emp.status }}
             </span>
           </div>
           <div v-if="fieldMode('workspace') !== 'hidden' && workspaceName(emp.workspace)" class="flex items-center justify-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1">

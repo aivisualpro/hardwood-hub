@@ -643,10 +643,10 @@ const PAGE_SIZE = 20
                     <!-- Row 4: Due Date & Remaining / Completed -->
                     <div v-if="col.id === 'done'" class="flex items-center justify-between gap-2 mt-2">
                       <div class="flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <Icon name="lucide:check-circle" class="size-3" />
-                        <span>Done</span>
+                        <Icon name="lucide:calendar-check" class="size-3" />
+                        <span>{{ t.completionDate ? new Date(t.completionDate as any).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A' }}</span>
                       </div>
-                      <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-700 text-white">{{ completedInDaysLabel(t.createdAt, t.updatedAt) }}</span>
+                      <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-700 text-white">{{ completedInDaysLabel(t.createdAt, t.completionDate) }}</span>
                     </div>
                     <div v-else-if="t.dueDate" class="flex items-center justify-between gap-2 mt-2">
                       <div class="flex items-center gap-1 text-[11px] text-muted-foreground">

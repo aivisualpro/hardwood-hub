@@ -40,6 +40,7 @@ export interface Task {
   }
   createdAt: Date | number | string
   updatedAt?: Date | number | string
+  completionDate?: Date | number | string
 }
 
 export interface NewTask extends Omit<Task, 'id' | 'createdAt' | 'assignees' | 'createdBy'> {

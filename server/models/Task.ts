@@ -49,6 +49,7 @@ export interface ITask extends Document {
     employee: string
     profileImage?: string
   }
+  completionDate?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -101,6 +102,7 @@ const TaskSchema = new Schema(
       ref: 'Employee',
       default: null,
     },
+    completionDate: { type: Date, default: null },
   },
   {
     timestamps: true,

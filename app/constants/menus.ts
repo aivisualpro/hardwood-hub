@@ -123,6 +123,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-file-signature',
         link: '/crm/contracts',
       },
+      {
+        title: 'Change Orders',
+        icon: 'i-lucide-file-diff',
+        link: '/crm/change-orders',
+      },
     ],
   },
   {

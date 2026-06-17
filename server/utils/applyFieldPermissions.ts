@@ -23,6 +23,13 @@ const ROUTE_FIELD_KEYS: Record<string, string[]> = {
 
 const ADMIN_POSITIONS = ['Super Admin', 'Admin']
 
+// Fields that must never be stripped from GET responses — they are essential
+// for UI rendering (e.g. status badges, toggle buttons) and hiding them causes
+// display bugs (undefined shows as blank, fallbacks show wrong data).
+const PROTECTED_FIELDS: Record<string, string[]> = {
+  '/hr/employees': ['status'],
+}
+
 type FieldMode = 'hidden' | 'read' | 'edit'
 
 /**
@@ -86,9 +93,11 @@ export function stripHiddenFields<T>(
   const fieldKeys = ROUTE_FIELD_KEYS[routePath]
   if (!fieldKeys) return data // route not registered
 
-  // Collect hidden fields for this route
+  // Collect hidden fields for this route (excluding protected fields)
+  const protectedKeys = PROTECTED_FIELDS[routePath] || []
   const hiddenFields: string[] = []
   for (const key of fieldKeys) {
+    if (protectedKeys.includes(key)) continue
     if (resolveFieldMode(ws, routePath, key) === 'hidden') {
       hiddenFields.push(key)
     }

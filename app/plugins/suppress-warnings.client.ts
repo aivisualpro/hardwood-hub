@@ -6,8 +6,23 @@
  * - "Invalid Teleport target on mount" — brief timing flicker during Nuxt
  *   client-side navigation when the teleport target hasn't rendered yet
  */
-export default defineNuxtPlugin(() => {
+export default defineNuxtPlugin((nuxtApp) => {
   if (import.meta.client) {
+    // ── Suppress known harmless Vue runtime warnings ──
+    // The "trap-focus" warning comes from reka-ui's DialogContentModal passing
+    // trap-focus to DialogContentImpl which renders a fragment (FocusScope +
+    // DismissableLayer). This is an upstream reka-ui issue, not a bug in our code.
+    nuxtApp.vueApp.config.warnHandler = (msg, _instance, _trace) => {
+      if (msg.includes('Extraneous non-props attributes') && msg.includes('trap-focus'))
+        return
+      // Nuxt route transitions can briefly render non-element root nodes
+      if (msg.includes('Component inside <Transition> renders non-element root node'))
+        return
+      // Let all other Vue warnings through to the console
+      console.warn(`[Vue warn]: ${msg}`)
+    }
+
+    // ── Suppress known harmless console.warn messages ──
     const origWarn = console.warn
     console.warn = (...args: any[]) => {
       const msg = typeof args[0] === 'string' ? args[0] : ''

@@ -17,8 +17,21 @@ const emit = defineEmits<{
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-zinc-500/15 text-zinc-500 border-zinc-500/30',
   sent: 'bg-blue-500/15 text-blue-500 border-blue-500/30',
+  approved: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30',
+  change_request: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
+  declined: 'bg-red-500/15 text-red-500 border-red-500/30',
   completed: 'bg-green-500/15 text-green-600 border-green-500/30',
   cancelled: 'bg-red-500/15 text-red-500 border-red-500/30',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft',
+  sent: 'Sent',
+  approved: 'Approved',
+  change_request: 'Change Request',
+  declined: 'Declined',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
 }
 
 function formatDate(d: string) {
@@ -249,7 +262,7 @@ async function downloadPDF(ct: any) {
                   class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize border transition-transform hover:scale-105"
                   :class="STATUS_COLORS[ct.status] || STATUS_COLORS.draft"
                 >
-                  {{ ct.status }}
+                  {{ STATUS_LABELS[ct.status] || ct.status }}
                 </span>
               </td>
               <td class="px-4 py-3">
@@ -297,7 +310,7 @@ async function downloadPDF(ct: any) {
                   class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold capitalize border"
                   :class="STATUS_COLORS[ct.status] || STATUS_COLORS.draft"
                 >
-                  {{ ct.status }}
+                  {{ STATUS_LABELS[ct.status] || ct.status }}
                 </span>
               </div>
               <span class="text-sm font-bold text-foreground leading-tight truncate">{{ displayTitle(ct.title) }}</span>

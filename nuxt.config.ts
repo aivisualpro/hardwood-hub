@@ -112,7 +112,10 @@ export default defineNuxtConfig({
   routeRules: {
     '/components': { redirect: '/components/accordion' },
     // SWR caching for read-heavy API endpoints — speeds up SSR data fetching
-    '/api/employees': { swr: 30 },
+    // NOTE: '/api/employees' SWR removed — it's a mutable list (status toggles,
+    // create/edit/delete). SWR served a stale list for up to 30s after writes,
+    // so refreshes showed the old status even though Mongo was already updated.
+    // Edge cache also doesn't vary by ?page/?search/?status query params.
     '/api/skills/tree': { swr: 60 },
     '/api/app-settings': { swr: 120 },
     '/api/dashboard/stats': { swr: 15 },
