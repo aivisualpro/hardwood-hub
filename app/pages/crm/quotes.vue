@@ -25,7 +25,7 @@ const {
 } = useCrmSubmissions('flooring-estimate')
 
 // ─── Server-first data fetching (blocks navigation until resolved) ──────
-await useAsyncData('quotes-page', async () => { await fetchSubmissions(); return true })
+await useAsyncData('quotes-page', async () => { await fetchSubmissions(); return true }, { server: false })
 
 async function handleSync() {
   try {

@@ -161,6 +161,15 @@ export default defineNuxtConfig({
     gfConsumerSecret: process.env.GF_CONSUMER_SECRET,
     gfPublicApiKey: process.env.GF_PUBLIC_API_KEY,
     gfPrivateApiKey: process.env.GF_PRIVATE_API_KEY,
+
+    // CRM webhook auth — the Gravity Forms Webhooks add-on can only send a
+    // STATIC header, so prefer the token. HMAC kept as a fallback for proxies.
+    crmWebhookToken: process.env.CRM_WEBHOOK_TOKEN,
+    crmWebhookSecret: process.env.CRM_WEBHOOK_SECRET,
+    // Background CRM auto-sync (server interval) + external cron trigger
+    crmAutosync: process.env.CRM_AUTOSYNC,
+    crmAutosyncMinutes: process.env.CRM_AUTOSYNC_MINUTES,
+    crmCronSecret: process.env.CRM_CRON_SECRET,
     gmailUser: process.env.GMAIL_USER,
     gmailAppPassword: process.env.GMAIL_APP_PASSWORD,
 

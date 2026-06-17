@@ -15,6 +15,8 @@ const PUBLIC_PREFIXES = [
   '/api/gmail/callback', // Google OAuth2 redirect (no session cookie)
   '/api/google-calendar/callback', // Google Calendar OAuth2 redirect
   '/api/google-calendar/webhook', // Google Calendar push notifications
+  '/api/crm/webhook', // Gravity Forms webhook — sessionless; verified by token/HMAC in handler
+  '/api/crm/cron-sync', // external scheduler trigger — verified by CRM_CRON_SECRET in handler
 ]
 
 // Exact paths that are also public

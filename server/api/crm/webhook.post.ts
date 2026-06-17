@@ -16,27 +16,42 @@ const log = logger('[webhook.post]')
  *
  * If CRM_WEBHOOK_SECRET is not configured, verification is skipped with a warning.
  */
-function verifyCrmSignature(event: any, rawBody: string): void {
+function verifyCrmWebhook(event: any, rawBody: string): void {
   const config = useRuntimeConfig()
+  const token = (config.crmWebhookToken as string) || ''
   const secret = (config.crmWebhookSecret as string) || ''
 
-  if (!secret) {
-    log.warn('CRM_WEBHOOK_SECRET not configured — webhook signature verification is DISABLED')
+  // 1) Static shared-token header — works with the Gravity Forms Webhooks add-on,
+  //    which can only send FIXED header values (it can't HMAC the body).
+  //    In GF add a request header:  X-Webhook-Token: <CRM_WEBHOOK_TOKEN>
+  if (token) {
+    const auth = getHeader(event, 'authorization') || ''
+    const provided = (getHeader(event, 'x-webhook-token') || '') || auth.replace(/^Bearer\s+/i, '')
+    if (provided !== token) {
+      throw createError({ statusCode: 403, message: 'Invalid or missing webhook token' })
+    }
     return
   }
 
-  const sigHeader = getHeader(event, 'x-webhook-signature') || ''
-  if (!sigHeader) {
-    throw createError({ statusCode: 403, message: 'Missing x-webhook-signature header' })
+  // 2) HMAC-SHA256 fallback for upstreams/proxies that CAN sign the raw body:
+  //    x-webhook-signature: sha256=<hex>
+  if (secret) {
+    const sigHeader = getHeader(event, 'x-webhook-signature') || ''
+    if (!sigHeader) {
+      throw createError({ statusCode: 403, message: 'Missing x-webhook-signature header' })
+    }
+    const provided = sigHeader.startsWith('sha256=') ? sigHeader.slice(7) : sigHeader
+    const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
+    const a = Buffer.from(provided, 'hex')
+    const b = Buffer.from(expected, 'hex')
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      throw createError({ statusCode: 403, message: 'Invalid webhook signature' })
+    }
+    return
   }
 
-  // Accept format: "sha256=<hex>" or just "<hex>"
-  const provided = sigHeader.startsWith('sha256=') ? sigHeader.slice(7) : sigHeader
-  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
-
-  if (!crypto.timingSafeEqual(Buffer.from(provided, 'hex'), Buffer.from(expected, 'hex'))) {
-    throw createError({ statusCode: 403, message: 'Invalid webhook signature' })
-  }
+  // 3) Neither configured → skip (INSECURE — local dev only).
+  log.warn('CRM webhook auth DISABLED — set CRM_WEBHOOK_TOKEN to secure it')
 }
 /**
  * POST /api/crm/webhook
@@ -57,7 +72,7 @@ export default defineEventHandler(async (event) => {
 
   // Read raw body for HMAC verification, then parse
   const rawBody = await readRawBody(event, 'utf-8') || ''
-  verifyCrmSignature(event, rawBody)
+  verifyCrmWebhook(event, rawBody)
   const entry = JSON.parse(rawBody || '{}')
 
   // 1. Calendly Webhook Integration

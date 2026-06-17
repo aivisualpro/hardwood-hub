@@ -7,6 +7,9 @@ const props = defineProps<{
   apiPrefix?: string
 }>()
 
+// When editing from customer detail page, hide project-specific fields
+const isCustomerMode = computed(() => props.apiPrefix === '/api/customers')
+
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'saved', customer: any): void
@@ -462,16 +465,20 @@ function toggleEmployee(emp: string) {
   <Dialog :open="modelValue" @update:open="emit('update:modelValue', $event)">
     <DialogContent class="sm:max-w-xl">
       <DialogHeader>
-        <DialogTitle>{{ customer ? 'Edit Project' : 'Add Project' }}</DialogTitle>
+        <DialogTitle>{{ customer ? (isCustomerMode ? 'Edit Client' : 'Edit Project') : 'Add Project' }}</DialogTitle>
         <DialogDescription>
-          {{ customer ? 'Update the details for this project below.' : 'Fill in the details below to create a new project.' }}
+          {{ customer ? (isCustomerMode ? 'Update the client details below.' : 'Update the details for this project below.') : 'Fill in the details below to create a new project.' }}
         </DialogDescription>
       </DialogHeader>
 
       <form autocomplete="off" class="space-y-4 py-4 max-h-[75vh] overflow-y-auto px-2" @submit.prevent="submit">
         <div class="grid grid-cols-2 gap-4">
-          <!-- Customer dropdown -->
-          <div class="space-y-2 col-span-2 relative" :class="activeDropdown === 'customer' ? 'z-50' : ''">
+          <!-- Customer field: text input in customer mode, dropdown in project mode -->
+          <div v-if="isCustomerMode" class="space-y-2 col-span-2">
+            <Label>Customer Name <span class="text-destructive">*</span></Label>
+            <Input v-model="form.name" placeholder="Customer name" />
+          </div>
+          <div v-else class="space-y-2 col-span-2 relative" :class="activeDropdown === 'customer' ? 'z-50' : ''">
             <Label>Customer <span class="text-destructive">*</span></Label>
             <div class="relative">
               <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary h-9" @click.stop="activeDropdown = activeDropdown === 'customer' ? null : 'customer'">
@@ -505,7 +512,7 @@ function toggleEmployee(emp: string) {
             </div>
           </div>
 
-          <div class="space-y-2 col-span-2">
+          <div v-if="!isCustomerMode" class="space-y-2 col-span-2">
             <Label>Project Name</Label>
             <Input v-model="form.projectName" placeholder="e.g. Kitchen Remodel" />
           </div>
@@ -590,7 +597,7 @@ function toggleEmployee(emp: string) {
             </div>
           </div>
 
-          <div class="space-y-2 relative" :class="activeDropdown === 'status' ? 'z-50' : ''">
+          <div v-if="!isCustomerMode" class="space-y-2 relative" :class="activeDropdown === 'status' ? 'z-50' : ''">
             <Label>Status</Label>
             <div class="relative">
               <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary h-9" @click.stop="activeDropdown = activeDropdown === 'status' ? null : 'status'">
@@ -626,7 +633,7 @@ function toggleEmployee(emp: string) {
             </div>
           </div>
 
-          <div class="space-y-2 col-span-2 sm:col-span-1 relative" :class="activeDropdown === 'projectAssignedTo' ? 'z-50' : ''">
+          <div v-if="!isCustomerMode" class="space-y-2 col-span-2 sm:col-span-1 relative" :class="activeDropdown === 'projectAssignedTo' ? 'z-50' : ''">
             <Label>Project Assigned To</Label>
             <div class="relative">
               <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] h-auto" @click.stop="activeDropdown = activeDropdown === 'projectAssignedTo' ? null : 'projectAssignedTo'">
@@ -657,42 +664,42 @@ function toggleEmployee(emp: string) {
             </div>
           </div>
 
-          <div class="space-y-2">
+          <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Estim. Project Duration</Label>
             <Input v-model="form.estimatedProjectDuration" placeholder="e.g. 3 weeks" />
           </div>
 
-          <div class="space-y-2">
+          <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Total Estimate ($)</Label>
             <Input v-model="form.totalEstimate" type="number" step="0.01" placeholder="10000" />
           </div>
 
-          <div class="space-y-2">
+          <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Total Tracked Views</Label>
             <Input v-model="form.totalTrackedViews" type="number" placeholder="0" />
           </div>
 
-          <div class="space-y-2">
+          <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Initial Contact Date</Label>
             <Input v-model="form.initialContactDate" type="date" />
           </div>
 
-          <div class="space-y-2">
+          <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Last Follow Up Date</Label>
             <Input v-model="form.lastFollowUpSentOn" type="date" />
           </div>
 
-          <div class="space-y-2">
+          <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Estimate Sent On</Label>
             <Input v-model="form.estimateSentOn" type="date" />
           </div>
 
-          <div class="space-y-2">
+          <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Date Approved</Label>
             <Input v-model="form.dateApproved" type="date" />
           </div>
 
-          <div class="space-y-2">
+          <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Wood Order Date</Label>
             <Input v-model="form.woodOrderDate" type="date" />
           </div>
