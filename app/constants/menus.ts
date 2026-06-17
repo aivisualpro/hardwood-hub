@@ -2,6 +2,16 @@ import type { NavMenu, NavMenuItems } from '~/types/nav'
 
 export const navMenu: NavMenu[] = [
   {
+    heading: '',
+    items: [
+      {
+        title: 'Admin Dashboard',
+        icon: 'i-lucide-gauge',
+        link: '/dashboard',
+      },
+    ],
+  },
+  {
     heading: 'Admin',
     headingKey: 'nav.admin',
     items: [
@@ -51,6 +61,31 @@ export const navMenu: NavMenu[] = [
         title: 'Bonus Report',
         icon: 'i-lucide-trophy',
         link: '/hr/employees-bonus-report',
+      },
+    ],
+  },
+  {
+    heading: 'Learning Center',
+    items: [
+      {
+        title: 'Skill Guide',
+        icon: 'i-lucide-book-open-check',
+        link: '/learning-center/skill-guide',
+      },
+      {
+        title: 'Video Resources',
+        icon: 'i-lucide-play-circle',
+        link: '/learning-center/video-resources',
+      },
+      {
+        title: 'NWFA Documentation',
+        icon: 'i-lucide-badge-check',
+        link: '/learning-center/nwfa-documentation',
+      },
+      {
+        title: 'Installation Guidelines',
+        icon: 'i-lucide-hard-hat',
+        link: '/learning-center/installation-guidelines',
       },
     ],
   },

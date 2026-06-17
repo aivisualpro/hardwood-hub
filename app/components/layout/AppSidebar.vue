@@ -70,9 +70,22 @@ const activeTeam = computed({
   },
 })
 
+// Menus every authenticated employee can see, regardless of workspace
+// permissions (e.g. the team-wide Learning Center). Edit/manage actions inside
+// these pages are still gated separately via usePermissions().
+const PUBLIC_LINKS = [
+  '/learning-center',
+  '/learning-center/skill-guide',
+  '/learning-center/video-resources',
+  '/learning-center/nwfa-documentation',
+  '/learning-center/installation-guidelines',
+]
+
 function isAllowed(link?: string) {
   if (!link)
     return false
+  if (PUBLIC_LINKS.includes(link))
+    return true
   const allowed = activeTeam.value?.allowedMenus || []
   if (allowed.includes('*'))
     return true

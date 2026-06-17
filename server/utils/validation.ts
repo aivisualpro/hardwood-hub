@@ -657,3 +657,43 @@ export const ChangeOrderUpdateSchema = z.object({
   content: z.string().max(500_000).optional(),
   notes: z.string().max(10_000).optional(),
 })
+
+// ─── LEARNING CENTER ─────────────────────────────────────────────────────────
+
+const LEARNING_CATEGORIES = ['app-skill-guide', 'video-resources', 'nwfa-documentation', 'installation-guidelines'] as const
+const LEARNING_TYPES = ['video', 'document', 'link'] as const
+const LEARNING_SOURCES = ['cloudinary', 'youtube', 'external'] as const
+
+export const LearningResourceCreateSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(300),
+  description: z.string().max(5000).optional().default(''),
+  category: z.enum(LEARNING_CATEGORIES),
+  type: z.enum(LEARNING_TYPES),
+  source: z.enum(LEARNING_SOURCES).optional().default('external'),
+  url: z.string().min(1, 'A URL or uploaded file is required').max(2000),
+  thumbnail: z.string().max(2000).optional().default(''),
+  fileType: z.string().max(50).optional().default(''),
+  fileSize: z.number().nonnegative().optional().default(0),
+  duration: z.string().max(20).optional().default(''),
+  tags: z.array(z.string().max(50)).max(20).optional().default([]),
+  order: z.number().int().optional().default(0),
+  isPublished: z.boolean().optional().default(true),
+  meta: z.record(z.string(), z.unknown()).optional().default({}),
+})
+
+export const LearningResourceUpdateSchema = z.object({
+  title: z.string().min(1).max(300).optional(),
+  description: z.string().max(5000).optional(),
+  category: z.enum(LEARNING_CATEGORIES).optional(),
+  type: z.enum(LEARNING_TYPES).optional(),
+  source: z.enum(LEARNING_SOURCES).optional(),
+  url: z.string().min(1).max(2000).optional(),
+  thumbnail: z.string().max(2000).optional(),
+  fileType: z.string().max(50).optional(),
+  fileSize: z.number().nonnegative().optional(),
+  duration: z.string().max(20).optional(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  order: z.number().int().optional(),
+  isPublished: z.boolean().optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
+})

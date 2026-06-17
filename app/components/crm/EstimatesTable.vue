@@ -14,6 +14,8 @@ const emit = defineEmits<{
   edit: [estimate: any]
 }>()
 
+const router = useRouter()
+
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-zinc-500/15 text-zinc-500 border-zinc-500/30',
   sent: 'bg-blue-500/15 text-blue-500 border-blue-500/30',
@@ -232,7 +234,8 @@ async function downloadPDF(ct: any) {
             <tr
               v-for="ct in estimates"
               :key="ct._id"
-              class="group hover:bg-muted/10 transition-colors"
+              class="group hover:bg-muted/10 transition-colors cursor-pointer"
+              @click="router.push(`/crm/estimates/detail/${ct._id}`)"
             >
               <td class="px-4 py-3">
                 <span class="text-xs font-mono font-bold text-primary">{{ ct.estimateNumber }}</span>
@@ -301,7 +304,7 @@ async function downloadPDF(ct: any) {
 
       <!-- Mobile/Tablet Card View -->
       <div class="block lg:hidden p-3 space-y-3 bg-muted/20">
-        <div v-for="ct in estimates" :key="ct._id" class="border border-border/60 rounded-xl p-3.5 bg-card shadow-sm flex flex-col gap-3 relative">
+        <div v-for="ct in estimates" :key="ct._id" class="border border-border/60 rounded-xl p-3.5 bg-card shadow-sm flex flex-col gap-3 relative cursor-pointer hover:border-primary/30 transition-colors" @click="router.push(`/crm/estimates/detail/${ct._id}`)">
           <div class="flex items-start justify-between gap-3">
             <div class="flex flex-col min-w-0 flex-1">
               <div class="flex items-center gap-2 mb-1">
