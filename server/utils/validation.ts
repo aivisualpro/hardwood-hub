@@ -239,6 +239,9 @@ const TaskComment = z.object({
   avatar: z.string().max(1000).optional().default(''),
   text: z.string().min(1).max(10_000),
   createdAt: z.coerce.date().optional(),
+  completed: z.boolean().optional().default(false),
+  completedBy: z.string().max(200).optional().default(''),
+  completedAt: z.coerce.date().nullable().optional(),
 })
 
 const TaskStatus = z.enum(['todo', 'in-progress', 'in-review', 'done'])

@@ -10,6 +10,9 @@ export interface Comment {
   avatar?: string
   text: string
   createdAt: Date | number | string
+  completed?: boolean
+  completedBy?: string
+  completedAt?: Date | number | string
 }
 
 export interface Task {

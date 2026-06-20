@@ -387,6 +387,27 @@ export function useKanban() {
     }).catch(() => fetchBoard())
   }
 
+  async function toggleCommentCompleted(columnId: string, taskId: string, commentId: string, completedByName?: string) {
+    const col = board.value.columns.find(c => c.id === columnId)
+    const task = col?.tasks.find(t => t.id === taskId)
+    if (!task?.comments)
+      return
+    const cm = task.comments.find((c: any) => c.id === commentId)
+    if (!cm)
+      return
+
+    // Optimistic toggle
+    const wasCompleted = (cm as any).completed || false
+    ;(cm as any).completed = !wasCompleted
+    ;(cm as any).completedBy = !wasCompleted ? (completedByName || '') : ''
+    ;(cm as any).completedAt = !wasCompleted ? new Date().toISOString() : null
+
+    await $fetch(`/api/tasks/${(task as any)._id}`, {
+      method: 'PUT',
+      body: { comments: task.comments },
+    }).catch(() => fetchBoard())
+  }
+
   // Stubs for column CRUD (not needed since columns are fixed)
   function addColumn(_title: string) { }
   function removeColumn(_id: string) { }
@@ -415,5 +436,6 @@ export function useKanban() {
     removeSubtask,
     addComment,
     removeComment,
+    toggleCommentCompleted,
   }
 }

@@ -435,3 +435,118 @@ export async function notifyComment(payload: CommentPayload) {
     log.error('Failed to send comment email', err)
   }
 }
+
+// ─── Comment Completed Notification ────────────────────────
+
+interface CommentCompletedPayload {
+  taskTitle: string
+  commentText: string
+  commentAuthor: string       // person who wrote the comment (will be notified)
+  completedByName: string     // person who marked it completed
+}
+
+/**
+ * Send an email to the comment author when their comment is marked as completed.
+ * Non-blocking — errors are logged but never thrown.
+ */
+export async function notifyCommentCompleted(payload: CommentCompletedPayload) {
+  const { taskTitle, commentText, commentAuthor, completedByName } = payload
+
+  const authorEmail = await resolveCreatorEmail(commentAuthor)
+  if (!authorEmail) {
+    log.warn(`Could not resolve email for comment author "${commentAuthor}", skipping`)
+    return
+  }
+
+  // Load company branding
+  let company: any = {}
+  try {
+    const { AppSetting } = await import('../models/AppSetting')
+    const doc: any = await AppSetting.findOne({ key: 'companyProfile' }).lean()
+    company = doc?.value || {}
+  }
+  catch { /* use defaults */ }
+
+  const companyName = company.name || 'Ann Arbor Hardwoods'
+
+  const emailHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0; padding:0; background-color:#f8fafc; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1a1a1a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8fafc;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+
+          <!-- Color Bar -->
+          <tr><td style="height:4px; background-color:#10b981;"></td></tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+
+              ${company.logo ? `<img src="${company.logo}" alt="${companyName}" style="max-height:32px; max-width:140px; object-fit:contain; margin-bottom:24px; display:block;" />` : ''}
+
+              <!-- Badge -->
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:20px;">
+                <tr>
+                  <td style="padding:6px 12px; background-color:#d1fae5; border-radius:6px; font-size:12px; font-weight:600; color:#065f46; letter-spacing:0.04em; text-transform:uppercase;">
+                    ✓ COMMENT COMPLETED
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Task Title -->
+              <h1 style="margin:0 0 16px; font-size:18px; font-weight:700; color:#0f172a; line-height:1.3;">${taskTitle}</h1>
+
+              <!-- Completed By -->
+              <p style="margin:0 0 16px; font-size:14px; color:#475569; line-height:1.6;">
+                <strong style="color:#0f172a;">${completedByName}</strong> has marked your comment as completed.
+              </p>
+
+              <!-- Divider -->
+              <div style="height:1px; background-color:#e2e8f0; margin-bottom:16px;"></div>
+
+              <!-- Original Comment -->
+              <p style="margin:0 0 4px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:#94a3b8;">Your Comment</p>
+              <div style="padding:12px 16px; background-color:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px;">
+                <p style="margin:0; font-size:14px; line-height:1.6; color:#334155; white-space:pre-wrap;">${commentText}</p>
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px; background-color:#f8fafc; border-top:1px solid #e2e8f0;">
+              <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.5;">
+                ${companyName}${company.phone1 ? ` · ${company.phone1}` : ''}${company.email ? ` · ${company.email}` : ''}
+              </p>
+              <p style="margin:4px 0 0; font-size:11px; color:#cbd5e1;">
+                This is an automated notification. Please do not reply.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+
+  try {
+    await sendMail({
+      to: authorEmail,
+      subject: `Your comment on "${taskTitle}" was completed ✓`,
+      html: emailHTML,
+    })
+    log.info(`Comment completed email sent to ${authorEmail} for "${taskTitle}"`)
+  }
+  catch (err) {
+    log.error('Failed to send comment completed email', err)
+  }
+}

@@ -33,6 +33,7 @@ const {
   removeSubtask,
   addComment,
   removeComment,
+  toggleCommentCompleted,
 } = useKanban()
 
 // Get current user for comments
@@ -680,7 +681,7 @@ const PAGE_SIZE = 20
                             <div v-if="!t.comments?.length" class="px-3 py-4 text-sm text-muted-foreground text-center">
                               No comments yet
                             </div>
-                            <div v-for="cm in t.comments" :key="cm.id" class="px-3 py-2 border-b last:border-b-0 group">
+                            <div v-for="cm in t.comments" :key="cm.id" class="px-3 py-2 border-b last:border-b-0 group" :class="cm.completed ? 'bg-emerald-500/5' : ''">
                               <div class="flex items-center justify-between gap-2">
                                 <div class="flex items-center gap-2">
                                   <Avatar class="size-5">
@@ -689,17 +690,30 @@ const PAGE_SIZE = 20
                                       {{ cm.author?.slice(0, 2).toUpperCase() }}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <span class="text-xs font-medium">{{ cm.author }}</span>
+                                  <span class="text-xs font-medium" :class="cm.completed ? 'text-muted-foreground' : ''">{{ cm.author }}</span>
                                 </div>
                                 <div class="flex items-center gap-1">
                                   <span class="text-[10px] text-muted-foreground">{{ useTimeAgo(cm.createdAt ?? '', OPTIONS) }}</span>
+                                  <button
+                                    class="p-1 rounded transition-all cursor-pointer"
+                                    :class="cm.completed
+                                      ? 'text-emerald-500 hover:text-emerald-600'
+                                      : 'sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-emerald-500'"
+                                    :title="cm.completed ? 'Mark as incomplete' : 'Mark as completed'"
+                                    @click="toggleCommentCompleted(col.id, t.id, cm.id, currentUser?.employee)"
+                                  >
+                                    <Icon :name="cm.completed ? 'lucide:check-circle-2' : 'lucide:circle'" class="size-3.5" />
+                                  </button>
                                   <button class="sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all cursor-pointer p-1" @click="removeComment(col.id, t.id, cm.id)">
                                     <Icon name="lucide:x" class="size-3" />
                                   </button>
                                 </div>
                               </div>
-                              <p class="text-xs text-muted-foreground mt-1 leading-relaxed pl-7">
+                              <p class="text-xs text-muted-foreground mt-1 leading-relaxed pl-7" :class="cm.completed ? 'line-through opacity-60' : ''">
                                 {{ cm.text }}
+                              </p>
+                              <p v-if="cm.completed && cm.completedBy" class="text-[9px] text-emerald-600/70 pl-7 mt-0.5">
+                                ✓ Completed by {{ cm.completedBy }}
                               </p>
                             </div>
                           </div>
@@ -1120,24 +1134,37 @@ const PAGE_SIZE = 20
             <span class="text-muted-foreground/60 ml-1">{{ viewTask.task.comments?.length || 0 }}</span>
           </p>
           <div v-if="viewTask.task.comments?.length" class="space-y-3 mb-4">
-            <div v-for="cm in viewTask.task.comments" :key="cm.id" class="group">
+            <div v-for="cm in viewTask.task.comments" :key="cm.id" class="group rounded-lg p-2 -mx-1 transition-colors" :class="cm.completed ? 'bg-emerald-500/5' : 'hover:bg-muted/30'">
               <div class="flex items-center justify-between gap-2 mb-1">
                 <div class="flex items-center gap-2">
+                  <button
+                    class="p-0 rounded transition-all cursor-pointer flex-shrink-0"
+                    :class="cm.completed
+                      ? 'text-emerald-500 hover:text-emerald-600'
+                      : 'text-muted-foreground/40 hover:text-emerald-500'"
+                    :title="cm.completed ? 'Mark as incomplete' : 'Mark as completed'"
+                    @click="toggleCommentCompleted(viewTask!.colId, viewTask!.task.id, cm.id, currentUser?.employee)"
+                  >
+                    <Icon :name="cm.completed ? 'i-lucide-check-circle-2' : 'i-lucide-circle'" class="size-5" />
+                  </button>
                   <Avatar class="size-5">
                     <AvatarImage :src="cm.avatar || ''" :alt="cm.author" />
                     <AvatarFallback class="text-[8px]">
                       {{ cm.author?.slice(0, 2).toUpperCase() }}
                     </AvatarFallback>
                   </Avatar>
-                  <span class="text-xs font-semibold">{{ cm.author }}</span>
+                  <span class="text-xs font-semibold" :class="cm.completed ? 'text-muted-foreground' : ''">{{ cm.author }}</span>
                   <span class="text-[10px] text-muted-foreground">{{ useTimeAgo(cm.createdAt ?? '', OPTIONS) }}</span>
                 </div>
                 <button class="sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5" @click="removeComment(viewTask!.colId, viewTask!.task.id, cm.id)">
                   <Icon name="i-lucide-x" class="size-3" />
                 </button>
               </div>
-              <p class="text-sm text-muted-foreground leading-relaxed pl-7">
+              <p class="text-sm leading-relaxed pl-12" :class="cm.completed ? 'line-through text-muted-foreground/50' : 'text-muted-foreground'">
                 {{ cm.text }}
+              </p>
+              <p v-if="cm.completed && cm.completedBy" class="text-[10px] text-emerald-600/70 pl-12 mt-0.5 font-medium">
+                ✓ Completed by {{ cm.completedBy }}
               </p>
             </div>
           </div>

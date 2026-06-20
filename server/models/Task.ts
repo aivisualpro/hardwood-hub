@@ -13,6 +13,9 @@ export interface IComment {
   avatar?: string
   text: string
   createdAt: Date
+  completed?: boolean
+  completedBy?: string
+  completedAt?: Date
 }
 
 export interface IChangelog {
@@ -66,6 +69,9 @@ const CommentSchema = new Schema({
   avatar: { type: String, default: '' },
   text: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
+  completed: { type: Boolean, default: false },
+  completedBy: { type: String, default: '' },
+  completedAt: { type: Date, default: null },
 }, { _id: false })
 
 const ChangelogSchema = new Schema({

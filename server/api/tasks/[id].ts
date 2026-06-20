@@ -6,7 +6,7 @@ import { Task } from '../../models/Task'
 import { logger } from '../../utils/logger'
 import { connectDB } from '../../utils/mongoose'
 import { TaskUpdateSchema, objectId, parseBody } from '../../utils/validation'
-import { notifyComment, notifyStatusChange } from '../../utils/taskNotifications'
+import { notifyComment, notifyStatusChange, notifyCommentCompleted } from '../../utils/taskNotifications'
 import { requirePermission } from '../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { requireManager } from '../../utils/requireRole'
@@ -174,6 +174,20 @@ export default defineEventHandler(async (event) => {
           createdById: oldDoc.createdBy?.toString() || '',
           assigneeIds: (oldDoc.assignees || []).map((a: any) => a.toString()),
         }).catch(() => {})
+      }
+
+      // ── Email on comment marked as completed ──
+      const oldCommentMap = new Map<string, any>((oldDoc.comments || []).map((c: any) => [c.id, c]))
+      for (const cm of (body.comments as any[])) {
+        const oldCm: any = oldCommentMap.get(cm.id)
+        if (oldCm && !oldCm.completed && cm.completed) {
+          notifyCommentCompleted({
+            taskTitle: doc.title,
+            commentText: cm.text || '',
+            commentAuthor: cm.author || 'Unknown',
+            completedByName: changedBy || 'Someone',
+          }).catch(() => {})
+        }
       }
     }
 

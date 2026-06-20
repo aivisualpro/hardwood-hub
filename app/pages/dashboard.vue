@@ -422,7 +422,7 @@ function skillLevelStyle(level: string) {
 
       <!-- Content wrapper: smooth opacity dim during refresh -->
       <div
-        class="transition-opacity duration-300 ease-in-out"
+        class="space-y-6 transition-opacity duration-300 ease-in-out"
         :class="refreshing ? 'opacity-50 pointer-events-none' : 'opacity-100'"
       >
       <!-- ══════════════════════════════════════════════════════ -->
