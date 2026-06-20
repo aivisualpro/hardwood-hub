@@ -100,11 +100,16 @@ async function _doFetch(recentOnly: boolean) {
         count: '100',
         sort: 'start_time:desc',
       })
-      if (minDate)
-        params.set('min_start_time', minDate)
-      params.set('max_start_time', maxDate)
-      if (nextPageToken)
+      // Calendly rejects time-range filters when a page_token is present
+      // (the cursor already encodes the original query context)
+      if (nextPageToken) {
         params.set('page_token', nextPageToken)
+      }
+      else {
+        if (minDate)
+          params.set('min_start_time', minDate)
+        params.set('max_start_time', maxDate)
+      }
 
       const url = `https://api.calendly.com/scheduled_events?${params.toString()}`
       log.info(`Fetching events (status=${status}, page=${page})`)

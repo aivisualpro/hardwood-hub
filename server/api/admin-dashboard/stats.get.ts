@@ -12,10 +12,17 @@ export default defineEventHandler(async (event) => {
   const session = (event.context as any).session
   const currentUserId = session?._id || ''
 
+  // ── Date range filter (optional query params) ─────────────
+  const query = getQuery(event)
+  const fromParam = query.from as string | undefined
+  const toParam = query.to as string | undefined
+  const fromDate = fromParam ? new Date(fromParam) : undefined
+  const toDate = toParam ? new Date(toParam) : undefined
+
   // ── Core data (shared across all views) ──────────────────
   const [
     allEmployees,
-    allPerformance,
+    rawPerformance,
     allCategories,
     allSubCategories,
     allSkills,
@@ -26,6 +33,16 @@ export default defineEventHandler(async (event) => {
     SubCategory.find().lean<any[]>(),
     Skill.find().lean<any[]>(),
   ])
+
+  // Apply date range filter if provided
+  const allPerformance = (fromDate || toDate)
+    ? rawPerformance.filter((r: any) => {
+        const d = new Date(r.createdAt)
+        if (fromDate && d < fromDate) return false
+        if (toDate && d > toDate) return false
+        return true
+      })
+    : rawPerformance
 
   // Build lookup maps
   const empMap = Object.fromEntries(allEmployees.map((e: any) => [String(e._id), e]))

@@ -115,6 +115,117 @@ const galleryRef = ref<any>(null)
 const documentsRef = ref<any>(null)
 const relatedContactsRef = ref<any>(null)
 const showDeleteConfirm = ref(false)
+const saving = ref(false)
+
+// ─── Customer edit form (mirrors /crm/customers list page) ───────────────
+function emptyEditForm() {
+  return {
+    name: '',
+    type: '' as string,
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    notes: '',
+  }
+}
+const editForm = ref(emptyEditForm())
+
+function openEditCustomer() {
+  if (!customer.value) return
+  editForm.value = {
+    name: customer.value.name || '',
+    type: customer.value.type ? String(customer.value.type) : '',
+    email: customer.value.email || '',
+    phone: customer.value.phone || '',
+    address: customer.value.address || '',
+    city: customer.value.city || '',
+    state: customer.value.state || '',
+    zip: customer.value.zip || '',
+    notes: customer.value.notes || '',
+  }
+  showEditCustomer.value = true
+}
+
+async function saveCustomerEdit() {
+  if (!editForm.value.name.trim()) {
+    toast.error('Name is required')
+    return
+  }
+  saving.value = true
+  try {
+    const res = await $fetch<any>(`/api/customers/${customerId}`, {
+      method: 'PUT',
+      body: editForm.value,
+    })
+    if (res.success) {
+      customer.value = res.data
+      updateHeader(res.data)
+      toast.success('Customer updated')
+      showEditCustomer.value = false
+    }
+  }
+  catch (e: any) {
+    toast.error('Failed to update', { description: e?.message })
+  }
+  finally {
+    saving.value = false
+  }
+}
+
+// ─── Type Dropdown for edit form ─────────────────────────────────────────
+const activeEditDropdown = ref<string | null>(null)
+const editTypeSearch = ref('')
+const editTypeSearchInput = ref<HTMLInputElement | null>(null)
+
+const filteredEditTypeOptions = computed(() => {
+  if (!editTypeSearch.value) return typeOptions.value
+  const s = editTypeSearch.value.toLowerCase()
+  return typeOptions.value.filter((o: any) =>
+    (o.label || '').toLowerCase().includes(s)
+    || (o.value || '').toLowerCase().includes(s),
+  )
+})
+
+function selectEditType(opt: any) {
+  editForm.value.type = String(opt._id)
+  activeEditDropdown.value = null
+  editTypeSearch.value = ''
+}
+
+function clearEditType() {
+  editForm.value.type = ''
+}
+
+async function addNewEditType(label: string) {
+  if (!label.trim()) return
+  const newOpt = { label: label.trim(), value: label.trim(), color: '#6366f1', icon: '', order: typeOptions.value.length }
+  try {
+    const res = await $fetch<any>('/api/dropdowns', {
+      method: 'POST',
+      body: { name: 'Customer Type', options: [...typeOptions.value, newOpt] },
+    })
+    if (res.data) {
+      typeOptions.value = res.data.options || []
+      const added = typeOptions.value[typeOptions.value.length - 1]
+      if (added) editForm.value.type = String(added._id)
+    }
+    editTypeSearch.value = ''
+    activeEditDropdown.value = null
+    toast.success(`Type "${label.trim()}" added`)
+  }
+  catch {
+    toast.error('Failed to add type')
+  }
+}
+
+watch(activeEditDropdown, (val) => {
+  if (val === 'type') {
+    nextTick(() => editTypeSearchInput.value?.focus())
+  }
+})
 
 function onCustomerUpdated(updatedCustomer: any) {
   customer.value = updatedCustomer
@@ -143,7 +254,7 @@ function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') 
     <ClientOnly>
       <Teleport to="#header-toolbar">
         <div class="flex items-center gap-2">
-          <button class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20" @click="showEditCustomer = true">
+          <button class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20" @click="openEditCustomer">
             <Icon name="i-lucide-pencil" class="size-3.5" />
             <span class="hidden sm:inline">Edit</span>
           </button>
@@ -475,12 +586,129 @@ function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') 
     </div><!-- /3-column -->
 
     <!-- ── Dialogs ────────────────────────────────────────────────────── -->
-    <CrmCustomerFormDialog
-      v-model="showEditCustomer"
-      :customer="customer"
-      api-prefix="/api/customers"
-      @saved="onCustomerUpdated"
-    />
+    <!-- ── Edit Customer Dialog (matches /crm/customers list page) ── -->
+    <Dialog v-model:open="showEditCustomer">
+      <DialogContent class="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div class="flex items-center gap-3 mb-1">
+            <div class="size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Icon name="i-lucide-pencil" class="size-4 text-primary" />
+            </div>
+            <div>
+              <DialogTitle>Edit Customer</DialogTitle>
+              <DialogDescription class="text-xs mt-0.5">
+                Update customer details
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div class="space-y-4 pt-2">
+          <!-- Name -->
+          <div class="space-y-1.5">
+            <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Full Name <span class="text-destructive">*</span></Label>
+            <Input v-model="editForm.name" placeholder="e.g. John Smith" class="h-9 text-sm" />
+          </div>
+
+          <!-- Type -->
+          <div class="space-y-1.5 relative" :class="activeEditDropdown === 'type' ? 'z-50' : ''">
+            <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Type</Label>
+            <div class="relative">
+              <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary h-9" @click.stop="activeEditDropdown = activeEditDropdown === 'type' ? null : 'type'">
+                <div class="flex items-center gap-2">
+                  <div v-if="resolveType({ type: editForm.type })" class="size-2.5 rounded-full" :style="{ backgroundColor: resolveType({ type: editForm.type })!.color }" />
+                  <span :class="editForm.type ? 'text-foreground font-medium' : 'text-muted-foreground'">{{ resolveType({ type: editForm.type })?.label || 'Select type...' }}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button v-if="editForm.type" type="button" class="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors" @click.stop="clearEditType">
+                    <Icon name="i-lucide-x" class="size-3" />
+                  </button>
+                  <Icon name="i-lucide-chevron-down" class="size-4 opacity-50" />
+                </div>
+              </button>
+
+              <div v-if="activeEditDropdown === 'type'" class="fixed inset-0 z-40" @click.stop="activeEditDropdown = null" />
+              <div v-if="activeEditDropdown === 'type'" class="absolute left-0 mt-1 top-full w-full bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div class="p-2 border-b border-border/50">
+                  <input ref="editTypeSearchInput" v-model="editTypeSearch" type="text" placeholder="Search or add new..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop @keydown.enter.prevent="editTypeSearch && !filteredEditTypeOptions.find(o => o.label.toLowerCase() === editTypeSearch.toLowerCase()) ? addNewEditType(editTypeSearch) : (filteredEditTypeOptions.length === 1 && filteredEditTypeOptions[0]) ? selectEditType(filteredEditTypeOptions[0]!) : null">
+                </div>
+                <div class="max-h-[200px] overflow-y-auto py-1.5">
+                  <button v-for="opt in filteredEditTypeOptions" :key="opt._id" type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center justify-between gap-2" @click.stop="selectEditType(opt)">
+                    <div class="flex items-center gap-2">
+                      <div class="size-2.5 rounded-full" :style="{ backgroundColor: opt.color || '#6366f1' }" />
+                      <span class="truncate" :class="editForm.type === String(opt._id) ? 'font-bold text-primary' : ''">{{ opt.label }}</span>
+                    </div>
+                    <Icon v-if="editForm.type === String(opt._id)" name="i-lucide-check" class="size-4 text-primary shrink-0" />
+                  </button>
+                  <button v-if="editTypeSearch && !filteredEditTypeOptions.find(o => o.label.toLowerCase() === editTypeSearch.toLowerCase())" type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-primary/10 text-primary transition-colors flex items-center gap-2 font-bold whitespace-nowrap" @click.stop="addNewEditType(editTypeSearch)">
+                    <Icon name="i-lucide-plus" class="size-4 shrink-0" />
+                    <span class="truncate">Add "{{ editTypeSearch }}"</span>
+                  </button>
+                  <div v-if="!filteredEditTypeOptions.length && !editTypeSearch" class="px-3 py-2 text-xs text-muted-foreground text-center">
+                    No types available.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1.5">
+              <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</Label>
+              <Input v-model="editForm.email" type="email" placeholder="email@example.com" class="h-9 text-sm" />
+            </div>
+            <div class="space-y-1.5">
+              <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Phone</Label>
+              <Input v-model="editForm.phone" placeholder="+1 (555) 000-0000" class="h-9 text-sm" />
+            </div>
+          </div>
+
+          <!-- Address -->
+          <div class="space-y-1.5">
+            <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Address</Label>
+            <Input v-model="editForm.address" placeholder="123 Main St" class="h-9 text-sm" />
+          </div>
+
+          <!-- City / State / Zip -->
+          <div class="grid grid-cols-6 gap-3">
+            <div class="space-y-1.5 col-span-3">
+              <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">City</Label>
+              <Input v-model="editForm.city" placeholder="Ann Arbor" class="h-9 text-sm" />
+            </div>
+            <div class="space-y-1.5 col-span-1">
+              <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">State</Label>
+              <Input v-model="editForm.state" placeholder="MI" maxlength="2" class="h-9 text-sm" />
+            </div>
+            <div class="space-y-1.5 col-span-2">
+              <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Zip</Label>
+              <Input v-model="editForm.zip" placeholder="48104" maxlength="10" class="h-9 text-sm" />
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="space-y-1.5">
+            <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Notes</Label>
+            <textarea
+              v-model="editForm.notes"
+              placeholder="Any additional notes..."
+              rows="3"
+              class="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+        </div>
+
+        <DialogFooter class="pt-4 gap-2">
+          <Button variant="outline" @click="showEditCustomer = false">
+            Cancel
+          </Button>
+          <Button :disabled="saving" @click="saveCustomerEdit">
+            <Icon v-if="saving" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <CrmContractFormDialog
       ref="contractFormDialog"

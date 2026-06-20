@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import NumberFlow from '@number-flow/vue'
+import { startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths, subYears, format } from 'date-fns'
+import type { DateRange } from 'reka-ui'
+import { CalendarDate } from '@internationalized/date'
 
 const { setHeader } = usePageHeader()
 const { user } = useAuth()
@@ -27,20 +30,119 @@ setHeader({
   description: 'Your personalized workspace overview',
 })
 
+// ─── Date Filter ──────────────────────────────────────────
+type PresetKey = 'all' | 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'q1' | 'q2' | 'q3' | 'q4' | 'custom'
+
+const activePreset = ref<PresetKey>('all')
+const customFrom = ref<Date | null>(null)
+const customTo = ref<Date | null>(null)
+const showDatePicker = ref(false)
+const isMounted = ref(false)
+
+onMounted(() => { isMounted.value = true })
+
+const now = new Date()
+const currentYear = now.getFullYear()
+
+function quarterRange(q: 1 | 2 | 3 | 4): { from: Date, to: Date } {
+  const monthStart = (q - 1) * 3
+  const start = new Date(currentYear, monthStart, 1)
+  const end = endOfMonth(new Date(currentYear, monthStart + 2, 1))
+  return { from: start, to: end }
+}
+
+const presets: { key: PresetKey, label: string }[] = [
+  { key: 'all', label: 'All Time' },
+  { key: 'this-month', label: 'This Month' },
+  { key: 'last-month', label: 'Last Month' },
+  { key: 'this-year', label: 'This Year' },
+  { key: 'last-year', label: 'Last Year' },
+  { key: 'q1', label: 'Q1' },
+  { key: 'q2', label: 'Q2' },
+  { key: 'q3', label: 'Q3' },
+  { key: 'q4', label: 'Q4' },
+]
+
+const dateRange = computed<{ from?: Date, to?: Date }>(() => {
+  switch (activePreset.value) {
+    case 'this-month': return { from: startOfMonth(now), to: endOfMonth(now) }
+    case 'last-month': {
+      const last = subMonths(now, 1)
+      return { from: startOfMonth(last), to: endOfMonth(last) }
+    }
+    case 'this-year': return { from: startOfYear(now), to: endOfYear(now) }
+    case 'last-year': {
+      const prev = subYears(now, 1)
+      return { from: startOfYear(prev), to: endOfYear(prev) }
+    }
+    case 'q1': return quarterRange(1)
+    case 'q2': return quarterRange(2)
+    case 'q3': return quarterRange(3)
+    case 'q4': return quarterRange(4)
+    case 'custom': return { from: customFrom.value || undefined, to: customTo.value || undefined }
+    default: return {}
+  }
+})
+
+// Range calendar model
+const calendarRange = ref<DateRange>()
+
+function fromCalendarDate(cd: any): Date {
+  return new Date(cd.year, cd.month - 1, cd.day)
+}
+
+function applyCustomRange() {
+  if (calendarRange.value?.start && calendarRange.value?.end) {
+    customFrom.value = fromCalendarDate(calendarRange.value.start)
+    customTo.value = fromCalendarDate(calendarRange.value.end)
+    activePreset.value = 'custom'
+    showDatePicker.value = false
+  }
+}
+
+function selectPreset(key: PresetKey) {
+  if (key === 'custom') {
+    showDatePicker.value = true
+    return
+  }
+  activePreset.value = key
+  showDatePicker.value = false
+}
+
+const filterLabel = computed(() => {
+  if (activePreset.value === 'all') return ''
+  if (activePreset.value === 'custom' && customFrom.value && customTo.value) {
+    return `${format(customFrom.value, 'MMM d')} – ${format(customTo.value, 'MMM d, yyyy')}`
+  }
+  return presets.find(p => p.key === activePreset.value)?.label || ''
+})
+
 // ─── Data ─────────────────────────────────────────────────
 const stats = ref<any>(null)
-const loading = ref(true)
+const initialLoading = ref(true) // skeleton on first load only
+const refreshing = ref(false)     // subtle indicator on filter changes
 
 async function fetchStats() {
-  loading.value = true
+  // Only show skeleton if no data exists yet (first load)
+  if (!stats.value) initialLoading.value = true
+  else refreshing.value = true
   try {
-    const res = await $fetch<{ success: boolean, data: any }>('/api/admin-dashboard/stats')
+    const params: Record<string, string> = {}
+    if (dateRange.value.from) params.from = dateRange.value.from.toISOString()
+    if (dateRange.value.to) params.to = dateRange.value.to.toISOString()
+    const qs = new URLSearchParams(params).toString()
+    const url = `/api/admin-dashboard/stats${qs ? `?${qs}` : ''}`
+    const res = await $fetch<{ success: boolean, data: any }>(url)
     stats.value = res.data
   }
   catch { /* handled */ }
-  finally { loading.value = false }
+  finally {
+    initialLoading.value = false
+    refreshing.value = false
+  }
 }
 
+watch(dateRange, () => { fetchStats() }, { deep: true })
 onMounted(fetchStats)
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -127,18 +229,202 @@ const crewProgress = computed(() => {
   if (!crewData.value || !crewData.value.totalSkills) return 0
   return Math.round(((crewData.value.summary.mastered + crewData.value.summary.proficient) / crewData.value.totalSkills) * 100)
 })
+
+// ─── Employee Skill Detail Sheet ──────────────────────────
+const showSkillSheet = ref(false)
+const skillSheetLoading = ref(false)
+const selectedEmployee = ref<any>(null)
+const employeeSkillData = ref<any>(null)
+const skillLevelFilter = ref<'all' | 'Mastered' | 'Proficient' | 'Needs Improvement' | 'Unassessed'>('all')
+const skillSearch = ref('')
+const expandedCategories = ref<Set<string>>(new Set())
+
+async function openEmployeeSkills(emp: any) {
+  selectedEmployee.value = emp
+  showSkillSheet.value = true
+  skillSheetLoading.value = true
+  skillLevelFilter.value = 'all'
+  skillSearch.value = ''
+  expandedCategories.value = new Set()
+  try {
+    const res = await $fetch<any>(`/api/admin-dashboard/employee-skills?employeeId=${emp._id}`)
+    employeeSkillData.value = res.data
+    // Auto-expand all categories
+    for (const cat of res.data.categories) {
+      expandedCategories.value.add(cat._id)
+    }
+  }
+  catch { /* handled */ }
+  finally { skillSheetLoading.value = false }
+}
+
+function toggleCategory(catId: string) {
+  if (expandedCategories.value.has(catId)) expandedCategories.value.delete(catId)
+  else expandedCategories.value.add(catId)
+}
+
+const filteredSkills = computed(() => {
+  if (!employeeSkillData.value?.skills) return []
+  let skills = employeeSkillData.value.skills
+  if (skillLevelFilter.value !== 'all') {
+    skills = skills.filter((s: any) => s.level === skillLevelFilter.value)
+  }
+  if (skillSearch.value.trim()) {
+    const q = skillSearch.value.toLowerCase()
+    skills = skills.filter((s: any) =>
+      s.name.toLowerCase().includes(q) ||
+      s.categoryName.toLowerCase().includes(q) ||
+      s.subCategoryName.toLowerCase().includes(q),
+    )
+  }
+  return skills
+})
+
+const filteredCategories = computed(() => {
+  if (!employeeSkillData.value?.categories) return []
+  return employeeSkillData.value.categories.map((cat: any) => ({
+    ...cat,
+    subCategories: cat.subCategories.map((sub: any) => ({
+      ...sub,
+      skills: sub.skills.filter((s: any) => {
+        const levelMatch = skillLevelFilter.value === 'all' || s.level === skillLevelFilter.value
+        const searchMatch = !skillSearch.value.trim() ||
+          s.name.toLowerCase().includes(skillSearch.value.toLowerCase()) ||
+          sub.name.toLowerCase().includes(skillSearch.value.toLowerCase())
+        return levelMatch && searchMatch
+      }),
+    })).filter((sub: any) => sub.skills.length > 0),
+  })).filter((cat: any) => cat.subCategories.length > 0)
+})
+
+const skillLevelTabs = computed(() => {
+  const s = employeeSkillData.value?.summary || {}
+  return [
+    { key: 'all', label: 'All Skills', count: s.total || 0, color: '' },
+    { key: 'Mastered', label: 'Mastered', count: s.mastered || 0, color: 'text-emerald-500' },
+    { key: 'Proficient', label: 'Proficient', count: s.proficient || 0, color: 'text-blue-500' },
+    { key: 'Needs Improvement', label: 'Needs Imp.', count: s.needsImp || 0, color: 'text-amber-500' },
+    { key: 'Unassessed', label: 'Unassessed', count: s.unassessed || 0, color: 'text-muted-foreground' },
+  ]
+})
+
+function skillLevelIcon(level: string) {
+  if (level === 'Mastered') return 'i-lucide-award'
+  if (level === 'Proficient') return 'i-lucide-check-circle-2'
+  if (level === 'Needs Improvement') return 'i-lucide-arrow-up-circle'
+  return 'i-lucide-minus-circle'
+}
+
+function skillLevelStyle(level: string) {
+  if (level === 'Mastered') return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+  if (level === 'Proficient') return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+  if (level === 'Needs Improvement') return 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+  return 'bg-muted/50 text-muted-foreground border-border/50'
+}
 </script>
 
 <template>
   <div class="max-w-[100rem] mx-auto space-y-6">
+    <!-- Header Toolbar: Quick Date Filters -->
+    <ClientOnly>
+      <Teleport v-if="isMounted" to="#header-toolbar">
+        <div class="flex items-center gap-1.5 w-full overflow-x-auto scrollbar-none pr-2">
+          <!-- Preset pills -->
+          <button
+            v-for="preset in presets"
+            :key="preset.key"
+            class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap border"
+            :class="activePreset === preset.key
+              ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/25'
+              : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground'"
+            @click="selectPreset(preset.key)"
+          >
+            {{ preset.label }}
+          </button>
+
+          <!-- Custom Date Range Trigger -->
+          <Popover v-model:open="showDatePicker">
+            <PopoverTrigger as-child>
+              <button
+                class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap border flex items-center gap-1.5"
+                :class="activePreset === 'custom'
+                  ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/25'
+                  : 'bg-muted/50 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground'"
+              >
+                <Icon name="i-lucide-calendar-range" class="size-3.5" />
+                <span v-if="activePreset === 'custom' && filterLabel">{{ filterLabel }}</span>
+                <span v-else>Custom</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent class="w-auto p-0" align="end" :side-offset="8">
+              <div class="p-4 space-y-3">
+                <div class="flex items-center gap-2 pb-2 border-b border-border/50">
+                  <Icon name="i-lucide-calendar-range" class="size-4 text-primary" />
+                  <span class="text-sm font-semibold">Select Date Range</span>
+                </div>
+                <RangeCalendar
+                  v-model="calendarRange"
+                  :number-of-months="2"
+                  class="rounded-lg"
+                />
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+                  <button
+                    class="px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    @click="showDatePicker = false"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-40"
+                    :disabled="!calendarRange?.start || !calendarRange?.end"
+                    @click="applyCustomRange"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <!-- Active filter indicator -->
+          <button
+            v-if="activePreset !== 'all'"
+            class="shrink-0 ml-1 size-6 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center justify-center transition-colors"
+            title="Clear filter"
+            @click="activePreset = 'all'"
+          >
+            <Icon name="i-lucide-x" class="size-3" />
+          </button>
+        </div>
+      </Teleport>
+    </ClientOnly>
+
     <!-- Loading Skeleton -->
-    <template v-if="loading">
+    <!-- Initial Load Skeleton (first load only) -->
+    <template v-if="initialLoading && !stats">
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div v-for="i in 4" :key="i" class="h-32 rounded-2xl bg-card border animate-pulse" />
       </div>
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+        <div class="xl:col-span-8 h-96 rounded-2xl bg-card border animate-pulse" />
+        <div class="xl:col-span-4 h-96 rounded-2xl bg-card border animate-pulse" />
+      </div>
     </template>
 
-    <template v-if="stats && !loading">
+    <!-- Dashboard Content (stays mounted across filter changes) -->
+    <template v-if="stats">
+      <!-- Refresh overlay — subtle top progress bar + content dim -->
+      <Transition name="dash-refresh">
+        <div v-if="refreshing" class="fixed top-[var(--header-height)] left-0 right-0 z-50 pointer-events-none">
+          <div class="h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-[shimmer_1s_ease-in-out_infinite]" />
+        </div>
+      </Transition>
+
+      <!-- Content wrapper: smooth opacity dim during refresh -->
+      <div
+        class="transition-opacity duration-300 ease-in-out"
+        :class="refreshing ? 'opacity-50 pointer-events-none' : 'opacity-100'"
+      >
       <!-- ══════════════════════════════════════════════════════ -->
       <!-- ADMIN VIEW — HR Intelligence & People Analytics      -->
       <!-- ══════════════════════════════════════════════════════ -->
@@ -231,7 +517,7 @@ const crewProgress = computed(() => {
                 v-for="emp in adminData.employeeProfiles.slice(0, 12)"
                 :key="emp._id"
                 class="flex items-center gap-3 px-5 py-3 hover:bg-muted/10 transition-colors cursor-pointer group"
-                @click="$router.push(`/my-profile?employee=${emp._id}`)"
+                @click="openEmployeeSkills(emp)"
               >
                 <!-- Avatar -->
                 <div class="size-9 rounded-full bg-muted overflow-hidden border border-border/50 shrink-0">
@@ -665,6 +951,260 @@ const crewProgress = computed(() => {
           </div>
         </div>
       </template>
+      </div><!-- /content wrapper -->
     </template>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- Employee Skill Detail Sheet                            -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <Sheet v-model:open="showSkillSheet">
+      <SheetContent class="sm:max-w-2xl lg:max-w-3xl w-full p-0 overflow-hidden flex flex-col">
+        <!-- Sheet Header: Employee Hero -->
+        <div v-if="selectedEmployee" class="relative border-b border-border/50 bg-gradient-to-r from-violet-500/5 via-fuchsia-500/3 to-transparent">
+          <div class="absolute inset-0 bg-gradient-to-b from-transparent to-background/80 pointer-events-none" />
+          <div class="relative z-10 p-6 flex items-center gap-4">
+            <div class="size-14 rounded-2xl bg-muted overflow-hidden border-2 border-background shadow-lg shrink-0">
+              <img v-if="selectedEmployee.image" :src="selectedEmployee.image" :alt="selectedEmployee.name" class="size-full object-cover">
+              <div v-else class="size-full flex items-center justify-center text-lg font-bold text-muted-foreground bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10">
+                {{ selectedEmployee.name?.charAt(0) }}
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <SheetHeader class="p-0 space-y-0">
+                <SheetTitle class="text-lg font-bold truncate">{{ selectedEmployee.name }}</SheetTitle>
+                <SheetDescription class="text-xs">{{ selectedEmployee.position || 'Employee' }} · Skill Proficiency Report</SheetDescription>
+              </SheetHeader>
+            </div>
+            <NuxtLink
+              :to="`/my-profile?employee=${selectedEmployee._id}`"
+              class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            >
+              Full Profile →
+            </NuxtLink>
+          </div>
+
+          <!-- Summary Stats Row -->
+          <div v-if="employeeSkillData?.summary" class="relative z-10 px-6 pb-4 flex items-center gap-2">
+            <div class="flex-1 grid grid-cols-4 gap-2">
+              <button
+                class="rounded-xl px-3 py-2 text-center transition-all duration-200 cursor-pointer border"
+                :class="skillLevelFilter === 'Mastered'
+                  ? 'bg-emerald-500/20 border-emerald-500/50 ring-2 ring-emerald-500/30 scale-[1.03]'
+                  : 'bg-emerald-500/10 border-emerald-500/15 hover:bg-emerald-500/15 hover:scale-[1.02]'"
+                @click="skillLevelFilter = skillLevelFilter === 'Mastered' ? 'all' : 'Mastered'"
+              >
+                <p class="text-lg font-black text-emerald-500 tabular-nums">{{ employeeSkillData.summary.mastered }}</p>
+                <p class="text-[9px] font-bold text-emerald-500/70 uppercase tracking-wider">Mastered</p>
+              </button>
+              <button
+                class="rounded-xl px-3 py-2 text-center transition-all duration-200 cursor-pointer border"
+                :class="skillLevelFilter === 'Proficient'
+                  ? 'bg-blue-500/20 border-blue-500/50 ring-2 ring-blue-500/30 scale-[1.03]'
+                  : 'bg-blue-500/10 border-blue-500/15 hover:bg-blue-500/15 hover:scale-[1.02]'"
+                @click="skillLevelFilter = skillLevelFilter === 'Proficient' ? 'all' : 'Proficient'"
+              >
+                <p class="text-lg font-black text-blue-500 tabular-nums">{{ employeeSkillData.summary.proficient }}</p>
+                <p class="text-[9px] font-bold text-blue-500/70 uppercase tracking-wider">Proficient</p>
+              </button>
+              <button
+                class="rounded-xl px-3 py-2 text-center transition-all duration-200 cursor-pointer border"
+                :class="skillLevelFilter === 'Needs Improvement'
+                  ? 'bg-amber-500/20 border-amber-500/50 ring-2 ring-amber-500/30 scale-[1.03]'
+                  : 'bg-amber-500/10 border-amber-500/15 hover:bg-amber-500/15 hover:scale-[1.02]'"
+                @click="skillLevelFilter = skillLevelFilter === 'Needs Improvement' ? 'all' : 'Needs Improvement'"
+              >
+                <p class="text-lg font-black text-amber-500 tabular-nums">{{ employeeSkillData.summary.needsImp }}</p>
+                <p class="text-[9px] font-bold text-amber-500/70 uppercase tracking-wider">Needs Imp.</p>
+              </button>
+              <button
+                class="rounded-xl px-3 py-2 text-center transition-all duration-200 cursor-pointer border"
+                :class="skillLevelFilter === 'Unassessed'
+                  ? 'bg-muted border-border ring-2 ring-primary/30 scale-[1.03]'
+                  : 'bg-muted/60 border-border/30 hover:bg-muted/80 hover:scale-[1.02]'"
+                @click="skillLevelFilter = skillLevelFilter === 'Unassessed' ? 'all' : 'Unassessed'"
+              >
+                <p class="text-lg font-black text-muted-foreground tabular-nums">{{ employeeSkillData.summary.unassessed }}</p>
+                <p class="text-[9px] font-bold text-muted-foreground/70 uppercase tracking-wider">Unassessed</p>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div v-if="skillSheetLoading" class="flex-1 flex items-center justify-center">
+          <div class="flex flex-col items-center gap-3">
+            <div class="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p class="text-sm text-muted-foreground">Loading skills...</p>
+          </div>
+        </div>
+
+        <!-- Filter Bar + Content -->
+        <template v-else-if="employeeSkillData">
+          <!-- Filter Tabs + Search -->
+          <div class="border-b border-border/50 px-4 py-3 space-y-3 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+            <!-- Level filter tabs -->
+            <div class="flex items-center gap-1 overflow-x-auto scrollbar-none">
+              <button
+                v-for="tab in skillLevelTabs"
+                :key="tab.key"
+                class="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all border flex items-center gap-1.5"
+                :class="skillLevelFilter === tab.key
+                  ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                  : 'bg-muted/40 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground'"
+                @click="skillLevelFilter = tab.key as any"
+              >
+                {{ tab.label }}
+                <span
+                  class="tabular-nums text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                  :class="skillLevelFilter === tab.key ? 'bg-primary-foreground/20' : 'bg-background/60'"
+                >{{ tab.count }}</span>
+              </button>
+            </div>
+            <!-- Search -->
+            <div class="relative">
+              <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              <input
+                v-model="skillSearch"
+                type="text"
+                placeholder="Search skills, categories..."
+                class="w-full h-8 pl-9 pr-4 rounded-lg border border-input bg-background/50 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+              >
+            </div>
+          </div>
+
+          <!-- Grouped Skills List -->
+          <div class="flex-1 overflow-y-auto">
+            <!-- Empty State -->
+            <div v-if="filteredCategories.length === 0" class="flex flex-col items-center justify-center py-20 gap-3">
+              <div class="size-16 rounded-full bg-muted flex items-center justify-center">
+                <Icon name="i-lucide-search-x" class="size-8 text-muted-foreground/40" />
+              </div>
+              <p class="text-sm text-muted-foreground">No skills match your filter</p>
+              <button class="text-xs text-primary hover:underline font-medium" @click="skillLevelFilter = 'all'; skillSearch = ''">
+                Clear filters
+              </button>
+            </div>
+
+            <!-- Category Groups -->
+            <div v-for="cat in filteredCategories" :key="cat._id" class="border-b border-border/30 last:border-b-0">
+              <!-- Category Header -->
+              <button
+                class="w-full flex items-center gap-3 px-5 py-3 hover:bg-muted/10 transition-colors text-left"
+                @click="toggleCategory(cat._id)"
+              >
+                <Icon
+                  name="i-lucide-chevron-right"
+                  class="size-4 text-muted-foreground transition-transform duration-200 shrink-0"
+                  :class="expandedCategories.has(cat._id) ? 'rotate-90' : ''"
+                />
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs font-bold">{{ cat.name }}</p>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <span v-if="cat.mastered" class="text-[10px] font-bold text-emerald-500 tabular-nums bg-emerald-500/10 px-1.5 py-0.5 rounded">{{ cat.mastered }}</span>
+                  <span v-if="cat.proficient" class="text-[10px] font-bold text-blue-500 tabular-nums bg-blue-500/10 px-1.5 py-0.5 rounded">{{ cat.proficient }}</span>
+                  <span v-if="cat.needsImp" class="text-[10px] font-bold text-amber-500 tabular-nums bg-amber-500/10 px-1.5 py-0.5 rounded">{{ cat.needsImp }}</span>
+                  <span v-if="cat.unassessed" class="text-[10px] font-bold text-muted-foreground tabular-nums bg-muted/60 px-1.5 py-0.5 rounded">{{ cat.unassessed }}</span>
+                </div>
+              </button>
+
+              <!-- Expanded Content -->
+              <Transition name="expand">
+                <div v-if="expandedCategories.has(cat._id)" class="overflow-hidden">
+                  <div v-for="sub in cat.subCategories" :key="sub.name" class="pl-8">
+                    <!-- Sub-category label -->
+                    <div class="px-4 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted/20">
+                      {{ sub.name }}
+                    </div>
+                    <!-- Skill rows -->
+                    <div class="divide-y divide-border/15">
+                      <div
+                        v-for="skill in sub.skills"
+                        :key="skill._id"
+                        class="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/10 transition-colors group/skill"
+                      >
+                        <!-- Level indicator -->
+                        <div
+                          class="size-7 rounded-lg flex items-center justify-center shrink-0 border"
+                          :class="skillLevelStyle(skill.level)"
+                        >
+                          <Icon :name="skillLevelIcon(skill.level)" class="size-3.5" />
+                        </div>
+
+                        <!-- Skill name -->
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs font-medium truncate">
+                            {{ skill.name }}
+                            <span v-if="skill.isRequired" class="text-[9px] text-red-400 font-bold ml-1">REQUIRED</span>
+                          </p>
+                        </div>
+
+                        <!-- Level badge -->
+                        <span
+                          class="shrink-0 inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                          :class="skillLevelStyle(skill.level)"
+                        >
+                          {{ skill.level }}
+                        </span>
+
+                        <!-- Reviewer + Date -->
+                        <div v-if="skill.reviewerName" class="hidden sm:flex items-center gap-1.5 shrink-0 text-right">
+                          <div class="size-5 rounded-full bg-muted overflow-hidden shrink-0">
+                            <img v-if="skill.reviewerImage" :src="skill.reviewerImage" :alt="skill.reviewerName" class="size-full object-cover">
+                            <div v-else class="size-full flex items-center justify-center text-[8px] font-bold">{{ skill.reviewerName?.charAt(0) }}</div>
+                          </div>
+                          <div class="text-[9px] text-muted-foreground">
+                            <p class="font-medium">{{ skill.reviewerName }}</p>
+                            <p class="tabular-nums">{{ fmtDate(skill.reviewedAt) }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </div>
+
+          <!-- Footer summary -->
+          <div class="border-t border-border/50 px-5 py-3 bg-muted/20 flex items-center justify-between text-[10px] text-muted-foreground shrink-0">
+            <span>Showing {{ filteredSkills.length }} of {{ employeeSkillData.summary.total }} skills</span>
+            <div class="flex items-center gap-3">
+              <span class="flex items-center gap-1"><span class="size-2 rounded-full bg-emerald-500" /> Mastered</span>
+              <span class="flex items-center gap-1"><span class="size-2 rounded-full bg-blue-500" /> Proficient</span>
+              <span class="flex items-center gap-1"><span class="size-2 rounded-full bg-amber-500" /> Needs Imp.</span>
+              <span class="flex items-center gap-1"><span class="size-2 rounded-full bg-muted" /> Unassessed</span>
+            </div>
+          </div>
+        </template>
+      </SheetContent>
+    </Sheet>
   </div>
 </template>
+
+<style scoped>
+@keyframes shimmer {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+}
+
+.dash-refresh-enter-active,
+.dash-refresh-leave-active {
+  transition: opacity 0.2s ease;
+}
+.dash-refresh-enter-from,
+.dash-refresh-leave-to {
+  opacity: 0;
+}
+
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.25s ease;
+  max-height: 2000px;
+}
+.expand-enter-from,
+.expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+</style>
