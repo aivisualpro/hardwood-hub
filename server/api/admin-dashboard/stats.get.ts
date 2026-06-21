@@ -188,14 +188,14 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // 6. Monthly review trend (last 6 months)
+  // 6. Monthly review trend (last 6 months) — always uses unfiltered data
   const monthlyTrend: { month: string, reviews: number }[] = []
   for (let i = 5; i >= 0; i--) {
     const d = new Date()
     d.setMonth(d.getMonth() - i)
     const monthKey = d.toISOString().slice(0, 7)
     const label = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-    const count = allPerformance.filter((r: any) => {
+    const count = rawPerformance.filter((r: any) => {
       const rDate = new Date(r.createdAt).toISOString().slice(0, 7)
       return rDate === monthKey
     }).length
