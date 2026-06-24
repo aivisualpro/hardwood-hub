@@ -62,6 +62,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-trophy',
         link: '/hr/employees-bonus-report',
       },
+      {
+        title: 'TimeSheet',
+        icon: 'i-lucide-clock',
+        link: '/hr/timesheet',
+      },
     ],
   },
   {

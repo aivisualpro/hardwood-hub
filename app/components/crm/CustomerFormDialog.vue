@@ -31,6 +31,7 @@ const form = ref({
   status: '' as string,
   estimatedProjectDuration: '',
   totalEstimate: undefined as number | undefined,
+  laborSandingTotal: undefined as number | undefined,
   assignedTo: '',
   totalTrackedViews: 0,
   estimateSentOn: '',
@@ -67,6 +68,7 @@ watch(() => props.modelValue, (isOpen) => {
         status: props.customer.status ? String(props.customer.status) : '',
         estimatedProjectDuration: props.customer.estimatedProjectDuration || '',
         totalEstimate: props.customer.totalEstimate || undefined,
+        laborSandingTotal: props.customer.laborSandingTotal || undefined,
         assignedTo: props.customer.assignedTo || '',
         totalTrackedViews: props.customer.totalTrackedViews || 0,
         estimateSentOn: props.customer.estimateSentOn ? (new Date(props.customer.estimateSentOn).toISOString().split('T')[0] || '') : '',
@@ -96,6 +98,7 @@ watch(() => props.modelValue, (isOpen) => {
         status: '',
         estimatedProjectDuration: '',
         totalEstimate: undefined,
+        laborSandingTotal: undefined,
         assignedTo: '',
         totalTrackedViews: 0,
         estimateSentOn: '',
@@ -140,6 +143,7 @@ async function submit() {
       dateApproved: form.value.dateApproved || null,
       woodOrderDate: form.value.woodOrderDate || null,
       totalEstimate: form.value.totalEstimate ? Number(form.value.totalEstimate) : null,
+      laborSandingTotal: form.value.laborSandingTotal ? Number(form.value.laborSandingTotal) : null,
       totalTrackedViews: form.value.totalTrackedViews ? Number(form.value.totalTrackedViews) : 0,
     }
 
@@ -439,6 +443,7 @@ const filteredEmployees = computed(() => {
   return employeesData.value.filter((e: any) => e.employee.toLowerCase().includes(s))
 })
 
+// ── Crew (projectAssignedTo) helpers ──────────────────────────────────────────
 function getSelectedEmployees() {
   if (!form.value.projectAssignedTo)
     return []
@@ -457,6 +462,28 @@ function toggleEmployee(emp: string) {
   else {
     selected.push(emp)
     form.value.projectAssignedTo = selected.join(', ')
+  }
+}
+
+// ── Assigned To helpers ──────────────────────────────────────────────────────
+function getSelectedAssignees() {
+  if (!form.value.assignedTo)
+    return []
+  return form.value.assignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
+}
+
+function isSelectedAssignee(emp: string) {
+  return getSelectedAssignees().includes(emp)
+}
+
+function toggleAssignee(emp: string) {
+  const selected = getSelectedAssignees()
+  if (selected.includes(emp)) {
+    form.value.assignedTo = selected.filter(x => x !== emp).join(', ')
+  }
+  else {
+    selected.push(emp)
+    form.value.assignedTo = selected.join(', ')
   }
 }
 </script>
@@ -633,8 +660,39 @@ function toggleEmployee(emp: string) {
             </div>
           </div>
 
+          <div v-if="!isCustomerMode" class="space-y-2 col-span-2 sm:col-span-1 relative" :class="activeDropdown === 'assignedTo' ? 'z-50' : ''">
+            <Label>Assigned To</Label>
+            <div class="relative">
+              <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] h-auto" @click.stop="activeDropdown = activeDropdown === 'assignedTo' ? null : 'assignedTo'">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span v-if="!form.assignedTo" class="text-muted-foreground">Select assignee...</span>
+                  <template v-else>
+                    <span v-for="emp in getSelectedAssignees()" :key="emp" class="text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20">{{ emp }}</span>
+                  </template>
+                </div>
+                <Icon name="i-lucide-user" class="size-4 opacity-50 shrink-0" />
+              </button>
+
+              <div v-if="activeDropdown === 'assignedTo'" class="fixed inset-0 z-40" @click.stop="activeDropdown = null" />
+              <div v-if="activeDropdown === 'assignedTo'" class="absolute left-0 mt-1 top-full w-full bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl shadow-primary/5 z-50 flex flex-col ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div class="p-2 border-b border-border/50">
+                  <input v-model="employeeSearch" type="text" placeholder="Search employees..." class="w-full bg-background border border-border/50 rounded filter-none px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary" @click.stop>
+                </div>
+                <div class="max-h-[200px] overflow-y-auto py-1.5">
+                  <button v-for="emp in filteredEmployees" :key="emp.employee" type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors flex items-center justify-between gap-2" @click.stop="toggleAssignee(emp.employee)">
+                    <span class="truncate" :class="isSelectedAssignee(emp.employee) ? 'font-bold text-primary' : ''">{{ emp.employee }}</span>
+                    <Icon v-if="isSelectedAssignee(emp.employee)" name="i-lucide-check" class="size-4 text-primary shrink-0" />
+                  </button>
+                  <div v-if="!filteredEmployees.length" class="px-3 py-2 text-xs text-muted-foreground text-center">
+                    No employees found.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div v-if="!isCustomerMode" class="space-y-2 col-span-2 sm:col-span-1 relative" :class="activeDropdown === 'projectAssignedTo' ? 'z-50' : ''">
-            <Label>Project Assigned To</Label>
+            <Label>Crew</Label>
             <div class="relative">
               <button type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-input bg-background hover:bg-muted/50 transition-colors shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[36px] h-auto" @click.stop="activeDropdown = activeDropdown === 'projectAssignedTo' ? null : 'projectAssignedTo'">
                 <div class="flex items-center gap-2 flex-wrap">
@@ -672,6 +730,11 @@ function toggleEmployee(emp: string) {
           <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Total Estimate ($)</Label>
             <Input v-model="form.totalEstimate" type="number" step="0.01" placeholder="10000" />
+          </div>
+
+          <div v-if="!isCustomerMode" class="space-y-2">
+            <Label>Labor + Sanding Materials ($)</Label>
+            <Input v-model="form.laborSandingTotal" type="number" step="0.01" placeholder="0" />
           </div>
 
           <div v-if="!isCustomerMode" class="space-y-2">

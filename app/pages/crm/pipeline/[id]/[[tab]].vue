@@ -524,7 +524,7 @@ function totalSqft(blocks: any[]) {
                 </p>
               </div>
             </div>
-            <!-- Assigned To & Project Assigned To -->
+            <!-- Assigned To & Crew -->
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
@@ -536,7 +536,7 @@ function totalSqft(blocks: any[]) {
               </div>
               <div>
                 <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Project Assigned To
+                  Crew
                 </p>
                 <p class="text-xs font-semibold text-foreground">
                   {{ customer.projectAssignedTo || '—' }}

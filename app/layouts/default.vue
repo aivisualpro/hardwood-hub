@@ -15,5 +15,6 @@
         <slot />
       </div>
     </SidebarInset>
+    <TimeClock />
   </SidebarProvider>
 </template>

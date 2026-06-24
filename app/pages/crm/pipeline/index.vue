@@ -796,7 +796,7 @@ watch(() => route.query.search, (val) => {
                 Date Approved
               </th>
               <th class="p-2.5 min-w-[140px]">
-                Project Assigned To
+                Crew
               </th>
               <th class="p-2.5 min-w-[100px]">
                 Wood Ordered

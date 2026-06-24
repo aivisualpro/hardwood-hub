@@ -700,3 +700,25 @@ export const LearningResourceUpdateSchema = z.object({
   isPublished: z.boolean().optional(),
   meta: z.record(z.string(), z.unknown()).optional(),
 })
+
+// ─── TimeEntry (TimeSheet) ───────────────────────────────────────────────────
+
+export const TimeEntryClockInSchema = z.object({
+  projectId: z.string().regex(/^[0-9a-f]{24}$/i).optional().nullable(),
+  projectName: z.string().max(300).optional().default(''),
+  customerName: z.string().max(300).optional().default(''),
+  notes: z.string().max(2000).optional().default(''),
+})
+
+export const TimeEntryClockOutSchema = z.object({
+  notes: z.string().max(2000).optional(),
+})
+
+export const TimeEntryUpdateSchema = z.object({
+  projectId: z.string().regex(/^[0-9a-f]{24}$/i).optional().nullable(),
+  projectName: z.string().max(300).optional(),
+  customerName: z.string().max(300).optional(),
+  notes: z.string().max(2000).optional(),
+  clockIn: z.string().datetime().optional(),
+  clockOut: z.string().datetime().optional().nullable(),
+})
