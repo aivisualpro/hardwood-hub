@@ -119,6 +119,7 @@ function acceptPdfTemplate() {
       { key: 'estimate_number', label: 'Estimate Number', type: 'text', defaultValue: '', required: true, scope: 'template' },
       ...mappedVars.filter((v: any) => v.key !== 'estimate_number'),
     ],
+    pdfSettings: { ...DEFAULT_PDF_SETTINGS },
   }
   showPdfUpload.value = false
   showEditor.value = true
@@ -296,13 +297,24 @@ const systemVariables = [
 
 const templatePages = ref(1)
 
+const DEFAULT_PDF_SETTINGS = {
+  paragraphSpacing: 0.75,
+  lineHeight: 1.75,
+  headingSpacing: 1.5,
+  listSpacing: 0.75,
+  fontSize: 14,
+}
+
 const templateForm = ref({
   name: '',
   description: '',
   content: '',
   category: 'General',
   variables: [] as TemplateVariable[],
+  pdfSettings: { ...DEFAULT_PDF_SETTINGS },
 })
+
+const showPdfSettings = ref(false)
 
 watch(
   templateForm,
@@ -335,6 +347,7 @@ function openTemplateEditor(template: EstimateTemplate) {
       { key: 'estimate_number', label: 'Estimate Number', type: 'text', defaultValue: '', required: true, scope: 'template' },
       ...template.variables.filter(v => v.key !== 'estimate_number'),
     ],
+    pdfSettings: { ...DEFAULT_PDF_SETTINGS, ...((template as any).pdfSettings || {}) },
   }
   showEditor.value = true
 }
@@ -349,6 +362,7 @@ function openNewTemplate() {
     variables: [
       { key: 'estimate_number', label: 'Estimate Number', type: 'text', defaultValue: '', required: true, scope: 'template' },
     ],
+    pdfSettings: { ...DEFAULT_PDF_SETTINGS },
   }
   showEditor.value = true
 }
@@ -862,6 +876,131 @@ const CATEGORIES = ['General', 'Agreements', 'Change Orders', 'Legal', 'Warranti
                         <Icon name="i-lucide-info" class="size-3 inline-block mr-1 -mt-0.5" />
                         System variables are auto-filled from your company profile when generating the PDF.
                       </p>
+                    </div>
+                  </div>
+
+                  <!-- PDF Spacing Settings -->
+                  <div class="border-t border-border/50">
+                    <button
+                      class="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/20 transition-colors"
+                      @click="showPdfSettings = !showPdfSettings"
+                    >
+                      <h3 class="text-xs font-bold flex items-center gap-1.5">
+                        <Icon name="i-lucide-settings-2" class="size-3.5 text-violet-500" />
+                        PDF Settings
+                      </h3>
+                      <Icon
+                        name="i-lucide-chevron-down"
+                        class="size-3.5 text-muted-foreground transition-transform duration-200"
+                        :class="{ 'rotate-180': showPdfSettings }"
+                      />
+                    </button>
+
+                    <div v-if="showPdfSettings" class="px-4 pb-4 space-y-4">
+                      <p class="text-[9px] text-muted-foreground leading-relaxed -mt-1">
+                        Adjust spacing to control how the content fits on the PDF page.
+                      </p>
+
+                      <!-- Paragraph Spacing -->
+                      <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                          <label class="text-[10px] font-semibold text-foreground/80">Paragraph Spacing</label>
+                          <span class="text-[10px] font-mono font-bold text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded">{{ templateForm.pdfSettings.paragraphSpacing.toFixed(2) }}rem</span>
+                        </div>
+                        <input
+                          v-model.number="templateForm.pdfSettings.paragraphSpacing"
+                          type="range" min="0" max="2" step="0.05"
+                          class="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-violet-500"
+                        >
+                        <div class="flex justify-between text-[8px] text-muted-foreground/50 font-mono">
+                          <span>Tight</span>
+                          <span>Loose</span>
+                        </div>
+                      </div>
+
+                      <!-- Line Height -->
+                      <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                          <label class="text-[10px] font-semibold text-foreground/80">Line Height</label>
+                          <span class="text-[10px] font-mono font-bold text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded">{{ templateForm.pdfSettings.lineHeight.toFixed(2) }}</span>
+                        </div>
+                        <input
+                          v-model.number="templateForm.pdfSettings.lineHeight"
+                          type="range" min="1" max="2.5" step="0.05"
+                          class="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-violet-500"
+                        >
+                        <div class="flex justify-between text-[8px] text-muted-foreground/50 font-mono">
+                          <span>Dense</span>
+                          <span>Airy</span>
+                        </div>
+                      </div>
+
+                      <!-- Heading Spacing -->
+                      <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                          <label class="text-[10px] font-semibold text-foreground/80">Heading Spacing</label>
+                          <span class="text-[10px] font-mono font-bold text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded">{{ templateForm.pdfSettings.headingSpacing.toFixed(2) }}rem</span>
+                        </div>
+                        <input
+                          v-model.number="templateForm.pdfSettings.headingSpacing"
+                          type="range" min="0" max="3" step="0.1"
+                          class="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-violet-500"
+                        >
+                        <div class="flex justify-between text-[8px] text-muted-foreground/50 font-mono">
+                          <span>Compact</span>
+                          <span>Spacious</span>
+                        </div>
+                      </div>
+
+                      <!-- List Spacing -->
+                      <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                          <label class="text-[10px] font-semibold text-foreground/80">List Spacing</label>
+                          <span class="text-[10px] font-mono font-bold text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded">{{ templateForm.pdfSettings.listSpacing.toFixed(2) }}rem</span>
+                        </div>
+                        <input
+                          v-model.number="templateForm.pdfSettings.listSpacing"
+                          type="range" min="0" max="2" step="0.05"
+                          class="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-violet-500"
+                        >
+                        <div class="flex justify-between text-[8px] text-muted-foreground/50 font-mono">
+                          <span>Tight</span>
+                          <span>Loose</span>
+                        </div>
+                      </div>
+
+                      <!-- Font Size -->
+                      <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                          <label class="text-[10px] font-semibold text-foreground/80">Font Size</label>
+                          <span class="text-[10px] font-mono font-bold text-violet-500 bg-violet-500/10 px-1.5 py-0.5 rounded">{{ templateForm.pdfSettings.fontSize }}px</span>
+                        </div>
+                        <input
+                          v-model.number="templateForm.pdfSettings.fontSize"
+                          type="range" min="10" max="18" step="1"
+                          class="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-violet-500"
+                        >
+                        <div class="flex justify-between text-[8px] text-muted-foreground/50 font-mono">
+                          <span>10px</span>
+                          <span>18px</span>
+                        </div>
+                      </div>
+
+                      <!-- Reset Button -->
+                      <button
+                        class="w-full mt-1 flex items-center justify-center gap-1.5 text-[10px] font-semibold text-muted-foreground hover:text-foreground py-1.5 rounded-md border border-border/50 hover:bg-muted/30 transition-colors"
+                        @click="templateForm.pdfSettings = { ...DEFAULT_PDF_SETTINGS }"
+                      >
+                        <Icon name="i-lucide-rotate-ccw" class="size-3" />
+                        Reset to Defaults
+                      </button>
+
+                      <div class="p-2.5 rounded-lg bg-violet-500/5 border border-violet-500/15">
+                        <p class="text-[9px] text-violet-600 dark:text-violet-400 leading-relaxed">
+                          <Icon name="i-lucide-info" class="size-3 inline-block mr-1 -mt-0.5" />
+                          These settings affect <strong>PDF output only</strong>. Reduce spacing values to fit more content on a single page.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

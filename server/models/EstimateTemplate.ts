@@ -18,6 +18,13 @@ const EstimateTemplateSchema = new mongoose.Schema(
     category: { type: String, default: 'General' },
     isActive: { type: Boolean, default: true },
     createdBy: { type: String, default: '' },
+    pdfSettings: {
+      paragraphSpacing: { type: Number, default: 0.75 }, // rem – margin above/below <p>
+      lineHeight: { type: Number, default: 1.75 },       // unitless line-height
+      headingSpacing: { type: Number, default: 1.5 },     // rem – margin above headings
+      listSpacing: { type: Number, default: 0.75 },       // rem – margin above/below lists
+      fontSize: { type: Number, default: 14 },            // px – body font size
+    },
   },
   { timestamps: true, collection: 'hardwoodDB_EstimateTemplates' },
 )

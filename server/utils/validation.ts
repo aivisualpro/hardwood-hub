@@ -560,6 +560,14 @@ const EstimateTemplateVariable = z.object({
   scope: z.enum(['template']).optional().default('template'),
 })
 
+const PdfSettingsSchema = z.object({
+  paragraphSpacing: z.number().min(0).max(2).optional().default(0.75),
+  lineHeight: z.number().min(1).max(2.5).optional().default(1.75),
+  headingSpacing: z.number().min(0).max(3).optional().default(1.5),
+  listSpacing: z.number().min(0).max(2).optional().default(0.75),
+  fontSize: z.number().min(10).max(18).optional().default(14),
+}).optional()
+
 export const EstimateTemplateWriteSchema = z.object({
   name: z.string().min(1, 'Template name is required').max(300),
   slug: z.string().max(200).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with dashes').optional(),
@@ -569,6 +577,7 @@ export const EstimateTemplateWriteSchema = z.object({
   category: z.string().max(100).optional().default('General'),
   isActive: z.boolean().optional().default(true),
   createdBy: z.string().max(200).optional().default(''),
+  pdfSettings: PdfSettingsSchema,
 })
 
 export const EstimateTemplateUpdateSchema = EstimateTemplateWriteSchema.partial()

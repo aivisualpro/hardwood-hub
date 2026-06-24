@@ -67,9 +67,12 @@ export default defineEventHandler(async (event) => {
   const host = getRequestURL(event).origin
   const responseBaseUrl = `${host}/public/estimate-response/${responseToken}`
 
-  // Load company settings for branding
+  // Load company settings + template for branding & PDF spacing
   const settingsDoc = await AppSetting.findOne({ key: 'companyProfile' }).lean() as any
   const company = settingsDoc?.value || {}
+  const template = estimate.templateId
+    ? await EstimateTemplate.findById(estimate.templateId).lean() as any
+    : null
 
   // ─── Merge variables into content ─────────────────────────
   let mergedHTML = estimate.content || ''
@@ -142,20 +145,28 @@ export default defineEventHandler(async (event) => {
     `
   }
 
+  // Per-template PDF spacing settings (fall back to defaults for older templates)
+  const ps = template?.pdfSettings || {}
+  const pFontSize = ps.fontSize ?? 14
+  const pLineHeight = ps.lineHeight ?? 1.75
+  const pParaSpacing = ps.paragraphSpacing ?? 0.75
+  const pHeadingSpacing = ps.headingSpacing ?? 1.5
+  const pListSpacing = ps.listSpacing ?? 0.75
+
   const pdfHTML = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.75; font-size: 14px; color: #111; }
-        h1 { font-size: 1.875rem; font-weight: 900; letter-spacing: -0.025em; margin-bottom: 1rem; margin-top: 2rem; }
-        h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 0.75rem; margin-top: 1.5rem; }
-        h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; margin-top: 1.25rem; }
-        p { font-size: 0.875rem; line-height: 1.625; margin-bottom: 0.75rem; margin-top: 1em; }
-        ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; margin-top: 1em; }
-        ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; margin-top: 1em; }
-        li { font-size: 0.875rem; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: ${pLineHeight}; font-size: ${pFontSize}px; color: #111; }
+        h1 { font-size: 1.875rem; font-weight: 900; letter-spacing: -0.025em; margin-bottom: 1rem; margin-top: ${pHeadingSpacing * 1.33}rem; }
+        h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: ${pParaSpacing}rem; margin-top: ${pHeadingSpacing}rem; }
+        h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: ${pParaSpacing * 0.67}rem; margin-top: ${pHeadingSpacing * 0.83}rem; }
+        p { font-size: ${pFontSize * 0.875 / 14}rem; line-height: 1.625; margin-bottom: ${pParaSpacing}rem; margin-top: ${pParaSpacing}rem; }
+        ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: ${pListSpacing}rem; margin-top: ${pListSpacing}rem; }
+        ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: ${pListSpacing}rem; margin-top: ${pListSpacing}rem; }
+        li { font-size: ${pFontSize * 0.875 / 14}rem; }
         blockquote { border-left: 4px solid rgba(0,0,0,0.2); padding-left: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; margin: 1rem 0; font-style: italic; color: #666; background: rgba(0,0,0,0.02); }
         hr { border-top: 2px solid #ccc; margin: 1.5rem 0; }
         img { max-width: 100%; border-radius: 0.5rem; margin: 1rem 0; }
