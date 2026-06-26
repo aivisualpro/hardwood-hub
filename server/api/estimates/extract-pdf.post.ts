@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
   let pdfBase64 = ''
   try {
     const fetchOptions: RequestInit = {}
-    if (pdfUrl.includes('.blob.vercel-storage.com') && process.env.BLOB_READ_WRITE_TOKEN) {
+    if ((pdfUrl.includes('vercel-storage.com') || pdfUrl.includes('vercel.com')) && process.env.BLOB_READ_WRITE_TOKEN) {
       fetchOptions.headers = { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
     }
     const res = await fetch(pdfUrl, fetchOptions)
