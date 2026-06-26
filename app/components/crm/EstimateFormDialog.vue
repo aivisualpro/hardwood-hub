@@ -660,7 +660,7 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
 <template>
   <!-- ═══════ CREATE ESTIMATE MODAL ═══════ -->
   <Dialog v-model:open="showCreateModal">
-    <DialogContent :class="['max-h-[90vh] overflow-hidden flex flex-col p-0 transition-all duration-300', lineItems.length > 0 ? 'max-w-7xl' : 'max-w-5xl']">
+    <DialogContent :class="['max-h-[90vh] overflow-hidden flex flex-col p-0 transition-all duration-300', lineItems.length > 0 ? '!max-w-[95vw]' : '!max-w-5xl']">
       <!-- Modal Header -->
       <div class="px-6 pt-6 pb-4 border-b border-border/50">
         <div class="flex items-center gap-3 mb-4">
@@ -961,7 +961,7 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
 
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
             <!-- Left Side: Variables and uploads -->
-            <div :class="lineItems.length > 0 ? 'lg:col-span-6' : 'lg:col-span-12'">
+            <div :class="lineItems.length > 0 ? 'lg:col-span-4' : 'lg:col-span-12'">
               <!-- Estimate Title -->
               <div class="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/5 relative overflow-hidden">
                 <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-xl" />
@@ -1188,159 +1188,130 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
             </div>
 
             <!-- Right Side: Extracted Line Items & Totals Summary -->
-            <div v-if="lineItems.length > 0" class="lg:col-span-6 border-l border-border lg:pl-6 flex flex-col max-h-[65vh] overflow-y-auto pr-2 no-scrollbar">
-              <div class="flex items-center justify-between mb-4">
+            <div v-if="lineItems.length > 0" class="lg:col-span-8 border-l border-border lg:pl-6 flex flex-col max-h-[65vh] overflow-hidden">
+              <div class="flex items-center justify-between mb-3 shrink-0">
                 <span class="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                   <Icon name="i-lucide-wand-2" class="size-4" />
                   Extracted Items ({{ lineItems.length }})
                 </span>
-                <Button variant="outline" size="sm" class="h-8 text-[10px] font-bold uppercase tracking-wider" @click="addLineItem()">
+                <Button variant="outline" size="sm" class="h-7 text-[10px] font-bold uppercase tracking-wider" @click="addLineItem()">
                   <Icon name="i-lucide-plus" class="mr-1 size-3" />
                   Add Item
                 </Button>
               </div>
 
-              <!-- List of Room Groups -->
-              <div class="space-y-6 flex-1">
-                <div v-for="(items, roomName) in groupedLineItems" :key="roomName" class="p-4 rounded-xl border border-border bg-muted/10">
-                  <div class="flex items-center justify-between mb-3 border-b border-border/40 pb-2">
-                    <span class="text-xs font-bold text-foreground/80 flex items-center gap-1.5">
-                      <Icon name="i-lucide-map-pin" class="size-3.5 text-muted-foreground" />
+              <!-- Scrollable items area -->
+              <div class="flex-1 overflow-y-auto pr-1 no-scrollbar space-y-4">
+                <div v-for="(items, roomName) in groupedLineItems" :key="roomName" class="rounded-lg border border-border bg-muted/5 overflow-hidden">
+                  <!-- Room Header -->
+                  <div class="flex items-center justify-between px-3 py-2 bg-muted/20 border-b border-border/40">
+                    <span class="text-[11px] font-bold text-foreground/80 flex items-center gap-1.5">
+                      <Icon name="i-lucide-map-pin" class="size-3 text-muted-foreground" />
                       {{ roomName }}
+                      <span class="text-muted-foreground font-normal">({{ items.length }})</span>
                     </span>
-                    <Button variant="ghost" size="sm" class="h-7 text-[10px] text-muted-foreground hover:text-primary" @click="addLineItem(roomName)">
-                      <Icon name="i-lucide-plus" class="mr-1 size-3" />
-                      Add to Room
-                    </Button>
+                    <button type="button" class="text-[10px] font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1" @click="addLineItem(roomName as string)">
+                      <Icon name="i-lucide-plus" class="size-3" />
+                      Add
+                    </button>
                   </div>
 
-                  <!-- Room Items -->
-                  <div class="space-y-3">
-                    <div v-for="item in items" :key="item._id" class="flex flex-col gap-2 p-3 bg-background rounded-lg border border-border/50 shadow-sm relative group">
+                  <!-- Table Header -->
+                  <div class="grid grid-cols-[1fr_2fr_60px_50px_80px_80px_28px] gap-px bg-muted/30 px-2 py-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/30">
+                    <span>Item</span>
+                    <span>Description</span>
+                    <span class="text-center">Qty</span>
+                    <span class="text-center">Unit</span>
+                    <span class="text-right">Price</span>
+                    <span class="text-right">Amount</span>
+                    <span></span>
+                  </div>
+
+                  <!-- Table Rows -->
+                  <div class="divide-y divide-border/20">
+                    <div
+                      v-for="item in items"
+                      :key="item._id || lineItems.indexOf(item)"
+                      class="grid grid-cols-[1fr_2fr_60px_50px_80px_80px_28px] gap-px items-center px-2 py-1 group hover:bg-muted/10 transition-colors"
+                    >
+                      <input
+                        v-model="item.sku"
+                        placeholder="SKU"
+                        class="bg-transparent text-xs font-semibold border-0 outline-none px-1 py-1 truncate hover:bg-muted/20 focus:bg-muted/30 rounded transition-colors"
+                      />
+                      <input
+                        v-model="item.description"
+                        placeholder="Description"
+                        class="bg-transparent text-xs border-0 outline-none px-1 py-1 truncate text-muted-foreground hover:bg-muted/20 focus:bg-muted/30 rounded transition-colors"
+                      />
+                      <input
+                        v-model="item.quantity"
+                        type="number"
+                        class="bg-transparent text-xs text-center border-0 outline-none px-1 py-1 tabular-nums hover:bg-muted/20 focus:bg-muted/30 rounded transition-colors w-full"
+                        @input="updateLineItemAmount(item)"
+                      />
+                      <input
+                        v-model="item.unit"
+                        class="bg-transparent text-xs text-center border-0 outline-none px-1 py-1 uppercase hover:bg-muted/20 focus:bg-muted/30 rounded transition-colors w-full"
+                      />
+                      <input
+                        v-model="item.price"
+                        type="number"
+                        class="bg-transparent text-xs text-right border-0 outline-none px-1 py-1 tabular-nums hover:bg-muted/20 focus:bg-muted/30 rounded transition-colors w-full"
+                        @input="updateLineItemAmount(item)"
+                      />
+                      <span class="text-xs font-bold text-right tabular-nums px-1 text-foreground/80">
+                        ${{ (item.amount || 0).toFixed(2) }}
+                      </span>
                       <button
                         type="button"
-                        class="absolute top-2 right-2 size-5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        class="size-5 rounded hover:bg-destructive/10 text-muted-foreground/40 hover:text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
                         @click="removeLineItem(lineItems.indexOf(item))"
                       >
-                        <Icon name="i-lucide-trash-2" class="size-3.5" />
+                        <Icon name="i-lucide-x" class="size-3" />
                       </button>
-
-                      <div class="grid grid-cols-12 gap-2">
-                        <!-- SKU & Description -->
-                        <div class="col-span-12">
-                          <Input
-                            v-model="item.sku"
-                            placeholder="SKU / Item Title"
-                            class="h-8 text-xs font-bold bg-muted/5 border-border/60 focus:bg-background"
-                          />
-                        </div>
-                        <div class="col-span-12">
-                          <textarea
-                            v-model="item.description"
-                            placeholder="Item Description"
-                            rows="2"
-                            class="w-full text-xs p-2 rounded-lg border border-border/60 bg-muted/5 hover:bg-background focus:bg-background focus:outline-none transition-all resize-none shadow-sm"
-                          />
-                        </div>
-                        
-                        <!-- Qty, Price, Unit, Total -->
-                        <div class="col-span-3">
-                          <Label class="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1 block">Qty</Label>
-                          <Input
-                            type="number"
-                            v-model="item.quantity"
-                            class="h-8 text-xs tabular-nums"
-                            @input="updateLineItemAmount(item)"
-                          />
-                        </div>
-                        <div class="col-span-3">
-                          <Label class="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1 block">Unit</Label>
-                          <Input
-                            v-model="item.unit"
-                            class="h-8 text-xs"
-                          />
-                        </div>
-                        <div class="col-span-3">
-                          <Label class="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1 block">Price</Label>
-                          <Input
-                            type="number"
-                            v-model="item.price"
-                            class="h-8 text-xs tabular-nums"
-                            @input="updateLineItemAmount(item)"
-                          />
-                        </div>
-                        <div class="col-span-3">
-                          <Label class="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1 block">Amount</Label>
-                          <div class="h-8 flex items-center justify-end px-2 text-xs font-bold tabular-nums bg-muted/30 rounded-lg border border-transparent">
-                            ${{ (item.amount || 0).toFixed(2) }}
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- Totals Summary Editor -->
-              <div class="mt-6 border-t border-border/60 pt-4 space-y-3">
-                <span class="text-xs font-bold uppercase tracking-widest text-muted-foreground block mb-2">
-                  Estimate Totals Summary
-                </span>
-                
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label class="text-[10px] text-foreground/80 font-semibold mb-1 block">Material Total</Label>
+              <!-- Totals Summary - Fixed at bottom -->
+              <div class="mt-3 pt-3 border-t border-border/60 shrink-0">
+                <div class="flex items-center gap-3 flex-wrap">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Material</span>
                     <div class="relative flex items-center">
-                      <span class="absolute left-2.5 text-xs text-muted-foreground font-semibold">$</span>
-                      <Input
-                        type="number"
-                        v-model="materialTotal"
-                        class="h-9 text-xs pl-6 tabular-nums"
-                      />
+                      <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
+                      <Input type="number" v-model="materialTotal" class="h-7 w-24 text-xs pl-5 tabular-nums" />
                     </div>
                   </div>
-                  <div>
-                    <Label class="text-[10px] text-foreground/80 font-semibold mb-1 block">Labor Total</Label>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Labor</span>
                     <div class="relative flex items-center">
-                      <span class="absolute left-2.5 text-xs text-muted-foreground font-semibold">$</span>
-                      <Input
-                        type="number"
-                        v-model="laborTotal"
-                        class="h-9 text-xs pl-6 tabular-nums"
-                      />
+                      <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
+                      <Input type="number" v-model="laborTotal" class="h-7 w-24 text-xs pl-5 tabular-nums" />
                     </div>
                   </div>
-                  <div>
-                    <Label class="text-[10px] text-foreground/80 font-semibold mb-1 block">Tax</Label>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Tax</span>
                     <div class="relative flex items-center">
-                      <span class="absolute left-2.5 text-xs text-muted-foreground font-semibold">$</span>
-                      <Input
-                        type="number"
-                        v-model="taxTotal"
-                        class="h-9 text-xs pl-6 tabular-nums"
-                        @input="recalculateTotals"
-                      />
+                      <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
+                      <Input type="number" v-model="taxTotal" class="h-7 w-20 text-xs pl-5 tabular-nums" @input="recalculateTotals" />
                     </div>
                   </div>
-                  <div>
-                    <Label class="text-[10px] text-foreground/80 font-semibold mb-1 block">Discount</Label>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Discount</span>
                     <div class="relative flex items-center">
-                      <span class="absolute left-2.5 text-xs text-muted-foreground font-semibold">$</span>
-                      <Input
-                        type="number"
-                        v-model="discountTotal"
-                        class="h-9 text-xs pl-6 tabular-nums"
-                        @input="recalculateTotals"
-                      />
+                      <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
+                      <Input type="number" v-model="discountTotal" class="h-7 w-20 text-xs pl-5 tabular-nums" @input="recalculateTotals" />
                     </div>
                   </div>
-                </div>
-
-                <div class="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20 mt-4">
-                  <span class="text-xs font-bold text-primary uppercase tracking-wider">Grand Total</span>
-                  <span class="text-sm font-black text-primary tabular-nums">
-                    ${{ (totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                  </span>
+                  <div class="ml-auto flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/20">
+                    <span class="text-[10px] font-bold text-primary uppercase tracking-wider">Total</span>
+                    <span class="text-sm font-black text-primary tabular-nums">
+                      ${{ (totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
