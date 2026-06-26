@@ -1204,13 +1204,13 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
               <div class="flex-1 overflow-y-auto pr-1 no-scrollbar space-y-4">
                 <div v-for="(items, roomName) in groupedLineItems" :key="roomName" class="rounded-lg border border-border bg-muted/5 overflow-hidden">
                   <!-- Room Header -->
-                  <div class="flex items-center justify-between px-3 py-2 bg-muted/20 border-b border-border/40">
-                    <span class="text-[11px] font-bold text-foreground/80 flex items-center gap-1.5">
-                      <Icon name="i-lucide-map-pin" class="size-3 text-muted-foreground" />
+                  <div class="flex items-center justify-between px-3 py-2.5 bg-primary/15 border-b border-primary/20">
+                    <span class="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                      <Icon name="i-lucide-map-pin" class="size-3.5" />
                       {{ roomName }}
-                      <span class="text-muted-foreground font-normal">({{ items.length }})</span>
+                      <span class="text-primary/60 font-normal">({{ items.length }} items)</span>
                     </span>
-                    <button type="button" class="text-[10px] font-semibold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1" @click="addLineItem(roomName as string)">
+                    <button type="button" class="text-[10px] font-semibold text-primary/70 hover:text-primary transition-colors flex items-center gap-1" @click="addLineItem(roomName as string)">
                       <Icon name="i-lucide-plus" class="size-3" />
                       Add
                     </button>
