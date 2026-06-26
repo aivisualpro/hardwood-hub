@@ -235,7 +235,7 @@ async function downloadPDF(ct: any) {
               v-for="ct in estimates"
               :key="ct._id"
               class="group hover:bg-muted/10 transition-colors cursor-pointer"
-              @click="router.push(`/crm/estimates/detail/${ct._id}`)"
+              @click="emit('edit', ct)"
             >
               <td class="px-4 py-3">
                 <span class="text-xs font-mono font-bold text-primary">{{ ct.estimateNumber }}</span>
@@ -304,7 +304,7 @@ async function downloadPDF(ct: any) {
 
       <!-- Mobile/Tablet Card View -->
       <div class="block lg:hidden p-3 space-y-3 bg-muted/20">
-        <div v-for="ct in estimates" :key="ct._id" class="border border-border/60 rounded-xl p-3.5 bg-card shadow-sm flex flex-col gap-3 relative cursor-pointer hover:border-primary/30 transition-colors" @click="router.push(`/crm/estimates/detail/${ct._id}`)">
+        <div v-for="ct in estimates" :key="ct._id" class="border border-border/60 rounded-xl p-3.5 bg-card shadow-sm flex flex-col gap-3 relative cursor-pointer hover:border-primary/30 transition-colors" @click="emit('edit', ct)">
           <div class="flex items-start justify-between gap-3">
             <div class="flex flex-col min-w-0 flex-1">
               <div class="flex items-center gap-2 mb-1">

@@ -1272,6 +1272,22 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
                       </button>
                     </div>
                   </div>
+
+                  <!-- Section Subtotal -->
+                  <div class="grid grid-cols-[1fr_2fr_60px_50px_80px_80px_28px] gap-px items-center px-2 py-1.5 bg-muted/30 border-t border-border/40">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground col-span-2">
+                      Subtotal — {{ roomName }}
+                    </span>
+                    <span class="text-[10px] text-center tabular-nums text-muted-foreground font-semibold">
+                      {{ (items as any[]).reduce((s: number, i: any) => s + Number(i.quantity || 0), 0) }}
+                    </span>
+                    <span></span>
+                    <span></span>
+                    <span class="text-xs font-black text-right tabular-nums text-primary px-1">
+                      ${{ (items as any[]).reduce((s: number, i: any) => s + Number(i.amount || 0), 0).toFixed(2) }}
+                    </span>
+                    <span></span>
+                  </div>
                 </div>
               </div>
 
