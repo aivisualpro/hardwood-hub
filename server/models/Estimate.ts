@@ -26,6 +26,24 @@ const EstimateSchema = new mongoose.Schema(
     // Attached PDF string (base64 or URL)
     attachedPdf: { type: String, default: '' },
 
+    // Extracted PDF line items and totals
+    lineItems: [
+      {
+        room: { type: String, default: '' },
+        sku: { type: String, default: '' },
+        description: { type: String, default: '' },
+        quantity: { type: Number, default: 0 },
+        unit: { type: String, default: '' },
+        price: { type: Number, default: 0 },
+        amount: { type: Number, default: 0 },
+      },
+    ],
+    materialTotal: { type: Number, default: 0 },
+    laborTotal: { type: Number, default: 0 },
+    taxTotal: { type: Number, default: 0 },
+    discountTotal: { type: Number, default: 0 },
+    totalAmount: { type: Number, default: 0 },
+
     // Attached from Customer Gallery (Array of URLs/base64)
     attachedGalleryImages: { type: [String], default: [] },
 

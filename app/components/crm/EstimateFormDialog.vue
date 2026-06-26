@@ -160,6 +160,85 @@ const isUploadingPdf = ref(false)
 const pdfFileInput = ref<HTMLInputElement | null>(null)
 const attachedGalleryImages = ref<string[]>([])
 
+// Extracted PDF line items and totals
+const isExtractingPdf = ref(false)
+const lineItems = ref<any[]>([])
+const materialTotal = ref(0)
+const laborTotal = ref(0)
+const taxTotal = ref(0)
+const discountTotal = ref(0)
+const totalAmount = ref(0)
+
+const groupedLineItems = computed(() => {
+  const groups: Record<string, any[]> = {}
+  for (const item of lineItems.value) {
+    const room = item.room || 'Main Floor'
+    if (!groups[room]) groups[room] = []
+    groups[room].push(item)
+  }
+  return groups
+})
+
+function addLineItem(room = 'Main Floor') {
+  lineItems.value.push({
+    room,
+    sku: '',
+    description: '',
+    quantity: 1,
+    unit: 'EA',
+    price: 0,
+    amount: 0,
+  })
+}
+
+function removeLineItem(index: number) {
+  lineItems.value.splice(index, 1)
+  recalculateTotals()
+}
+
+function updateLineItemAmount(item: any) {
+  item.amount = (Number(item.quantity) || 0) * (Number(item.price) || 0)
+  recalculateTotals()
+}
+
+function recalculateTotals() {
+  let calculatedAmount = 0
+  for (const item of lineItems.value) {
+    calculatedAmount += Number(item.amount) || 0
+  }
+  totalAmount.value = calculatedAmount + Number(taxTotal.value || 0) - Number(discountTotal.value || 0)
+}
+
+async function fetchPdfDetails() {
+  if (!attachedPdf.value) return
+  isExtractingPdf.value = true
+  try {
+    toast.loading('Extracting line items from PDF...', { id: 'pdf-extract' })
+    const res = await $fetch<{ success: boolean, data: any }>('/api/estimates/extract-pdf', {
+      method: 'POST',
+      body: { pdfUrl: attachedPdf.value }
+    })
+    if (res.success && res.data) {
+      lineItems.value = res.data.lineItems || []
+      materialTotal.value = res.data.materialTotal || 0
+      laborTotal.value = res.data.laborTotal || 0
+      taxTotal.value = res.data.taxTotal || 0
+      discountTotal.value = res.data.discountTotal || 0
+      totalAmount.value = res.data.totalAmount || 0
+      toast.success('Successfully extracted details from PDF!', { id: 'pdf-extract' })
+    } else {
+      throw new Error('No data returned')
+    }
+  } catch (err: any) {
+    toast.error('Failed to extract details from PDF', {
+      description: err?.data?.message || err?.message || 'Error occurred',
+      id: 'pdf-extract'
+    })
+  } finally {
+    isExtractingPdf.value = false
+  }
+}
+
 async function loadCustomerGallery(id: string) {
   try {
     const res = await $fetch<any>(`/api/pipeline/${id}`)
@@ -400,6 +479,12 @@ function openCreateModal() {
   attachedPdf.value = ''
   attachedPdfName.value = ''
   attachedGalleryImages.value = []
+  lineItems.value = []
+  materialTotal.value = 0
+  laborTotal.value = 0
+  taxTotal.value = 0
+  discountTotal.value = 0
+  totalAmount.value = 0
   fetchCustomers()
 }
 
@@ -423,6 +508,12 @@ async function openEditEstimate(ct: any) {
     attachedPdf.value = fullCt.attachedPdf || ''
     attachedPdfName.value = fullCt.attachedPdf ? 'Attached PDF' : ''
     attachedGalleryImages.value = fullCt.attachedGalleryImages || []
+    lineItems.value = fullCt.lineItems || []
+    materialTotal.value = fullCt.materialTotal || 0
+    laborTotal.value = fullCt.laborTotal || 0
+    taxTotal.value = fullCt.taxTotal || 0
+    discountTotal.value = fullCt.discountTotal || 0
+    totalAmount.value = fullCt.totalAmount || 0
     loadCustomerGallery(fullCt.customerId)
 
     const foundTemplate = templates.value.find(t => t._id === fullCt.templateId)
@@ -489,6 +580,12 @@ async function saveEstimate() {
       attachedPdf: finalAttachedPdf,
       attachedGalleryImages: attachedGalleryImages.value,
       status: 'draft',
+      lineItems: lineItems.value,
+      materialTotal: materialTotal.value,
+      laborTotal: laborTotal.value,
+      taxTotal: taxTotal.value,
+      discountTotal: discountTotal.value,
+      totalAmount: totalAmount.value,
     }
 
     if (editingEstimateId.value) {
@@ -523,6 +620,12 @@ function openForCustomer(customer: any) {
   attachedPdf.value = ''
   attachedPdfName.value = ''
   attachedGalleryImages.value = []
+  lineItems.value = []
+  materialTotal.value = 0
+  laborTotal.value = 0
+  taxTotal.value = 0
+  discountTotal.value = 0
+  totalAmount.value = 0
   fetchTemplates()
   if (!companyProfile.value.name)
     fetchCompanyProfile()
@@ -849,197 +952,385 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
             </div>
           </div>
 
-          <!-- Estimate Title -->
-          <div class="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/5 relative overflow-hidden">
-            <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-xl" />
-            <Label for="estimate-title" class="text-xs font-bold text-primary uppercase tracking-wider mb-2 block">
-              Estimate Title
-            </Label>
-            <Input
-              id="estimate-title"
-              v-model="estimateTitle"
-              placeholder="e.g. Hardwood Floor Estimate — John Smith"
-              class="h-11 text-sm font-bold bg-background border-primary/20 focus:border-primary focus:ring-primary/20 shadow-sm"
-            />
-          </div>
-
-          <!-- Dynamic Variable Fields (system variables only) -->
-          <div v-if="selectedModalTemplate?.variables?.length" class="space-y-4">
-            <div class="relative flex items-center py-2 mb-2 group">
-              <div class="absolute inset-0 flex items-center" aria-hidden="true">
-                <div class="w-full border-t border-border/60" />
-              </div>
-              <div class="relative flex justify-center w-full">
-                <span class="bg-card px-4 text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <Icon name="i-lucide-list-collapse" class="size-3.5" />
-                  Estimate Variables
-                </span>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
-                v-for="v in selectedModalTemplate.variables.filter((v: any) => !['company_name', 'companyName', 'client_name', 'clientName', 'customer_name', 'customerName'].includes(v.key))"
-                :key="v.key"
-                :class="v.type === 'textarea' ? 'sm:col-span-2' : ''"
-              >
-                <Label :for="`var-${v.key}`" class="text-xs font-semibold text-foreground/80 mb-2 flex items-center gap-1.5">
-                  {{ v.label || v.key }}
-                  <span v-if="v.required" class="text-destructive text-[10px]">*</span>
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
+            <!-- Left Side: Variables and uploads -->
+            <div :class="lineItems.length > 0 ? 'lg:col-span-6' : 'lg:col-span-12'">
+              <!-- Estimate Title -->
+              <div class="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/5 relative overflow-hidden">
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-xl" />
+                <Label for="estimate-title" class="text-xs font-bold text-primary uppercase tracking-wider mb-2 block">
+                  Estimate Title
                 </Label>
-                <textarea
-                  v-if="v.type === 'textarea'"
-                  :id="`var-${v.key}`"
-                  v-model="variableValues[v.key]"
-                  :placeholder="v.label || v.key"
-                  rows="3"
-                  class="w-full px-3 py-2 text-sm rounded-lg border bg-muted/20 hover:bg-background focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none shadow-sm max-h-[250px]"
-                />
-                <select
-                  v-else-if="v.type === 'select'"
-                  :id="`var-${v.key}`"
-                  v-model="variableValues[v.key]"
-                  class="w-full h-10 px-3 text-sm rounded-lg border border-input bg-muted/20 hover:bg-background focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm appearance-none"
-                >
-                  <option value="" disabled selected>
-                    Select an option...
-                  </option>
-                  <option v-for="opt in v.options" :key="opt" :value="opt">
-                    {{ opt }}
-                  </option>
-                </select>
                 <Input
-                  v-else-if="v.type === 'date'"
-                  :id="`var-${v.key}`"
-                  v-model="variableValues[v.key]"
-                  type="date"
-                  class="h-10 text-sm bg-muted/20 hover:bg-background focus:bg-background transition-all shadow-sm"
-                />
-                <Input
-                  v-else-if="v.type === 'number'"
-                  :id="`var-${v.key}`"
-                  v-model="variableValues[v.key]"
-                  type="number"
-                  :placeholder="v.label || v.key"
-                  class="h-10 text-sm tabular-nums bg-muted/20 hover:bg-background focus:bg-background transition-all shadow-sm"
-                />
-                <div v-else-if="v.type === 'currency'" class="relative flex items-center">
-                  <span class="absolute left-3 text-sm text-muted-foreground font-semibold">$</span>
-                  <Input
-                    :id="`var-${v.key}`"
-                    v-model="variableValues[v.key]"
-                    type="text"
-                    :placeholder="v.label || '0.00'"
-                    class="h-10 text-sm pl-7 tabular-nums bg-muted/20 hover:bg-background focus:bg-background transition-all shadow-sm"
-                  />
-                </div>
-                <Input
-                  v-else
-                  :id="`var-${v.key}`"
-                  v-model="variableValues[v.key]"
-                  :placeholder="v.label || v.key"
-                  class="h-10 text-sm bg-muted/20 hover:bg-background focus:bg-background transition-all shadow-sm"
+                  id="estimate-title"
+                  v-model="estimateTitle"
+                  placeholder="e.g. Hardwood Floor Estimate — John Smith"
+                  class="h-11 text-sm font-bold bg-background border-primary/20 focus:border-primary focus:ring-primary/20 shadow-sm"
                 />
               </div>
-            </div>
-          </div>
 
-          <div v-else class="text-center py-8 text-muted-foreground">
-            <Icon name="i-lucide-check-circle" class="size-8 mx-auto mb-2 text-emerald-500" />
-            <p class="text-sm font-semibold">
-              No variables needed
-            </p>
-            <p class="text-xs mt-0.5">
-              This template has no dynamic fields.
-            </p>
-          </div>
-
-          <!-- PDF Attachment -->
-          <div class="mt-6 p-4 rounded-xl border border-border bg-card relative overflow-hidden">
-            <Label class="text-xs font-bold text-foreground uppercase tracking-wider mb-2 block">
-              Attach PDF Document (Optional)
-            </Label>
-            <div class="flex items-center gap-3">
-              <Button variant="outline" size="sm" @click="pdfFileInput?.click()">
-                <Icon name="i-lucide-upload" class="mr-2 size-4" />
-                {{ attachedPdfName || 'Upload PDF' }}
-              </Button>
-              <Button v-if="attachedPdfName" variant="ghost" size="sm" class="text-destructive hover:bg-destructive/10" @click="attachedPdf = ''; attachedPdfName = '';">
-                Remove
-              </Button>
-              <input ref="pdfFileInput" type="file" accept="application/pdf" class="hidden" @change="handlePdfUpload">
-            </div>
-            <p class="text-[10px] text-muted-foreground mt-2">
-              This PDF will be appended to the final estimate document.
-            </p>
-          </div>
-
-          <!-- Gallery Image Attachments -->
-          <div v-if="selectedCustomer" class="mt-4 p-4 rounded-xl border border-border bg-card relative overflow-hidden">
-            <div class="flex items-center justify-between mb-2">
-              <Label class="text-xs font-bold text-foreground uppercase tracking-wider">
-                Attach Customer Images (Optional)
-              </Label>
-              <button
-                type="button"
-                :disabled="isUploadingGallery"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
-                :class="isUploadingGallery ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'"
-                @click="galleryFileInput?.click()"
-              >
-                <Icon :name="isUploadingGallery ? 'i-lucide-loader-2' : 'i-lucide-upload-cloud'" :class="isUploadingGallery ? 'animate-spin' : ''" class="size-3.5" />
-                {{ isUploadingGallery ? 'Uploading...' : 'Upload New' }}
-              </button>
-            </div>
-            <input ref="galleryFileInput" type="file" multiple accept="image/*" class="hidden" @change="handleGalleryUpload">
-            <p class="text-[10px] text-muted-foreground mb-3">
-              Select images from the customer's gallery to append to the estimate, or upload new ones.
-            </p>
-
-            <div v-if="selectedCustomer.gallery?.length || galleryUploadQueue.length" class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
-              <button
-                v-for="(img, idx) in selectedCustomer.gallery"
-                :key="idx"
-                class="relative size-20 sm:size-24 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer group"
-                :class="attachedGalleryImages.includes(img.url) ? 'border-primary ring-2 ring-primary/20 scale-95' : 'border-transparent hover:border-border'"
-                @click="toggleGalleryImage(img.url)"
-              >
-                <img :src="img.url" class="w-full h-full object-cover">
-                <div v-if="attachedGalleryImages.includes(img.url)" class="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center">
-                  <div class="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
-                    <Icon name="i-lucide-check" class="size-3.5" />
+              <!-- Dynamic Variable Fields (system variables only) -->
+              <div v-if="selectedModalTemplate?.variables?.length" class="space-y-4">
+                <div class="relative flex items-center py-2 mb-2 group">
+                  <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div class="w-full border-t border-border/60" />
+                  </div>
+                  <div class="relative flex justify-center w-full">
+                    <span class="bg-card px-4 text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                      <Icon name="i-lucide-list-collapse" class="size-3.5" />
+                      Estimate Variables
+                    </span>
                   </div>
                 </div>
-                <div v-else class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Icon name="i-lucide-plus" class="size-6 text-white" />
-                </div>
-              </button>
-              <!-- Upload queue skeletons -->
-              <div
-                v-for="item in galleryUploadQueue"
-                :key="item.id"
-                class="relative size-20 sm:size-24 rounded-lg overflow-hidden shrink-0 border-2 border-primary/30 bg-muted/50 flex items-center justify-center"
-              >
-                <template v-if="item.progress < 0">
-                  <Icon name="i-lucide-x-circle" class="size-5 text-red-500" />
-                </template>
-                <template v-else-if="item.progress === 100">
-                  <Icon name="i-lucide-check-circle-2" class="size-5 text-emerald-500" />
-                </template>
-                <template v-else>
-                  <div class="flex flex-col items-center gap-1">
-                    <Icon name="i-lucide-loader-2" class="size-5 text-primary animate-spin" />
-                    <span class="text-[9px] font-bold text-primary">{{ item.progress }}%</span>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div
+                    v-for="v in selectedModalTemplate.variables.filter((v: any) => !['company_name', 'companyName', 'client_name', 'clientName', 'customer_name', 'customerName'].includes(v.key))"
+                    :key="v.key"
+                    :class="v.type === 'textarea' ? 'sm:col-span-2' : ''"
+                  >
+                    <Label :for="`var-${v.key}`" class="text-xs font-semibold text-foreground/80 mb-2 flex items-center gap-1.5">
+                      {{ v.label || v.key }}
+                      <span v-if="v.required" class="text-destructive text-[10px]">*</span>
+                    </Label>
+                    <textarea
+                      v-if="v.type === 'textarea'"
+                      :id="`var-${v.key}`"
+                      v-model="variableValues[v.key]"
+                      :placeholder="v.label || v.key"
+                      rows="3"
+                      class="w-full px-3 py-2 text-sm rounded-lg border bg-muted/20 hover:bg-background focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all resize-none shadow-sm max-h-[250px]"
+                    />
+                    <select
+                      v-else-if="v.type === 'select'"
+                      :id="`var-${v.key}`"
+                      v-model="variableValues[v.key]"
+                      class="w-full h-10 px-3 text-sm rounded-lg border border-input bg-muted/20 hover:bg-background focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm appearance-none"
+                    >
+                      <option value="" disabled selected>
+                        Select an option...
+                      </option>
+                      <option v-for="opt in v.options" :key="opt" :value="opt">
+                        {{ opt }}
+                      </option>
+                    </select>
+                    <Input
+                      v-else-if="v.type === 'date'"
+                      :id="`var-${v.key}`"
+                      v-model="variableValues[v.key]"
+                      type="date"
+                      class="h-10 text-sm bg-muted/20 hover:bg-background focus:bg-background transition-all shadow-sm"
+                    />
+                    <Input
+                      v-else-if="v.type === 'number'"
+                      :id="`var-${v.key}`"
+                      v-model="variableValues[v.key]"
+                      type="number"
+                      :placeholder="v.label || v.key"
+                      class="h-10 text-sm tabular-nums bg-muted/20 hover:bg-background focus:bg-background transition-all shadow-sm"
+                    />
+                    <div v-else-if="v.type === 'currency'" class="relative flex items-center">
+                      <span class="absolute left-3 text-sm text-muted-foreground font-semibold">$</span>
+                      <Input
+                        :id="`var-${v.key}`"
+                        v-model="variableValues[v.key]"
+                        type="text"
+                        :placeholder="v.label || '0.00'"
+                        class="h-10 text-sm pl-7 tabular-nums bg-muted/20 hover:bg-background focus:bg-background transition-all shadow-sm"
+                      />
+                    </div>
+                    <Input
+                      v-else
+                      :id="`var-${v.key}`"
+                      v-model="variableValues[v.key]"
+                      :placeholder="v.label || v.key"
+                      class="h-10 text-sm bg-muted/20 hover:bg-background focus:bg-background transition-all shadow-sm"
+                    />
                   </div>
-                </template>
+                </div>
+              </div>
+
+              <div v-else class="text-center py-8 text-muted-foreground">
+                <Icon name="i-lucide-check-circle" class="size-8 mx-auto mb-2 text-emerald-500" />
+                <p class="text-sm font-semibold">
+                  No variables needed
+                </p>
+                <p class="text-xs mt-0.5">
+                  This template has no dynamic fields.
+                </p>
+              </div>
+
+              <!-- PDF Attachment -->
+              <div class="mt-6 p-4 rounded-xl border border-border bg-card relative overflow-hidden">
+                <Label class="text-xs font-bold text-foreground uppercase tracking-wider mb-2 block">
+                  Attach PDF Document (Optional)
+                </Label>
+                <div class="flex flex-wrap items-center gap-3">
+                  <Button variant="outline" size="sm" @click="pdfFileInput?.click()">
+                    <Icon name="i-lucide-upload" class="mr-2 size-4" />
+                    {{ attachedPdfName || 'Upload PDF' }}
+                  </Button>
+                  <Button
+                    v-if="attachedPdfName"
+                    variant="ghost"
+                    size="sm"
+                    class="text-destructive hover:bg-destructive/10"
+                    @click="attachedPdf = ''; attachedPdfName = ''; lineItems = []; materialTotal = 0; laborTotal = 0; taxTotal = 0; discountTotal = 0; totalAmount = 0;"
+                  >
+                    Remove
+                  </Button>
+                  <Button
+                    v-if="attachedPdf && !isExtractingPdf"
+                    variant="outline"
+                    size="sm"
+                    class="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                    @click="fetchPdfDetails"
+                  >
+                    <Icon name="i-lucide-wand2" class="mr-2 size-4" />
+                    Fetch Details
+                  </Button>
+                  <Button
+                    v-else-if="isExtractingPdf"
+                    disabled
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Icon name="i-lucide-loader-2" class="mr-2 size-4 animate-spin" />
+                    Extracting...
+                  </Button>
+                  <input ref="pdfFileInput" type="file" accept="application/pdf" class="hidden" @change="handlePdfUpload">
+                </div>
+                <p class="text-[10px] text-muted-foreground mt-2">
+                  This PDF will be appended to the final estimate document.
+                </p>
+              </div>
+
+              <!-- Gallery Image Attachments -->
+              <div v-if="selectedCustomer" class="mt-4 p-4 rounded-xl border border-border bg-card relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                  <Label class="text-xs font-bold text-foreground uppercase tracking-wider">
+                    Attach Customer Images (Optional)
+                  </Label>
+                  <button
+                    type="button"
+                    :disabled="isUploadingGallery"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all"
+                    :class="isUploadingGallery ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'"
+                    @click="galleryFileInput?.click()"
+                  >
+                    <Icon :name="isUploadingGallery ? 'i-lucide-loader-2' : 'i-lucide-upload-cloud'" :class="isUploadingGallery ? 'animate-spin' : ''" class="size-3.5" />
+                    {{ isUploadingGallery ? 'Uploading...' : 'Upload New' }}
+                  </button>
+                </div>
+                <input ref="galleryFileInput" type="file" multiple accept="image/*" class="hidden" @change="handleGalleryUpload">
+                <p class="text-[10px] text-muted-foreground mb-3">
+                  Select images from the customer's gallery to append to the estimate, or upload new ones.
+                </p>
+
+                <div v-if="selectedCustomer.gallery?.length || galleryUploadQueue.length" class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                  <button
+                    v-for="(img, idx) in selectedCustomer.gallery"
+                    :key="idx"
+                    class="relative size-20 sm:size-24 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer group"
+                    :class="attachedGalleryImages.includes(img.url) ? 'border-primary ring-2 ring-primary/20 scale-95' : 'border-transparent hover:border-border'"
+                    @click="toggleGalleryImage(img.url)"
+                  >
+                    <img :src="img.url" class="w-full h-full object-cover">
+                    <div v-if="attachedGalleryImages.includes(img.url)" class="absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center">
+                      <div class="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
+                        <Icon name="i-lucide-check" class="size-3.5" />
+                      </div>
+                    </div>
+                    <div v-else class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Icon name="i-lucide-plus" class="size-6 text-white" />
+                    </div>
+                  </button>
+                  <!-- Upload queue skeletons -->
+                  <div
+                    v-for="item in galleryUploadQueue"
+                    :key="item.id"
+                    class="relative size-20 sm:size-24 rounded-lg overflow-hidden shrink-0 border-2 border-primary/30 bg-muted/50 flex items-center justify-center"
+                  >
+                    <template v-if="item.progress < 0">
+                      <Icon name="i-lucide-x-circle" class="size-5 text-red-500" />
+                    </template>
+                    <template v-else-if="item.progress === 100">
+                      <Icon name="i-lucide-check-circle-2" class="size-5 text-emerald-500" />
+                    </template>
+                    <template v-else>
+                      <div class="flex flex-col items-center gap-1">
+                        <Icon name="i-lucide-loader-2" class="size-5 text-primary animate-spin" />
+                        <span class="text-[9px] font-bold text-primary">{{ item.progress }}%</span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+                <div v-else class="flex items-center justify-center py-6 border border-dashed border-border/60 rounded-lg bg-muted/10">
+                  <button type="button" class="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors" @click="galleryFileInput?.click()">
+                    <Icon name="i-lucide-images" class="size-8 opacity-50" />
+                    <span class="text-[10px] font-bold uppercase tracking-wider">No images yet — Upload some</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div v-else class="flex items-center justify-center py-6 border border-dashed border-border/60 rounded-lg bg-muted/10">
-              <button type="button" class="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors" @click="galleryFileInput?.click()">
-                <Icon name="i-lucide-images" class="size-8 opacity-50" />
-                <span class="text-[10px] font-bold uppercase tracking-wider">No images yet — Upload some</span>
-              </button>
+            <!-- Right Side: Extracted Line Items & Totals Summary -->
+            <div v-if="lineItems.length > 0" class="lg:col-span-6 border-l border-border lg:pl-6 flex flex-col max-h-[65vh] overflow-y-auto pr-2 no-scrollbar">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                  <Icon name="i-lucide-wand2" class="size-4" />
+                  Extracted Items ({{ lineItems.length }})
+                </span>
+                <Button variant="outline" size="sm" class="h-8 text-[10px] font-bold uppercase tracking-wider" @click="addLineItem()">
+                  <Icon name="i-lucide-plus" class="mr-1 size-3" />
+                  Add Item
+                </Button>
+              </div>
+
+              <!-- List of Room Groups -->
+              <div class="space-y-6 flex-1">
+                <div v-for="(items, roomName) in groupedLineItems" :key="roomName" class="p-4 rounded-xl border border-border bg-muted/10">
+                  <div class="flex items-center justify-between mb-3 border-b border-border/40 pb-2">
+                    <span class="text-xs font-bold text-foreground/80 flex items-center gap-1.5">
+                      <Icon name="i-lucide-map-pin" class="size-3.5 text-muted-foreground" />
+                      {{ roomName }}
+                    </span>
+                    <Button variant="ghost" size="sm" class="h-7 text-[10px] text-muted-foreground hover:text-primary" @click="addLineItem(roomName)">
+                      <Icon name="i-lucide-plus" class="mr-1 size-3" />
+                      Add to Room
+                    </Button>
+                  </div>
+
+                  <!-- Room Items -->
+                  <div class="space-y-3">
+                    <div v-for="item in items" :key="item._id" class="flex flex-col gap-2 p-3 bg-background rounded-lg border border-border/50 shadow-sm relative group">
+                      <button
+                        type="button"
+                        class="absolute top-2 right-2 size-5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        @click="removeLineItem(lineItems.indexOf(item))"
+                      >
+                        <Icon name="i-lucide-trash-2" class="size-3.5" />
+                      </button>
+
+                      <div class="grid grid-cols-12 gap-2">
+                        <!-- SKU & Description -->
+                        <div class="col-span-12">
+                          <Input
+                            v-model="item.sku"
+                            placeholder="SKU / Item Title"
+                            class="h-8 text-xs font-bold bg-muted/5 border-border/60 focus:bg-background"
+                          />
+                        </div>
+                        <div class="col-span-12">
+                          <textarea
+                            v-model="item.description"
+                            placeholder="Item Description"
+                            rows="2"
+                            class="w-full text-xs p-2 rounded-lg border border-border/60 bg-muted/5 hover:bg-background focus:bg-background focus:outline-none transition-all resize-none shadow-sm"
+                          />
+                        </div>
+                        
+                        <!-- Qty, Price, Unit, Total -->
+                        <div class="col-span-3">
+                          <Label class="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1 block">Qty</Label>
+                          <Input
+                            type="number"
+                            v-model="item.quantity"
+                            class="h-8 text-xs tabular-nums"
+                            @input="updateLineItemAmount(item)"
+                          />
+                        </div>
+                        <div class="col-span-3">
+                          <Label class="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1 block">Unit</Label>
+                          <Input
+                            v-model="item.unit"
+                            class="h-8 text-xs"
+                          />
+                        </div>
+                        <div class="col-span-3">
+                          <Label class="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1 block">Price</Label>
+                          <Input
+                            type="number"
+                            v-model="item.price"
+                            class="h-8 text-xs tabular-nums"
+                            @input="updateLineItemAmount(item)"
+                          />
+                        </div>
+                        <div class="col-span-3">
+                          <Label class="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1 block">Amount</Label>
+                          <div class="h-8 flex items-center justify-end px-2 text-xs font-bold tabular-nums bg-muted/30 rounded-lg border border-transparent">
+                            ${{ (item.amount || 0).toFixed(2) }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Totals Summary Editor -->
+              <div class="mt-6 border-t border-border/60 pt-4 space-y-3">
+                <span class="text-xs font-bold uppercase tracking-widest text-muted-foreground block mb-2">
+                  Estimate Totals Summary
+                </span>
+                
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label class="text-[10px] text-foreground/80 font-semibold mb-1 block">Material Total</Label>
+                    <div class="relative flex items-center">
+                      <span class="absolute left-2.5 text-xs text-muted-foreground font-semibold">$</span>
+                      <Input
+                        type="number"
+                        v-model="materialTotal"
+                        class="h-9 text-xs pl-6 tabular-nums"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label class="text-[10px] text-foreground/80 font-semibold mb-1 block">Labor Total</Label>
+                    <div class="relative flex items-center">
+                      <span class="absolute left-2.5 text-xs text-muted-foreground font-semibold">$</span>
+                      <Input
+                        type="number"
+                        v-model="laborTotal"
+                        class="h-9 text-xs pl-6 tabular-nums"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label class="text-[10px] text-foreground/80 font-semibold mb-1 block">Tax</Label>
+                    <div class="relative flex items-center">
+                      <span class="absolute left-2.5 text-xs text-muted-foreground font-semibold">$</span>
+                      <Input
+                        type="number"
+                        v-model="taxTotal"
+                        class="h-9 text-xs pl-6 tabular-nums"
+                        @input="recalculateTotals"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label class="text-[10px] text-foreground/80 font-semibold mb-1 block">Discount</Label>
+                    <div class="relative flex items-center">
+                      <span class="absolute left-2.5 text-xs text-muted-foreground font-semibold">$</span>
+                      <Input
+                        type="number"
+                        v-model="discountTotal"
+                        class="h-9 text-xs pl-6 tabular-nums"
+                        @input="recalculateTotals"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20 mt-4">
+                  <span class="text-xs font-bold text-primary uppercase tracking-wider">Grand Total</span>
+                  <span class="text-sm font-black text-primary tabular-nums">
+                    ${{ (totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

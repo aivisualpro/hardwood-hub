@@ -508,6 +508,16 @@ export const ContractTemplateUpdateSchema = ContractTemplateWriteSchema.partial(
 
 // ─── ESTIMATE ─────────────────────────────────────────────────────────────────
 
+const LineItemSchema = z.object({
+  room: z.string().max(200).optional().default(''),
+  sku: z.string().max(200).optional().default(''),
+  description: z.string().max(2000).optional().default(''),
+  quantity: z.number().optional().default(0),
+  unit: z.string().max(50).optional().default(''),
+  price: z.number().optional().default(0),
+  amount: z.number().optional().default(0),
+})
+
 /** POST /api/estimates — create an estimate */
 export const EstimateCreateSchema = z.object({
   title: z.string().min(1, 'Title is required').max(500),
@@ -526,6 +536,12 @@ export const EstimateCreateSchema = z.object({
   notes: z.string().max(10_000).optional().default(''),
   createdBy: z.string().max(200).optional().default(''),
   estimateNumber: z.string().max(100).optional(),
+  lineItems: z.array(LineItemSchema).optional().default([]),
+  materialTotal: z.number().optional().default(0),
+  laborTotal: z.number().optional().default(0),
+  taxTotal: z.number().optional().default(0),
+  discountTotal: z.number().optional().default(0),
+  totalAmount: z.number().optional().default(0),
 })
 
 /** PUT /api/estimates/detail/:id — update an estimate */
@@ -546,6 +562,12 @@ export const EstimateUpdateSchema = z.object({
   mergedPdfGeneratedAt: z.coerce.date().nullable().optional(),
   status: z.enum(['draft', 'sent', 'completed', 'cancelled']).optional(),
   notes: z.string().max(10_000).optional(),
+  lineItems: z.array(LineItemSchema).optional(),
+  materialTotal: z.number().optional(),
+  laborTotal: z.number().optional(),
+  taxTotal: z.number().optional(),
+  discountTotal: z.number().optional(),
+  totalAmount: z.number().optional(),
 })
 
 // ─── ESTIMATE TEMPLATE ───────────────────────────────────────────────────────
