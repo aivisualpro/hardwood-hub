@@ -16,13 +16,14 @@ const SCOPES = [
 export function getOAuth2Client(): OAuth2Client {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const baseUrl = process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const redirectUri = process.env.GMAIL_REDIRECT_URI
+    || `${process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/gmail/callback`
 
   if (!clientId || !clientSecret) {
     throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in .env')
   }
 
-  return new OAuth2Client(clientId, clientSecret, `${baseUrl}/api/gmail/callback`)
+  return new OAuth2Client(clientId, clientSecret, redirectUri)
 }
 
 export function getAuthUrl(employeeId: string): string {
