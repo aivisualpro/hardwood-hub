@@ -4,7 +4,7 @@ import crypto from 'node:crypto'
 import { Estimate } from '../../models/Estimate'
 import { EstimateTemplate } from '../../models/EstimateTemplate'
 import { AppSetting } from '../../models/AppSetting'
-import { sendMail } from '../../utils/mailer'
+import { sendMailEstimates } from '../../utils/mailer'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
@@ -352,7 +352,7 @@ export default defineEventHandler(async (event) => {
 
   // ─── Send the email ───────────────────────────────────────
   try {
-    await sendMail({
+    await sendMailEstimates({
       to: emailTarget,
       subject: `Estimate — ${estimate.title}`,
       html: emailHTML,

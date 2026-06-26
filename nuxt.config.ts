@@ -172,6 +172,8 @@ export default defineNuxtConfig({
     crmCronSecret: process.env.CRM_CRON_SECRET,
     gmailUser: process.env.GMAIL_USER,
     gmailAppPassword: process.env.GMAIL_APP_PASSWORD,
+    gmailUserEstimates: process.env.GMAIL_USER_ESTIMATES,
+    gmailAppPasswordEstimates: process.env.GMAIL_APP_PASSWORD_ESTIMATES,
 
     // Browserless.io — used for server-side PDF rendering
     browserlessToken: process.env.BROWSERLESS_TOKEN,
