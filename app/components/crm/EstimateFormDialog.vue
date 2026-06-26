@@ -1282,28 +1282,28 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
                     <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Material</span>
                     <div class="relative flex items-center">
                       <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
-                      <Input type="number" v-model="materialTotal" class="h-7 w-24 text-xs pl-5 tabular-nums" />
+                      <Input type="number" v-model="materialTotal" class="h-7 w-36 text-xs pl-5 tabular-nums" />
                     </div>
                   </div>
                   <div class="flex items-center gap-1.5">
                     <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Labor</span>
                     <div class="relative flex items-center">
                       <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
-                      <Input type="number" v-model="laborTotal" class="h-7 w-24 text-xs pl-5 tabular-nums" />
+                      <Input type="number" v-model="laborTotal" class="h-7 w-36 text-xs pl-5 tabular-nums" />
                     </div>
                   </div>
                   <div class="flex items-center gap-1.5">
                     <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Tax</span>
                     <div class="relative flex items-center">
                       <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
-                      <Input type="number" v-model="taxTotal" class="h-7 w-20 text-xs pl-5 tabular-nums" @input="recalculateTotals" />
+                      <Input type="number" v-model="taxTotal" class="h-7 w-28 text-xs pl-5 tabular-nums" @input="recalculateTotals" />
                     </div>
                   </div>
                   <div class="flex items-center gap-1.5">
                     <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Discount</span>
                     <div class="relative flex items-center">
                       <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
-                      <Input type="number" v-model="discountTotal" class="h-7 w-20 text-xs pl-5 tabular-nums" @input="recalculateTotals" />
+                      <Input type="number" v-model="discountTotal" class="h-7 w-28 text-xs pl-5 tabular-nums" @input="recalculateTotals" />
                     </div>
                   </div>
                   <div class="ml-auto flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/20">
