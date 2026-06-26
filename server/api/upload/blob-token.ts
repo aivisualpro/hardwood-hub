@@ -13,9 +13,6 @@ export default defineEventHandler(async (event) => {
           tokenPayload: JSON.stringify({ authorized: true }),
         }
       },
-      onUploadCompleted: async () => {
-        // no-op — upload result is handled client-side
-      },
     })
 
     return jsonResponse

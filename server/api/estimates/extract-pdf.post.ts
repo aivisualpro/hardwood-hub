@@ -26,8 +26,12 @@ export default defineEventHandler(async (event) => {
   let pdfBase64 = ''
   try {
     const fetchOptions: RequestInit = {}
-    if ((pdfUrl.includes('vercel-storage.com') || pdfUrl.includes('vercel.com')) && process.env.BLOB_READ_WRITE_TOKEN) {
+    const isVercelBlob = pdfUrl.includes('vercel-storage.com') || pdfUrl.includes('vercel.com') || pdfUrl.includes('blob.vercel-storage.com')
+    if (isVercelBlob && process.env.BLOB_READ_WRITE_TOKEN) {
       fetchOptions.headers = { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
+      log.info('Fetching private Vercel Blob with auth token')
+    } else {
+      log.info('Fetching PDF without auth:', pdfUrl.substring(0, 80))
     }
     const res = await fetch(pdfUrl, fetchOptions)
     if (!res.ok)
