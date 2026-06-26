@@ -413,6 +413,8 @@ async function handlePdfUpload(e: Event) {
       `PDF uploaded successfully (${sizeMB}MB)`,
       { id: 'pdf-upload' },
     )
+    // Auto-extract line items from the uploaded PDF
+    fetchPdfDetails()
   }
   catch (err: any) {
     toast.error('PDF upload failed', {
@@ -559,6 +561,10 @@ async function saveEstimate() {
     toast.error('Estimate Number is required')
     return
   }
+  if (!attachedPdf.value) {
+    toast.error('PDF document is required', { description: 'Please upload the estimate PDF before creating.' })
+    return
+  }
 
   savingEstimate.value = true
   try {
@@ -637,6 +643,7 @@ function openForCustomer(customer: any) {
 const canSubmitEstimate = computed(() => {
   if (!estimateTitle.value.trim()) return false
   if (!selectedCustomer.value || !selectedModalTemplate.value) return false
+  if (!attachedPdf.value) return false
   const vars = selectedModalTemplate.value.variables || []
   for (const v of vars) {
     if (!v.required) continue
@@ -653,7 +660,7 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
 <template>
   <!-- ═══════ CREATE ESTIMATE MODAL ═══════ -->
   <Dialog v-model:open="showCreateModal">
-    <DialogContent class="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+    <DialogContent :class="['max-h-[90vh] overflow-hidden flex flex-col p-0 transition-all duration-300', lineItems.length > 0 ? 'max-w-7xl' : 'max-w-5xl']">
       <!-- Modal Header -->
       <div class="px-6 pt-6 pb-4 border-b border-border/50">
         <div class="flex items-center gap-3 mb-4">
@@ -1060,10 +1067,11 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
                 </p>
               </div>
 
-              <!-- PDF Attachment -->
-              <div class="mt-6 p-4 rounded-xl border border-border bg-card relative overflow-hidden">
-                <Label class="text-xs font-bold text-foreground uppercase tracking-wider mb-2 block">
-                  Attach PDF Document (Optional)
+              <!-- PDF Attachment (Required) -->
+              <div class="mt-6 p-4 rounded-xl border bg-card relative overflow-hidden" :class="attachedPdf ? 'border-emerald-500/30' : 'border-destructive/30'">
+                <Label class="text-xs font-bold text-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  Attach PDF Document
+                  <span class="text-destructive">*</span>
                 </Label>
                 <div class="flex flex-wrap items-center gap-3">
                   <Button variant="outline" size="sm" @click="pdfFileInput?.click()">
@@ -1086,8 +1094,8 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
                     class="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
                     @click="fetchPdfDetails"
                   >
-                    <Icon name="i-lucide-wand2" class="mr-2 size-4" />
-                    Fetch Details
+                    <Icon name="i-lucide-wand-2" class="mr-2 size-4" />
+                    Re-Extract
                   </Button>
                   <Button
                     v-else-if="isExtractingPdf"
@@ -1100,8 +1108,12 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
                   </Button>
                   <input ref="pdfFileInput" type="file" accept="application/pdf" class="hidden" @change="handlePdfUpload">
                 </div>
-                <p class="text-[10px] text-muted-foreground mt-2">
-                  This PDF will be appended to the final estimate document.
+                <p v-if="!attachedPdf" class="text-[10px] text-destructive/70 mt-2 font-medium">
+                  PDF upload is required. Line items will be automatically extracted.
+                </p>
+                <p v-else class="text-[10px] text-emerald-600 mt-2 font-medium flex items-center gap-1">
+                  <Icon name="i-lucide-check-circle" class="size-3" />
+                  PDF uploaded. This PDF will be appended to the final estimate document.
                 </p>
               </div>
 
@@ -1179,7 +1191,7 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
             <div v-if="lineItems.length > 0" class="lg:col-span-6 border-l border-border lg:pl-6 flex flex-col max-h-[65vh] overflow-y-auto pr-2 no-scrollbar">
               <div class="flex items-center justify-between mb-4">
                 <span class="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                  <Icon name="i-lucide-wand2" class="size-4" />
+                  <Icon name="i-lucide-wand-2" class="size-4" />
                   Extracted Items ({{ lineItems.length }})
                 </span>
                 <Button variant="outline" size="sm" class="h-8 text-[10px] font-bold uppercase tracking-wider" @click="addLineItem()">
