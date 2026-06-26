@@ -123,8 +123,9 @@ async function submit() {
   isLoading.value = true
   try {
     const base = props.apiPrefix || '/api/pipeline'
-    const url = props.customer ? `${base}/${props.customer._id}` : base
-    const method = props.customer ? 'PUT' : 'POST'
+    const isEditing = !!props.customer?._id
+    const url = isEditing ? `${base}/${props.customer._id}` : base
+    const method = isEditing ? 'PUT' : 'POST'
 
     const nameParts = form.value.name ? form.value.name.split(' ') : []
     const fallbackFirstName = nameParts[0] || ''
@@ -492,9 +493,9 @@ function toggleAssignee(emp: string) {
   <Dialog :open="modelValue" @update:open="emit('update:modelValue', $event)">
     <DialogContent class="sm:max-w-xl">
       <DialogHeader>
-        <DialogTitle>{{ customer ? (isCustomerMode ? 'Edit Client' : 'Edit Project') : 'Add Project' }}</DialogTitle>
+        <DialogTitle>{{ customer?._id ? (isCustomerMode ? 'Edit Client' : 'Edit Project') : 'Add Project' }}</DialogTitle>
         <DialogDescription>
-          {{ customer ? (isCustomerMode ? 'Update the client details below.' : 'Update the details for this project below.') : 'Fill in the details below to create a new project.' }}
+          {{ customer?._id ? (isCustomerMode ? 'Update the client details below.' : 'Update the details for this project below.') : 'Fill in the details below to create a new project.' }}
         </DialogDescription>
       </DialogHeader>
 

@@ -204,6 +204,38 @@ const documentsRef = ref<any>(null)
 const relatedContactsRef = ref<any>(null)
 const showDeleteConfirm = ref(false)
 
+// ─── Create Related Project ────────────────────────────────────────────────
+const showNewProject = ref(false)
+const newProjectPrefill = computed(() => {
+  if (!customer.value) return null
+  const c = customer.value
+  return {
+    // Pre-fill contact info from current record but leave projectName empty for user to fill
+    name: c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim(),
+    projectName: '',
+    customerId: c.customerId || '',
+    firstName: c.firstName || '',
+    lastName: c.lastName || '',
+    email: c.email || '',
+    phone: c.phone || '',
+    address: c.address || '',
+    city: c.city || '',
+    state: c.state || '',
+    zip: c.zip || '',
+    assignedTo: c.assignedTo || '',
+    projectAssignedTo: c.projectAssignedTo || '',
+  }
+})
+
+function onNewProjectSaved(saved: any) {
+  showNewProject.value = false
+  fetchRelatedProjects()
+  toast.success('Related project created')
+  if (saved?._id) {
+    navigateTo(`/crm/pipeline/${saved._id}`)
+  }
+}
+
 function onCustomerUpdated(updatedCustomer: any) {
   customer.value = updatedCustomer
   updateHeader(customer.value)
@@ -788,6 +820,14 @@ function totalSqft(blocks: any[]) {
               </h3>
             </div>
             <span v-if="relatedProjects.length" class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{{ relatedProjects.length }}</span>
+            <button
+              v-if="canCreate()"
+              class="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold hover:bg-emerald-700 transition-all shadow-sm"
+              @click="showNewProject = true"
+            >
+              <Icon name="i-lucide-plus" class="size-3" />
+              New Project
+            </button>
           </div>
           <div v-if="loadingRelatedProjects" class="flex-1 px-5 py-4 space-y-2">
             <div v-for="i in 2" :key="i" class="h-10 bg-muted/30 rounded-lg animate-pulse" />
@@ -1018,6 +1058,13 @@ function totalSqft(blocks: any[]) {
     <CrmContractFormDialog
       ref="contractFormDialog"
       @saved="fetchCustomerContracts"
+    />
+
+    <!-- Create Related Project Dialog (pre-filled from current record) -->
+    <CrmCustomerFormDialog
+      v-model="showNewProject"
+      :customer="newProjectPrefill"
+      @saved="onNewProjectSaved"
     />
 
     <AlertDialog :open="showDeleteConfirm" @update:open="v => showDeleteConfirm = v">
