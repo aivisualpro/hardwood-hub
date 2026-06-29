@@ -105,7 +105,7 @@ Return your response as a valid JSON object with this exact structure:
 }`
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: [
         {
           role: 'user',
@@ -122,7 +122,7 @@ Return your response as a valid JSON object with this exact structure:
       ],
       config: {
         temperature: 0.1,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 65535,
         responseMimeType: 'application/json',
         thinkingConfig: { thinkingBudget: 0 },
       },
