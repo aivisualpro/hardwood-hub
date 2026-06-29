@@ -95,8 +95,9 @@ const selectedProject = ref<any | null>(null)
 async function fetchProjects(custId: string) {
   loadingProjects.value = true
   try {
+    const custName = selectedCustomer.value?.name || ''
     const res = await $fetch<{ success: boolean, data: any[] }>('/api/pipeline', {
-      params: { limit: 200, customerId: custId },
+      params: { limit: 200, customerId: custId, customerName: custName || undefined },
     })
     projects.value = res.data || []
   }

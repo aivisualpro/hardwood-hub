@@ -699,7 +699,7 @@ watch(() => route.query.search, (val) => {
         </div>
       </div>
     </div>
-    <div v-if="!loadingData">
+    <div v-if="!loadingData" class="flex-1 flex flex-col min-h-0">
       <!-- Pipeline Headers as Filters -->
       <div class="flex overflow-x-auto w-full scrollbar-hide text-xs whitespace-nowrap select-none bg-card rounded-xl overflow-hidden border border-border/50 shadow-sm mb-4">
         <div
@@ -754,7 +754,7 @@ watch(() => route.query.search, (val) => {
       </div>
 
       <!-- Table Details Desktop -->
-      <div class="hidden lg:block flex-1 min-h-0 overflow-auto bg-card border border-border/50 rounded-xl text-sm shadow-sm relative">
+      <div class="hidden lg:flex lg:flex-col flex-1 min-h-0 overflow-auto bg-card border border-border/50 rounded-xl text-sm shadow-sm relative">
         <table class="w-full text-left border-collapse whitespace-nowrap">
           <thead>
             <tr class="border-b bg-card text-muted-foreground text-[10px] font-bold uppercase tracking-wider sticky top-0 z-20">

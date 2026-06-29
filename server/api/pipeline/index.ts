@@ -34,12 +34,23 @@ export default defineEventHandler(async (event) => {
 
     const filter: Record<string, any> = {}
 
-    if (customerId)
-      filter.customerId = customerId
+    const customerName = (query.customerName as string | undefined)?.trim()
+
+    if (customerId) {
+      // Match pipeline records that either have the customerId FK set,
+      // or whose name/customerName matches the customer name passed from the UI.
+      const custConditions: any[] = [{ customerId }]
+      if (customerName) {
+        const nameRe = { $regex: `^${escapeRegex(customerName)}$`, $options: 'i' }
+        custConditions.push({ name: nameRe })
+        custConditions.push({ customerName: nameRe })
+      }
+      filter.$or = custConditions
+    }
 
     if (search) {
       const re = { $regex: escapeRegex(search), $options: 'i' }
-      filter.$or = [
+      const searchOr = [
         { name: re },
         { customerName: re },
         { projectName: re },
@@ -47,6 +58,14 @@ export default defineEventHandler(async (event) => {
         { phone: re },
         { city: re },
       ]
+      // If $or is already set (from customerId), combine with $and
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchOr }]
+        delete filter.$or
+      }
+      else {
+        filter.$or = searchOr
+      }
     }
 
     if (status)
