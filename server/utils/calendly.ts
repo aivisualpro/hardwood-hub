@@ -94,18 +94,20 @@ async function _doFetch(recentOnly: boolean) {
 
     do {
       page++
-      const params = new URLSearchParams({
-        user: userUri,
-        status,
-        count: '100',
-        sort: 'start_time:desc',
-      })
-      // Calendly rejects time-range filters when a page_token is present
-      // (the cursor already encodes the original query context)
+      let params: URLSearchParams
+
       if (nextPageToken) {
-        params.set('page_token', nextPageToken)
+        // Calendly returns 400 if ANY other param is sent alongside page_token.
+        // The cursor already encodes the full original query context.
+        params = new URLSearchParams({ page_token: nextPageToken })
       }
       else {
+        params = new URLSearchParams({
+          user: userUri,
+          status,
+          count: '100',
+          sort: 'start_time:desc',
+        })
         if (minDate)
           params.set('min_start_time', minDate)
         params.set('max_start_time', maxDate)

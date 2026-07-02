@@ -608,7 +608,9 @@ async function saveEstimate() {
     emit('saved')
   }
   catch (e: any) {
-    toast.error(editingEstimateId.value ? 'Failed to update estimate' : 'Failed to create estimate', { description: e?.message })
+    toast.error(editingEstimateId.value ? 'Failed to update estimate' : 'Failed to create estimate', {
+      description: e?.data?.message || e?.message || 'Unknown error',
+    })
   }
   finally {
     savingEstimate.value = false

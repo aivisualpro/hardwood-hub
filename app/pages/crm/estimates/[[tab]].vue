@@ -555,6 +555,30 @@ async function fetchEstimates() {
   }
 }
 
+// ─── Sync Products from Existing Estimates ──────────────────
+const syncingProducts = ref(false)
+
+async function syncProductsFromAllEstimates() {
+  syncingProducts.value = true
+  try {
+    toast.loading('Syncing products from all estimates...', { id: 'sync-products' })
+    const res = await $fetch<{ success: boolean, summary: any }>('/api/estimates/sync-products', { method: 'POST' })
+    if (res.success) {
+      const s = res.summary
+      toast.success(
+        `Products synced — ${s.productsInserted} new, ${s.productsAlreadyExisted} existing`,
+        { id: 'sync-products', description: `Scanned ${s.estimatesProcessed} estimates · ${s.itemsSkippedNoSku} items had no SKU` },
+      )
+    }
+  }
+  catch (e: any) {
+    toast.error('Failed to sync products', { description: e?.data?.message || e?.message, id: 'sync-products' })
+  }
+  finally {
+    syncingProducts.value = false
+  }
+}
+
 // ─── Create/Edit Estimate Modal ───────────────────────────────
 const estimateFormDialog = ref<any>(null)
 
@@ -608,14 +632,28 @@ const CATEGORIES = ['General', 'Agreements', 'Change Orders', 'Legal', 'Warranti
               @input="activeTab === 'list' && fetchEstimates()"
             >
           </div>
-          <button
-            v-if="activeTab === 'list' && canCreate()"
-            class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
-            @click="openCreateModal"
-          >
-            <Icon name="i-lucide-plus" class="size-3.5" />
-            <span class="hidden sm:inline">New Estimate</span>
-          </button>
+          <template v-if="activeTab === 'list'">
+            <!-- Sync Products backfill button (manager only) -->
+            <button
+              v-if="canCreate()"
+              :disabled="syncingProducts"
+              class="inline-flex items-center justify-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 rounded-lg border border-border bg-card text-xs sm:text-sm font-semibold hover:bg-muted transition-all shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+              title="Sync all line-item SKUs from existing estimates into the Products catalogue"
+              @click="syncProductsFromAllEstimates"
+            >
+              <Icon :name="syncingProducts ? 'i-lucide-loader-circle' : 'i-lucide-package-plus'" class="size-3.5" :class="syncingProducts ? 'animate-spin' : ''" />
+              <span class="hidden sm:inline">Sync Products</span>
+            </button>
+            <!-- New Estimate -->
+            <button
+              v-if="canCreate()"
+              class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
+              @click="openCreateModal"
+            >
+              <Icon name="i-lucide-plus" class="size-3.5" />
+              <span class="hidden sm:inline">New Estimate</span>
+            </button>
+          </template>
           <DropdownMenu v-if="activeTab === 'templates' && !showEditor">
             <DropdownMenuTrigger as-child>
               <button

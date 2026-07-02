@@ -1,10 +1,12 @@
 // POST /api/estimates/extract-pdf
 // Accepts a Vercel Blob URL of a PDF and uses Gemini AI to extract line items and totals.
+// After extraction, any new unique line-item SKUs are automatically upserted into the Products catalogue.
 
 import { GoogleGenAI } from '@google/genai'
 import { requirePermission } from '../../utils/requirePermission'
 import { logger } from '../../utils/logger'
 import { connectDB } from '../../utils/mongoose'
+import { syncProductsFromLineItems } from '../../utils/syncProductsFromLineItems'
 
 const log = logger('[estimates/extract-pdf.post]')
 
@@ -170,10 +172,25 @@ Return your response as a valid JSON object with this exact structure:
       }
     }
 
+    // ── Auto-sync new SKUs into Products catalogue ──────────────
+    const extractedItems = parsed.lineItems || []
+    if (extractedItems.length > 0) {
+      try {
+        const syncResult = await syncProductsFromLineItems(extractedItems)
+        log.info(
+          `Product sync: ${syncResult.inserted} new, ${syncResult.existing} existing, ${syncResult.skipped} skipped (no SKU)`,
+        )
+      }
+      catch (syncErr: any) {
+        // Non-fatal — log and continue
+        log.error('Product sync failed (non-fatal):', syncErr?.message)
+      }
+    }
+
     return {
       success: true,
       data: {
-        lineItems: parsed.lineItems || [],
+        lineItems: extractedItems,
         materialTotal: parsed.materialTotal || 0,
         laborTotal: parsed.laborTotal || 0,
         taxTotal: parsed.taxTotal || 0,
