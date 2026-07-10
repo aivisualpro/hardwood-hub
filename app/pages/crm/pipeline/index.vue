@@ -617,6 +617,17 @@ function getChevronClipPath(isFirst: boolean) {
   return 'polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)'
 }
 
+function getContrastColor(hexColor: string) {
+  if (!hexColor) return '#ffffff'
+  const hex = hexColor.replace('#', '')
+  if (hex.length !== 6) return '#ffffff'
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000
+  return yiq >= 128 ? '#0f172a' : '#ffffff'
+}
+
 function selectFilter(id: string) {
   selectedStageFilter.value = id
   if (id !== 'all') {
@@ -726,28 +737,28 @@ watch(() => route.query.search, (val) => {
 
             <!-- OUTER BORDER MASK (Clipped) -->
             <div class="absolute inset-0 overflow-hidden" :style="{ clipPath: getChevronClipPath(idx === 0) }">
-              <div class="absolute inset-0 brightness-[0.7]" :style="{ backgroundColor: g.stage.color || 'hsl(var(--primary))' }" />
+              <div class="absolute inset-0 brightness-[0.7]" :style="{ backgroundColor: g.stage.color || 'var(--primary)' }" />
               <div class="absolute inset-[-100%] bg-[conic-gradient(from_0deg,transparent_0_300deg,white_360deg)] animate-[spin_2s_linear_infinite]" />
             </div>
 
             <!-- INNER CONTENT (Inset by 2.5px to reveal outer mask) -->
             <div
               class="absolute inset-[2.5px] transition-all flex flex-col items-center justify-center pt-0.5 brightness-110"
-              :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'hsl(var(--primary))' }"
+              :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'var(--primary)' }"
             >
-              <span class="font-bold text-[13px] leading-tight text-white">{{ g.count }}</span>
-              <span class="text-[8px] uppercase tracking-wider text-center max-w-[90px] leading-[1.1] line-clamp-2 whitespace-normal font-bold text-white" :title="g.stage.label">{{ g.stage.label }}</span>
+              <span class="font-bold text-[13px] leading-tight" :style="{ color: getContrastColor(g.stage.color) }">{{ g.count }}</span>
+              <span class="text-[8px] uppercase tracking-wider text-center max-w-[90px] leading-[1.1] line-clamp-2 whitespace-normal font-bold" :style="{ color: getContrastColor(g.stage.color) }" :title="g.stage.label">{{ g.stage.label }}</span>
             </div>
           </div>
 
           <!-- INACTIVE STATE (Standard) -->
           <div
             v-else class="flex items-center justify-center h-12 pl-6 pr-6 w-full transition-all duration-300"
-            :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'hsl(var(--primary))' }"
+            :style="{ clipPath: getChevronClipPath(idx === 0), backgroundColor: g.stage.color || 'var(--primary)' }"
           >
             <div class="flex flex-col items-center justify-center pt-0.5">
-              <span class="font-bold text-[13px] leading-tight text-white">{{ g.count }}</span>
-              <span class="text-[8px] uppercase tracking-wider leading-[1.1] text-center max-w-[90px] line-clamp-2 whitespace-normal font-bold text-white" :title="g.stage.label">{{ g.stage.label }}</span>
+              <span class="font-bold text-[13px] leading-tight" :style="{ color: getContrastColor(g.stage.color) }">{{ g.count }}</span>
+              <span class="text-[8px] uppercase tracking-wider leading-[1.1] text-center max-w-[90px] line-clamp-2 whitespace-normal font-bold" :style="{ color: getContrastColor(g.stage.color) }" :title="g.stage.label">{{ g.stage.label }}</span>
             </div>
           </div>
         </div>

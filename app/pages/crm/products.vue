@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ ssr: false })
 import { toast } from 'vue-sonner'
 
 const { canCreate, canUpdate, canDelete } = usePermissions('/crm/products')
@@ -51,7 +52,11 @@ const currentPage = ref(1)
 const totalItems = ref(0)
 const totalPages = ref(1)
 
-// ─── Server-first data fetching (blocks navigation until resolved) ──────
+const isLoadingMore = ref(false)
+const scrollSentinel = ref<HTMLElement | null>(null)
+let sentinelObserver: IntersectionObserver | null = null
+
+// ─── Data fetching ─────────────────────────────────────────
 async function fetchProducts(page = 1) {
   try {
     const params = new URLSearchParams()
@@ -61,13 +66,28 @@ async function fetchProducts(page = 1) {
     params.set('limit', '50')
 
     const res = await $fetch<any>(`/api/products?${params.toString()}`)
-    items.value = res.data || []
+    if (page === 1) {
+      items.value = res.data || []
+    } else {
+      items.value = [...items.value, ...(res.data || [])]
+    }
     currentPage.value = res.pagination?.page || 1
     totalPages.value = res.pagination?.totalPages || 1
     totalItems.value = res.pagination?.total || 0
   }
   catch (err) {
     toast.error('Failed to load products')
+  }
+}
+
+async function loadMore() {
+  if (isLoadingMore.value || currentPage.value >= totalPages.value) return
+  isLoadingMore.value = true
+  try {
+    await fetchProducts(currentPage.value + 1)
+  }
+  finally {
+    isLoadingMore.value = false
   }
 }
 
@@ -82,7 +102,22 @@ watch(searchQuery, () => {
   }, 300)
 })
 
-await useAsyncData('crm-products', async () => { await fetchProducts(); return true })
+onMounted(() => {
+  fetchProducts()
+})
+
+watch(scrollSentinel, (el) => {
+  sentinelObserver?.disconnect()
+  if (!el) return
+  sentinelObserver = new IntersectionObserver((entries) => {
+    if (entries[0]?.isIntersecting) loadMore()
+  }, { threshold: 0.1 })
+  sentinelObserver.observe(el)
+})
+
+onUnmounted(() => {
+  sentinelObserver?.disconnect()
+})
 
 // ─── Create / Edit Dialog ────────────────────────────────
 const showFormDialog = ref(false)
@@ -440,7 +475,7 @@ const formSections = [
       { key: 'color', label: 'Color', type: 'text' },
       { key: 'path', label: 'Path', type: 'text' },
       { key: 'trade', label: 'Trade', type: 'text' },
-      { key: 'unit', label: 'Unit', type: 'text' },
+      { key: 'unit', label: 'Unit', type: 'select', options: ['EA', 'LF', 'SF', 'BG', 'BOX', 'HR', 'FL', 'PR'] },
       { key: 'wasteAddon', label: 'Waste Addon (%)', type: 'number' },
     ],
   },
@@ -526,15 +561,17 @@ const formSections = [
     </Teleport>
 
     <!-- Table Section -->
-    <div class="border rounded-2xl bg-card overflow-hidden shadow-sm">
+    <div class="border rounded-2xl bg-card shadow-sm overflow-hidden">
+      <!-- Horizontal scroll wrapper — does NOT create a vertical scroll context so thead sticky works -->
       <div class="overflow-x-auto">
         <table class="w-full text-sm border-collapse" style="min-width: 1800px">
-          <thead>
-            <tr class="border-b bg-muted/30">
-              <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted z-10 min-w-[100px]">
+          <!-- sticky top accounts for the layout header height -->
+          <thead class="sticky top-0 z-20" style="background:var(--card)">
+            <tr class="border-b" style="background:color-mix(in srgb, var(--muted) 30%, var(--card))">
+              <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sticky left-0 top-0 z-30" style="min-width:220px;background:var(--card)">
                 SKU
               </th>
-              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">
+              <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[350px]">
                 Description
               </th>
               <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[90px]">
@@ -615,7 +652,7 @@ const formSections = [
               <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[90px]">
                 Created
               </th>
-              <th class="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-20 sticky right-0 bg-muted/30 z-10" />
+              <th class="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-20" />
             </tr>
           </thead>
 
@@ -656,100 +693,289 @@ const formSections = [
               :key="item._id"
               class="border-b last:border-b-0 hover:bg-muted/20 transition-colors group"
             >
-              <!-- SKU (sticky) -->
-              <td class="py-2.5 px-4 sticky left-0 bg-background group-hover:bg-muted z-10 transition-colors">
-                <span class="text-xs text-foreground whitespace-nowrap">{{ item.sku || '—' }}</span>
+              <td class="py-2.5 px-4 sticky left-0 z-10" style="min-width:220px;background:var(--card)">
+                <div style="width:220px;min-width:220px;word-break:break-word">
+                  <input
+                    v-if="isQuickEditing"
+                    v-model="item.sku"
+                    @change="saveCell(item, 'sku', item.sku)"
+                    style="width:100%"
+                    class="bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                  />
+                  <span v-else class="text-xs text-foreground break-words">{{ item.sku || '—' }}</span>
+                </div>
               </td>
-              <td class="py-2.5 px-3 font-medium text-foreground max-w-[200px] truncate">
-                {{ item.description || '—' }}
+              <td class="py-2.5 px-3 font-medium text-foreground max-w-[350px] whitespace-normal break-words">
+                <textarea
+                  v-if="isQuickEditing"
+                  v-model="item.description"
+                  @change="saveCell(item, 'description', item.description)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground resize-y whitespace-normal"
+                  rows="2"
+                />
+                <span v-else>{{ item.description || '—' }}</span>
               </td>
               <td class="py-2.5 px-3">
-                <span v-if="item.type" class="text-xs font-semibold bg-violet-500/10 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-full whitespace-nowrap">{{ item.type }}</span>
-                <span v-else class="text-muted-foreground">—</span>
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.type"
+                  @change="saveCell(item, 'type', item.type)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <template v-else>
+                  <span v-if="item.type" class="text-xs font-semibold bg-violet-500/10 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-full whitespace-nowrap">{{ item.type }}</span>
+                  <span v-else class="text-muted-foreground">—</span>
+                </template>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.color || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.color"
+                  @change="saveCell(item, 'color', item.color)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.color || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.trade || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.trade"
+                  @change="saveCell(item, 'trade', item.trade)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.trade || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.unit || '—' }}
+                <select
+                  v-if="isQuickEditing"
+                  v-model="item.unit"
+                  @change="saveCell(item, 'unit', item.unit)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                >
+                  <option value="">—</option>
+                  <option value="EA">EA</option>
+                  <option value="LF">LF</option>
+                  <option value="SF">SF</option>
+                  <option value="BG">BG</option>
+                  <option value="BOX">BOX</option>
+                  <option value="HR">HR</option>
+                  <option value="FL">FL</option>
+                  <option value="PR">PR</option>
+                </select>
+                <span v-else>{{ item.unit || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400 text-xs">
-                {{ formatCurrency(item.salesPrice) }}
+                <input
+                  v-if="isQuickEditing"
+                  type="number"
+                  step="0.01"
+                  v-model.number="item.salesPrice"
+                  @change="saveCell(item, 'salesPrice', item.salesPrice)"
+                  class="w-full bg-transparent border-0 text-right focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ formatCurrency(item.salesPrice) }}</span>
               </td>
               <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
-                {{ formatCurrency(item.costPrice) }}
+                <input
+                  v-if="isQuickEditing"
+                  type="number"
+                  step="0.01"
+                  v-model.number="item.costPrice"
+                  @change="saveCell(item, 'costPrice', item.costPrice)"
+                  class="w-full bg-transparent border-0 text-right focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ formatCurrency(item.costPrice) }}</span>
               </td>
               <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
-                {{ item.wasteAddon ? `${item.wasteAddon}%` : '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  type="number"
+                  v-model.number="item.wasteAddon"
+                  @change="saveCell(item, 'wasteAddon', item.wasteAddon)"
+                  class="w-full bg-transparent border-0 text-right focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.wasteAddon ? `${item.wasteAddon}%` : '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
-                {{ formatCurrency(item.boxSalesPrice) }}
+                <input
+                  v-if="isQuickEditing"
+                  type="number"
+                  step="0.01"
+                  v-model.number="item.boxSalesPrice"
+                  @change="saveCell(item, 'boxSalesPrice', item.boxSalesPrice)"
+                  class="w-full bg-transparent border-0 text-right focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ formatCurrency(item.boxSalesPrice) }}</span>
               </td>
               <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
-                {{ formatCurrency(item.boxCostPrice) }}
+                <input
+                  v-if="isQuickEditing"
+                  type="number"
+                  step="0.01"
+                  v-model.number="item.boxCostPrice"
+                  @change="saveCell(item, 'boxCostPrice', item.boxCostPrice)"
+                  class="w-full bg-transparent border-0 text-right focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ formatCurrency(item.boxCostPrice) }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.boxName || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.boxName"
+                  @change="saveCell(item, 'boxName', item.boxName)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.boxName || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
-                {{ item.unitsPerBox || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  type="number"
+                  v-model.number="item.unitsPerBox"
+                  @change="saveCell(item, 'unitsPerBox', item.unitsPerBox)"
+                  class="w-full bg-transparent border-0 text-right focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.unitsPerBox || '—' }}</span>
               </td>
               <!-- Boolean columns -->
               <td class="py-2.5 px-3 text-center">
-                <Icon :name="item.isBoxPricesLinked ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isBoxPricesLinked ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+                <input
+                  v-if="isQuickEditing"
+                  type="checkbox"
+                  v-model="item.isBoxPricesLinked"
+                  @change="saveCell(item, 'isBoxPricesLinked', item.isBoxPricesLinked)"
+                  class="size-3.5 accent-primary cursor-pointer"
+                />
+                <Icon v-else :name="item.isBoxPricesLinked ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isBoxPricesLinked ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
               </td>
               <td class="py-2.5 px-3 text-center">
-                <Icon :name="item.sellByBox ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.sellByBox ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+                <input
+                  v-if="isQuickEditing"
+                  type="checkbox"
+                  v-model="item.sellByBox"
+                  @change="saveCell(item, 'sellByBox', item.sellByBox)"
+                  class="size-3.5 accent-primary cursor-pointer"
+                />
+                <Icon v-else :name="item.sellByBox ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.sellByBox ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
               </td>
               <td class="py-2.5 px-3 text-center">
-                <Icon :name="item.worksheetByBox ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.worksheetByBox ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+                <input
+                  v-if="isQuickEditing"
+                  type="checkbox"
+                  v-model="item.worksheetByBox"
+                  @change="saveCell(item, 'worksheetByBox', item.worksheetByBox)"
+                  class="size-3.5 accent-primary cursor-pointer"
+                />
+                <Icon v-else :name="item.worksheetByBox ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.worksheetByBox ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
               </td>
               <td class="py-2.5 px-3 text-center">
-                <Icon :name="item.isTaxable ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isTaxable ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+                <input
+                  v-if="isQuickEditing"
+                  type="checkbox"
+                  v-model="item.isTaxable"
+                  @change="saveCell(item, 'isTaxable', item.isTaxable)"
+                  class="size-3.5 accent-primary cursor-pointer"
+                />
+                <Icon v-else :name="item.isTaxable ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isTaxable ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
               </td>
               <td class="py-2.5 px-3 text-center">
-                <Icon :name="item.isAddon ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isAddon ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
+                <input
+                  v-if="isQuickEditing"
+                  type="checkbox"
+                  v-model="item.isAddon"
+                  @change="saveCell(item, 'isAddon', item.isAddon)"
+                  class="size-3.5 accent-primary cursor-pointer"
+                />
+                <Icon v-else :name="item.isAddon ? 'i-lucide-check' : 'i-lucide-minus'" :class="item.isAddon ? 'text-emerald-500' : 'text-muted-foreground/30'" class="size-3.5" />
               </td>
               <!-- Vendor / Style -->
               <td class="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">
-                {{ item.vendor || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.vendor"
+                  @change="saveCell(item, 'vendor', item.vendor)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.vendor || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.vendorSku || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.vendorSku"
+                  @change="saveCell(item, 'vendorSku', item.vendorSku)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.vendorSku || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">
-                {{ item.manufacturer || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.manufacturer"
+                  @change="saveCell(item, 'manufacturer', item.manufacturer)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.manufacturer || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.costCode || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.costCode"
+                  @change="saveCell(item, 'costCode', item.costCode)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.costCode || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.styleCode || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.styleCode"
+                  @change="saveCell(item, 'styleCode', item.styleCode)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.styleCode || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.styleName || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.styleName"
+                  @change="saveCell(item, 'styleName', item.styleName)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.styleName || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.colorCode || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.colorCode"
+                  @change="saveCell(item, 'colorCode', item.colorCode)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.colorCode || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground">
-                {{ item.colorName || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.colorName"
+                  @change="saveCell(item, 'colorName', item.colorName)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.colorName || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground max-w-[100px] truncate">
-                {{ item.path || '—' }}
+                <input
+                  v-if="isQuickEditing"
+                  v-model="item.path"
+                  @change="saveCell(item, 'path', item.path)"
+                  class="w-full bg-transparent border-0 focus:ring-1 focus:ring-primary focus:bg-background px-1 py-0.5 rounded text-xs text-foreground"
+                />
+                <span v-else>{{ item.path || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">
                 {{ formatDate(item.createdAt) }}
               </td>
-              <!-- Actions (sticky right) -->
-              <td class="py-2.5 px-4 sticky right-0 bg-card group-hover:bg-muted/20 z-10 transition-colors">
+              <!-- Actions -->
+              <td class="py-2.5 px-4 text-right transition-colors">
                 <div class="flex items-center gap-0.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button v-if="canUpdate()" class="size-7 rounded-md flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" @click="openEdit(item)">
-                    <Icon name="i-lucide-pencil" class="size-3.5" />
-                  </button>
                   <button v-if="canDelete()" class="size-7 rounded-md flex items-center justify-center hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" @click="deleteProduct(item._id)">
                     <Icon name="i-lucide-trash-2" class="size-3.5" />
                   </button>
@@ -760,27 +986,18 @@ const formSections = [
         </table>
       </div>
 
-      <!-- Pagination -->
-      <div v-if="totalItems > 50" class="flex items-center justify-between px-4 py-3 border-t bg-muted/10">
-        <span class="text-xs text-muted-foreground font-medium">
-          Showing {{ (currentPage - 1) * 50 + 1 }}–{{ Math.min(currentPage * 50, totalItems) }} of {{ totalItems }}
-        </span>
-        <div class="flex items-center gap-1">
-          <button
-            class="h-8 px-3 rounded-lg border bg-background text-xs font-medium hover:bg-muted transition-colors disabled:opacity-40"
-            :disabled="currentPage <= 1"
-            @click="fetchProducts(currentPage - 1)"
-          >
-            Previous
-          </button>
-          <button
-            class="h-8 px-3 rounded-lg border bg-background text-xs font-medium hover:bg-muted transition-colors disabled:opacity-40"
-            :disabled="currentPage >= totalPages"
-            @click="fetchProducts(currentPage + 1)"
-          >
-            Next
-          </button>
-        </div>
+      <!-- Infinite Scroll Sentinel -->
+      <div ref="scrollSentinel" class="h-1" />
+
+      <!-- Loading more indicator -->
+      <div v-if="isLoadingMore" class="flex items-center justify-center gap-2 py-4 border-t text-xs text-muted-foreground">
+        <Icon name="i-lucide-loader-circle" class="size-3.5 animate-spin" />
+        Loading more products...
+      </div>
+
+      <!-- End of results -->
+      <div v-else-if="items.length > 0 && currentPage >= totalPages && totalItems > 50" class="flex items-center justify-center py-3 border-t text-xs text-muted-foreground/60">
+        All {{ totalItems }} products loaded
       </div>
     </div>
 
@@ -815,7 +1032,16 @@ const formSections = [
                 </div>
                 <div v-else class="space-y-1" :class="field.span === 2 ? 'col-span-2' : ''">
                   <label class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{{ field.label }}</label>
+                  <select
+                    v-if="field.type === 'select'"
+                    v-model="(form as any)[field.key]"
+                    class="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  >
+                    <option value="">—</option>
+                    <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
+                  </select>
                   <input
+                    v-else
                     v-model="(form as any)[field.key]"
                     :type="field.type"
                     :step="field.type === 'number' ? '0.01' : undefined"

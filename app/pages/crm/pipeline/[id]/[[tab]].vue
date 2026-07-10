@@ -703,7 +703,7 @@ function totalSqft(blocks: any[]) {
             <div v-if="latestEstimate.variableValues && Object.keys(latestEstimate.variableValues).length > 0" class="space-y-3 pt-1">
               <div v-for="(val, key) in latestEstimate.variableValues" :key="key">
                 <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  {{ key.replace(/_/g, ' ') }}
+                  {{ String(key).replace(/_/g, ' ') }}
                 </p>
                 <p class="text-xs font-semibold text-foreground whitespace-pre-wrap">
                   {{ val || '—' }}
