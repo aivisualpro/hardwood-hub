@@ -19,7 +19,10 @@ export default defineEventHandler(async (event) => {
   const id = objectId(event.context.params?.id)
 
   if (method === 'GET') {
-    const record = await Pipeline.findById(id).lean()
+    const record = await Pipeline.findById(id)
+      .populate('assignedTo', 'employee email profileImage')
+      .populate('projectAssignedTo', 'employee email profileImage')
+      .lean()
     if (!record)
       return { success: false, error: 'Not found' }
     return { success: true, data: stripHiddenFields(event, '/crm/pipeline', record) }

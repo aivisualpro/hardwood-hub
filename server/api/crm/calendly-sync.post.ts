@@ -75,7 +75,7 @@ async function resolveStageIds(): Promise<StageIds> {
  * Only moves records that are still in an "early" stage (unset, Phone Call or
  * In-home Appointment) — never downgrades someone further along the pipeline.
  */
-async function applyPipelineStage(parsed: any, stages: StageIds) {
+async function applyPipelineStage(parsed: any, stages: StageIds, allowResurrect = false) {
   if (!parsed.email && !parsed.phone)
     return
 
@@ -115,8 +115,12 @@ async function applyPipelineStage(parsed: any, stages: StageIds) {
 
   const current = record.status ? String(record.status) : null
 
-  // Stages we're allowed to move FROM automatically
-  const movable = new Set([null, stages.phone, stages.inHome].filter(v => v !== undefined))
+  // Stages we're allowed to move FROM automatically.
+  // A genuinely NEW active booking may also resurrect a record from "Lost" —
+  // routine re-syncs never override a manual "Lost".
+  const movable = new Set<string | null>([null, stages.phone, stages.inHome])
+  if (!isCanceled && allowResurrect)
+    movable.add(stages.lost)
   if (!movable.has(current))
     return // customer already progressed past appointment stages — don't touch
 
@@ -222,11 +226,15 @@ export default defineEventHandler(async () => {
         totalUpdated++
       }
 
-      // Auto stage assignment — only when the appointment is new or its
-      // active/canceled/rescheduled state changed (won't fight manual moves)
-      if (isNew || stateChanged) {
+      // Auto stage assignment.
+      // Active bookings: always apply (idempotent — only ever upgrades records
+      // still in early stages, so it also backfills existing appointments).
+      // Cancellations: only on state change, so a manually rescued record
+      // isn't repeatedly forced back to "Lost".
+      const isActiveBooking = newMeeting?.eventStatus !== 'canceled'
+      if (isNew || stateChanged || isActiveBooking) {
         try {
-          await applyPipelineStage(parsed, stages)
+          await applyPipelineStage(parsed, stages, isNew || stateChanged)
         }
         catch (err: any) {
           log.warn(`Stage automation failed for ${parsed.email || parsed.gfEntryId}: ${err.message || err}`)

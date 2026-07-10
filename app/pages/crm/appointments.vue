@@ -119,6 +119,40 @@ async function handleStatusUpdate(id: string, status: string) {
   }
   toast.success(`Status updated to ${status}`)
 }
+
+// ─── Appointment type filter ────────────────────────────────────────────────
+type AptType = 'all' | 'in-home' | 'phone' | 'other'
+const typeFilter = ref<AptType>('all')
+
+function getAptType(item: any): 'in-home' | 'phone' | 'other' {
+  const t = (item.fields?.appointmentType || '').toLowerCase()
+  const name = (item.formName || '').toLowerCase()
+  if (t === 'in-home' || /in[\s-]?home/.test(name))
+    return 'in-home'
+  if (t === 'phone' || /phone|call|consult/.test(name))
+    return 'phone'
+  return 'other'
+}
+
+const filteredItems = computed(() => {
+  if (typeFilter.value === 'all')
+    return items.value
+  return items.value.filter(item => getAptType(item) === typeFilter.value)
+})
+
+const typeFilterOptions: { value: AptType, label: string, icon: string, color: string, activeColor: string }[] = [
+  { value: 'all', label: 'All', icon: 'i-lucide-layers', color: 'text-muted-foreground', activeColor: 'bg-foreground text-background' },
+  { value: 'in-home', label: 'In-Home', icon: 'i-lucide-home', color: 'text-blue-600', activeColor: 'bg-blue-600 text-white' },
+  { value: 'phone', label: 'Phone', icon: 'i-lucide-phone', color: 'text-emerald-600', activeColor: 'bg-emerald-600 text-white' },
+  { value: 'other', label: 'Other', icon: 'i-lucide-calendar', color: 'text-amber-600', activeColor: 'bg-amber-600 text-white' },
+]
+
+const typeCounts = computed(() => ({
+  'all': items.value.length,
+  'in-home': items.value.filter(i => getAptType(i) === 'in-home').length,
+  'phone': items.value.filter(i => getAptType(i) === 'phone').length,
+  'other': items.value.filter(i => getAptType(i) === 'other').length,
+}))
 </script>
 
 <template>
@@ -135,6 +169,25 @@ async function handleStatusUpdate(id: string, status: string) {
               placeholder="Search appointments..."
               class="w-full h-8 sm:h-9 pl-8 sm:pl-9 pr-4 rounded-lg border border-input bg-background/50 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
             >
+          </div>
+          <!-- Type Filter Pills -->
+          <div class="hidden sm:flex items-center gap-1 shrink-0">
+            <button
+              v-for="opt in typeFilterOptions"
+              :key="opt.value"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-all border"
+              :class="typeFilter === opt.value
+                ? `${opt.activeColor} border-transparent shadow-sm`
+                : `bg-transparent border-border/50 ${opt.color} hover:bg-muted/50`"
+              @click="typeFilter = opt.value"
+            >
+              <Icon :name="opt.icon" class="size-3.5" />
+              {{ opt.label }}
+              <span
+                class="text-[9px] font-bold px-1.5 py-px rounded-full"
+                :class="typeFilter === opt.value ? 'bg-white/20' : 'bg-muted'"
+              >{{ typeCounts[opt.value] }}</span>
+            </button>
           </div>
           <!-- View Toggle -->
           <div class="bg-muted p-0.5 hidden sm:flex rounded-lg items-center shadow-inner border border-input/50 h-8 sm:h-9">
@@ -174,7 +227,7 @@ async function handleStatusUpdate(id: string, status: string) {
     <!-- Calendar View -->
     <CrmCalendarView
       v-if="viewMode === 'calendar'"
-      :items="items"
+      :items="filteredItems"
       :is-loading="isLoading"
       class="min-h-[700px]"
       @update-status="handleStatusUpdate"
@@ -184,7 +237,7 @@ async function handleStatusUpdate(id: string, status: string) {
     <!-- List View -->
     <CrmSubmissionsTable
       v-else
-      :items="items"
+      :items="filteredItems"
       :is-loading="isLoading"
       type="appointment"
       empty-icon="i-lucide-calendar-check"
@@ -281,7 +334,7 @@ async function handleStatusUpdate(id: string, status: string) {
             </h4>
             <div class="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/50">
               <div
-                v-for="(entry, index) in Object.entries(selectedItem.fields).filter(([k]) => k !== 'meetingScheduled')"
+                v-for="(entry, index) in Object.entries(selectedItem.fields).filter(([k]) => k !== 'meetingScheduled' && k !== 'appointmentType')"
                 :key="entry[0]"
                 class="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 px-4 py-3 bg-card text-sm"
               >

@@ -70,32 +70,41 @@ async function bulkDeleteSelected() {
 const isQuickEditMode = ref(false)
 const activeDropdown = ref<string | null>(null)
 
-function toggleAssignee(customer: any, field: string, email: string) {
-  let arr = getAssignedToArray(customer[field])
-  if (arr.includes(email)) {
-    arr = arr.filter(e => e !== email)
+function toggleAssignee(customer: any, field: string, empId: string) {
+  const current: any[] = Array.isArray(customer[field]) ? customer[field] : []
+  const ids = current.map((a: any) => typeof a === 'object' && a?._id ? String(a._id) : String(a))
+  let newIds: string[]
+  if (ids.includes(empId)) {
+    newIds = ids.filter(id => id !== empId)
   }
   else {
-    arr.push(email)
+    newIds = [...ids, empId]
   }
-  const val = arr.join(',')
-  customer[field] = val
+  // Optimistic update — set populated objects where possible
+  const emp = employeesList.value.find(e => e._id === empId)
+  customer[field] = newIds.map(id => {
+    const e = employeesList.value.find(emp => emp._id === id)
+    return e ? { _id: e._id, employee: e.employee, email: e.email, profileImage: e.profileImage } : id
+  })
 
   $fetch(`/api/pipeline/${customer._id}`, {
     method: 'PUT',
-    body: { [field]: val },
+    body: { [field]: newIds },
   }).catch(() => toast.error('Failed to save assignment'))
 }
 
-function removeAssignee(customer: any, field: string, email: string) {
-  let arr = getAssignedToArray(customer[field])
-  arr = arr.filter(e => e !== email)
-  const val = arr.join(',')
-  customer[field] = val
+function removeAssignee(customer: any, field: string, empId: string) {
+  const current: any[] = Array.isArray(customer[field]) ? customer[field] : []
+  const ids = current.map((a: any) => typeof a === 'object' && a?._id ? String(a._id) : String(a))
+  const newIds = ids.filter(id => id !== empId)
+  customer[field] = newIds.map(id => {
+    const e = employeesList.value.find(emp => emp._id === id)
+    return e ? { _id: e._id, employee: e.employee, email: e.email, profileImage: e.profileImage } : id
+  })
 
   $fetch(`/api/pipeline/${customer._id}`, {
     method: 'PUT',
-    body: { [field]: val },
+    body: { [field]: newIds },
   }).catch(() => toast.error('Failed to remove assignment'))
 }
 
@@ -467,23 +476,34 @@ async function fetchEmployees() {
   }
 }
 
-function resolveAssignedTo(assignedTo: string | undefined | null) {
-  if (!assignedTo)
+function resolveAssignedTo(assignee: any) {
+  if (!assignee)
     return null
-  const emp = employeesList.value.find(e => e.email === assignedTo || e.employee === assignedTo || e._id === assignedTo)
+  // Already a populated object?
+  if (typeof assignee === 'object' && assignee._id) {
+    return { id: String(assignee._id), name: assignee.employee || assignee.email || String(assignee._id), image: assignee.profileImage || null }
+  }
+  // Raw ObjectId string — look up in employees list
+  const id = String(assignee)
+  const emp = employeesList.value.find(e => e._id === id || e.email === id || e.employee === id)
   if (emp)
-    return { name: emp.employee, image: emp.profileImage }
-  return { name: assignedTo, image: null }
+    return { id: emp._id, name: emp.employee, image: emp.profileImage }
+  return { id, name: id, image: null }
 }
 
-function getAssignedToArray(assignedTo: any): string[] {
+function getAssignedToArray(assignedTo: any): any[] {
   if (!assignedTo)
     return []
   if (Array.isArray(assignedTo))
     return assignedTo.filter(Boolean)
+  // Legacy string fallback (should not happen post-migration)
   if (typeof assignedTo === 'string')
     return assignedTo.split(/[,;]/).map(s => s.trim()).filter(Boolean)
   return []
+}
+
+function getAssignedToIds(assignedTo: any): string[] {
+  return getAssignedToArray(assignedTo).map((a: any) => typeof a === 'object' && a?._id ? String(a._id) : String(a))
 }
 
 function getAssignedToNames(assignedTo: any): string {
@@ -903,7 +923,7 @@ watch(() => route.query.search, (val) => {
                     >
                       <img v-if="resolveAssignedTo(assignee)?.image" :src="resolveAssignedTo(assignee)!.image" class="size-3.5 rounded-full object-cover shrink-0">
                       <span class="truncate">{{ resolveAssignedTo(assignee)?.name }}</span>
-                      <div class="hover:bg-primary/20 rounded-full p-0.5 ml-0.5 shrink-0" @click.stop="removeAssignee(c, 'assignedTo', assignee)">
+                      <div class="hover:bg-primary/20 rounded-full p-0.5 ml-0.5 shrink-0" @click.stop="removeAssignee(c, 'assignedTo', resolveAssignedTo(assignee)?.id)">
                         <Icon name="i-lucide-x" class="size-3 text-primary/70 hover:text-red-500 transition-colors" />
                       </div>
                     </div>
@@ -919,8 +939,8 @@ watch(() => route.query.search, (val) => {
                     <div
                       v-for="emp in employeesList" :key="emp.email"
                       class="px-3 py-2 text-xs cursor-pointer font-medium flex items-center gap-2.5 transition-colors"
-                      :class="getAssignedToArray(c.assignedTo).includes(emp.email) ? 'bg-primary/10 text-primary' : 'hover:bg-muted/60 text-foreground/80 hover:text-foreground'"
-                      @click.stop="toggleAssignee(c, 'assignedTo', emp.email)"
+                      :class="getAssignedToIds(c.assignedTo).includes(emp._id) ? 'bg-primary/10 text-primary' : 'hover:bg-muted/60 text-foreground/80 hover:text-foreground'"
+                      @click.stop="toggleAssignee(c, 'assignedTo', emp._id)"
                     >
                       <img v-if="emp.profileImage" :src="emp.profileImage" class="size-6 rounded-full object-cover border border-border/50">
                       <div v-else class="size-6 rounded-full bg-muted flex items-center justify-center text-[10px] uppercase font-bold text-muted-foreground border border-border/50 shadow-sm">
@@ -931,7 +951,7 @@ watch(() => route.query.search, (val) => {
                         <span class="truncate text-[13px] leading-tight font-bold">{{ emp.employee }}</span>
                         <span class="text-[9px] opacity-70 truncate">{{ emp.email }}</span>
                       </div>
-                      <Icon v-if="getAssignedToArray(c.assignedTo).includes(emp.email)" name="i-lucide-check-circle-2" class="ml-auto size-4 shrink-0" />
+                      <Icon v-if="getAssignedToIds(c.assignedTo).includes(emp._id)" name="i-lucide-check-circle-2" class="ml-auto size-4 shrink-0" />
                     </div>
                     <div v-if="!employeesList.length" class="px-3 py-4 text-xs text-muted-foreground text-center flex flex-col items-center gap-2">
                       <Icon name="i-lucide-users" class="size-5 opacity-40" />
@@ -1009,7 +1029,7 @@ watch(() => route.query.search, (val) => {
                     >
                       <img v-if="resolveAssignedTo(assignee)?.image" :src="resolveAssignedTo(assignee)!.image" class="size-3.5 rounded-full object-cover shrink-0">
                       <span class="truncate">{{ resolveAssignedTo(assignee)?.name }}</span>
-                      <div class="hover:bg-primary/20 rounded-full p-0.5 ml-0.5 shrink-0" @click.stop="removeAssignee(c, 'projectAssignedTo', assignee)">
+                      <div class="hover:bg-primary/20 rounded-full p-0.5 ml-0.5 shrink-0" @click.stop="removeAssignee(c, 'projectAssignedTo', resolveAssignedTo(assignee)?.id)">
                         <Icon name="i-lucide-x" class="size-3 text-primary/70 hover:text-red-500 transition-colors" />
                       </div>
                     </div>
@@ -1025,8 +1045,8 @@ watch(() => route.query.search, (val) => {
                     <div
                       v-for="emp in employeesList" :key="emp.email"
                       class="px-3 py-2 text-xs cursor-pointer font-medium flex items-center gap-2.5 transition-colors"
-                      :class="getAssignedToArray(c.projectAssignedTo).includes(emp.email) ? 'bg-primary/10 text-primary' : 'hover:bg-muted/60 text-foreground/80 hover:text-foreground'"
-                      @click.stop="toggleAssignee(c, 'projectAssignedTo', emp.email)"
+                      :class="getAssignedToIds(c.projectAssignedTo).includes(emp._id) ? 'bg-primary/10 text-primary' : 'hover:bg-muted/60 text-foreground/80 hover:text-foreground'"
+                      @click.stop="toggleAssignee(c, 'projectAssignedTo', emp._id)"
                     >
                       <img v-if="emp.profileImage" :src="emp.profileImage" class="size-6 rounded-full object-cover border border-border/50">
                       <div v-else class="size-6 rounded-full bg-muted flex items-center justify-center text-[10px] uppercase font-bold text-muted-foreground border border-border/50 shadow-sm">
@@ -1037,7 +1057,7 @@ watch(() => route.query.search, (val) => {
                         <span class="truncate text-[13px] leading-tight font-bold">{{ emp.employee }}</span>
                         <span class="text-[9px] opacity-70 truncate">{{ emp.email }}</span>
                       </div>
-                      <Icon v-if="getAssignedToArray(c.projectAssignedTo).includes(emp.email)" name="i-lucide-check-circle-2" class="ml-auto size-4 shrink-0" />
+                      <Icon v-if="getAssignedToIds(c.projectAssignedTo).includes(emp._id)" name="i-lucide-check-circle-2" class="ml-auto size-4 shrink-0" />
                     </div>
                     <div v-if="!employeesList.length" class="px-3 py-4 text-xs text-muted-foreground text-center flex flex-col items-center gap-2">
                       <Icon name="i-lucide-users" class="size-5 opacity-40" />

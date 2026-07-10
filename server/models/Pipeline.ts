@@ -19,13 +19,13 @@ const PipelineSchema = new mongoose.Schema(
     status: { type: mongoose.Schema.Types.ObjectId, default: null },
     estimatedProjectDuration: { type: String, default: '' },
     totalEstimate: { type: Number, default: null },
-    assignedTo: { type: String, default: '' },
+    assignedTo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }],
     totalTrackedViews: { type: Number, default: 0 },
     estimateSentOn: { type: Date, default: null },
     initialContactDate: { type: Date, default: null },
     lastFollowUpSentOn: { type: Date, default: null },
     dateApproved: { type: Date, default: null },
-    projectAssignedTo: { type: String, default: '' },
+    projectAssignedTo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Employee' }],
     contactIds: [{ type: mongoose.Schema.Types.ObjectId }],
     woodOrderDate: { type: Date, default: null },
     tags: [{ type: String }],
@@ -84,13 +84,13 @@ export interface IPipeline {
   status?: any
   estimatedProjectDuration?: string
   totalEstimate?: number
-  assignedTo?: string
+  assignedTo?: any[]
   totalTrackedViews?: number
   estimateSentOn?: Date
   initialContactDate?: Date
   lastFollowUpSentOn?: Date
   dateApproved?: Date
-  projectAssignedTo?: string
+  projectAssignedTo?: any[]
   contactIds?: any[]
   woodOrderDate?: Date
   tags?: string[]

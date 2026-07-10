@@ -77,6 +77,8 @@ export default defineEventHandler(async (event) => {
     if (customerId) {
       const records = await Pipeline.find(filter)
         .select('-gallery -relatedContacts -notes')
+        .populate('assignedTo', 'employee email profileImage')
+        .populate('projectAssignedTo', 'employee email profileImage')
         .sort({ createdAt: -1 })
         .lean()
       const serialized = records.map((c: any) => ({
@@ -91,6 +93,8 @@ export default defineEventHandler(async (event) => {
     const [records, total] = await Promise.all([
       Pipeline.find(filter)
         .select('-gallery -relatedContacts -notes')
+        .populate('assignedTo', 'employee email profileImage')
+        .populate('projectAssignedTo', 'employee email profileImage')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

@@ -74,11 +74,47 @@ function getServiceIcon(apt: any): string {
   return 'i-lucide-calendar'
 }
 
-const APT_STATE_CLASSES: Record<AptState, string> = {
-  active: 'from-sky-500/10 to-blue-600/5 border-sky-500/20 text-sky-700 dark:text-sky-400',
-  completed: 'from-green-500/10 to-green-500/5 border-green-500/20 text-green-700 dark:text-green-400',
-  rescheduled: 'from-zinc-500/10 to-zinc-500/5 border-zinc-500/20 text-muted-foreground opacity-60',
-  canceled: 'from-red-500/10 to-red-500/5 border-red-500/20 text-red-700/70 dark:text-red-400/70 opacity-60',
+// ─── Appointment type detection ─────────────────────────────────────────────
+type AptType = 'in-home' | 'phone' | 'other'
+
+function getAptType(apt: any): AptType {
+  const t = (apt.fields?.appointmentType || '').toLowerCase()
+  const name = (apt.formName || '').toLowerCase()
+  if (t === 'in-home' || /in[\s-]?home/.test(name))
+    return 'in-home'
+  if (t === 'phone' || /phone|call|consult/.test(name))
+    return 'phone'
+  return 'other'
+}
+
+// Type-based card colors (background, border, row1 text, row2 text, row3 text)
+const APT_TYPE_COLORS: Record<AptType, { card: string, row1: string, row2: string, row3: string }> = {
+  'in-home': {
+    card: 'bg-blue-600/15 border-blue-500/40 hover:bg-blue-600/25',
+    row1: 'text-blue-900 dark:text-blue-200',
+    row2: 'text-blue-700 dark:text-blue-300',
+    row3: 'text-blue-600/70 dark:text-blue-400/70',
+  },
+  'phone': {
+    card: 'bg-emerald-600/15 border-emerald-500/40 hover:bg-emerald-600/25',
+    row1: 'text-emerald-900 dark:text-emerald-200',
+    row2: 'text-emerald-700 dark:text-emerald-300',
+    row3: 'text-emerald-600/70 dark:text-emerald-400/70',
+  },
+  'other': {
+    card: 'bg-amber-600/15 border-amber-500/40 hover:bg-amber-600/25',
+    row1: 'text-amber-900 dark:text-amber-200',
+    row2: 'text-amber-700 dark:text-amber-300',
+    row3: 'text-amber-600/70 dark:text-amber-400/70',
+  },
+}
+
+// State overlay for canceled/rescheduled
+const APT_STATE_OVERLAY: Record<AptState, string> = {
+  active: '',
+  completed: '',
+  rescheduled: 'opacity-50',
+  canceled: 'opacity-40',
 }
 </script>
 
@@ -140,32 +176,41 @@ const APT_STATE_CLASSES: Record<AptState, string> = {
               <div
                 v-for="apt in getAppointmentsForDay(day)"
                 :key="apt._id"
-                class="group cursor-pointer flex flex-col p-1.5 sm:p-2 rounded-md sm:rounded-lg border text-[10px] sm:text-xs text-left bg-gradient-to-br transition-all hover:-translate-y-px hover:shadow-md truncate"
-                :class="APT_STATE_CLASSES[getAptState(apt)]"
+                class="group cursor-pointer flex flex-col p-1.5 sm:p-2 rounded-md sm:rounded-lg border text-[10px] sm:text-xs text-left transition-all hover:-translate-y-px hover:shadow-md truncate"
+                :class="[APT_TYPE_COLORS[getAptType(apt)].card, APT_STATE_OVERLAY[getAptState(apt)]]"
                 @click="emit('select', apt)"
               >
                 <div
                   class="font-bold truncate transition-colors"
-                  :class="getAptState(apt) === 'rescheduled' || getAptState(apt) === 'canceled' ? 'line-through' : 'group-hover:text-sky-600'"
+                  :class="[
+                    APT_TYPE_COLORS[getAptType(apt)].row1,
+                    (getAptState(apt) === 'rescheduled' || getAptState(apt) === 'canceled') ? 'line-through' : '',
+                  ]"
                 >
                   {{ apt.name || 'Anonymous' }}
                 </div>
-                <div class="flex items-center gap-1 mt-0.5 opacity-90 text-[9px] sm:text-[10px] truncate">
+                <div
+                  class="flex items-center gap-1 mt-0.5 font-semibold text-[9px] sm:text-[10px] truncate"
+                  :class="APT_TYPE_COLORS[getAptType(apt)].row2"
+                >
                   <Icon :name="getServiceIcon(apt)" class="size-3 shrink-0 hidden sm:inline-block" />
                   <span class="truncate">{{ getServiceLabel(apt) }}</span>
                 </div>
-                <div class="flex items-center gap-1 mt-0.5 opacity-80 text-[9px] sm:text-[10px]">
+                <div
+                  class="flex items-center gap-1 mt-0.5 font-medium text-[10px] sm:text-xs"
+                  :class="APT_TYPE_COLORS[getAptType(apt)].row3"
+                >
                   <Icon name="i-lucide-clock" class="size-3 shrink-0 hidden sm:inline-block" />
                   <span :class="{ 'line-through': getAptState(apt) === 'rescheduled' || getAptState(apt) === 'canceled' }">
                     {{ apt.fields?.meetingScheduled?.startTime ? formatTime(apt.fields.meetingScheduled.startTime) : formatTime(apt.dateSubmitted) }}
                   </span>
                   <span
                     v-if="getAptState(apt) === 'rescheduled'"
-                    class="ml-auto shrink-0 px-1 py-px rounded bg-zinc-500/20 text-zinc-600 dark:text-zinc-400 font-bold uppercase tracking-wide text-[8px] sm:text-[9px]"
+                    class="ml-auto shrink-0 px-1.5 py-0.5 rounded-md bg-zinc-700 text-white font-bold uppercase tracking-wide text-[7px] sm:text-[8px] shadow-sm"
                   >Rescheduled</span>
                   <span
                     v-else-if="getAptState(apt) === 'canceled'"
-                    class="ml-auto shrink-0 px-1 py-px rounded bg-red-500/20 text-red-600 dark:text-red-400 font-bold uppercase tracking-wide text-[8px] sm:text-[9px]"
+                    class="ml-auto shrink-0 px-1.5 py-0.5 rounded-md bg-red-700 text-white font-bold uppercase tracking-wide text-[7px] sm:text-[8px] shadow-sm"
                   >Canceled</span>
                 </div>
               </div>

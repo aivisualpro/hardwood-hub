@@ -266,8 +266,8 @@ const newProjectPrefill = computed(() => {
     city: c.city || '',
     state: c.state || '',
     zip: c.zip || '',
-    assignedTo: c.assignedTo || '',
-    projectAssignedTo: c.projectAssignedTo || '',
+    assignedTo: (c.assignedTo || []).map((a: any) => typeof a === 'object' && a?._id ? String(a._id) : String(a)),
+    projectAssignedTo: (c.projectAssignedTo || []).map((a: any) => typeof a === 'object' && a?._id ? String(a._id) : String(a)),
   }
 })
 
@@ -301,6 +301,19 @@ async function deleteCustomer() {
 // ─── Helpers ───────────────────────────────────────────────────────────────
 function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') : '—' }
 function formatDateTime(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy · h:mm a') : '—' }
+
+// Format variable values — auto-detect currency fields and format as $x,xxx.xx
+function formatVarValue(key: string, val: any): string {
+  if (val === null || val === undefined || val === '') return '—'
+  const str = String(val).trim()
+  const k = String(key).toLowerCase()
+  const isCurrencyKey = /cost|total|price|discount|estimate_total|amount|fee|charge|subtotal|tax/.test(k)
+  const num = Number(str.replace(/[$,]/g, ''))
+  if (isCurrencyKey && !isNaN(num) && str !== '') {
+    return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+  return str
+}
 
 function submissionStatusClass(status: string) {
   const m: Record<string, string> = {
@@ -454,227 +467,213 @@ function totalSqft(blocks: any[]) {
     <div class="flex h-full overflow-hidden divide-x divide-border">
       <!-- ══ LEFT COLUMN — Details + Related Contacts ══════════════════════ -->
       <div class="w-[32%] min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
-        <!-- ── Customer Details Card ─────────────────────────────────── -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div class="px-5 py-3 border-b bg-muted/30 flex items-center gap-2 shrink-0">
-            <Icon name="i-lucide-user" class="size-4 text-primary shrink-0" />
-            <h3 class="text-sm font-bold text-foreground">
-              Customer Details
-            </h3>
+        <!-- ── Customer Details ─────────────────────────────────── -->
+        <div class="flex items-center gap-2 mt-1">
+          <Icon name="i-lucide-user" class="size-4 text-primary shrink-0" />
+          <h3 class="text-sm font-bold text-foreground">Customer Details</h3>
+        </div>
+        <hr class="border-border/50" />
+        <div v-if="customer" class="text-xs space-y-0">
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Name</span>
+            <span class="col-span-7 font-bold text-foreground">
+              {{ customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || '—' }}
+            </span>
           </div>
-          <div v-if="customer" class="px-5 py-4 flex-1 min-h-0 overflow-y-auto">
-            <div class="space-y-0 text-xs">
-              <!-- Customer Name -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Name</span>
-                <span class="col-span-7 font-bold text-foreground">
-                  {{ customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || '—' }}
-                </span>
-              </div>
-              <!-- Email -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Email</span>
-                <span class="col-span-7">
-                  <a v-if="customer.email" :href="`mailto:${customer.email}`" class="font-semibold text-primary hover:underline truncate block">{{ customer.email }}</a>
-                  <span v-else class="text-muted-foreground">—</span>
-                </span>
-              </div>
-              <!-- Phone -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Phone</span>
-                <span class="col-span-7">
-                  <a v-if="customer.phone" :href="`tel:${customer.phone}`" class="font-semibold text-foreground hover:text-primary transition-colors">{{ customer.phone }}</a>
-                  <span v-else class="text-muted-foreground">—</span>
-                </span>
-              </div>
-              <!-- Address -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Address</span>
-                <span class="col-span-7 font-medium text-foreground/80 leading-relaxed">{{ customer.address || '—' }}</span>
-              </div>
-              <!-- City -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">City</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.city || '—' }}</span>
-              </div>
-              <!-- State -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">State</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.state || '—' }}{{ customer.zip ? ` ${customer.zip}` : '' }}</span>
-              </div>
-              <!-- Type -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Type</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.type || '—' }}</span>
-              </div>
-              <!-- Source -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30 last:border-b-0">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Source</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.source || 'Direct' }}</span>
-              </div>
-            </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Email</span>
+            <span class="col-span-7">
+              <a v-if="customer.email" :href="`mailto:${customer.email}`" class="font-semibold text-primary hover:underline truncate block">{{ customer.email }}</a>
+              <span v-else class="text-muted-foreground">—</span>
+            </span>
           </div>
-          <div v-else class="px-5 py-8">
-            <div class="space-y-2 w-full">
-              <div v-for="i in 4" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${[88, 75, 92, 80][i - 1]}%`" />
-            </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Phone</span>
+            <span class="col-span-7">
+              <a v-if="customer.phone" :href="`tel:${customer.phone}`" class="font-semibold text-foreground hover:text-primary transition-colors">{{ customer.phone }}</a>
+              <span v-else class="text-muted-foreground">—</span>
+            </span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Address</span>
+            <span class="col-span-7 font-medium text-foreground/80 leading-relaxed">{{ customer.address || '—' }}</span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">City</span>
+            <span class="col-span-7 font-semibold text-foreground">{{ customer.city || '—' }}</span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">State</span>
+            <span class="col-span-7 font-semibold text-foreground">{{ customer.state || '—' }}{{ customer.zip ? ` ${customer.zip}` : '' }}</span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Type</span>
+            <span class="col-span-7 font-semibold text-foreground">{{ customer.type || '—' }}</span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Source</span>
+            <span class="col-span-7 font-semibold text-foreground">{{ customer.source || 'Direct' }}</span>
+          </div>
+        </div>
+        <div v-else class="py-4">
+          <div class="space-y-2 w-full">
+            <div v-for="i in 4" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${[88, 75, 92, 80][i - 1]}%`" />
           </div>
         </div>
 
-        <!-- ── Project Details Card ──────────────────────────────────── -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div class="px-5 py-3 border-b bg-muted/30 flex items-center gap-2 shrink-0">
-            <Icon name="i-lucide-folder-kanban" class="size-4 text-primary shrink-0" />
-            <h3 class="text-sm font-bold text-foreground">
-              Project Details
-            </h3>
+        <!-- ── Project Details ──────────────────────────────────── -->
+        <div class="flex items-center gap-2 mt-4">
+          <Icon name="i-lucide-folder-kanban" class="size-4 text-primary shrink-0" />
+          <h3 class="text-sm font-bold text-foreground">Project Details</h3>
+        </div>
+        <hr class="border-border/50" />
+        <div v-if="customer" class="text-xs space-y-0">
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Project Name</span>
+            <span class="col-span-7 font-bold text-foreground">{{ customer.projectName || '—' }}</span>
           </div>
-          <div v-if="customer" class="px-5 py-4 flex-1 min-h-0 overflow-y-auto">
-            <div class="space-y-0 text-xs">
-              <!-- Project Name -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Project Name</span>
-                <span class="col-span-7 font-bold text-foreground">{{ customer.projectName || '—' }}</span>
-              </div>
-              <!-- Stage -->
-              <div class="grid grid-cols-12 gap-2 items-center py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Stage</span>
-                <span class="col-span-7 font-bold uppercase tracking-wider text-xs" :style="getStageStyle()">{{ getStatusLabel() || '—' }}</span>
-              </div>
-              <!-- Duration -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Project Duration</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.estimatedProjectDuration || '—' }}</span>
-              </div>
-              <!-- Total Estimate -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Total Estimate</span>
-                <span class="col-span-7 font-black tabular-nums text-foreground">{{ customer.totalEstimate ? `$${customer.totalEstimate.toLocaleString()}` : '—' }}</span>
-              </div>
-              <!-- Labor + Sanding -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Labor + Sanding</span>
-                <span class="col-span-7 font-black tabular-nums text-foreground">{{ customer.laborSandingTotal ? `$${customer.laborSandingTotal.toLocaleString()}` : '—' }}</span>
-              </div>
-              <!-- Assigned To -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Assigned To</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.assignedTo || '—' }}</span>
-              </div>
-              <!-- Crew -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Crew</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.projectAssignedTo || '—' }}</span>
-              </div>
-              <!-- Tracked Views -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Tracked Views</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.totalTrackedViews ?? 0 }}</span>
-              </div>
-              <!-- Estimate Sent On -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Estimate Sent On</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.estimateSentOn ? formatDate(customer.estimateSentOn) : '—' }}</span>
-              </div>
-              <!-- Notes -->
-              <div v-if="customer.notes" class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Notes</span>
-                <span class="col-span-7 text-foreground/70 leading-relaxed whitespace-pre-wrap">{{ customer.notes }}</span>
-              </div>
-              <!-- Key Dates -->
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Initial Contact</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.initialContactDate ? formatDate(customer.initialContactDate) : '—' }}</span>
-              </div>
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Last Follow-Up</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.lastFollowUpSentOn ? formatDate(customer.lastFollowUpSentOn) : '—' }}</span>
-              </div>
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Date Approved</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.dateApproved ? formatDate(customer.dateApproved) : '—' }}</span>
-              </div>
-              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Wood Order Date</span>
-                <span class="col-span-7 font-semibold text-foreground">{{ customer.woodOrderDate ? formatDate(customer.woodOrderDate) : '—' }}</span>
-              </div>
-              <!-- Tags -->
-              <div v-if="customer.tags?.length" class="grid grid-cols-12 gap-2 items-start py-1.5">
-                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Tags</span>
-                <span class="col-span-7">
-                  <div class="flex flex-wrap gap-1">
-                    <span v-for="tag in customer.tags" :key="tag" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-foreground border">{{ tag }}</span>
-                  </div>
+          <div class="grid grid-cols-12 gap-2 items-center py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Stage</span>
+            <span class="col-span-7 font-bold uppercase tracking-wider text-xs" :style="getStageStyle()">{{ getStatusLabel() || '—' }}</span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Project Duration</span>
+            <span class="col-span-7 font-semibold text-foreground">{{ customer.estimatedProjectDuration || '—' }}</span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Assigned To</span>
+            <span class="col-span-7 font-semibold text-foreground">
+              <template v-if="Array.isArray(customer.assignedTo) && customer.assignedTo.length">
+                <span v-for="(a, i) in customer.assignedTo" :key="i">
+                  {{ typeof a === 'object' && a?.employee ? a.employee : a }}<span v-if="Number(i) < customer.assignedTo.length - 1">, </span>
                 </span>
-              </div>
-            </div>
+              </template>
+              <template v-else>—</template>
+            </span>
           </div>
-          <div v-else class="px-5 py-8">
-            <div class="space-y-2 w-full">
-              <div v-for="i in 5" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${[85, 72, 90, 78, 82][i - 1]}%`" />
-            </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Crew</span>
+            <span class="col-span-7 font-semibold text-foreground">
+              <template v-if="Array.isArray(customer.projectAssignedTo) && customer.projectAssignedTo.length">
+                <span v-for="(a, i) in customer.projectAssignedTo" :key="i">
+                  {{ typeof a === 'object' && a?.employee ? a.employee : a }}<span v-if="Number(i) < customer.projectAssignedTo.length - 1">, </span>
+                </span>
+              </template>
+              <template v-else>—</template>
+            </span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Tracked Views</span>
+            <span class="col-span-7 font-semibold text-foreground">{{ customer.totalTrackedViews ?? 0 }}</span>
+          </div>
+          <div v-if="customer.notes" class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Notes</span>
+            <span class="col-span-7 text-foreground/70 leading-relaxed whitespace-pre-wrap">{{ customer.notes }}</span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Last Follow-Up</span>
+            <span class="col-span-7 font-semibold text-foreground">{{ customer.lastFollowUpSentOn ? formatDate(customer.lastFollowUpSentOn) : '—' }}</span>
+          </div>
+          <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Wood Order Date</span>
+            <span class="col-span-7 font-semibold text-foreground">{{ customer.woodOrderDate ? formatDate(customer.woodOrderDate) : '—' }}</span>
+          </div>
+          <div v-if="customer.tags?.length" class="grid grid-cols-12 gap-2 items-start py-1.5">
+            <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Tags</span>
+            <span class="col-span-7">
+              <div class="flex flex-wrap gap-1">
+                <span v-for="tag in customer.tags" :key="tag" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-foreground border">{{ tag }}</span>
+              </div>
+            </span>
+          </div>
+        </div>
+        <div v-else class="py-4">
+          <div class="space-y-2 w-full">
+            <div v-for="i in 5" :key="i" class="h-4 bg-muted/40 rounded animate-pulse" :style="`width: ${[85, 72, 90, 78, 82][i - 1]}%`" />
           </div>
         </div>
 
-        <!-- ── Estimate Details Card ──────────────────────────────────── -->
-        <div v-if="latestEstimate" class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div class="px-5 py-3 border-b bg-muted/30 flex items-center gap-2 shrink-0">
+        <!-- ── Estimate Details ──────────────────────────────────── -->
+        <template v-if="latestEstimate">
+          <div class="flex items-center gap-2 mt-4">
             <Icon name="i-lucide-file-text" class="size-4 text-blue-500 shrink-0" />
-            <h3 class="text-sm font-bold text-foreground">
-              Estimate Details
-            </h3>
+            <h3 class="text-sm font-bold text-foreground">Estimate Details</h3>
             <span class="ml-auto text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
               #{{ latestEstimate.estimateNumber }}
             </span>
           </div>
-          <div class="px-5 py-4 space-y-3 flex-1 min-h-0 overflow-y-auto">
-             <!-- Details List (Two columns: Label & Value) -->
-             <div class="space-y-2.5 pt-1 text-xs">
-               <!-- Estimate Title -->
-               <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-                 <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">
-                   Estimate Title
-                 </span>
-                 <span class="col-span-7 font-bold text-foreground truncate" :title="latestEstimate.title">
-                   {{ latestEstimate.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || 'Estimate' }}
-                 </span>
-               </div>
-
-               <!-- Status -->
-               <div class="grid grid-cols-12 gap-2 items-center py-1.5 border-b border-border/30">
-                 <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">
-                   Status
-                 </span>
-                 <span class="col-span-7">
-                   <span
-                     class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
-                     :class="ESTIMATE_STATUS_COLORS[latestEstimate.status] || 'bg-muted text-muted-foreground'"
-                   >
-                     {{ ESTIMATE_STATUS_LABELS[latestEstimate.status] || latestEstimate.status }}
-                   </span>
-                 </span>
-               </div>
-
-               <!-- Variables -->
-               <template v-if="latestEstimate.variableValues && Object.keys(latestEstimate.variableValues).length > 0">
-                 <div v-for="(val, key) in latestEstimate.variableValues" :key="key" class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30 last:border-b-0">
-                   <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">
-                     {{ String(key).replace(/_/g, ' ') }}
-                   </span>
-                   <span class="col-span-7 font-semibold text-foreground whitespace-pre-wrap break-words">
-                     {{ val || '—' }}
-                   </span>
-                 </div>
-               </template>
-               <div v-else class="text-xs text-muted-foreground text-center py-2">
-                 No variable information available.
-               </div>
-             </div>
+          <hr class="border-border/50" />
+          <div class="text-xs space-y-0">
+            <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+              <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Estimate Title</span>
+              <span class="col-span-7 font-bold text-foreground truncate" :title="latestEstimate.title">
+                {{ latestEstimate.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || 'Estimate' }}
+              </span>
+            </div>
+            <div class="grid grid-cols-12 gap-2 items-center py-1.5 border-b border-border/30">
+              <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Status</span>
+              <span class="col-span-7">
+                <span
+                  class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
+                  :class="ESTIMATE_STATUS_COLORS[latestEstimate.status] || 'bg-muted text-muted-foreground'"
+                >
+                  {{ ESTIMATE_STATUS_LABELS[latestEstimate.status] || latestEstimate.status }}
+                </span>
+              </span>
+            </div>
+            <!-- Horizontal Status Timeline -->
+            <div class="py-3 border-b border-border/30">
+              <div class="flex items-center gap-0">
+                <template v-for="(step, idx) in ['draft', 'sent', 'approved', 'completed']" :key="step">
+                  <div class="flex flex-col items-center gap-1 flex-1 min-w-0">
+                    <div
+                      class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all text-[8px] font-bold"
+                      :class="step === latestEstimate.status
+                        ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/30'
+                        : ['draft', 'sent', 'approved', 'completed'].indexOf(step) < ['draft', 'sent', 'approved', 'completed'].indexOf(latestEstimate.status)
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-muted text-muted-foreground'"
+                    >
+                      <Icon
+                        :name="['draft', 'sent', 'approved', 'completed'].indexOf(step) < ['draft', 'sent', 'approved', 'completed'].indexOf(latestEstimate.status) ? 'i-lucide-check' : step === latestEstimate.status ? 'i-lucide-circle-dot' : 'i-lucide-circle'"
+                        class="size-3"
+                      />
+                    </div>
+                    <span
+                      class="text-[8px] font-bold uppercase tracking-wider text-center leading-none"
+                      :class="step === latestEstimate.status ? 'text-primary' : ['draft', 'sent', 'approved', 'completed'].indexOf(step) < ['draft', 'sent', 'approved', 'completed'].indexOf(latestEstimate.status) ? 'text-emerald-600' : 'text-muted-foreground/50'"
+                    >{{ ESTIMATE_STATUS_LABELS[step] }}</span>
+                  </div>
+                  <div
+                    v-if="idx < 3"
+                    class="h-0.5 flex-1 -mx-1 mt-[-12px]"
+                    :class="['draft', 'sent', 'approved', 'completed'].indexOf(step) < ['draft', 'sent', 'approved', 'completed'].indexOf(latestEstimate.status) ? 'bg-emerald-500' : 'bg-border'"
+                  />
+                </template>
+              </div>
+            </div>
+            <template v-if="latestEstimate.variableValues && Object.keys(latestEstimate.variableValues).length > 0">
+              <div v-for="(val, key) in latestEstimate.variableValues" :key="key" class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30 last:border-b-0">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">
+                  {{ String(key).replace(/_/g, ' ') }}
+                </span>
+                <span class="col-span-7 font-semibold text-foreground whitespace-pre-wrap break-words">
+                  {{ formatVarValue(String(key), val) }}
+                </span>
+              </div>
+            </template>
+            <div v-else class="text-xs text-muted-foreground text-center py-2">
+              No variable information available.
+            </div>
           </div>
-        </div>
+        </template>
 
+      </div>
+
+      <!-- ══ MIDDLE COLUMN — Quotes + Estimates + Contracts ════════════════ -->
+      <div class="flex-1 min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
         <!-- Related Contacts Card -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-[200px]">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2 shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-contact" class="size-4 text-primary shrink-0" />
@@ -695,12 +694,9 @@ function totalSqft(blocks: any[]) {
             <CrmCustomerRelatedContacts v-if="customer" ref="relatedContactsRef" :customer="customer" :pipeline-id="customerId" :contact-ids="(customer.contactIds || []).map((id: any) => String(id))" @updated="onCustomerUpdated" />
           </div>
         </div>
-      </div>
 
-      <!-- ══ MIDDLE COLUMN — Quotes + Estimates + Contracts ════════════════ -->
-      <div class="flex-1 min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
         <!-- Appointments (Calendly bookings timeline) -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-[200px]">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-calendar-check" class="size-4 text-sky-500 shrink-0" />
@@ -719,7 +715,7 @@ function totalSqft(blocks: any[]) {
               No Calendly appointments
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
+          <div v-else class="divide-y divide-border/50 flex-1 overflow-y-auto">
             <div v-for="item in relatedAppointments" :key="item._id" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
               <div class="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0">
                 <Icon :name="getAptIcon(item)" class="size-3.5 text-sky-500" />
@@ -746,7 +742,7 @@ function totalSqft(blocks: any[]) {
         </div>
 
         <!-- Related Quotes -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-[200px]">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-ruler" class="size-4 text-emerald-500 shrink-0" />
@@ -765,7 +761,7 @@ function totalSqft(blocks: any[]) {
               No quote submissions
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
+          <div v-else class="divide-y divide-border/50 flex-1 overflow-y-auto">
             <div v-for="item in relatedQuotes" :key="item._id" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
               <div class="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
                 <Icon name="i-lucide-file-text" class="size-3.5 text-emerald-500" />
@@ -786,7 +782,7 @@ function totalSqft(blocks: any[]) {
 
 
         <!-- Related Contracts -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-[200px]">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-file-signature" class="size-4 text-indigo-500 shrink-0" />
@@ -811,7 +807,7 @@ function totalSqft(blocks: any[]) {
               No contracts on file
             </p>
           </div>
-          <div v-else class="p-4 max-h-[240px] overflow-y-auto">
+          <div v-else class="p-4 flex-1 overflow-y-auto">
             <CrmContractsTable
               :contracts="customerContracts"
               :templates="templates"
@@ -825,7 +821,7 @@ function totalSqft(blocks: any[]) {
         </div>
 
         <!-- Related Projects -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-[200px]">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-kanban" class="size-4 text-emerald-500 shrink-0" />
@@ -852,7 +848,7 @@ function totalSqft(blocks: any[]) {
               No related projects
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
+          <div v-else class="divide-y divide-border/50 flex-1 overflow-y-auto">
             <NuxtLink
               v-for="proj in relatedProjects"
               :key="proj._id"
@@ -874,7 +870,7 @@ function totalSqft(blocks: any[]) {
         </div>
 
         <!-- Related Stain Sign Offs -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-[200px]">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-stamp" class="size-4 text-amber-500 shrink-0" />
@@ -899,7 +895,7 @@ function totalSqft(blocks: any[]) {
               No stain sign-offs
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
+          <div v-else class="divide-y divide-border/50 flex-1 overflow-y-auto">
             <NuxtLink v-for="item in relatedStainSignOffs" :key="item._id" to="/stain-sign-off" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
               <div class="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
                 <Icon name="i-lucide-stamp" class="size-3.5 text-amber-500" />
@@ -923,7 +919,7 @@ function totalSqft(blocks: any[]) {
         </div>
 
         <!-- Related Daily Production -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-[200px]">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
               <Icon name="i-lucide-clipboard-list" class="size-4 text-teal-500 shrink-0" />
@@ -948,7 +944,7 @@ function totalSqft(blocks: any[]) {
               No production records
             </p>
           </div>
-          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
+          <div v-else class="divide-y divide-border/50 flex-1 overflow-y-auto">
             <NuxtLink v-for="item in relatedDailyProduction" :key="item._id" to="/daily-production" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
               <div class="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
                 <Icon name="i-lucide-calendar-days" class="size-3.5 text-teal-500" />

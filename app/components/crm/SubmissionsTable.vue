@@ -94,6 +94,37 @@ function typeColor(type: string) {
   }
 }
 
+// ─── Appointment-specific helpers ─────────────────────────────────────────
+function getAptTypeLabel(item: any): string {
+  const t = (item.fields?.appointmentType || '').toLowerCase()
+  const name = (item.formName || '').toLowerCase()
+  if (t === 'in-home' || /in[\s-]?home/.test(name))
+    return 'In-Home'
+  if (t === 'phone' || /phone|call|consult/.test(name))
+    return 'Phone'
+  return 'Other'
+}
+
+function getAptTypeColor(item: any): string {
+  const label = getAptTypeLabel(item)
+  if (label === 'In-Home') return 'bg-blue-600/15 text-blue-700 dark:text-blue-400'
+  if (label === 'Phone') return 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400'
+  return 'bg-amber-600/15 text-amber-700 dark:text-amber-400'
+}
+
+function getAptTypeIcon(item: any): string {
+  const label = getAptTypeLabel(item)
+  if (label === 'In-Home') return 'i-lucide-home'
+  if (label === 'Phone') return 'i-lucide-phone'
+  return 'i-lucide-calendar'
+}
+
+function formatScheduledDate(item: any): string {
+  const startTime = item.fields?.meetingScheduled?.startTime
+  if (!startTime) return '—'
+  return format(new Date(startTime), 'MMM dd, yyyy h:mm a')
+}
+
 const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
 </script>
 
@@ -116,6 +147,15 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
             </th>
             <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">
               Phone
+            </th>
+            <th v-if="type === 'appointment'" class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden lg:table-cell">
+              Apt Type
+            </th>
+            <th v-if="type === 'appointment'" class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden xl:table-cell">
+              Scheduled
+            </th>
+            <th v-if="type === 'appointment'" class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden 2xl:table-cell">
+              Form
             </th>
             <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">
               Date
@@ -228,6 +268,27 @@ const statuses = ['new', 'contacted', 'in-progress', 'completed', 'archived']
             <!-- Phone -->
             <td class="py-3 px-4 hidden xl:table-cell">
               <span class="text-muted-foreground text-xs">{{ item.phone || '—' }}</span>
+            </td>
+
+            <!-- Appointment Type -->
+            <td v-if="type === 'appointment'" class="py-3 px-4 hidden lg:table-cell">
+              <span
+                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+                :class="getAptTypeColor(item)"
+              >
+                <Icon :name="getAptTypeIcon(item)" class="size-3" />
+                {{ getAptTypeLabel(item) }}
+              </span>
+            </td>
+
+            <!-- Scheduled Date -->
+            <td v-if="type === 'appointment'" class="py-3 px-4 hidden xl:table-cell">
+              <span class="text-xs font-medium text-foreground">{{ formatScheduledDate(item) }}</span>
+            </td>
+
+            <!-- Form Name -->
+            <td v-if="type === 'appointment'" class="py-3 px-4 hidden 2xl:table-cell">
+              <span class="text-xs text-muted-foreground truncate max-w-[160px] block">{{ item.formName || '—' }}</span>
             </td>
 
             <!-- Date -->
