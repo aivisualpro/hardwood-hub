@@ -46,6 +46,37 @@ const form = ref({
 
 const isLoading = ref(false)
 
+function toNamesString(val: any): string {
+  if (!val) return ''
+  if (typeof val === 'string') return val
+  if (Array.isArray(val)) {
+    return val.map((item: any) => {
+      if (!item) return ''
+      if (typeof item === 'object') {
+        return item.employee || item.name || ''
+      }
+      const found = employeesData.value.find((e: any) => String(e._id) === String(item))
+      return found ? found.employee : ''
+    }).filter(Boolean).join(', ')
+  }
+  return ''
+}
+
+function toObjectIdArray(val: string): string[] {
+  if (!val) return []
+  return val.split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(name => {
+      const found = employeesData.value.find((e: any) => 
+        e.employee.toLowerCase() === name.toLowerCase() || 
+        String(e._id) === name
+      )
+      return found ? String(found._id) : null
+    })
+    .filter((id): id is string => !!id)
+}
+
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
     // Refresh customer list to ensure all records are available
@@ -69,13 +100,13 @@ watch(() => props.modelValue, (isOpen) => {
         estimatedProjectDuration: props.customer.estimatedProjectDuration || '',
         totalEstimate: props.customer.totalEstimate || undefined,
         laborSandingTotal: props.customer.laborSandingTotal || undefined,
-        assignedTo: props.customer.assignedTo || '',
+        assignedTo: toNamesString(props.customer.assignedTo),
         totalTrackedViews: props.customer.totalTrackedViews || 0,
         estimateSentOn: props.customer.estimateSentOn ? (new Date(props.customer.estimateSentOn).toISOString().split('T')[0] || '') : '',
         initialContactDate: props.customer.initialContactDate ? (new Date(props.customer.initialContactDate).toISOString().split('T')[0] || '') : '',
         lastFollowUpSentOn: props.customer.lastFollowUpSentOn ? (new Date(props.customer.lastFollowUpSentOn).toISOString().split('T')[0] || '') : '',
         dateApproved: props.customer.dateApproved ? (new Date(props.customer.dateApproved).toISOString().split('T')[0] || '') : '',
-        projectAssignedTo: props.customer.projectAssignedTo || '',
+        projectAssignedTo: toNamesString(props.customer.projectAssignedTo),
         woodOrderDate: props.customer.woodOrderDate ? (new Date(props.customer.woodOrderDate).toISOString().split('T')[0] || '') : '',
         tags: (props.customer.tags || []).join(', '),
         contactIds: (props.customer.contactIds || []).map((id: any) => String(id)),
@@ -131,7 +162,7 @@ async function submit() {
     const fallbackFirstName = nameParts[0] || ''
     const fallbackLastName = nameParts.slice(1).join(' ') || ''
 
-    const payload = {
+    const payload: any = {
       ...form.value,
       customerId: form.value.customerId || null,
       customerName: form.value.name || '',
@@ -146,6 +177,11 @@ async function submit() {
       totalEstimate: form.value.totalEstimate ? Number(form.value.totalEstimate) : null,
       laborSandingTotal: form.value.laborSandingTotal ? Number(form.value.laborSandingTotal) : null,
       totalTrackedViews: form.value.totalTrackedViews ? Number(form.value.totalTrackedViews) : 0,
+    }
+
+    if (!isCustomerMode.value) {
+      payload.assignedTo = toObjectIdArray(form.value.assignedTo)
+      payload.projectAssignedTo = toObjectIdArray(form.value.projectAssignedTo)
     }
 
     if (!payload.name) {
