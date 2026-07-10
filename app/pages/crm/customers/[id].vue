@@ -156,9 +156,13 @@ async function saveCustomerEdit() {
   }
   saving.value = true
   try {
+    const payload = {
+      ...editForm.value,
+      type: editForm.value.type || null,
+    }
     const res = await $fetch<any>(`/api/customers/${customerId}`, {
       method: 'PUT',
-      body: editForm.value,
+      body: payload,
     })
     if (res.success) {
       customer.value = res.data

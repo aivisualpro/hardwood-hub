@@ -157,23 +157,30 @@ watch(activeDropdown, (val) => {
   }
 })
 
-useAsyncData('crm-clients', async () => {
-  const [, typeRes] = await Promise.all([
-    fetchClients(1),
-    $fetch<any>('/api/dropdowns?name=Customer Type').catch(() => null),
-  ])
-  if (typeRes?.data) {
-    const d = typeRes.data
-    if (Array.isArray(d)) {
-      const match = d.find((dd: any) => dd.name === 'Customer Type')
+async function loadDropdownOptions() {
+  try {
+    const res = await $fetch<any>('/api/dropdowns?name=Customer Type')
+    if (res?.data?.options) {
+      typeOptions.value = res.data.options
+    }
+    else if (res?.data && Array.isArray(res.data)) {
+      const match = res.data.find((dd: any) => dd.name === 'Customer Type')
       if (match?.options) typeOptions.value = match.options
     }
-    else if (d.options) {
-      typeOptions.value = d.options
-    }
   }
+  catch (err) {
+    console.warn('Failed to load customer types:', err)
+  }
+}
+
+useAsyncData('crm-clients', async () => {
+  await fetchClients(1)
   return true
 }, { server: false, lazy: true })
+
+onMounted(() => {
+  loadDropdownOptions()
+})
 
 // ─── CRUD: Create / Edit ─────────────────────────────────
 const showDialog = ref(false)
@@ -227,12 +234,16 @@ async function saveCustomer() {
   }
   saving.value = true
   try {
+    const payload = {
+      ...form.value,
+      type: form.value.type || null,
+    }
     if (editingId.value) {
-      await $fetch(`/api/customers/${editingId.value}`, { method: 'PUT', body: form.value })
+      await $fetch(`/api/customers/${editingId.value}`, { method: 'PUT', body: payload })
       toast.success('Customer updated')
     }
     else {
-      await $fetch('/api/customers', { method: 'POST', body: form.value })
+      await $fetch('/api/customers', { method: 'POST', body: payload })
       toast.success('Customer created')
     }
     showDialog.value = false

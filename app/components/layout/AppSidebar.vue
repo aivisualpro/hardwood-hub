@@ -107,13 +107,21 @@ watch(user, async (newUser) => {
 
 const navCounts = computed<Record<string, number>>(() => navCountsRes.value?.data || {})
 
-// Poll for badge updates every 60 seconds
+// Poll for badge updates every 30 seconds + refresh instantly when the tab regains focus
 let pollInterval: ReturnType<typeof setInterval> | undefined
+function onVisible() {
+  if (document.visibilityState === 'visible')
+    refreshNavCounts()
+}
 onMounted(() => {
-  pollInterval = setInterval(refreshNavCounts, 60_000)
+  pollInterval = setInterval(refreshNavCounts, 30_000)
+  document.addEventListener('visibilitychange', onVisible)
+  window.addEventListener('focus', onVisible)
 })
 onUnmounted(() => {
   clearInterval(pollInterval)
+  document.removeEventListener('visibilitychange', onVisible)
+  window.removeEventListener('focus', onVisible)
 })
 
 // ── Filtered nav menus ────────────────────────────────────────────────────────

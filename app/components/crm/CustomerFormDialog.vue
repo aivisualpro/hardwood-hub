@@ -728,15 +728,7 @@ function toggleAssignee(emp: string) {
             <Input v-model="form.estimatedProjectDuration" placeholder="e.g. 3 weeks" />
           </div>
 
-          <div v-if="!isCustomerMode" class="space-y-2">
-            <Label>Total Estimate ($)</Label>
-            <Input v-model="form.totalEstimate" type="number" step="0.01" placeholder="10000" />
-          </div>
 
-          <div v-if="!isCustomerMode" class="space-y-2">
-            <Label>Labor + Sanding Materials ($)</Label>
-            <Input v-model="form.laborSandingTotal" type="number" step="0.01" placeholder="0" />
-          </div>
 
           <div v-if="!isCustomerMode" class="space-y-2">
             <Label>Total Tracked Views</Label>

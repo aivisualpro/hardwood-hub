@@ -33,11 +33,30 @@ export function actorFromEvent(event: any): AutomationEvent['actor'] {
   return { id: session.id || '', email: session.email || '', name: '' }
 }
 
+/**
+ * Keep the serverless function alive until background work finishes.
+ * On Vercel the lambda is frozen as soon as the response is sent, which kills
+ * fire-and-forget promises (emails especially). Vercel exposes a waitUntil()
+ * via a global request context — same mechanism as @vercel/functions.
+ */
+function keepAlive(promise: Promise<any>): void {
+  try {
+    const ctx = (globalThis as any)[Symbol.for('@vercel/request-context')]?.get?.()
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(promise)
+      return
+    }
+  }
+  catch { /* not on Vercel */ }
+  // Local/dev: the process stays alive, plain fire-and-forget is fine
+}
+
 /** Fire-and-forget entry point — safe to call from any route. */
 export function fireAutomations(evt: AutomationEvent): void {
-  runAutomations(evt).catch((e: any) => {
+  const run = runAutomations(evt).catch((e: any) => {
     log.warn('automation run failed:', e?.message || e)
   })
+  keepAlive(run)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -243,10 +262,16 @@ async function evaluateRule(
 
   log.info(`rule "${rule.name}" fired → ${recipients.length} notification(s)`)
 
-  // ── Email delivery (non-blocking) ─────────────────────────────────────────
+  // ── Email delivery ────────────────────────────────────────────────────────
+  // Awaited so it's covered by the keepAlive() wrapper — on Vercel a detached
+  // promise would be killed when the lambda freezes after the response.
   if (rule.sendEmail) {
-    sendRuleEmails(rule, recipients, { title, message, subLabel, entityLabel: ctx.entityLabel, verb })
-      .catch((e: any) => log.warn('email delivery failed:', e?.message || e))
+    try {
+      await sendRuleEmails(rule, recipients, { title, message, subLabel, entityLabel: ctx.entityLabel, verb })
+    }
+    catch (e: any) {
+      log.warn('email delivery failed:', e?.message || e)
+    }
   }
 }
 

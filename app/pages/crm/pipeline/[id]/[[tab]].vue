@@ -41,6 +41,11 @@ const relatedFastQuotes = computed(() => allSubmissions.value.filter(s => s.type
 const relatedEstimates = ref<any[]>([])
 const loadingEstimates = ref(false)
 
+const latestEstimate = computed(() => {
+  if (!relatedEstimates.value || relatedEstimates.value.length === 0) return null
+  return [...relatedEstimates.value].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+})
+
 const ESTIMATE_STATUS_COLORS: Record<string, string> = {
   draft: 'bg-zinc-500/15 text-zinc-500',
   sent: 'bg-blue-500/15 text-blue-500',
@@ -659,6 +664,58 @@ function totalSqft(blocks: any[]) {
           </div>
         </div>
 
+        <!-- ── Estimate Details Card ──────────────────────────────────── -->
+        <div v-if="latestEstimate" class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+          <div class="px-5 py-3 border-b bg-muted/30 flex items-center gap-2 shrink-0">
+            <Icon name="i-lucide-file-text" class="size-4 text-blue-500 shrink-0" />
+            <h3 class="text-sm font-bold text-foreground">
+              Estimate Details
+            </h3>
+            <span class="ml-auto text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+              #{{ latestEstimate.estimateNumber }}
+            </span>
+          </div>
+          <div class="px-5 py-4 space-y-3 flex-1 min-h-0 overflow-y-auto">
+            <!-- Estimate Title & Status -->
+            <div class="grid grid-cols-2 gap-3 pb-2 border-b border-border/50">
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Estimate Title
+                </p>
+                <p class="text-xs font-bold text-foreground truncate">
+                  {{ latestEstimate.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || 'Estimate' }}
+                </p>
+              </div>
+              <div>
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  Status
+                </p>
+                <span
+                  class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
+                  :class="ESTIMATE_STATUS_COLORS[latestEstimate.status] || 'bg-muted text-muted-foreground'"
+                >
+                  {{ ESTIMATE_STATUS_LABELS[latestEstimate.status] || latestEstimate.status }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Variables -->
+            <div v-if="latestEstimate.variableValues && Object.keys(latestEstimate.variableValues).length > 0" class="space-y-3 pt-1">
+              <div v-for="(val, key) in latestEstimate.variableValues" :key="key">
+                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
+                  {{ key.replace(/_/g, ' ') }}
+                </p>
+                <p class="text-xs font-semibold text-foreground whitespace-pre-wrap">
+                  {{ val || '—' }}
+                </p>
+              </div>
+            </div>
+            <div v-else class="text-xs text-muted-foreground text-center py-4">
+              No variable information available.
+            </div>
+          </div>
+        </div>
+
         <!-- Related Contacts Card -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2 shrink-0">
@@ -723,53 +780,7 @@ function totalSqft(blocks: any[]) {
           </div>
         </div>
 
-        <!-- Related Estimates (from hardwoodDB_Estimates) -->
-        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
-          <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
-            <div class="flex items-center gap-2">
-              <Icon name="i-lucide-file-text" class="size-4 text-blue-500 shrink-0" />
-              <h3 class="text-sm font-bold text-foreground">
-                Related Estimates
-              </h3>
-            </div>
-            <span v-if="relatedEstimates.length" class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{{ relatedEstimates.length }}</span>
-          </div>
-          <div v-if="loadingEstimates" class="flex-1 px-5 py-4 space-y-2">
-            <div v-for="i in 3" :key="i" class="h-10 bg-muted/30 rounded-lg animate-pulse" />
-          </div>
-          <div v-else-if="relatedEstimates.length === 0" class="flex-1 flex flex-col items-center justify-center py-8 text-center">
-            <Icon name="i-lucide-file-text" class="size-6 text-muted-foreground/30 mx-auto mb-2" />
-            <p class="text-xs text-muted-foreground">
-              No estimates for this project
-            </p>
-          </div>
-          <div v-else class="divide-y divide-border/50 max-h-[280px] overflow-y-auto">
-            <NuxtLink
-              v-for="est in relatedEstimates"
-              :key="est._id"
-              to="/crm/estimates/list"
-              class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors"
-            >
-              <div class="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                <Icon name="i-lucide-file-text" class="size-3.5 text-blue-500" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-bold text-foreground truncate">
-                  {{ est.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || est.estimateNumber }}
-                </p>
-                <p class="text-[10px] text-muted-foreground">
-                  #{{ est.estimateNumber }} · {{ est.customerName || '—' }} · {{ formatDate(est.createdAt) }}
-                </p>
-              </div>
-              <span
-                class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                :class="ESTIMATE_STATUS_COLORS[est.status] || 'bg-muted text-muted-foreground'"
-              >
-                {{ ESTIMATE_STATUS_LABELS[est.status] || est.status }}
-              </span>
-            </NuxtLink>
-          </div>
-        </div>
+
 
         <!-- Related Contracts -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">

@@ -202,12 +202,35 @@ function updateLineItemAmount(item: any) {
   recalculateTotals()
 }
 
+function syncExtractedTotalsToVariables() {
+  const keys = Object.keys(variableValues.value)
+  for (const key of keys) {
+    const k = key.toLowerCase().replace(/[\s_-]/g, '')
+    if (k === 'materialcost' || k === 'material' || k === 'material_cost') {
+      variableValues.value[key] = materialTotal.value !== undefined && materialTotal.value !== null ? String(materialTotal.value) : ''
+    }
+    else if (k === 'laborcost' || k === 'labor' || k === 'labor_cost') {
+      variableValues.value[key] = laborTotal.value !== undefined && laborTotal.value !== null ? String(laborTotal.value) : ''
+    }
+    else if (k === 'discount' || k === 'discountcost' || k === 'discount_cost') {
+      variableValues.value[key] = discountTotal.value !== undefined && discountTotal.value !== null ? String(discountTotal.value) : ''
+    }
+    else if (k === 'tax' || k === 'taxcost' || k === 'tax_cost') {
+      variableValues.value[key] = taxTotal.value !== undefined && taxTotal.value !== null ? String(taxTotal.value) : ''
+    }
+    else if (k === 'estimatetotal' || k === 'total' || k === 'estimate_total') {
+      variableValues.value[key] = totalAmount.value !== undefined && totalAmount.value !== null ? String(totalAmount.value) : ''
+    }
+  }
+}
+
 function recalculateTotals() {
   let calculatedAmount = 0
   for (const item of lineItems.value) {
     calculatedAmount += Number(item.amount) || 0
   }
   totalAmount.value = calculatedAmount + Number(taxTotal.value || 0) - Number(discountTotal.value || 0)
+  syncExtractedTotalsToVariables()
 }
 
 async function fetchPdfDetails() {
@@ -226,6 +249,7 @@ async function fetchPdfDetails() {
       taxTotal.value = res.data.taxTotal || 0
       discountTotal.value = res.data.discountTotal || 0
       totalAmount.value = res.data.totalAmount || 0
+      syncExtractedTotalsToVariables()
       toast.success('Successfully extracted details from PDF!', { id: 'pdf-extract' })
     } else {
       throw new Error('No data returned')
@@ -1301,14 +1325,14 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
                     <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Material</span>
                     <div class="relative flex items-center">
                       <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
-                      <Input type="number" v-model="materialTotal" class="h-7 w-36 text-xs pl-5 tabular-nums" />
+                      <Input type="number" v-model="materialTotal" class="h-7 w-36 text-xs pl-5 tabular-nums" @input="recalculateTotals" />
                     </div>
                   </div>
                   <div class="flex items-center gap-1.5">
                     <span class="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Labor</span>
                     <div class="relative flex items-center">
                       <span class="absolute left-2 text-[10px] text-muted-foreground">$</span>
-                      <Input type="number" v-model="laborTotal" class="h-7 w-36 text-xs pl-5 tabular-nums" />
+                      <Input type="number" v-model="laborTotal" class="h-7 w-36 text-xs pl-5 tabular-nums" @input="recalculateTotals" />
                     </div>
                   </div>
                   <div class="flex items-center gap-1.5">

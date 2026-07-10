@@ -155,6 +155,10 @@ async function _doFetch(recentOnly: boolean) {
       return invitees.map((invitee: any) => {
         const fields: Record<string, string> = {}
         let address = ''
+        let city = ''
+        let state = ''
+        let zip = ''
+        let phone = invitee.text_reminder_number || ''
         let details = ''
 
         if (invitee.questions_and_answers) {
@@ -162,8 +166,23 @@ async function _doFetch(recentOnly: boolean) {
             const q = qa.question.toLowerCase()
             fields[qa.question] = qa.answer
 
-            if (q.includes('address')) {
+            if (q.includes('street address') || q.includes('street_address')) {
               address = qa.answer
+            }
+            else if (q.includes('address') && !address) {
+              address = qa.answer
+            }
+            else if (q.includes('city')) {
+              city = qa.answer
+            }
+            else if (q.includes('state')) {
+              state = qa.answer
+            }
+            else if (q.includes('zip') || q.includes('postal')) {
+              zip = qa.answer
+            }
+            else if (q.includes('phone')) {
+              phone = qa.answer
             }
             else if (q.includes('prepare') || q.includes('anything') || q.includes('message')) {
               details = qa.answer
@@ -181,11 +200,11 @@ async function _doFetch(recentOnly: boolean) {
           firstName: invitee.first_name || '',
           lastName: invitee.last_name || '',
           email: invitee.email || '',
-          phone: invitee.text_reminder_number || '',
+          phone,
           address,
-          city: '',
-          state: '',
-          zip: '',
+          city,
+          state,
+          zip,
           message: details,
           fields: {
             ...fields,

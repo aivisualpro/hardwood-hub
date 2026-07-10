@@ -49,11 +49,31 @@ await useAsyncData('notifications-inbox', async () => { await fetchNotifications
 
 watch([onlyUnread, moduleFilter], () => fetchNotifications(1))
 
+// ── Live refresh: poll every 30s while on this page + refresh when tab regains focus
+function syncBadge() {
+  // Refresh the sidebar bell badge immediately (shares the 'nav-counts' useAsyncData key)
+  refreshNuxtData('nav-counts')
+}
+let inboxPoll: ReturnType<typeof setInterval> | undefined
+function onPageVisible() {
+  if (document.visibilityState === 'visible')
+    fetchNotifications(pagination.value.page)
+}
+onMounted(() => {
+  inboxPoll = setInterval(() => fetchNotifications(pagination.value.page), 30_000)
+  document.addEventListener('visibilitychange', onPageVisible)
+})
+onUnmounted(() => {
+  clearInterval(inboxPoll)
+  document.removeEventListener('visibilitychange', onPageVisible)
+})
+
 async function markRead(n: any, read = true) {
   try {
     await $fetch(`/api/notifications/${n._id}`, { method: 'PATCH', body: { read } })
     n.readAt = read ? new Date().toISOString() : null
     unreadCount.value = Math.max(0, unreadCount.value + (read ? -1 : 1))
+    syncBadge()
   }
   catch (e: any) {
     toast.error('Failed to update', { description: e?.data?.message || e?.message })
@@ -65,6 +85,7 @@ async function markAllRead() {
     await $fetch('/api/notifications/mark-all-read', { method: 'POST' })
     notifications.value.forEach((n) => { n.readAt = n.readAt || new Date().toISOString() })
     unreadCount.value = 0
+    syncBadge()
     toast.success('All notifications marked as read')
   }
   catch (e: any) {
@@ -76,8 +97,10 @@ async function removeNotification(n: any) {
   try {
     await $fetch(`/api/notifications/${n._id}`, { method: 'DELETE' })
     notifications.value = notifications.value.filter(x => x._id !== n._id)
-    if (!n.readAt)
+    if (!n.readAt) {
       unreadCount.value = Math.max(0, unreadCount.value - 1)
+      syncBadge()
+    }
   }
   catch (e: any) {
     toast.error('Failed to delete', { description: e?.data?.message || e?.message })
@@ -251,12 +274,12 @@ const filteredEmployees = computed(() => {
 })
 
 const PLACEHOLDERS = [
-  { key: '{{entity}}', hint: 'Record name' },
-  { key: '{{field}}', hint: 'Changed field' },
-  { key: '{{old}}', hint: 'Old value' },
-  { key: '{{new}}', hint: 'New value' },
-  { key: '{{actor}}', hint: 'Who did it' },
-  { key: '{{action}}', hint: 'Action verb' },
+  { key: '{{entity}}', label: 'Record name', example: 'EST-1024 — Smith Residence' },
+  { key: '{{field}}', label: 'Field', example: 'Status' },
+  { key: '{{old}}', label: 'Old value', example: 'Sent' },
+  { key: '{{new}}', label: 'New value', example: 'Approved' },
+  { key: '{{actor}}', label: 'Changed by', example: 'Jane Doe' },
+  { key: '{{action}}', label: 'Action', example: 'updated' },
 ]
 
 function insertPlaceholder(p: string) {
@@ -659,7 +682,7 @@ const moduleFilterOptions = [
           </SheetDescription>
         </SheetHeader>
 
-        <div class="space-y-5 py-5 px-1">
+        <div class="space-y-5 py-5 px-4">
           <!-- Name -->
           <div class="space-y-1.5">
             <Label>Automation name</Label>
@@ -836,16 +859,20 @@ const moduleFilterOptions = [
               What should it say? <span class="text-muted-foreground font-normal text-xs">(optional)</span>
             </Label>
             <Textarea v-model="form.messageTemplate" rows="2" placeholder="Leave blank for a smart default message" />
+            <p class="text-[11px] text-muted-foreground">
+              Click to insert dynamic values — they're replaced with real data when the notification is sent:
+            </p>
             <div class="flex flex-wrap gap-1">
               <button
                 v-for="p in PLACEHOLDERS"
                 :key="p.key"
                 type="button"
-                class="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-                :title="p.hint"
+                class="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+                :title="`Inserts ${p.key} — e.g. “${p.example}”`"
                 @click="insertPlaceholder(p.key)"
               >
-                {{ p.key }}
+                <Icon name="i-lucide-plus" class="size-3" />
+                {{ p.label }}
               </button>
             </div>
             <div class="rounded-lg bg-muted/40 border border-border/40 p-2.5 mt-1">

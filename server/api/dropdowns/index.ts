@@ -6,12 +6,18 @@ import { Dropdown } from '../../models/Dropdown'
  * PUT  /api/dropdowns        — update a specific dropdown option
  */
 import { connectDB } from '../../utils/mongoose'
-import { requireAdmin, requireManager } from '../../utils/requireRole'
+import { requireAdmin, requireManager, requireStaff } from '../../utils/requireRole'
 import { DropdownWriteSchema, parseBody } from '../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
-  requireAdmin(event)
+
+  if (event.node.req.method === 'GET') {
+    requireStaff(event)
+  }
+  else {
+    requireAdmin(event)
+  }
 
   // Stringify ObjectId fields so they survive Nitro JSON serialization on Vercel
   const serializeDropdown = (dd: any) => {

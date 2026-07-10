@@ -124,6 +124,33 @@ function emptyForm() {
 const form = ref(emptyForm())
 const isSaving = ref(false)
 
+const isQuickEditing = ref(false)
+
+function toggleQuickEdit() {
+  isQuickEditing.value = !isQuickEditing.value
+  if (!isQuickEditing.value) {
+    toast.success('Quick editing disabled. All changes saved.')
+  } else {
+    toast.info('Quick edit mode enabled. You can edit any cell directly. Changes auto-save on blur/change.')
+  }
+}
+
+async function saveCell(item: any, field: string, val: any) {
+  try {
+    let value = val
+    if (['wasteAddon', 'salesPrice', 'costPrice', 'boxSalesPrice', 'boxCostPrice', 'unitsPerBox'].includes(field)) {
+      value = Number(val) || 0
+    }
+    await $fetch(`/api/products/${item._id}`, {
+      method: 'PUT',
+      body: { [field]: value }
+    })
+  } catch (err: any) {
+    toast.error('Failed to save changes')
+    console.error(err)
+  }
+}
+
 function openCreate() {
   editingProduct.value = null
   form.value = emptyForm()
@@ -480,6 +507,14 @@ const formSections = [
           <span class="hidden sm:inline">Import CSV</span>
         </button>
         <button
+          class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg border text-xs sm:text-sm font-bold transition-all shrink-0"
+          :class="isQuickEditing ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600' : 'bg-card text-foreground hover:bg-muted'"
+          @click="toggleQuickEdit"
+        >
+          <Icon :name="isQuickEditing ? 'i-lucide-check' : 'i-lucide-edit-3'" class="size-3.5" />
+          <span>{{ isQuickEditing ? 'Done Editing' : 'Quick Edit' }}</span>
+        </button>
+        <button
           v-if="canCreate()"
           class="inline-flex items-center justify-center gap-2 h-8 sm:h-9 px-3 sm:px-4 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-bold hover:bg-primary/90 transition-all shrink-0 shadow-lg shadow-primary/20"
           @click="openCreate"
@@ -496,7 +531,7 @@ const formSections = [
         <table class="w-full text-sm border-collapse" style="min-width: 1800px">
           <thead>
             <tr class="border-b bg-muted/30">
-              <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/30 z-10 min-w-[100px]">
+              <th class="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted z-10 min-w-[100px]">
                 SKU
               </th>
               <th class="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">
@@ -622,8 +657,8 @@ const formSections = [
               class="border-b last:border-b-0 hover:bg-muted/20 transition-colors group"
             >
               <!-- SKU (sticky) -->
-              <td class="py-2.5 px-4 sticky left-0 bg-card group-hover:bg-muted/20 z-10 transition-colors">
-                <span class="font-bold text-xs text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 whitespace-nowrap">{{ item.sku || '—' }}</span>
+              <td class="py-2.5 px-4 sticky left-0 bg-background group-hover:bg-muted z-10 transition-colors">
+                <span class="text-xs text-foreground whitespace-nowrap">{{ item.sku || '—' }}</span>
               </td>
               <td class="py-2.5 px-3 font-medium text-foreground max-w-[200px] truncate">
                 {{ item.description || '—' }}
