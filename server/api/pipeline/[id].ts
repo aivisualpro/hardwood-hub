@@ -49,9 +49,18 @@ export default defineEventHandler(async (event) => {
     const data = parseBody(PipelineUpdateSchema, raw)
     const cleaned = sanitizeWriteBody(event, '/crm/pipeline', data)
     const before = await Pipeline.findById(id).lean()
-    const updated = await Pipeline.findByIdAndUpdate(id, { $set: cleaned }, { new: true })
-    fireAutomations({ module: 'crm', submodule: 'pipeline', action: 'update', before, after: updated?.toObject?.() || updated, actor: actorFromEvent(event) })
-    return { success: true, data: updated }
+    const updated = await Pipeline.findByIdAndUpdate(id, { $set: cleaned }, { new: true }).lean() as any
+    if (updated) {
+      updated.assignedTo = cleanIdArray(updated.assignedTo)
+      updated.projectAssignedTo = cleanIdArray(updated.projectAssignedTo)
+      const populated = await Pipeline.populate(updated, [
+        { path: 'assignedTo', select: 'employee email profileImage' },
+        { path: 'projectAssignedTo', select: 'employee email profileImage' },
+      ])
+      fireAutomations({ module: 'crm', submodule: 'pipeline', action: 'update', before, after: populated, actor: actorFromEvent(event) })
+      return { success: true, data: stripHiddenFields(event, '/crm/pipeline', populated) }
+    }
+    return { success: false, error: 'Failed to update' }
   }
 
   if (method === 'DELETE') {

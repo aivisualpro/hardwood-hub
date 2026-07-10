@@ -302,6 +302,22 @@ async function deleteCustomer() {
 function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') : '—' }
 function formatDateTime(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy · h:mm a') : '—' }
 
+function getStepDateTime(step: string): string {
+  if (!latestEstimate.value) return '—'
+  if (step === 'draft') {
+    return latestEstimate.value.createdAt ? format(new Date(latestEstimate.value.createdAt), 'MM/dd/yy · h:mm a') : '—'
+  }
+  if (step === 'sent') {
+    return latestEstimate.value.sentAt ? format(new Date(latestEstimate.value.sentAt), 'MM/dd/yy · h:mm a') : '—'
+  }
+  if (step === 'approved') {
+    const approvedEntry = latestEstimate.value.statusTimeline?.find((t: any) => t.action === 'approved')
+    const t = approvedEntry?.timestamp || latestEstimate.value.updatedAt
+    return t ? format(new Date(t), 'MM/dd/yy · h:mm a') : '—'
+  }
+  return '—'
+}
+
 // Format variable values — auto-detect currency fields and format as $x,xxx.xx
 function formatVarValue(key: string, val: any): string {
   if (val === null || val === undefined || val === '') return '—'
@@ -600,57 +616,41 @@ function totalSqft(blocks: any[]) {
         <template v-if="latestEstimate">
           <div class="flex items-center gap-2 mt-4">
             <Icon name="i-lucide-file-text" class="size-4 text-blue-500 shrink-0" />
-            <h3 class="text-sm font-bold text-foreground">Estimate Details</h3>
+            <h3 class="text-sm font-bold text-foreground">Estimate Details ({{ latestEstimate.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || 'Estimate' }})</h3>
             <span class="ml-auto text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
               #{{ latestEstimate.estimateNumber }}
             </span>
           </div>
           <hr class="border-border/50" />
           <div class="text-xs space-y-0">
-            <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
-              <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Estimate Title</span>
-              <span class="col-span-7 font-bold text-foreground truncate" :title="latestEstimate.title">
-                {{ latestEstimate.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || 'Estimate' }}
-              </span>
-            </div>
-            <div class="grid grid-cols-12 gap-2 items-center py-1.5 border-b border-border/30">
-              <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Status</span>
-              <span class="col-span-7">
-                <span
-                  class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
-                  :class="ESTIMATE_STATUS_COLORS[latestEstimate.status] || 'bg-muted text-muted-foreground'"
-                >
-                  {{ ESTIMATE_STATUS_LABELS[latestEstimate.status] || latestEstimate.status }}
-                </span>
-              </span>
-            </div>
             <!-- Horizontal Status Timeline -->
             <div class="py-3 border-b border-border/30">
               <div class="flex items-center gap-0">
-                <template v-for="(step, idx) in ['draft', 'sent', 'approved', 'completed']" :key="step">
+                <template v-for="(step, idx) in ['draft', 'sent', 'approved']" :key="step">
                   <div class="flex flex-col items-center gap-1 flex-1 min-w-0">
                     <div
                       class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all text-[8px] font-bold"
-                      :class="step === latestEstimate.status
-                        ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/30'
-                        : ['draft', 'sent', 'approved', 'completed'].indexOf(step) < ['draft', 'sent', 'approved', 'completed'].indexOf(latestEstimate.status)
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-muted text-muted-foreground'"
+                      :class="['draft', 'sent', 'approved'].indexOf(step) <= ['draft', 'sent', 'approved'].indexOf(latestEstimate.status)
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-muted text-muted-foreground'"
                     >
                       <Icon
-                        :name="['draft', 'sent', 'approved', 'completed'].indexOf(step) < ['draft', 'sent', 'approved', 'completed'].indexOf(latestEstimate.status) ? 'i-lucide-check' : step === latestEstimate.status ? 'i-lucide-circle-dot' : 'i-lucide-circle'"
+                        :name="['draft', 'sent', 'approved'].indexOf(step) <= ['draft', 'sent', 'approved'].indexOf(latestEstimate.status) ? 'i-lucide-check' : 'i-lucide-circle'"
                         class="size-3"
                       />
                     </div>
                     <span
                       class="text-[8px] font-bold uppercase tracking-wider text-center leading-none"
-                      :class="step === latestEstimate.status ? 'text-primary' : ['draft', 'sent', 'approved', 'completed'].indexOf(step) < ['draft', 'sent', 'approved', 'completed'].indexOf(latestEstimate.status) ? 'text-emerald-600' : 'text-muted-foreground/50'"
+                      :class="['draft', 'sent', 'approved'].indexOf(step) <= ['draft', 'sent', 'approved'].indexOf(latestEstimate.status) ? 'text-emerald-600' : 'text-muted-foreground/50'"
                     >{{ ESTIMATE_STATUS_LABELS[step] }}</span>
+                    <span class="text-[7.5px] text-muted-foreground text-center mt-0.5 leading-tight font-medium">
+                      {{ getStepDateTime(step) }}
+                    </span>
                   </div>
                   <div
-                    v-if="idx < 3"
-                    class="h-0.5 flex-1 -mx-1 mt-[-12px]"
-                    :class="['draft', 'sent', 'approved', 'completed'].indexOf(step) < ['draft', 'sent', 'approved', 'completed'].indexOf(latestEstimate.status) ? 'bg-emerald-500' : 'bg-border'"
+                    v-if="idx < 2"
+                    class="h-0.5 flex-1 -mx-1 mt-[-24px]"
+                    :class="['draft', 'sent', 'approved'].indexOf(step) < ['draft', 'sent', 'approved'].indexOf(latestEstimate.status) ? 'bg-emerald-500' : 'bg-border'"
                   />
                 </template>
               </div>

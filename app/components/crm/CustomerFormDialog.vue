@@ -46,20 +46,33 @@ const form = ref({
 
 const isLoading = ref(false)
 
+const { data: employeesRes } = await useFetch<any>('/api/employees')
+const employeesData = computed(() => employeesRes.value?.data || [])
+
 function toNamesString(val: any): string {
   if (!val) return ''
-  if (typeof val === 'string') return val
+  let items: any[] = []
   if (Array.isArray(val)) {
-    return val.map((item: any) => {
-      if (!item) return ''
-      if (typeof item === 'object') {
-        return item.employee || item.name || ''
-      }
-      const found = employeesData.value.find((e: any) => String(e._id) === String(item))
-      return found ? found.employee : ''
-    }).filter(Boolean).join(', ')
+    items = val
+  } else if (typeof val === 'string') {
+    items = val.split(',').map(s => s.trim()).filter(Boolean)
+  } else {
+    return ''
   }
-  return ''
+
+  return items.map((item: any) => {
+    if (!item) return ''
+    if (typeof item === 'object') {
+      return item.employee || item.name || ''
+    }
+    const str = String(item)
+    const found = employeesData.value.find((e: any) => 
+      String(e._id) === str || 
+      e.employee.toLowerCase() === str.toLowerCase() ||
+      e.email.toLowerCase() === str.toLowerCase()
+    )
+    return found ? found.employee : str
+  }).filter(Boolean).join(', ')
 }
 
 function toObjectIdArray(val: string): string[] {
@@ -141,6 +154,18 @@ watch(() => props.modelValue, (isOpen) => {
         tags: '',
         contactIds: [],
       }
+    }
+  }
+})
+
+watch(employeesData, (newData) => {
+  if (newData && newData.length && props.modelValue && props.customer) {
+    const hasObjectId = (val: string) => /^[0-9a-fA-F]{24}$/.test(val.trim()) || val.split(',').some(s => /^[0-9a-fA-F]{24}$/.test(s.trim()))
+    if (!form.value.assignedTo || hasObjectId(form.value.assignedTo)) {
+      form.value.assignedTo = toNamesString(props.customer.assignedTo)
+    }
+    if (!form.value.projectAssignedTo || hasObjectId(form.value.projectAssignedTo)) {
+      form.value.projectAssignedTo = toNamesString(props.customer.projectAssignedTo)
     }
   }
 })
@@ -306,9 +331,6 @@ function handleStatusSelect(optionId: string) {
   form.value.status = optionId
   activeDropdown.value = null
 }
-
-const { data: employeesRes } = await useFetch<any>('/api/employees')
-const employeesData = computed(() => employeesRes.value?.data || [])
 
 // ─── Customer dropdown ────────────────────────────────────
 const { data: customersRes, refresh: refreshCustomers } = await useFetch<any>('/api/customers', {

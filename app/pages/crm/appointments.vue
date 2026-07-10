@@ -51,13 +51,13 @@ onMounted(() => {
   autoSyncCalendly()
 })
 
-// Poll every 5 minutes to keep calendar up-to-date (avoid rate limits)
+// Poll every 30 minutes to keep calendar up-to-date (avoid rate limits)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
   pollTimer = setInterval(() => {
     autoSyncCalendly()
-  }, 300_000)
+  }, 1_800_000)
 })
 
 onUnmounted(() => {

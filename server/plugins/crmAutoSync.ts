@@ -19,7 +19,7 @@ export default defineNitroPlugin(() => {
   if (!enabled)
     return
 
-  const minutes = Math.max(1, Number(config.crmAutosyncMinutes) || 5)
+  const minutes = Math.max(1, Number(config.crmAutosyncMinutes) || 30)
   const log = logger('[crmAutoSync]')
   let running = false
 

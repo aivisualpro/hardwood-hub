@@ -153,7 +153,14 @@ export default defineEventHandler(async (event) => {
     const cleaned = sanitizeWriteBody(event, '/crm/pipeline', data)
     const record = new Pipeline(cleaned)
     await record.save()
-    fireAutomations({ module: 'crm', submodule: 'pipeline', action: 'create', after: record.toObject(), actor: actorFromEvent(event) })
-    return { success: true, data: record }
+    const doc = record.toObject()
+    doc.assignedTo = cleanIdArray(doc.assignedTo)
+    doc.projectAssignedTo = cleanIdArray(doc.projectAssignedTo)
+    const populated = await Pipeline.populate(doc, [
+      { path: 'assignedTo', select: 'employee email profileImage' },
+      { path: 'projectAssignedTo', select: 'employee email profileImage' },
+    ])
+    fireAutomations({ module: 'crm', submodule: 'pipeline', action: 'create', after: populated, actor: actorFromEvent(event) })
+    return { success: true, data: stripHiddenFields(event, '/crm/pipeline', populated) }
   }
 })
