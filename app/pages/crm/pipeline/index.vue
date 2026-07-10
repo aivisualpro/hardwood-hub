@@ -672,13 +672,17 @@ watch(() => route.query.search, (val) => {
   const v = (val as string) || ''
   if (v !== searchQuery.value) searchQuery.value = v
 })
+
+const isMounted = ref(false)
+onMounted(() => {
+  isMounted.value = true
+})
 </script>
 
 <template>
   <div class="h-[calc(100dvh-var(--content-offset))] flex flex-col space-y-4 -mb-4 sm:-mb-6">
-    <ClientOnly>
-      <Teleport defer to="#header-toolbar">
-        <div class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">
+    <Teleport v-if="isMounted" defer to="#header-toolbar">
+      <div class="flex items-center gap-2 sm:gap-3 w-full max-w-xl pr-2">
           <div class="relative flex-1">
             <Icon name="i-lucide-search" class="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground" />
             <input
@@ -716,7 +720,6 @@ watch(() => route.query.search, (val) => {
           </button>
         </div>
       </Teleport>
-    </ClientOnly>
 
     <!-- Loading State -->
     <div v-if="loadingData" class="flex-1 flex flex-col gap-4">

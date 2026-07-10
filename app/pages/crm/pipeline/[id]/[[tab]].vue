@@ -412,6 +412,11 @@ function formatStainColors(colors: string[]) {
   return colors.slice(0, 3).join(', ') + (colors.length > 3 ? ` +${colors.length - 3}` : '')
 }
 
+const isMounted = ref(false)
+onMounted(() => {
+  isMounted.value = true
+})
+
 function totalSqft(blocks: any[]) {
   if (!blocks?.length)
     return 0
@@ -422,9 +427,8 @@ function totalSqft(blocks: any[]) {
 <template>
   <div class="h-full overflow-hidden -mx-4 lg:-mx-6">
     <!-- ── Header toolbar: status pill + Edit + Delete ─────────────────── -->
-    <ClientOnly>
-      <Teleport to="#header-toolbar">
-        <div class="flex items-center gap-2">
+    <Teleport v-if="isMounted" to="#header-toolbar">
+      <div class="flex items-center gap-2">
           <!-- Stage selector -->
           <div v-if="customer" class="relative" :class="activeDropdown === 'stage' ? 'z-50' : ''">
             <button
@@ -461,7 +465,6 @@ function totalSqft(blocks: any[]) {
           </button>
         </div>
       </Teleport>
-    </ClientOnly>
 
     <!-- ── 3-column layout — cards scroll individually ──────────────────── -->
     <div class="flex h-full overflow-hidden divide-x divide-border">
