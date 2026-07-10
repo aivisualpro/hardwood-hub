@@ -4,6 +4,7 @@
  */
 import { defineEventHandler, readBody } from 'h3'
 import { Pipeline } from '../../models/Pipeline'
+import mongoose from 'mongoose'
 import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
@@ -13,6 +14,16 @@ import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Strip empty strings / invalid ObjectIds from an array field before populate */
+function cleanIdArray(arr: any[] | undefined): any[] {
+  if (!Array.isArray(arr)) return []
+  return arr.filter((v: any) => {
+    if (!v) return false
+    if (typeof v === 'string') return mongoose.Types.ObjectId.isValid(v) && v.length > 0
+    return true // already an ObjectId or populated doc
+  })
 }
 
 export default defineEventHandler(async (event) => {
@@ -75,12 +86,19 @@ export default defineEventHandler(async (event) => {
     // ── Query ──────────────────────────────────────────────────────────────────
     // When caller passes customerId they want all records for that customer (no page cap)
     if (customerId) {
-      const records = await Pipeline.find(filter)
+      const rawRecords = await Pipeline.find(filter)
         .select('-gallery -relatedContacts -notes')
-        .populate('assignedTo', 'employee email profileImage')
-        .populate('projectAssignedTo', 'employee email profileImage')
         .sort({ createdAt: -1 })
         .lean()
+      // Clean invalid refs before populate to prevent CastError
+      for (const r of rawRecords as any[]) {
+        r.assignedTo = cleanIdArray(r.assignedTo)
+        r.projectAssignedTo = cleanIdArray(r.projectAssignedTo)
+      }
+      const records = await Pipeline.populate(rawRecords, [
+        { path: 'assignedTo', select: 'employee email profileImage' },
+        { path: 'projectAssignedTo', select: 'employee email profileImage' },
+      ])
       const serialized = records.map((c: any) => ({
         ...c,
         _id: String(c._id),
@@ -90,16 +108,23 @@ export default defineEventHandler(async (event) => {
       return { success: true, data: stripHiddenFields(event, '/crm/pipeline', serialized) }
     }
 
-    const [records, total] = await Promise.all([
+    const [rawRecords, total] = await Promise.all([
       Pipeline.find(filter)
         .select('-gallery -relatedContacts -notes')
-        .populate('assignedTo', 'employee email profileImage')
-        .populate('projectAssignedTo', 'employee email profileImage')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
       Pipeline.countDocuments(filter),
+    ])
+    // Clean invalid refs before populate to prevent CastError
+    for (const r of rawRecords as any[]) {
+      r.assignedTo = cleanIdArray(r.assignedTo)
+      r.projectAssignedTo = cleanIdArray(r.projectAssignedTo)
+    }
+    const records = await Pipeline.populate(rawRecords, [
+      { path: 'assignedTo', select: 'employee email profileImage' },
+      { path: 'projectAssignedTo', select: 'employee email profileImage' },
     ])
 
     const serialized = records.map((c: any) => ({
