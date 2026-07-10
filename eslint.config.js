@@ -46,7 +46,7 @@ export default withNuxt(antfu(
       // ts/no-unused-expressions — common in Vue event handler chains
       'ts/no-unused-expressions': 'warn',
       // isNaN → Number.isNaN — good practice, already fixed in server code
-      'unicorn/prefer-number-properties': ['warn', { checkIsNaN: true }],
+      'unicorn/prefer-number-properties': ['warn', { checkNaN: true }],
     },
   },
   {
