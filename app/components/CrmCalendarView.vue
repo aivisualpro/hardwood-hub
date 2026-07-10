@@ -45,6 +45,41 @@ function formatTime(dateString: string | Date) {
     return ''
   return format(new Date(dateString), 'h:mm a')
 }
+
+// ─── Appointment state helpers (active / rescheduled / canceled) ────────────
+type AptState = 'active' | 'rescheduled' | 'canceled' | 'completed'
+
+function getAptState(apt: any): AptState {
+  const meeting = apt.fields?.meetingScheduled
+  if (meeting?.rescheduled)
+    return 'rescheduled'
+  if (meeting?.eventStatus === 'canceled' || apt.status === 'archived')
+    return 'canceled'
+  if (apt.status === 'completed')
+    return 'completed'
+  return 'active'
+}
+
+function getServiceLabel(apt: any): string {
+  return apt.formName && apt.formName !== 'Calendly Appointment' ? apt.formName : 'Appointment'
+}
+
+function getServiceIcon(apt: any): string {
+  const t = apt.fields?.appointmentType || ''
+  const name = (apt.formName || '').toLowerCase()
+  if (t === 'in-home' || /in[\s-]?home/.test(name))
+    return 'i-lucide-home'
+  if (t === 'phone' || /phone|call|consult/.test(name))
+    return 'i-lucide-phone'
+  return 'i-lucide-calendar'
+}
+
+const APT_STATE_CLASSES: Record<AptState, string> = {
+  active: 'from-sky-500/10 to-blue-600/5 border-sky-500/20 text-sky-700 dark:text-sky-400',
+  completed: 'from-green-500/10 to-green-500/5 border-green-500/20 text-green-700 dark:text-green-400',
+  rescheduled: 'from-zinc-500/10 to-zinc-500/5 border-zinc-500/20 text-muted-foreground opacity-60',
+  canceled: 'from-red-500/10 to-red-500/5 border-red-500/20 text-red-700/70 dark:text-red-400/70 opacity-60',
+}
 </script>
 
 <template>
@@ -106,15 +141,32 @@ function formatTime(dateString: string | Date) {
                 v-for="apt in getAppointmentsForDay(day)"
                 :key="apt._id"
                 class="group cursor-pointer flex flex-col p-1.5 sm:p-2 rounded-md sm:rounded-lg border text-[10px] sm:text-xs text-left bg-gradient-to-br transition-all hover:-translate-y-px hover:shadow-md truncate"
-                :class="apt.status === 'completed' ? 'from-green-500/10 to-green-500/5 border-green-500/20 text-green-700 dark:text-green-400' : 'from-sky-500/10 to-blue-600/5 border-sky-500/20 text-sky-700 dark:text-sky-400'"
+                :class="APT_STATE_CLASSES[getAptState(apt)]"
                 @click="emit('select', apt)"
               >
-                <div class="font-bold truncate group-hover:text-sky-600 transition-colors">
+                <div
+                  class="font-bold truncate transition-colors"
+                  :class="getAptState(apt) === 'rescheduled' || getAptState(apt) === 'canceled' ? 'line-through' : 'group-hover:text-sky-600'"
+                >
                   {{ apt.name || 'Anonymous' }}
+                </div>
+                <div class="flex items-center gap-1 mt-0.5 opacity-90 text-[9px] sm:text-[10px] truncate">
+                  <Icon :name="getServiceIcon(apt)" class="size-3 shrink-0 hidden sm:inline-block" />
+                  <span class="truncate">{{ getServiceLabel(apt) }}</span>
                 </div>
                 <div class="flex items-center gap-1 mt-0.5 opacity-80 text-[9px] sm:text-[10px]">
                   <Icon name="i-lucide-clock" class="size-3 shrink-0 hidden sm:inline-block" />
-                  <span>{{ apt.fields?.meetingScheduled?.startTime ? formatTime(apt.fields.meetingScheduled.startTime) : formatTime(apt.dateSubmitted) }}</span>
+                  <span :class="{ 'line-through': getAptState(apt) === 'rescheduled' || getAptState(apt) === 'canceled' }">
+                    {{ apt.fields?.meetingScheduled?.startTime ? formatTime(apt.fields.meetingScheduled.startTime) : formatTime(apt.dateSubmitted) }}
+                  </span>
+                  <span
+                    v-if="getAptState(apt) === 'rescheduled'"
+                    class="ml-auto shrink-0 px-1 py-px rounded bg-zinc-500/20 text-zinc-600 dark:text-zinc-400 font-bold uppercase tracking-wide text-[8px] sm:text-[9px]"
+                  >Rescheduled</span>
+                  <span
+                    v-else-if="getAptState(apt) === 'canceled'"
+                    class="ml-auto shrink-0 px-1 py-px rounded bg-red-500/20 text-red-600 dark:text-red-400 font-bold uppercase tracking-wide text-[8px] sm:text-[9px]"
+                  >Canceled</span>
                 </div>
               </div>
             </div>

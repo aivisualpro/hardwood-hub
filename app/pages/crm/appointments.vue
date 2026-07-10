@@ -93,6 +93,25 @@ function formatDate(date: string) {
   return format(new Date(date), 'MMM dd, yyyy h:mm a')
 }
 
+// ─── Appointment state (active / rescheduled / canceled) ────────────────────
+function getAptState(item: any): 'active' | 'rescheduled' | 'canceled' | 'completed' {
+  const meeting = item?.fields?.meetingScheduled
+  if (meeting?.rescheduled)
+    return 'rescheduled'
+  if (meeting?.eventStatus === 'canceled' || item?.status === 'archived')
+    return 'canceled'
+  if (item?.status === 'completed')
+    return 'completed'
+  return 'active'
+}
+
+const APT_STATE_BADGES: Record<string, string> = {
+  active: 'bg-sky-500/15 text-sky-600',
+  completed: 'bg-emerald-500/15 text-emerald-600',
+  rescheduled: 'bg-zinc-500/15 text-zinc-500',
+  canceled: 'bg-red-500/15 text-red-600',
+}
+
 async function handleStatusUpdate(id: string, status: string) {
   await updateSubmission(id, { status } as any)
   if (selectedItem.value && selectedItem.value._id === id) {
@@ -198,7 +217,7 @@ async function handleStatusUpdate(id: string, status: string) {
               <SheetTitle class="text-lg">
                 {{ selectedItem.name || 'Unknown Contact' }}
               </SheetTitle>
-              <SheetDescription>Calendly Appointment</SheetDescription>
+              <SheetDescription>{{ selectedItem.formName || 'Calendly Appointment' }}</SheetDescription>
             </div>
           </div>
         </SheetHeader>
@@ -214,11 +233,22 @@ async function handleStatusUpdate(id: string, status: string) {
               <a :href="`tel:${selectedItem.phone}`" class="text-primary hover:underline">{{ selectedItem.phone }}</a>
             </div>
             <div v-if="selectedItem.fields?.meetingScheduled" class="flex items-center gap-2 text-sm col-span-1 sm:col-span-2 mt-2 p-3 bg-muted/40 rounded-xl border">
-              <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 shrink-0" />
+              <div
+                class="w-1.5 h-1.5 rounded-full mr-1 shrink-0"
+                :class="getAptState(selectedItem) === 'canceled' ? 'bg-red-500' : getAptState(selectedItem) === 'rescheduled' ? 'bg-zinc-400' : 'bg-emerald-500'"
+              />
               <div class="flex flex-col">
                 <span class="font-bold text-foreground">Scheduled for:</span>
-                <span class="text-muted-foreground">{{ formatDate(selectedItem.fields.meetingScheduled.startTime) }}</span>
+                <span
+                  class="text-muted-foreground"
+                  :class="{ 'line-through opacity-70': getAptState(selectedItem) === 'rescheduled' || getAptState(selectedItem) === 'canceled' }"
+                >{{ formatDate(selectedItem.fields.meetingScheduled.startTime) }}</span>
               </div>
+              <span
+                v-if="getAptState(selectedItem) === 'rescheduled' || getAptState(selectedItem) === 'canceled'"
+                class="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0"
+                :class="APT_STATE_BADGES[getAptState(selectedItem)]"
+              >{{ getAptState(selectedItem) }}</span>
             </div>
           </div>
 
@@ -227,9 +257,9 @@ async function handleStatusUpdate(id: string, status: string) {
           <div class="flex flex-col sm:flex-row sm:items-center gap-3">
             <span
               class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium capitalize w-fit"
-              :class="selectedItem.status === 'completed' ? 'bg-emerald-500/15 text-emerald-600' : 'bg-sky-500/15 text-sky-600'"
+              :class="APT_STATE_BADGES[getAptState(selectedItem)]"
             >
-              Status: {{ selectedItem.status }}
+              Status: {{ getAptState(selectedItem) === 'active' ? selectedItem.status : getAptState(selectedItem) }}
             </span>
             <span class="text-xs text-muted-foreground sm:ml-auto">
               Booked {{ formatDate(selectedItem.dateSubmitted) }}

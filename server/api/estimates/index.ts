@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
 
     const [data, total] = await Promise.all([
       Estimate.find(filter)
-        .select('-content -attachedPdf -attachedGalleryImages -variableValues')
+        .select('-content -attachedPdf -attachedGalleryImages')
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)

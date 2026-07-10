@@ -37,6 +37,45 @@ const loadingAllSubmissions = ref(false)
 const relatedQuotes = computed(() => allSubmissions.value.filter(s => s.type === 'flooring-estimate'))
 const relatedFastQuotes = computed(() => allSubmissions.value.filter(s => s.type === 'fast-quote'))
 
+// ─── Related Appointments (Calendly bookings for this contact) ─────────────
+const relatedAppointments = computed(() => allSubmissions.value
+  .filter(s => s.type === 'appointment' && s.gfFormId === 0)
+  .sort((a, b) => {
+    const ta = new Date(a.fields?.meetingScheduled?.startTime || a.dateSubmitted).getTime()
+    const tb = new Date(b.fields?.meetingScheduled?.startTime || b.dateSubmitted).getTime()
+    return tb - ta
+  }))
+
+type AptState = 'active' | 'rescheduled' | 'canceled' | 'completed'
+
+function getAptState(item: any): AptState {
+  const meeting = item?.fields?.meetingScheduled
+  if (meeting?.rescheduled)
+    return 'rescheduled'
+  if (meeting?.eventStatus === 'canceled' || item?.status === 'archived')
+    return 'canceled'
+  if (item?.status === 'completed')
+    return 'completed'
+  return 'active'
+}
+
+const APT_STATE_BADGES: Record<AptState, string> = {
+  active: 'bg-sky-500/15 text-sky-600',
+  completed: 'bg-emerald-500/15 text-emerald-600',
+  rescheduled: 'bg-zinc-500/15 text-zinc-500',
+  canceled: 'bg-red-500/15 text-red-600',
+}
+
+function getAptIcon(item: any): string {
+  const t = item?.fields?.appointmentType || ''
+  const name = (item?.formName || '').toLowerCase()
+  if (t === 'in-home' || /in[\s-]?home/.test(name))
+    return 'i-lucide-home'
+  if (t === 'phone' || /phone|call|consult/.test(name))
+    return 'i-lucide-phone'
+  return 'i-lucide-calendar'
+}
+
 // ─── Related Estimates (from hardwoodDB_Estimates collection) ──────────────
 const relatedEstimates = ref<any[]>([])
 const loadingEstimates = ref(false)
@@ -423,78 +462,55 @@ function totalSqft(blocks: any[]) {
               Customer Details
             </h3>
           </div>
-          <div v-if="customer" class="px-5 py-4 space-y-3 flex-1 min-h-0 overflow-y-auto">
-            <!-- Customer Name -->
-            <div>
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                Customer Name
-              </p>
-              <p class="text-sm font-bold text-foreground">
-                {{ customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || '—' }}
-              </p>
-            </div>
-            <!-- Email & Phone -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Email
-                </p>
-                <a v-if="customer.email" :href="`mailto:${customer.email}`" class="text-xs font-semibold text-primary hover:underline truncate block">{{ customer.email }}</a>
-                <span v-else class="text-xs text-muted-foreground">—</span>
+          <div v-if="customer" class="px-5 py-4 flex-1 min-h-0 overflow-y-auto">
+            <div class="space-y-0 text-xs">
+              <!-- Customer Name -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Name</span>
+                <span class="col-span-7 font-bold text-foreground">
+                  {{ customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || '—' }}
+                </span>
               </div>
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Phone
-                </p>
-                <a v-if="customer.phone" :href="`tel:${customer.phone}`" class="text-xs font-semibold text-foreground hover:text-primary transition-colors">{{ customer.phone }}</a>
-                <span v-else class="text-xs text-muted-foreground">—</span>
+              <!-- Email -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Email</span>
+                <span class="col-span-7">
+                  <a v-if="customer.email" :href="`mailto:${customer.email}`" class="font-semibold text-primary hover:underline truncate block">{{ customer.email }}</a>
+                  <span v-else class="text-muted-foreground">—</span>
+                </span>
               </div>
-            </div>
-            <!-- Address -->
-            <div>
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                Address
-              </p>
-              <p class="text-xs text-foreground/80 font-medium leading-relaxed">
-                {{ customer.address || '—' }}
-              </p>
-            </div>
-            <!-- City & State -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  City
-                </p>
-                <p class="text-xs font-semibold text-foreground">
-                  {{ customer.city || '—' }}
-                </p>
+              <!-- Phone -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Phone</span>
+                <span class="col-span-7">
+                  <a v-if="customer.phone" :href="`tel:${customer.phone}`" class="font-semibold text-foreground hover:text-primary transition-colors">{{ customer.phone }}</a>
+                  <span v-else class="text-muted-foreground">—</span>
+                </span>
               </div>
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  State
-                </p>
-                <p class="text-xs font-semibold text-foreground">
-                  {{ customer.state || '—' }}{{ customer.zip ? ` ${customer.zip}` : '' }}
-                </p>
+              <!-- Address -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Address</span>
+                <span class="col-span-7 font-medium text-foreground/80 leading-relaxed">{{ customer.address || '—' }}</span>
               </div>
-            </div>
-            <!-- Type & Source -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Type
-                </p>
-                <p class="text-xs font-semibold text-foreground">
-                  {{ customer.type || '—' }}
-                </p>
+              <!-- City -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">City</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.city || '—' }}</span>
               </div>
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Source
-                </p>
-                <p class="text-xs font-semibold text-foreground">
-                  {{ customer.source || 'Direct' }}
-                </p>
+              <!-- State -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">State</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.state || '—' }}{{ customer.zip ? ` ${customer.zip}` : '' }}</span>
+              </div>
+              <!-- Type -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Type</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.type || '—' }}</span>
+              </div>
+              <!-- Source -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30 last:border-b-0">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Source</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.source || 'Direct' }}</span>
               </div>
             </div>
           </div>
@@ -513,147 +529,83 @@ function totalSqft(blocks: any[]) {
               Project Details
             </h3>
           </div>
-          <div v-if="customer" class="px-5 py-4 space-y-3 flex-1 min-h-0 overflow-y-auto">
-            <!-- Project Name -->
-            <div>
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                Project Name
-              </p>
-              <p class="text-sm font-bold text-foreground">
-                {{ customer.projectName || '—' }}
-              </p>
-            </div>
-            <!-- Stage & Duration -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Stage
-                </p>
-                <p class="text-xs font-bold uppercase tracking-wider" :style="getStageStyle()">
-                  {{ getStatusLabel() || '—' }}
-                </p>
+          <div v-if="customer" class="px-5 py-4 flex-1 min-h-0 overflow-y-auto">
+            <div class="space-y-0 text-xs">
+              <!-- Project Name -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Project Name</span>
+                <span class="col-span-7 font-bold text-foreground">{{ customer.projectName || '—' }}</span>
               </div>
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Estim. Project Duration
-                </p>
-                <p class="text-xs font-semibold text-foreground">
-                  {{ customer.estimatedProjectDuration || '—' }}
-                </p>
+              <!-- Stage -->
+              <div class="grid grid-cols-12 gap-2 items-center py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Stage</span>
+                <span class="col-span-7 font-bold uppercase tracking-wider text-xs" :style="getStageStyle()">{{ getStatusLabel() || '—' }}</span>
               </div>
-            </div>
-            <!-- Financials -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Total Estimate
-                </p>
-                <p class="text-base font-black tabular-nums text-foreground">
-                  {{ customer.totalEstimate ? `$${customer.totalEstimate.toLocaleString()}` : '—' }}
-                </p>
+              <!-- Duration -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Project Duration</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.estimatedProjectDuration || '—' }}</span>
               </div>
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Labor + Sanding Materials
-                </p>
-                <p class="text-base font-black tabular-nums text-foreground">
-                  {{ customer.laborSandingTotal ? `$${customer.laborSandingTotal.toLocaleString()}` : '—' }}
-                </p>
+              <!-- Total Estimate -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Total Estimate</span>
+                <span class="col-span-7 font-black tabular-nums text-foreground">{{ customer.totalEstimate ? `$${customer.totalEstimate.toLocaleString()}` : '—' }}</span>
               </div>
-            </div>
-            <!-- Assigned To & Crew -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Assigned To
-                </p>
-                <p class="text-xs font-semibold text-foreground">
-                  {{ customer.assignedTo || '—' }}
-                </p>
+              <!-- Labor + Sanding -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Labor + Sanding</span>
+                <span class="col-span-7 font-black tabular-nums text-foreground">{{ customer.laborSandingTotal ? `$${customer.laborSandingTotal.toLocaleString()}` : '—' }}</span>
               </div>
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Crew
-                </p>
-                <p class="text-xs font-semibold text-foreground">
-                  {{ customer.projectAssignedTo || '—' }}
-                </p>
+              <!-- Assigned To -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Assigned To</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.assignedTo || '—' }}</span>
               </div>
-            </div>
-            <!-- Views -->
-            <div>
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                Total Tracked Views
-              </p>
-              <p class="text-xs font-semibold text-foreground">
-                {{ customer.totalTrackedViews ?? 0 }}
-              </p>
-            </div>
-            <!-- Estimate Sent On -->
-            <div>
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                Estimate Sent On
-              </p>
-              <p class="text-xs font-semibold text-foreground">
-                {{ customer.estimateSentOn ? formatDate(customer.estimateSentOn) : '—' }}
-              </p>
-            </div>
-            <!-- Notes -->
-            <div v-if="customer.notes">
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                Notes
-              </p>
-              <p class="text-xs text-foreground/70 leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3 border border-dashed">
-                {{ customer.notes }}
-              </p>
-            </div>
-            <!-- Key Dates -->
-            <div class="pt-1 border-t border-border/50">
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                Key Dates
-              </p>
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <p class="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Initial Contact
-                  </p>
-                  <p class="text-[11px] font-semibold">
-                    {{ customer.initialContactDate ? formatDate(customer.initialContactDate) : '—' }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Last Follow-Up
-                  </p>
-                  <p class="text-[11px] font-semibold">
-                    {{ customer.lastFollowUpSentOn ? formatDate(customer.lastFollowUpSentOn) : '—' }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Date Approved
-                  </p>
-                  <p class="text-[11px] font-semibold">
-                    {{ customer.dateApproved ? formatDate(customer.dateApproved) : '—' }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-[9px] text-muted-foreground uppercase tracking-wider">
-                    Wood Order Date
-                  </p>
-                  <p class="text-[11px] font-semibold">
-                    {{ customer.woodOrderDate ? formatDate(customer.woodOrderDate) : '—' }}
-                  </p>
-                </div>
+              <!-- Crew -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Crew</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.projectAssignedTo || '—' }}</span>
               </div>
-            </div>
-            <!-- Tags -->
-            <div v-if="customer.tags?.length" class="pt-1 border-t border-border/50">
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                Tags
-              </p>
-              <div class="flex flex-wrap gap-1">
-                <span v-for="tag in customer.tags" :key="tag" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-foreground border">{{ tag }}</span>
+              <!-- Tracked Views -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Tracked Views</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.totalTrackedViews ?? 0 }}</span>
+              </div>
+              <!-- Estimate Sent On -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Estimate Sent On</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.estimateSentOn ? formatDate(customer.estimateSentOn) : '—' }}</span>
+              </div>
+              <!-- Notes -->
+              <div v-if="customer.notes" class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Notes</span>
+                <span class="col-span-7 text-foreground/70 leading-relaxed whitespace-pre-wrap">{{ customer.notes }}</span>
+              </div>
+              <!-- Key Dates -->
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Initial Contact</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.initialContactDate ? formatDate(customer.initialContactDate) : '—' }}</span>
+              </div>
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Last Follow-Up</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.lastFollowUpSentOn ? formatDate(customer.lastFollowUpSentOn) : '—' }}</span>
+              </div>
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Date Approved</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.dateApproved ? formatDate(customer.dateApproved) : '—' }}</span>
+              </div>
+              <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Wood Order Date</span>
+                <span class="col-span-7 font-semibold text-foreground">{{ customer.woodOrderDate ? formatDate(customer.woodOrderDate) : '—' }}</span>
+              </div>
+              <!-- Tags -->
+              <div v-if="customer.tags?.length" class="grid grid-cols-12 gap-2 items-start py-1.5">
+                <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">Tags</span>
+                <span class="col-span-7">
+                  <div class="flex flex-wrap gap-1">
+                    <span v-for="tag in customer.tags" :key="tag" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-muted text-foreground border">{{ tag }}</span>
+                  </div>
+                </span>
               </div>
             </div>
           </div>
@@ -676,43 +628,48 @@ function totalSqft(blocks: any[]) {
             </span>
           </div>
           <div class="px-5 py-4 space-y-3 flex-1 min-h-0 overflow-y-auto">
-            <!-- Estimate Title & Status -->
-            <div class="grid grid-cols-2 gap-3 pb-2 border-b border-border/50">
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Estimate Title
-                </p>
-                <p class="text-xs font-bold text-foreground truncate">
-                  {{ latestEstimate.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || 'Estimate' }}
-                </p>
-              </div>
-              <div>
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  Status
-                </p>
-                <span
-                  class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
-                  :class="ESTIMATE_STATUS_COLORS[latestEstimate.status] || 'bg-muted text-muted-foreground'"
-                >
-                  {{ ESTIMATE_STATUS_LABELS[latestEstimate.status] || latestEstimate.status }}
-                </span>
-              </div>
-            </div>
+             <!-- Details List (Two columns: Label & Value) -->
+             <div class="space-y-2.5 pt-1 text-xs">
+               <!-- Estimate Title -->
+               <div class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30">
+                 <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">
+                   Estimate Title
+                 </span>
+                 <span class="col-span-7 font-bold text-foreground truncate" :title="latestEstimate.title">
+                   {{ latestEstimate.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || 'Estimate' }}
+                 </span>
+               </div>
 
-            <!-- Variables -->
-            <div v-if="latestEstimate.variableValues && Object.keys(latestEstimate.variableValues).length > 0" class="space-y-3 pt-1">
-              <div v-for="(val, key) in latestEstimate.variableValues" :key="key">
-                <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
-                  {{ String(key).replace(/_/g, ' ') }}
-                </p>
-                <p class="text-xs font-semibold text-foreground whitespace-pre-wrap">
-                  {{ val || '—' }}
-                </p>
-              </div>
-            </div>
-            <div v-else class="text-xs text-muted-foreground text-center py-4">
-              No variable information available.
-            </div>
+               <!-- Status -->
+               <div class="grid grid-cols-12 gap-2 items-center py-1.5 border-b border-border/30">
+                 <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">
+                   Status
+                 </span>
+                 <span class="col-span-7">
+                   <span
+                     class="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full capitalize"
+                     :class="ESTIMATE_STATUS_COLORS[latestEstimate.status] || 'bg-muted text-muted-foreground'"
+                   >
+                     {{ ESTIMATE_STATUS_LABELS[latestEstimate.status] || latestEstimate.status }}
+                   </span>
+                 </span>
+               </div>
+
+               <!-- Variables -->
+               <template v-if="latestEstimate.variableValues && Object.keys(latestEstimate.variableValues).length > 0">
+                 <div v-for="(val, key) in latestEstimate.variableValues" :key="key" class="grid grid-cols-12 gap-2 items-start py-1.5 border-b border-border/30 last:border-b-0">
+                   <span class="col-span-5 font-bold text-muted-foreground uppercase text-[10px] tracking-wider pt-0.5">
+                     {{ String(key).replace(/_/g, ' ') }}
+                   </span>
+                   <span class="col-span-7 font-semibold text-foreground whitespace-pre-wrap break-words">
+                     {{ val || '—' }}
+                   </span>
+                 </div>
+               </template>
+               <div v-else class="text-xs text-muted-foreground text-center py-2">
+                 No variable information available.
+               </div>
+             </div>
           </div>
         </div>
 
@@ -742,6 +699,52 @@ function totalSqft(blocks: any[]) {
 
       <!-- ══ MIDDLE COLUMN — Quotes + Estimates + Contracts ════════════════ -->
       <div class="flex-1 min-w-0 flex flex-col gap-3 px-4 lg:px-5 py-4 overflow-y-auto">
+        <!-- Appointments (Calendly bookings timeline) -->
+        <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
+          <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <Icon name="i-lucide-calendar-check" class="size-4 text-sky-500 shrink-0" />
+              <h3 class="text-sm font-bold text-foreground">
+                Appointments
+              </h3>
+            </div>
+            <span v-if="relatedAppointments.length" class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{{ relatedAppointments.length }}</span>
+          </div>
+          <div v-if="loadingAllSubmissions" class="flex-1 px-5 py-4 space-y-2">
+            <div v-for="i in 2" :key="i" class="h-10 bg-muted/30 rounded-lg animate-pulse" />
+          </div>
+          <div v-else-if="relatedAppointments.length === 0" class="flex-1 flex flex-col items-center justify-center py-8 text-center">
+            <Icon name="i-lucide-calendar-check" class="size-6 text-muted-foreground/30 mx-auto mb-2" />
+            <p class="text-xs text-muted-foreground">
+              No Calendly appointments
+            </p>
+          </div>
+          <div v-else class="divide-y divide-border/50 max-h-[240px] overflow-y-auto">
+            <div v-for="item in relatedAppointments" :key="item._id" class="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
+              <div class="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0">
+                <Icon :name="getAptIcon(item)" class="size-3.5 text-sky-500" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p
+                  class="text-xs font-bold text-foreground truncate"
+                  :class="{ 'line-through opacity-60': getAptState(item) === 'rescheduled' || getAptState(item) === 'canceled' }"
+                >
+                  {{ item.formName || 'Calendly Appointment' }}
+                </p>
+                <p class="text-[10px] text-muted-foreground truncate">
+                  <span v-if="item.fields?.meetingScheduled?.startTime" :class="{ 'line-through': getAptState(item) === 'rescheduled' || getAptState(item) === 'canceled' }">
+                    Scheduled {{ formatDateTime(item.fields.meetingScheduled.startTime) }}
+                  </span>
+                  <span v-if="item.dateSubmitted"> · Booked {{ formatDate(item.dateSubmitted) }}</span>
+                </p>
+              </div>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full capitalize shrink-0" :class="APT_STATE_BADGES[getAptState(item)]">
+                {{ getAptState(item) === 'active' ? 'Scheduled' : getAptState(item) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <!-- Related Quotes -->
         <div class="bg-card rounded-2xl border shadow-sm overflow-hidden flex flex-col min-h-0">
           <div class="px-5 py-3 border-b bg-muted/30 flex items-center justify-between shrink-0">

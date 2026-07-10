@@ -14,6 +14,19 @@ async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+/**
+ * Classify a Calendly event/service name into an appointment type.
+ * e.g. "Free Phone Consultation" → 'phone', "In-Home Appointment" → 'in-home'
+ */
+export function classifyAppointmentType(name: string): 'phone' | 'in-home' | '' {
+  const n = (name || '').toLowerCase()
+  if (/in[\s-]?home/.test(n))
+    return 'in-home'
+  if (/phone|call|consult/.test(n))
+    return 'phone'
+  return ''
+}
+
 async function fetchWithRetry(url: string, headers: Record<string, string>, retries = MAX_RETRIES): Promise<Response | null> {
   for (let attempt = 0; attempt < retries; attempt++) {
     const res = await fetch(url, { headers })
@@ -190,12 +203,17 @@ async function _doFetch(recentOnly: boolean) {
           }
         }
 
+        // Calendly marks the ORIGINAL invitee with rescheduled=true when the
+        // client reschedules (the new booking arrives as a separate event).
+        const isCanceled = invitee.status === 'canceled' || status === 'canceled'
+        const isRescheduled = invitee.rescheduled === true
+
         return {
           gfEntryId: invitee.uri.split('/').pop(),
           gfFormId: 0,
           formName: event.name || 'Calendly Appointment',
           type: 'appointment',
-          status: invitee.status === 'canceled' || status === 'canceled' ? 'archived' : 'new',
+          status: isCanceled ? 'archived' : 'new',
           name: invitee.name || `${invitee.first_name || ''} ${invitee.last_name || ''}`.trim(),
           firstName: invitee.first_name || '',
           lastName: invitee.last_name || '',
@@ -208,12 +226,14 @@ async function _doFetch(recentOnly: boolean) {
           message: details,
           fields: {
             ...fields,
+            appointmentType: classifyAppointmentType(event.name),
             meetingScheduled: {
               startTime: new Date(event.start_time),
               endTime: new Date(event.end_time),
               rescheduleUrl: invitee.reschedule_url,
               cancelUrl: invitee.cancel_url,
-              eventStatus: status,
+              eventStatus: isCanceled ? 'canceled' : 'active',
+              rescheduled: isRescheduled,
             },
           },
           dateSubmitted: new Date(invitee.created_at),

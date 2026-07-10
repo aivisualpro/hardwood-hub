@@ -562,8 +562,8 @@ const formSections = [
 
     <!-- Table Section -->
     <div class="border rounded-2xl bg-card shadow-sm overflow-hidden">
-      <!-- Horizontal scroll wrapper — does NOT create a vertical scroll context so thead sticky works -->
-      <div class="overflow-x-auto">
+      <!-- Full-screen scrollable table wrapper to make sticky headers work with horizontal scroll -->
+      <div class="overflow-auto max-h-[calc(100vh-90px)]">
         <table class="w-full text-sm border-collapse" style="min-width: 1800px">
           <!-- sticky top accounts for the layout header height -->
           <thead class="sticky top-0 z-20" style="background:var(--card)">
@@ -705,7 +705,7 @@ const formSections = [
                   <span v-else class="text-xs text-foreground break-words">{{ item.sku || '—' }}</span>
                 </div>
               </td>
-              <td class="py-2.5 px-3 font-medium text-foreground max-w-[350px] whitespace-normal break-words">
+              <td class="py-2.5 px-3 text-foreground max-w-[350px] whitespace-normal break-words">
                 <textarea
                   v-if="isQuickEditing"
                   v-model="item.description"
@@ -1155,3 +1155,17 @@ const formSections = [
     </Dialog>
   </div>
 </template>
+
+<style scoped>
+th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: color-mix(in srgb, var(--muted) 30%, var(--card));
+}
+/* Ensure the first sticky SKU header remains on top of other sticky headers when scrolling horizontally */
+th.sticky {
+  z-index: 30;
+  background-color: var(--card);
+}
+</style>
