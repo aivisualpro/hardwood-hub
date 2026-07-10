@@ -9,6 +9,7 @@ import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { PipelineCreateSchema, parseBody } from '../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -123,6 +124,7 @@ export default defineEventHandler(async (event) => {
     const cleaned = sanitizeWriteBody(event, '/crm/pipeline', data)
     const record = new Pipeline(cleaned)
     await record.save()
+    fireAutomations({ module: 'crm', submodule: 'pipeline', action: 'create', after: record.toObject(), actor: actorFromEvent(event) })
     return { success: true, data: record }
   }
 })

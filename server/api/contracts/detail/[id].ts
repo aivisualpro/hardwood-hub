@@ -9,6 +9,7 @@ import { requirePermission } from '../../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../../utils/applyFieldPermissions'
 import { logger } from '../../../utils/logger'
 import { ContractUpdateSchema, objectId, parseBody } from '../../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../../utils/automationEngine'
 const log = logger('[id]')
 
 export default defineEventHandler(async (event) => {
@@ -34,6 +35,7 @@ export default defineEventHandler(async (event) => {
     const data = parseBody(ContractUpdateSchema, raw)
     const cleaned = sanitizeWriteBody(event, '/crm/contracts', data)
     const doc = await Contract.findByIdAndUpdate(id, cleaned, { returnDocument: 'after' }).lean()
+    fireAutomations({ module: 'crm', submodule: 'contracts', action: 'update', before: existing, after: doc, actor: actorFromEvent(event) })
     return { success: true, data: doc }
   }
 
@@ -59,6 +61,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     await Contract.findByIdAndDelete(id)
+    fireAutomations({ module: 'crm', submodule: 'contracts', action: 'delete', before: doc, actor: actorFromEvent(event) })
     return { success: true }
   }
 

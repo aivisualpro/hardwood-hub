@@ -5,6 +5,7 @@ import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { objectId, parseBody } from '../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 import { z } from 'zod'
 
 const ProductUpdateSchema = z.object({
@@ -45,13 +46,17 @@ export default defineEventHandler(async (event) => {
     const raw = await readBody(event)
     const data = parseBody(ProductUpdateSchema, raw)
     const cleaned = sanitizeWriteBody(event, '/crm/products', data)
+    const before = await Product.findById(id).lean()
     const updated = await Product.findByIdAndUpdate(id, { $set: cleaned }, { new: true })
+    fireAutomations({ module: 'crm', submodule: 'products', action: 'update', before, after: updated?.toObject?.() || updated, actor: actorFromEvent(event) })
     return { success: true, data: updated }
   }
 
   if (method === 'DELETE') {
     requireManager(event)
+    const before = await Product.findById(id).lean()
     await Product.findByIdAndDelete(id)
+    fireAutomations({ module: 'crm', submodule: 'products', action: 'delete', before, actor: actorFromEvent(event) })
     return { success: true }
   }
 })

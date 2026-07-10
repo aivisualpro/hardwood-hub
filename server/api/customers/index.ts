@@ -4,6 +4,7 @@ import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
 import { CustomerCreateSchema, parseBody } from '../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 
 /**
  * Escape a string for safe use inside a MongoDB $regex value.
@@ -101,6 +102,7 @@ export default defineEventHandler(async (event) => {
     const data = parseBody(CustomerCreateSchema, raw)
     const newCustomer = new Customer(data)
     await newCustomer.save()
+    fireAutomations({ module: 'crm', submodule: 'customers', action: 'create', after: newCustomer.toObject(), actor: actorFromEvent(event) })
     return { success: true, data: newCustomer }
   }
 })

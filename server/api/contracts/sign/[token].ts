@@ -148,12 +148,20 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    const beforeSignDoc = { ...contract.toObject() }
     contract.customerSignature = signature
     contract.customerSignatureDate = new Date()
     contract.status = 'signed'
     // Clear the token so the link can't be reused
     contract.signingToken = ''
     await contract.save()
+
+    // Fire notification automations (contract status → signed)
+    try {
+      const { fireAutomations } = await import('../../../utils/automationEngine')
+      fireAutomations({ module: 'crm', submodule: 'contracts', action: 'update', before: beforeSignDoc, after: contract.toObject(), actor: { name: contract.customerName || 'Client' } })
+    }
+    catch { /* non-blocking */ }
 
     // ─── Generate Signed HTML for Email ───
     const settingsDoc = await AppSetting.findOne({ key: 'companyProfile' }).lean() as any

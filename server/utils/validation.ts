@@ -512,10 +512,10 @@ const LineItemSchema = z.object({
   room: z.string().max(200).optional().default(''),
   sku: z.string().max(200).optional().default(''),
   description: z.string().max(2000).optional().default(''),
-  quantity: z.number().optional().default(0),
+  quantity: z.coerce.number().optional().default(0),
   unit: z.string().max(50).optional().default(''),
-  price: z.number().optional().default(0),
-  amount: z.number().optional().default(0),
+  price: z.coerce.number().optional().default(0),
+  amount: z.coerce.number().optional().default(0),
 })
 
 /** POST /api/estimates — create an estimate */
@@ -536,13 +536,13 @@ export const EstimateCreateSchema = z.object({
   notes: z.string().max(10_000).optional().default(''),
   createdBy: z.string().max(200).optional().default(''),
   estimateNumber: z.string().max(100).optional(),
-  status: z.enum(['draft', 'sent', 'approved', 'change_request', 'declined', 'completed', 'cancelled']).optional().default('draft'),
+  status: z.enum(['draft', 'sent', 'received', 'approved', 'change_request', 'declined', 'completed', 'cancelled']).optional().default('draft'),
   lineItems: z.array(LineItemSchema).optional().default([]),
-  materialTotal: z.number().optional().default(0),
-  laborTotal: z.number().optional().default(0),
-  taxTotal: z.number().optional().default(0),
-  discountTotal: z.number().optional().default(0),
-  totalAmount: z.number().optional().default(0),
+  materialTotal: z.coerce.number().optional().default(0),
+  laborTotal: z.coerce.number().optional().default(0),
+  taxTotal: z.coerce.number().optional().default(0),
+  discountTotal: z.coerce.number().optional().default(0),
+  totalAmount: z.coerce.number().optional().default(0),
 })
 
 /** PUT /api/estimates/detail/:id — update an estimate */
@@ -561,14 +561,14 @@ export const EstimateUpdateSchema = z.object({
   attachedGalleryImages: z.array(z.string()).optional(),
   mergedPdfUrl: z.string().url().or(z.literal('')).optional(),
   mergedPdfGeneratedAt: z.coerce.date().nullable().optional(),
-  status: z.enum(['draft', 'sent', 'completed', 'cancelled']).optional(),
+  status: z.enum(['draft', 'sent', 'received', 'approved', 'change_request', 'declined', 'completed', 'cancelled']).optional(),
   notes: z.string().max(10_000).optional(),
   lineItems: z.array(LineItemSchema).optional(),
-  materialTotal: z.number().optional(),
-  laborTotal: z.number().optional(),
-  taxTotal: z.number().optional(),
-  discountTotal: z.number().optional(),
-  totalAmount: z.number().optional(),
+  materialTotal: z.coerce.number().optional(),
+  laborTotal: z.coerce.number().optional(),
+  taxTotal: z.coerce.number().optional(),
+  discountTotal: z.coerce.number().optional(),
+  totalAmount: z.coerce.number().optional(),
 })
 
 // ─── ESTIMATE TEMPLATE ───────────────────────────────────────────────────────

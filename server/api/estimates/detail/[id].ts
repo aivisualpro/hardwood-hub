@@ -9,6 +9,7 @@ import { requirePermission } from '../../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../../utils/applyFieldPermissions'
 import { logger } from '../../../utils/logger'
 import { EstimateUpdateSchema, objectId, parseBody } from '../../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../../utils/automationEngine'
 const log = logger('[id]')
 
 export default defineEventHandler(async (event) => {
@@ -31,6 +32,7 @@ export default defineEventHandler(async (event) => {
     const data = parseBody(EstimateUpdateSchema, raw)
     const cleaned = sanitizeWriteBody(event, '/crm/estimates', data)
     const doc = await Estimate.findByIdAndUpdate(id, cleaned, { returnDocument: 'after' }).lean()
+    fireAutomations({ module: 'crm', submodule: 'estimates', action: 'update', before: existing, after: doc, actor: actorFromEvent(event) })
     return { success: true, data: doc }
   }
 
@@ -50,6 +52,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     await Estimate.findByIdAndDelete(id)
+    fireAutomations({ module: 'crm', submodule: 'estimates', action: 'delete', before: doc, actor: actorFromEvent(event) })
     return { success: true }
   }
 

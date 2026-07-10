@@ -58,17 +58,20 @@ const EstimateSchema = new mongoose.Schema(
     // Token for public estimate response page (Approve/Change Request/Decline)
     responseToken: { type: String, default: '', index: true },
 
-    // Client response (filled when customer clicks Approve/Change Request/Decline)
-    clientResponse: {
-      action: { type: String, enum: ['approved', 'change_request', 'declined', ''], default: '' },
-      message: { type: String, default: '' },
-      respondedAt: { type: Date, default: null },
-    },
+    statusTimeline: [
+      {
+        action: { type: String, required: true },
+        message: { type: String, default: '' },
+        timestamp: { type: Date, default: Date.now },
+        performedBy: { type: String, default: '' },
+        sentToEmail: { type: String, default: '' },
+      },
+    ],
 
     // Status
     status: {
       type: String,
-      enum: ['draft', 'sent', 'approved', 'change_request', 'declined', 'completed', 'cancelled'],
+      enum: ['draft', 'sent', 'received', 'approved', 'change_request', 'declined', 'completed', 'cancelled'],
       default: 'draft',
     },
 

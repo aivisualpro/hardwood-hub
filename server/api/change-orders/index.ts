@@ -9,6 +9,7 @@ import { requirePermission } from '../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { ChangeOrderCreateSchema, parseBody } from '../../utils/validation'
 import { requireManager } from '../../utils/requireRole'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -66,6 +67,7 @@ export default defineEventHandler(async (event) => {
     const changeOrderNumber = cleaned.changeOrderNumber || `CO-${String(nextNum).padStart(3, '0')}`
 
     const doc = await ChangeOrder.create({ ...cleaned, changeOrderNumber })
+    fireAutomations({ module: 'crm', submodule: 'change-orders', action: 'create', after: doc.toObject(), actor: actorFromEvent(event) })
     return { success: true, data: doc }
   }
 

@@ -89,20 +89,18 @@ async function _doFetch(recentOnly: boolean) {
   const allEvents: any[] = []
 
   for (const status of ['active', 'canceled']) {
-    let nextPageToken: string | null = null
+    let nextPageUrl: string | null = null
     let page = 0
 
     do {
       page++
-      let params: URLSearchParams
+      let url = ''
 
-      if (nextPageToken) {
-        // Calendly returns 400 if ANY other param is sent alongside page_token.
-        // The cursor already encodes the full original query context.
-        params = new URLSearchParams({ page_token: nextPageToken })
+      if (nextPageUrl) {
+        url = nextPageUrl
       }
       else {
-        params = new URLSearchParams({
+        const params = new URLSearchParams({
           user: userUri,
           status,
           count: '100',
@@ -111,9 +109,9 @@ async function _doFetch(recentOnly: boolean) {
         if (minDate)
           params.set('min_start_time', minDate)
         params.set('max_start_time', maxDate)
+        url = `https://api.calendly.com/scheduled_events?${params.toString()}`
       }
 
-      const url = `https://api.calendly.com/scheduled_events?${params.toString()}`
       log.info(`Fetching events (status=${status}, page=${page})`)
 
       const eventsRes = await fetchWithRetry(url, headers)
@@ -131,11 +129,11 @@ async function _doFetch(recentOnly: boolean) {
         allEvents.push({ event, status })
       }
 
-      nextPageToken = eventsData.pagination?.next_page_token || null
+      nextPageUrl = eventsData.pagination?.next_page || null
 
-      if (nextPageToken)
+      if (nextPageUrl)
         await sleep(1000)
-    } while (nextPageToken)
+    } while (nextPageUrl)
   }
 
   log.info(`Total events: ${allEvents.length}, fetching invitees in batches of ${BATCH_SIZE}...`)

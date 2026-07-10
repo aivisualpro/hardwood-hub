@@ -14,10 +14,17 @@ import { ProjectCommunication } from '../../models/ProjectCommunication'
 import { Skill } from '../../models/Skill'
 import { StainSignOff } from '../../models/StainSignOff'
 import { Task } from '../../models/Task'
+import { Notification } from '../../models/Notification'
 import { connectDB } from '../../utils/mongoose'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
+
+  // Per-user unread notifications count (for the sidebar bell badge)
+  const sessionId = (event.context as any).session?.id
+  const unreadNotifications = sessionId
+    ? await Notification.countDocuments({ recipientId: sessionId, readAt: null })
+    : 0
 
   const [
     totalCategory,
@@ -72,6 +79,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const counts: Record<string, number> = {
+    '/notifications': unreadNotifications,
     '/admin/category-tree': totalCategory,
     '/admin/skills': totalSkills,
     '/admin/activities': unreadActivities,
@@ -85,7 +93,7 @@ export default defineEventHandler(async (event) => {
     '/crm/products': totalProducts,
     '/crm/estimates': totalEstimates,
     '/crm/contracts': totalContracts,
-    '/crm/quotes': crmCounts['flooring-estimate'] || 0,
+    '/crm/quickquotes': crmCounts['flooring-estimate'] || 0,
     '/crm/change-orders': totalChangeOrders,
     '/external/stain-sign-off': totalStainSignOff,
     '/crm/appointments': crmCounts.appointment || 0,

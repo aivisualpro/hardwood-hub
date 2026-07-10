@@ -5,6 +5,7 @@ import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { parseBody } from '../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 import { z } from 'zod'
 
 // Product schema — validates all writable product fields
@@ -76,6 +77,7 @@ export default defineEventHandler(async (event) => {
     const cleaned = sanitizeWriteBody(event, '/crm/products', data)
     const product = new Product(cleaned)
     await product.save()
+    fireAutomations({ module: 'crm', submodule: 'products', action: 'create', after: product.toObject(), actor: actorFromEvent(event) })
     return { success: true, data: product }
   }
 })

@@ -4,6 +4,7 @@ import { connectDB } from '../../utils/mongoose'
 import { requireManager } from '../../utils/requireRole'
 import { requirePermission } from '../../utils/requirePermission'
 import { CustomerUpdateSchema, objectId, parseBody } from '../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -22,13 +23,17 @@ export default defineEventHandler(async (event) => {
     requireManager(event)
     const raw = await readBody(event)
     const data = parseBody(CustomerUpdateSchema, raw)
+    const before = await Customer.findById(id).lean()
     const updated = await Customer.findByIdAndUpdate(id, { $set: data }, { new: true })
+    fireAutomations({ module: 'crm', submodule: 'customers', action: 'update', before, after: updated?.toObject?.() || updated, actor: actorFromEvent(event) })
     return { success: true, data: updated }
   }
 
   if (method === 'DELETE') {
     requireManager(event)
+    const before = await Customer.findById(id).lean()
     await Customer.findByIdAndDelete(id)
+    fireAutomations({ module: 'crm', submodule: 'customers', action: 'delete', before, actor: actorFromEvent(event) })
     return { success: true }
   }
 })

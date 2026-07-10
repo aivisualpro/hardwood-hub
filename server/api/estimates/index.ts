@@ -8,6 +8,7 @@ import { connectDB } from '../../utils/mongoose'
 import { requirePermission } from '../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { EstimateCreateSchema, parseBody } from '../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -86,8 +87,21 @@ export default defineEventHandler(async (event) => {
     // Set createdBy from authenticated session
     const session = (event.context as any).session
     const createdBy = session?.id || null
+    const creatorEmail = session?.email || 'System'
 
-    const doc = await Estimate.create({ ...cleaned, estimateNumber, createdBy })
+    const doc = await Estimate.create({
+      ...cleaned,
+      estimateNumber,
+      createdBy,
+      statusTimeline: [
+        {
+          action: 'draft',
+          timestamp: new Date(),
+          performedBy: creatorEmail,
+        },
+      ],
+    })
+    fireAutomations({ module: 'crm', submodule: 'estimates', action: 'create', after: doc.toObject(), actor: actorFromEvent(event) })
     return { success: true, data: doc }
   }
 

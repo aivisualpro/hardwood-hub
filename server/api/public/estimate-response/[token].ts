@@ -7,7 +7,9 @@
  */
 import { Estimate } from '../../../models/Estimate'
 import { AppSetting } from '../../../models/AppSetting'
+import { Employee } from '../../../models/Employee'
 import { connectDB } from '../../../utils/mongoose'
+import { fireAutomations } from '../../../utils/automationEngine'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -27,6 +29,27 @@ export default defineEventHandler(async (event) => {
     const settingsDoc = await AppSetting.findOne({ key: 'companyProfile' }).lean() as any
     const company = settingsDoc?.value || {}
 
+    // Add 'received' to timeline if not already present
+    const hasReceived = estimate.statusTimeline?.some((t: any) => t.action === 'received')
+    const hasResponded = estimate.statusTimeline?.some((t: any) => ['approved', 'change_request', 'declined'].includes(t.action))
+    
+    if (!hasReceived && !hasResponded) {
+      if (!estimate.statusTimeline) {
+        estimate.statusTimeline = []
+      }
+      estimate.statusTimeline.push({
+        action: 'received',
+        timestamp: new Date(),
+        performedBy: 'Client',
+      })
+      const beforeStatus = { ...estimate.toObject() }
+      estimate.status = 'received'
+      await estimate.save()
+      fireAutomations({ module: 'crm', submodule: 'estimates', action: 'update', before: beforeStatus, after: estimate.toObject(), actor: { name: estimate.customerName || 'Client' } })
+    }
+
+    const respondedTimelineEntry = estimate.statusTimeline?.find((t: any) => ['approved', 'change_request', 'declined'].includes(t.action))
+
     return {
       success: true,
       data: {
@@ -43,12 +66,12 @@ export default defineEventHandler(async (event) => {
           email: company.email || '',
           website: company.website || '',
         },
-        alreadyResponded: !!estimate.clientResponse?.action,
-        clientResponse: estimate.clientResponse?.action
+        alreadyResponded: !!respondedTimelineEntry,
+        clientResponse: respondedTimelineEntry
           ? {
-              action: estimate.clientResponse.action,
-              message: estimate.clientResponse.message || '',
-              respondedAt: estimate.clientResponse.respondedAt,
+              action: respondedTimelineEntry.action,
+              message: respondedTimelineEntry.message || '',
+              respondedAt: respondedTimelineEntry.timestamp,
             }
           : null,
       },
@@ -58,14 +81,15 @@ export default defineEventHandler(async (event) => {
   // ─── POST: Submit client response ───
   if (event.method === 'POST') {
     // Check if already responded
-    if (estimate.clientResponse?.action) {
+    const respondedTimelineEntry = estimate.statusTimeline?.find((t: any) => ['approved', 'change_request', 'declined'].includes(t.action))
+    if (respondedTimelineEntry) {
       return {
         success: false,
         alreadyResponded: true,
         message: 'You have already submitted your response for this estimate.',
         clientResponse: {
-          action: estimate.clientResponse.action,
-          respondedAt: estimate.clientResponse.respondedAt,
+          action: respondedTimelineEntry.action,
+          respondedAt: respondedTimelineEntry.timestamp,
         },
       }
     }
@@ -83,16 +107,34 @@ export default defineEventHandler(async (event) => {
     }
 
     // Save client response
-    estimate.clientResponse = {
-      action,
-      message: message || '',
-      respondedAt: new Date(),
+    if (!estimate.statusTimeline) {
+      estimate.statusTimeline = []
     }
 
+    let performedBy = 'System'
+    if (action === 'approved') {
+      const sentEntry = [...estimate.statusTimeline].reverse().find((t: any) => t.action === 'sent')
+      performedBy = sentEntry?.sentToEmail || estimate.customerEmail || 'Client'
+    }
+    else {
+      const emp = await Employee.findOne({ email: 'michael@annarborhardwoods.com' }).lean() as any
+      performedBy = emp?.employee || 'Michael Cornaire'
+    }
+
+    estimate.statusTimeline.push({
+      action,
+      message: message || '',
+      timestamp: new Date(),
+      performedBy,
+    })
+
     // Update estimate status to match the response
+    const beforeDoc = { ...estimate.toObject() }
     estimate.status = action
 
     await estimate.save()
+
+    fireAutomations({ module: 'crm', submodule: 'estimates', action: 'update', before: beforeDoc, after: estimate.toObject(), actor: { name: estimate.customerName || 'Client' } })
 
     console.log(`[estimate-response] ✅ Client responded "${action}" for estimate ${estimate.estimateNumber} (token: ${token.substring(0, 8)}...)`)
 

@@ -88,7 +88,7 @@ function resolveRoutePath(path: string): string | null {
     ['/crm/products', '/crm/products'],
     ['/crm/appointments', '/crm/appointments'],
     ['/crm/contracts', '/crm/contracts'],
-    ['/crm/quotes', '/crm/flooring-estimate'],
+    ['/crm/quickquotes', '/crm/flooring-estimate'],
     ['/crm/submissions', '/crm/flooring-estimate'],
     ['/crm/flooring-estimate', '/crm/flooring-estimate'],
 

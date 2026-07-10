@@ -8,6 +8,7 @@ import { connectDB } from '../../utils/mongoose'
 import { requirePermission } from '../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { ContractCreateSchema, parseBody } from '../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -81,6 +82,7 @@ export default defineEventHandler(async (event) => {
     const contractNumber = cleaned.contractNumber || cleaned.variableValues?.contract_number || `draft-${Date.now()}` // Fallback if missing
 
     const doc = await Contract.create({ ...cleaned, contractNumber })
+    fireAutomations({ module: 'crm', submodule: 'contracts', action: 'create', after: doc.toObject(), actor: actorFromEvent(event) })
     return { success: true, data: doc }
   }
 

@@ -19,6 +19,7 @@ const router = useRouter()
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-zinc-500/15 text-zinc-500 border-zinc-500/30',
   sent: 'bg-blue-500/15 text-blue-500 border-blue-500/30',
+  received: 'bg-indigo-500/15 text-indigo-600 border-indigo-500/30',
   approved: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30',
   change_request: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
   declined: 'bg-red-500/15 text-red-500 border-red-500/30',
@@ -29,11 +30,41 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
   sent: 'Sent',
+  received: 'Received',
   approved: 'Approved',
   change_request: 'Change Request',
   declined: 'Declined',
   completed: 'Completed',
   cancelled: 'Cancelled',
+}
+
+const STATUS_ICONS: Record<string, string> = {
+  draft: 'i-lucide-file-plus',
+  sent: 'i-lucide-send',
+  received: 'i-lucide-eye',
+  approved: 'i-lucide-check-circle-2',
+  change_request: 'i-lucide-message-square-warning',
+  declined: 'i-lucide-x-circle',
+  completed: 'i-lucide-check',
+  cancelled: 'i-lucide-ban',
+}
+
+function formatDateTime(d: string) {
+  if (!d) return '—'
+  return new Date(d).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function getLatestTimelineAction(ct: any) {
+  if (ct.statusTimeline && ct.statusTimeline.length > 0) {
+    return ct.statusTimeline[ct.statusTimeline.length - 1].action
+  }
+  return ct.status || 'draft'
 }
 
 function formatDate(d: string) {
@@ -261,12 +292,58 @@ async function downloadPDF(ct: any) {
                 <span class="text-xs text-muted-foreground">{{ ct.customerPhone || '—' }}</span>
               </td>
               <td class="px-4 py-3">
-                <span
-                  class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize border transition-transform hover:scale-105"
-                  :class="STATUS_COLORS[ct.status] || STATUS_COLORS.draft"
-                >
-                  {{ STATUS_LABELS[ct.status] || ct.status }}
-                </span>
+                <HoverCard :open-delay="100" :close-delay="100">
+                  <HoverCardTrigger as-child>
+                    <span
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize border cursor-help transition-transform hover:scale-105"
+                      :class="STATUS_COLORS[getLatestTimelineAction(ct)] || STATUS_COLORS.draft"
+                    >
+                      {{ STATUS_LABELS[getLatestTimelineAction(ct)] || getLatestTimelineAction(ct) }}
+                    </span>
+                  </HoverCardTrigger>
+                  <HoverCardContent class="w-64 p-4 z-[100] bg-background border border-primary/50 shadow-xl shadow-primary/5 rounded-xl text-left" side="bottom" align="start">
+                    <div class="mb-4">
+                      <h4 class="text-sm font-bold leading-none">
+                        Estimate Timeline
+                      </h4>
+                    </div>
+                    <div class="space-y-4 relative">
+                      <!-- Timeline vertical line -->
+                      <div class="absolute left-[11px] top-2 bottom-3 w-[2px] bg-muted/60 rounded-full" />
+                      
+                      <!-- Timeline items -->
+                      <div
+                        v-for="(t, index) in (ct.statusTimeline ? [...ct.statusTimeline].reverse() : [{ action: 'draft', timestamp: ct.createdAt, performedBy: 'System' }])"
+                        :key="index"
+                        class="flex items-start gap-4 relative z-10 w-full"
+                      >
+                        <div
+                          class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background transition-colors shadow-sm"
+                          :class="t.timestamp ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+                        >
+                          <Icon :name="STATUS_ICONS[t.action] || 'i-lucide-circle'" class="size-3" />
+                        </div>
+                        <div class="flex-1 min-w-0 pt-0.5">
+                          <p class="text-xs font-bold leading-none capitalize">
+                            {{ STATUS_LABELS[t.action] || t.action }}
+                          </p>
+                          <p class="text-[10px] text-muted-foreground mt-1">
+                            By: {{ t.performedBy || 'System' }}
+                          </p>
+                          <p v-if="t.sentToEmail" class="text-[9px] text-primary/80 truncate font-medium">
+                            To: {{ t.sentToEmail }}
+                          </p>
+                          <p v-if="t.message" class="text-[9px] italic text-muted-foreground mt-1 line-clamp-2">
+                            "{{ t.message }}"
+                          </p>
+                          <p class="text-[9px] text-muted-foreground/80 mt-1">
+                            {{ formatDateTime(t.timestamp) }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
               </td>
               <td class="px-4 py-3">
                 <span class="text-xs text-muted-foreground tabular-nums">{{ formatDate(ct.createdAt) }}</span>
@@ -309,12 +386,58 @@ async function downloadPDF(ct: any) {
             <div class="flex flex-col min-w-0 flex-1">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-[11px] font-mono font-bold text-primary">{{ ct.estimateNumber }}</span>
-                <span
-                  class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold capitalize border"
-                  :class="STATUS_COLORS[ct.status] || STATUS_COLORS.draft"
-                >
-                  {{ STATUS_LABELS[ct.status] || ct.status }}
-                </span>
+                <HoverCard :open-delay="100" :close-delay="100">
+                  <HoverCardTrigger as-child>
+                    <span
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold capitalize border cursor-help"
+                      :class="STATUS_COLORS[getLatestTimelineAction(ct)] || STATUS_COLORS.draft"
+                    >
+                      {{ STATUS_LABELS[getLatestTimelineAction(ct)] || getLatestTimelineAction(ct) }}
+                    </span>
+                  </HoverCardTrigger>
+                  <HoverCardContent class="w-64 p-4 z-[100] bg-background border border-primary/50 shadow-xl shadow-primary/5 rounded-xl text-left" side="bottom" align="start">
+                    <div class="mb-4">
+                      <h4 class="text-sm font-bold leading-none">
+                        Estimate Timeline
+                      </h4>
+                    </div>
+                    <div class="space-y-4 relative">
+                      <!-- Timeline vertical line -->
+                      <div class="absolute left-[11px] top-2 bottom-3 w-[2px] bg-muted/60 rounded-full" />
+                      
+                      <!-- Timeline items -->
+                      <div
+                        v-for="(t, index) in (ct.statusTimeline ? [...ct.statusTimeline].reverse() : [{ action: 'draft', timestamp: ct.createdAt, performedBy: 'System' }])"
+                        :key="index"
+                        class="flex items-start gap-4 relative z-10 w-full"
+                      >
+                        <div
+                          class="size-6 rounded-full flex items-center justify-center shrink-0 border-[3px] border-background transition-colors shadow-sm"
+                          :class="t.timestamp ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+                        >
+                          <Icon :name="STATUS_ICONS[t.action] || 'i-lucide-circle'" class="size-3" />
+                        </div>
+                        <div class="flex-1 min-w-0 pt-0.5">
+                          <p class="text-xs font-bold leading-none capitalize">
+                            {{ STATUS_LABELS[t.action] || t.action }}
+                          </p>
+                          <p class="text-[10px] text-muted-foreground mt-1">
+                            By: {{ t.performedBy || 'System' }}
+                          </p>
+                          <p v-if="t.sentToEmail" class="text-[9px] text-primary/80 truncate font-medium">
+                            To: {{ t.sentToEmail }}
+                          </p>
+                          <p v-if="t.message" class="text-[9px] italic text-muted-foreground mt-1 line-clamp-2">
+                            "{{ t.message }}"
+                          </p>
+                          <p class="text-[9px] text-muted-foreground/80 mt-1">
+                            {{ formatDateTime(t.timestamp) }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
               </div>
               <span class="text-sm font-bold text-foreground leading-tight truncate">{{ displayTitle(ct.title) }}</span>
             </div>

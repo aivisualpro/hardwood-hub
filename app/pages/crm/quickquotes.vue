@@ -3,7 +3,7 @@ import { toast } from 'vue-sonner'
 
 const { setHeader } = usePageHeader()
 setHeader({
-  title: 'Quotes',
+  title: 'Quick Quotes',
   icon: 'i-lucide-ruler',
   description: 'Flooring quote submissions',
 })

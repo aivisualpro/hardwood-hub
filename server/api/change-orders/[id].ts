@@ -9,6 +9,7 @@ import { requirePermission } from '../../utils/requirePermission'
 import { stripHiddenFields, sanitizeWriteBody } from '../../utils/applyFieldPermissions'
 import { ChangeOrderUpdateSchema, objectId, parseBody } from '../../utils/validation'
 import { requireManager } from '../../utils/requireRole'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -29,9 +30,11 @@ export default defineEventHandler(async (event) => {
     const body = parseBody(ChangeOrderUpdateSchema, raw)
     const cleaned = sanitizeWriteBody(event, '/crm/change-orders', body)
 
+    const before = await ChangeOrder.findById(id).lean()
     const doc = await ChangeOrder.findByIdAndUpdate(id, { $set: cleaned }, { new: true }).lean()
     if (!doc)
       throw createError({ statusCode: 404, message: 'Change order not found' })
+    fireAutomations({ module: 'crm', submodule: 'change-orders', action: 'update', before, after: doc, actor: actorFromEvent(event) })
     return { success: true, data: doc }
   }
 
@@ -39,6 +42,7 @@ export default defineEventHandler(async (event) => {
     const doc = await ChangeOrder.findByIdAndDelete(id).lean()
     if (!doc)
       throw createError({ statusCode: 404, message: 'Change order not found' })
+    fireAutomations({ module: 'crm', submodule: 'change-orders', action: 'delete', before: doc, actor: actorFromEvent(event) })
     return { success: true }
   }
 

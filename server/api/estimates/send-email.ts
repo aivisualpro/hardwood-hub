@@ -13,6 +13,7 @@ import { compressImagesInHtml } from '../../utils/image-compressor'
 // @ts-ignore
 import { PDFDocument } from 'pdf-lib'
 import { parseBody } from '../../utils/validation'
+import { actorFromEvent, fireAutomations } from '../../utils/automationEngine'
 import { z } from 'zod'
 
 const EstimateSendEmailSchema = z.object({
@@ -55,13 +56,28 @@ export default defineEventHandler(async (event) => {
   const responseToken = crypto.randomBytes(32).toString('hex')
 
   // Update estimate status
+  const beforeSendDoc = { ...estimate.toObject() }
   estimate.status = 'sent'
   estimate.sentAt = new Date()
   estimate.responseToken = responseToken
   if (overrideEmail?.trim()) {
     estimate.customerEmail = overrideEmail.trim()
   }
+
+  const senderEmail = (event.context as any).session?.email || 'System'
+  if (!estimate.statusTimeline) {
+    estimate.statusTimeline = []
+  }
+  estimate.statusTimeline.push({
+    action: 'sent',
+    timestamp: new Date(),
+    performedBy: senderEmail,
+    sentToEmail: emailTarget,
+  })
+
   await estimate.save()
+
+  fireAutomations({ module: 'crm', submodule: 'estimates', action: 'update', before: beforeSendDoc, after: estimate.toObject(), actor: actorFromEvent(event) })
 
   // Build the response URLs
   const host = getRequestURL(event).origin

@@ -672,10 +672,10 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
           </div>
           <div>
             <DialogTitle class="text-base font-bold">
-              {{ editingEstimateId ? 'Edit Estimate' : 'Create New Estimate' }}
+              {{ editingEstimateId ? `Edit Estimate (${editingEstimateId})` : 'Create New Estimate' }}
             </DialogTitle>
             <DialogDescription class="text-xs text-muted-foreground mt-0.5">
-              {{ createStep === 1 ? 'Select a customer from your CRM' : createStep === 2 ? 'Select a project for this customer' : createStep === 3 ? 'Choose an estimate template' : 'Fill in the estimate details' }}
+              {{ createStep === 1 ? 'Select a customer from your CRM' : createStep === 2 ? 'Select a project for this customer' : createStep === 3 ? 'Choose an estimate template' : '' }}
             </DialogDescription>
           </div>
         </div>

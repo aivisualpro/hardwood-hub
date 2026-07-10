@@ -9,6 +9,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-gauge',
         link: '/dashboard',
       },
+      {
+        title: 'Notifications',
+        icon: 'i-lucide-bell',
+        link: '/notifications',
+      },
     ],
   },
   {
@@ -154,9 +159,9 @@ export const navMenu: NavMenu[] = [
         link: '/crm/calendar',
       },
       {
-        title: 'Quotes',
+        title: 'Quick Quotes',
         icon: 'i-lucide-ruler',
-        link: '/crm/quotes',
+        link: '/crm/quickquotes',
       },
       {
         title: 'Contracts',

@@ -139,8 +139,18 @@ const variablesList = computed(() => {
 })
 
 // Client response info
-const clientResponse = computed(() => estimate.value?.clientResponse)
-const hasClientResponse = computed(() => !!clientResponse.value?.action)
+const clientResponse = computed(() => {
+  const timeline = estimate.value?.statusTimeline || []
+  const responseEntry = [...timeline].reverse().find((t: any) => ['approved', 'change_request', 'declined'].includes(t.action))
+  if (responseEntry) {
+    return {
+      action: responseEntry.action,
+      message: responseEntry.message,
+      respondedAt: responseEntry.timestamp,
+    }
+  }
+  return null
+})
 
 onMounted(fetchEstimate)
 </script>
@@ -248,7 +258,7 @@ onMounted(fetchEstimate)
         <!-- Left: Main Content -->
         <div class="lg:col-span-2 space-y-6">
           <!-- Client Response Banner -->
-          <div v-if="hasClientResponse" class="rounded-2xl border overflow-hidden shadow-sm">
+          <div v-if="clientResponse" class="rounded-2xl border overflow-hidden shadow-sm">
             <div
               class="flex items-center gap-3 px-6 py-4"
               :class="{
@@ -469,7 +479,7 @@ onMounted(fetchEstimate)
               </div>
 
               <!-- Client Response -->
-              <div v-if="hasClientResponse" class="flex items-start gap-3">
+              <div v-if="clientResponse" class="flex items-start gap-3">
                 <div
                   class="size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
                   :class="{

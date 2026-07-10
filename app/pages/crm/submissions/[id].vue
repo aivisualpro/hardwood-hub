@@ -125,15 +125,14 @@ const photos = computed(() => {
     return []
 
   // Scrape everything in the fields object for image URLs
-  const allText = JSON.stringify(item.value.fields)
-  const imageRegex = /https?:\/\/[^"'\s\\]+\.(?:jpg|jpeg|png|gif|webp|heic)/gi
+  const allText = JSON.stringify(item.value.fields).replace(/\\/g, '')
+  const imageRegex = /https?:\/\/[^"'\s]+\.(?:jpg|jpeg|png|gif|webp|heic)/gi
   const matches = allText.match(imageRegex)
 
   if (!matches)
     return []
 
-  // Clean up any double-slashes or escaping from JSON mapping
-  return [...new Set(matches.map(url => url.replace(/\\/g, '')))]
+  return [...new Set(matches)]
 })
 
 /**
