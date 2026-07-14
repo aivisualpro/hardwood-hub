@@ -203,23 +203,30 @@ function updateLineItemAmount(item: any) {
 }
 
 function syncExtractedTotalsToVariables() {
+  // Round to cents and avoid float artifacts like 7000.009999999998
+  const money = (v: any) => (v !== undefined && v !== null ? String(+Number(v).toFixed(2)) : '')
+
   const keys = Object.keys(variableValues.value)
   for (const key of keys) {
     const k = key.toLowerCase().replace(/[\s_-]/g, '')
-    if (k === 'materialcost' || k === 'material' || k === 'material_cost') {
-      variableValues.value[key] = materialTotal.value !== undefined && materialTotal.value !== null ? String(materialTotal.value) : ''
+    // Substring matching so template variables like "estimated_new_total",
+    // "grand_total", "material_cost_total", "labor_amount" etc. all sync.
+    // (Previously only exact keys matched — e.g. the change-order template's
+    // "estimated_new_total" was silently skipped and kept its stale default.)
+    if (k.includes('material')) {
+      variableValues.value[key] = money(materialTotal.value)
     }
-    else if (k === 'laborcost' || k === 'labor' || k === 'labor_cost') {
-      variableValues.value[key] = laborTotal.value !== undefined && laborTotal.value !== null ? String(laborTotal.value) : ''
+    else if (k.includes('labor')) {
+      variableValues.value[key] = money(laborTotal.value)
     }
-    else if (k === 'discount' || k === 'discountcost' || k === 'discount_cost') {
-      variableValues.value[key] = discountTotal.value !== undefined && discountTotal.value !== null ? String(discountTotal.value) : ''
+    else if (k.includes('discount')) {
+      variableValues.value[key] = money(discountTotal.value)
     }
-    else if (k === 'tax' || k === 'taxcost' || k === 'tax_cost') {
-      variableValues.value[key] = taxTotal.value !== undefined && taxTotal.value !== null ? String(taxTotal.value) : ''
+    else if (k.includes('tax')) {
+      variableValues.value[key] = money(taxTotal.value)
     }
-    else if (k === 'estimatetotal' || k === 'total' || k === 'estimate_total') {
-      variableValues.value[key] = totalAmount.value !== undefined && totalAmount.value !== null ? String(totalAmount.value) : ''
+    else if (k.includes('total') || k === 'estimateamount') {
+      variableValues.value[key] = money(totalAmount.value)
     }
   }
 }
@@ -1309,7 +1316,7 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
                       Subtotal — {{ roomName }}
                     </span>
                     <span class="text-[10px] text-center tabular-nums text-muted-foreground font-semibold">
-                      {{ (items as any[]).reduce((s: number, i: any) => s + Number(i.quantity || 0), 0) }}
+                      {{ +(items as any[]).reduce((s: number, i: any) => s + Number(i.quantity || 0), 0).toFixed(2) }}
                     </span>
                     <span></span>
                     <span></span>
