@@ -428,6 +428,9 @@ async function handlePdfUpload(e: Event) {
     const newBlob = await upload(`hardwood-hub/estimates/raw/${uniqueName}`, file, {
       access: 'private',
       handleUploadUrl: '/api/upload/blob-token',
+      // Multipart = chunked + retried parts; single-PUT uploads of large PDFs
+      // were timing out intermittently on slow connections
+      multipart: file.size > 5 * 1024 * 1024,
     })
 
     if (!newBlob?.url)

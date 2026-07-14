@@ -39,9 +39,25 @@ export default defineEventHandler(async (event) => {
     if (!res.ok)
       throw new Error(`Failed to fetch PDF: ${res.statusText}`)
     const arrayBuffer = await res.arrayBuffer()
+
+    // Gemini inline-data requests are capped at ~20MB total; base64 inflates
+    // the payload by ~33%. Reject early with a clear message instead of
+    // letting the AI call fail with an opaque error.
+    const MAX_PDF_BYTES = 15 * 1024 * 1024
+    if (arrayBuffer.byteLength > MAX_PDF_BYTES) {
+      const sizeMB = (arrayBuffer.byteLength / 1024 / 1024).toFixed(1)
+      throw createError({
+        statusCode: 413,
+        message: `PDF is too large for AI extraction (${sizeMB}MB, max 15MB). The PDF was uploaded and attached, but line items must be entered manually — or compress the PDF and re-upload.`,
+      })
+    }
+
     pdfBase64 = Buffer.from(arrayBuffer).toString('base64')
   }
   catch (err: any) {
+    // Re-throw intentional HTTP errors (e.g. the 413 size guard) untouched
+    if (err?.statusCode)
+      throw err
     log.error('Failed to download PDF:', err)
     throw createError({
       statusCode: 500,

@@ -42,12 +42,15 @@ const [
   { data: bonusRulesData, pending: loadingRules },
 ] = await Promise.all([
   useFetch('/api/performance', {
+    lazy: true,
     transform: (res: any) => res.data?.filter((r: any) => r.employee === profileUserId.value) || [],
   }),
   useFetch('/api/skills/tree', {
+    lazy: true,
     transform: (res: any) => res.data || [],
   }),
   useFetch('/api/skill-bonus', {
+    lazy: true,
     transform: (res: any) => res.data || [],
   }),
 ])
@@ -61,8 +64,13 @@ async function fetchCustomBonuses() {
   }
   catch { /* ignore */ }
 }
-// Fire custom bonus fetch in parallel with the useFetch results settling
-await fetchCustomBonuses()
+// Fire custom bonus fetch on the client without blocking navigation.
+// (Previously `await fetchCustomBonuses()` blocked the redirect after login AND
+// silently failed during SSR — $fetch doesn't forward cookies server-side —
+// leaving customBonuses empty after a hard refresh.)
+onMounted(() => {
+  fetchCustomBonuses()
+})
 
 // Utilities
 function levelIndex(lvl: string) {

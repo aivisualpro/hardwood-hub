@@ -10,6 +10,7 @@ import { verifySessionToken } from '../lib/session'
 // Routes that do NOT require authentication
 const PUBLIC_PREFIXES = [
   '/api/auth/', // login, google, logout, me
+  '/api/_nuxt_icon/', // Nuxt Icon module — serves icon SVGs, must work on /login
   '/api/contracts/sign/', // public contract signing portal
   '/api/public/', // any future public APIs
   '/api/gmail/callback', // Google OAuth2 redirect (no session cookie)

@@ -30,39 +30,49 @@ async function loginWithGoogle() {
   try {
     await loadGoogleScript()
 
-    // Use Google's popup sign-in flow
     window.google.accounts.id.initialize({
       client_id: googleClientId,
       callback: handleGoogleResponse,
       auto_select: false,
     })
 
-    // Trigger the One Tap or popup
-    window.google.accounts.id.prompt((notification: any) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        // Fallback: render a button-based popup
-        const container = document.createElement('div')
-        container.id = 'google-btn-container'
-        container.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;'
-        document.body.appendChild(container)
+    // Render the official Google button (invisible) and click it directly.
+    // This replaces the old One Tap prompt() flow, which:
+    //  a) relied on isNotDisplayed()/isSkippedMoment() — deprecated status
+    //     methods that trigger the GSI FedCM console warning and will stop
+    //     working when FedCM becomes mandatory, and
+    //  b) had to wait for One Tap to fail before falling back to the button,
+    //     adding a noticeable delay before the sign-in popup appeared.
+    document.getElementById('google-btn-container')?.remove()
+    const container = document.createElement('div')
+    container.id = 'google-btn-container'
+    container.style.cssText = 'position:fixed;top:0;left:0;opacity:0.01;z-index:-1;'
+    document.body.appendChild(container)
 
-        window.google.accounts.id.renderButton(container, {
-          theme: 'outline',
-          size: 'large',
-          type: 'standard',
-          text: 'signin_with',
-          width: 300,
-        })
-
-        // Auto-click the rendered button
-        setTimeout(() => {
-          const btn = container.querySelector('div[role="button"]') as HTMLElement
-          if (btn)
-            btn.click()
-          else isLoading.value = false
-        }, 200)
-      }
+    window.google.accounts.id.renderButton(container, {
+      theme: 'outline',
+      size: 'large',
+      type: 'standard',
+      text: 'signin_with',
+      width: 300,
     })
+
+    // Click the rendered button as soon as it exists (poll up to ~2s)
+    let attempts = 0
+    const tryClick = () => {
+      const btn = container.querySelector('div[role="button"]') as HTMLElement | null
+      if (btn) {
+        btn.click()
+      }
+      else if (++attempts < 20) {
+        setTimeout(tryClick, 100)
+      }
+      else {
+        isLoading.value = false
+        toast.error('Google Sign-In Error', { description: 'Sign-in button failed to load. Please try again.' })
+      }
+    }
+    tryClick()
   }
   catch (e: any) {
     isLoading.value = false
