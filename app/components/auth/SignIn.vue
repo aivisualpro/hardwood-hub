@@ -30,7 +30,7 @@ async function loginWithGoogle() {
   try {
     await loadGoogleScript()
 
-    window.google.accounts.id.initialize({
+    window.google!.accounts.id.initialize({
       client_id: googleClientId,
       callback: handleGoogleResponse,
       auto_select: false,
@@ -49,7 +49,7 @@ async function loginWithGoogle() {
     container.style.cssText = 'position:fixed;top:0;left:0;opacity:0.01;z-index:-1;'
     document.body.appendChild(container)
 
-    window.google.accounts.id.renderButton(container, {
+    window.google!.accounts.id.renderButton(container, {
       theme: 'outline',
       size: 'large',
       type: 'standard',
@@ -108,6 +108,18 @@ async function handleGoogleResponse(response: { credential: string }) {
   }
   catch (e: any) {
     const msg = e?.data?.message || e?.message || 'Login failed'
+    
+    // Automatically reload if we detect a Google Client ID mismatch (stale client configuration)
+    if (msg.includes('does not match client ID') || msg.includes('Token audience')) {
+      toast.error('Configuration Mismatch', {
+        description: 'Google client ID mismatch detected. Refreshing page to synchronize client configuration...',
+      })
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+      return
+    }
+
     toast.error('Access Denied', { description: msg })
   }
   finally {
@@ -115,21 +127,6 @@ async function handleGoogleResponse(response: { credential: string }) {
   }
 }
 
-// Extend window type for Google SDK
-declare global {
-  interface Window {
-    google: {
-      accounts: {
-        id: {
-          initialize: (config: any) => void
-          prompt: (callback?: (notification: any) => void) => void
-          renderButton: (container: HTMLElement, config: any) => void
-          revoke: (email: string, callback: () => void) => void
-        }
-      }
-    }
-  }
-}
 </script>
 
 <template>
