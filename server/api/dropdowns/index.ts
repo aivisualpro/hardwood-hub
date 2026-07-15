@@ -53,9 +53,27 @@ export default defineEventHandler(async (event) => {
     const raw = await readBody(event)
     const body = parseBody(DropdownWriteSchema, raw)
 
+    // Preserve existing option _ids — records elsewhere (e.g. pipeline.status)
+    // reference them. For incoming options without an _id, try to recover the
+    // id of the existing option with the same label so saves never orphan refs.
+    const existing: any = await Dropdown.findOne({ name: body.name }).lean()
+    const byId = new Map<string, any>()
+    const byLabel = new Map<string, any>()
+    for (const o of existing?.options || []) {
+      byId.set(String(o._id), o)
+      if (o.label)
+        byLabel.set(String(o.label).trim().toLowerCase(), o)
+    }
+    const options = (body.options || []).map((o: any) => {
+      if (o._id && byId.has(String(o._id)))
+        return o
+      const match = !o._id && o.label ? byLabel.get(String(o.label).trim().toLowerCase()) : null
+      return match ? { ...o, _id: match._id } : o
+    })
+
     const result = await Dropdown.findOneAndUpdate(
       { name: body.name },
-      { $set: { name: body.name, options: body.options || [] } },
+      { $set: { name: body.name, options } },
       { upsert: true, new: true, lean: true },
     )
 

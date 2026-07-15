@@ -722,7 +722,7 @@ onMounted(() => {
       </Teleport>
 
     <!-- Loading State -->
-    <div v-if="loadingData" class="flex-1 flex flex-col gap-4">
+    <div v-if="!isMounted || loadingData" class="flex-1 flex flex-col gap-4">
       <div class="flex gap-2 overflow-hidden rounded-xl border border-border/50 bg-card p-2">
         <div v-for="i in 5" :key="i" class="h-10 flex-1 bg-muted/40 rounded-lg animate-pulse" />
       </div>
@@ -733,7 +733,7 @@ onMounted(() => {
         </div>
       </div>
     </div>
-    <div v-if="!loadingData" class="flex-1 flex flex-col min-h-0">
+    <div v-if="isMounted && !loadingData" class="flex-1 flex flex-col min-h-0">
       <!-- Pipeline Headers as Filters -->
       <div class="flex overflow-x-auto w-full scrollbar-hide text-xs whitespace-nowrap select-none bg-card rounded-xl overflow-hidden border border-border/50 shadow-sm mb-4">
         <div

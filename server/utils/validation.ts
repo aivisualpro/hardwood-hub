@@ -409,6 +409,10 @@ export const ProjectCommunicationUpdateSchema = ProjectCommunicationWriteSchema.
 // ─── DROPDOWNS ────────────────────────────────────────────────────────────────
 
 export const DropdownOptionSchema = z.object({
+  // CRITICAL: keep _id so existing option ids survive saves.
+  // Without this, every dropdown save regenerates all option _ids and
+  // orphans every record referencing them (e.g. pipeline.status).
+  _id: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
   label: z.string().min(1).max(200),
   value: z.string().max(200).optional(),
   color: z.string().max(50).optional(),

@@ -56,8 +56,11 @@ self.addEventListener('fetch', (event) => {
         return response
       })
       .catch(() => {
-        // Fallback to cache
-        return caches.match(event.request)
+        // Fallback to cache — caches.match() can return undefined if nothing
+        // is cached, but respondWith() MUST receive a valid Response object.
+        return caches.match(event.request).then((cached) => {
+          return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' })
+        })
       }),
   )
 })
