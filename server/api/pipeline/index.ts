@@ -80,8 +80,18 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    if (status)
-      filter.status = status
+    if (status) {
+      if (status === 'uncategorized') {
+        // Match records with no status or status that isn't a valid ObjectId
+        filter.$and = [
+          ...(filter.$and || []),
+          { $or: [{ status: null }, { status: { $exists: false } }] },
+        ]
+      }
+      else {
+        filter.status = status
+      }
+    }
 
     // ── Query ──────────────────────────────────────────────────────────────────
     // When caller passes customerId they want all records for that customer (no page cap)

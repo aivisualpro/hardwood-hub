@@ -314,6 +314,7 @@ const pipelineTotalPages = ref(1)
 const pipelineTotal = ref(0)
 const PIPELINE_LIMIT = 50
 const isLoadingMore = ref(false)
+const scrollContainer = ref<HTMLElement | null>(null)
 const scrollSentinel = ref<HTMLElement | null>(null)
 
 // Aggregate counts from DB (for stage chevrons)
@@ -346,7 +347,7 @@ async function fetchCustomers(targetPage = 1, append = false) {
     if (searchQuery.value?.trim())
       params.set('search', searchQuery.value.trim())
     // Send stage filter to server so pagination applies within the filtered set
-    if (selectedStageFilter.value && selectedStageFilter.value !== 'all' && selectedStageFilter.value !== 'uncategorized')
+    if (selectedStageFilter.value && selectedStageFilter.value !== 'all')
       params.set('status', selectedStageFilter.value)
 
     const res = await $fetch<any>(`/api/pipeline?${params.toString()}`)
@@ -390,7 +391,7 @@ onMounted(() => {
           loadMore()
         }
       },
-      { rootMargin: '200px' },
+      { root: scrollContainer.value, rootMargin: '200px' },
     )
     scrollObserver.observe(scrollSentinel.value)
   })
@@ -410,7 +411,7 @@ watch(scrollSentinel, (el) => {
           loadMore()
         }
       },
-      { rootMargin: '200px' },
+      { root: scrollContainer.value, rootMargin: '200px' },
     )
     scrollObserver.observe(el)
   }
@@ -533,22 +534,11 @@ function formatShortDate(dateString: string) {
 
 
 const filteredCustomers = computed(() => {
-  // Text search is now server-side (sent via fetchCustomers).
-  // Client only handles tab-based stage filtering.
-  let list = customers.value
+  // Both text search AND status filtering are now fully server-side.
+  // Client only applies sort order.
+  const list = customers.value
 
-  // Filter by selected tab stage
-  if (selectedStageFilter.value !== 'all') {
-    if (selectedStageFilter.value === 'uncategorized') {
-      const knownIds = new Set(STAGES.value.map(s => s.id))
-      list = list.filter(c => !c.status || !knownIds.has(String(c.status)))
-    }
-    else {
-      list = list.filter(c => c.status && String(c.status) === selectedStageFilter.value)
-    }
-  }
-
-  return list.sort((a, b) => {
+  return [...list].sort((a, b) => {
     const nameA = (a.name || `${a.firstName || ''} ${a.lastName || ''}`.trim() || 'Unknown').toLowerCase()
     const nameB = (b.name || `${b.firstName || ''} ${b.lastName || ''}`.trim() || 'Unknown').toLowerCase()
     return nameA.localeCompare(nameB)
@@ -788,7 +778,7 @@ onMounted(() => {
       </div>
 
       <!-- Table Details Desktop -->
-      <div class="hidden lg:flex lg:flex-col flex-1 min-h-0 overflow-auto bg-card border border-border/50 rounded-xl text-sm shadow-sm relative">
+      <div ref="scrollContainer" class="hidden lg:flex lg:flex-col flex-1 min-h-0 overflow-auto bg-card border border-border/50 rounded-xl text-sm shadow-sm relative">
         <table class="w-full text-left border-collapse whitespace-nowrap">
           <thead>
             <tr class="border-b bg-card text-muted-foreground text-[10px] font-bold uppercase tracking-wider sticky top-0 z-20">
