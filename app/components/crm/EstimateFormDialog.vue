@@ -676,6 +676,58 @@ function openForCustomer(customer: any) {
     loadCustomerGallery(customer._id)
 }
 
+/**
+ * Open the dialog to create a NEW estimate, pre-filled with data from an existing one.
+ * Used for the "Update Estimate" flow on the pipeline detail page.
+ */
+async function openForCustomerWithPrefill(customer: any, existingEstimate: any) {
+  try {
+    toast.loading('Loading estimate details...', { id: 'prefill-estimate' })
+    // Fetch the full estimate so we get all fields (template content, variables, etc.)
+    const res = await $fetch<{ success: boolean, data: any }>(`/api/estimates/detail/${existingEstimate._id}`)
+    const fullEst = res.data
+
+    internalOpen.value = true
+    editingEstimateId.value = null // Creating NEW, not editing
+    selectedCustomer.value = customer
+    selectedProject.value = customer
+
+    // Pre-fill from the existing estimate
+    estimateTitle.value = fullEst.title || ''
+    variableValues.value = { ...fullEst.variableValues }
+    attachedPdf.value = fullEst.attachedPdf || ''
+    attachedPdfName.value = fullEst.attachedPdf ? 'Attached PDF' : ''
+    attachedGalleryImages.value = fullEst.attachedGalleryImages || []
+    lineItems.value = fullEst.lineItems || []
+    materialTotal.value = fullEst.materialTotal || 0
+    laborTotal.value = fullEst.laborTotal || 0
+    taxTotal.value = fullEst.taxTotal || 0
+    discountTotal.value = fullEst.discountTotal || 0
+    totalAmount.value = fullEst.totalAmount || 0
+
+    // Load templates and pre-select the same template
+    await fetchTemplates()
+    const foundTemplate = templates.value.find(t => t._id === fullEst.templateId)
+    selectedModalTemplate.value = foundTemplate || {
+      _id: fullEst.templateId,
+      name: fullEst.templateName,
+      content: fullEst.content,
+      variables: Object.keys(fullEst.variableValues || {}).map(k => ({ key: k, label: k, type: 'text' })),
+    } as any
+
+    if (!companyProfile.value.name) fetchCompanyProfile()
+    if (!customer.gallery) loadCustomerGallery(customer._id)
+
+    createStep.value = 4 // Jump directly to the variables/details step
+  }
+  catch (err: any) {
+    toast.error('Failed to load estimate details', { description: err?.message })
+  }
+  finally {
+    toast.dismiss('prefill-estimate')
+  }
+}
+
 // Computed: can the estimate be submitted?
 const canSubmitEstimate = computed(() => {
   if (!estimateTitle.value.trim()) return false
@@ -691,7 +743,7 @@ const canSubmitEstimate = computed(() => {
   return true
 })
 
-defineExpose({ openCreateModal, openEditEstimate, openForCustomer })
+defineExpose({ openCreateModal, openEditEstimate, openForCustomer, openForCustomerWithPrefill })
 </script>
 
 <template>

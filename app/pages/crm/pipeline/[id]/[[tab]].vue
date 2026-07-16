@@ -110,6 +110,24 @@ async function fetchRelatedEstimates() {
   finally { loadingEstimates.value = false }
 }
 
+// ─── Estimate Form Dialog ──────────────────────────────────────────────────
+const estimateFormDialog = ref<InstanceType<typeof import('~/components/crm/EstimateFormDialog.vue').default> | null>(null)
+
+function openEstimateDialog() {
+  if (!customer.value) return
+  if (latestEstimate.value) {
+    // "Update Estimate" — create a NEW estimate pre-filled from the latest one
+    estimateFormDialog.value?.openForCustomerWithPrefill(customer.value, latestEstimate.value)
+  } else {
+    // "Create New Estimate" — blank form with customer pre-selected
+    estimateFormDialog.value?.openForCustomer(customer.value)
+  }
+}
+
+function onEstimateSaved() {
+  fetchRelatedEstimates()
+}
+
 async function fetchAllData(email: string, phone: string) {
   if (!email && !phone) { allSubmissions.value = []; return }
   loadingAllSubmissions.value = true
@@ -617,9 +635,16 @@ function totalSqft(blocks: any[]) {
           <div class="flex items-center gap-2 mt-4">
             <Icon name="i-lucide-file-text" class="size-4 text-blue-500 shrink-0" />
             <h3 class="text-sm font-bold text-foreground">Estimate Details ({{ latestEstimate.title?.replace(/^Ann Arbor Hardwoods\s+/i, '') || 'Estimate' }})</h3>
-            <span class="ml-auto text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+            <span class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
               #{{ latestEstimate.estimateNumber }}
             </span>
+            <button
+              class="ml-auto inline-flex items-center gap-1.5 h-7 px-3 rounded-lg bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-700 transition-all shadow-sm"
+              @click="openEstimateDialog"
+            >
+              <Icon name="i-lucide-copy-plus" class="size-3" />
+              Update Estimate
+            </button>
           </div>
           <hr class="border-border/50" />
           <div class="text-xs space-y-0">
@@ -668,6 +693,21 @@ function totalSqft(blocks: any[]) {
             <div v-else class="text-xs text-muted-foreground text-center py-2">
               No variable information available.
             </div>
+          </div>
+        </template>
+
+        <!-- ── No Estimate — Create New Button ────────────────────── -->
+        <template v-else-if="!loadingEstimates">
+          <div class="flex items-center gap-2 mt-4">
+            <Icon name="i-lucide-file-text" class="size-4 text-muted-foreground/50 shrink-0" />
+            <h3 class="text-sm font-semibold text-muted-foreground">No Estimate</h3>
+            <button
+              class="ml-auto inline-flex items-center gap-1.5 h-7 px-3 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold hover:bg-primary/90 transition-all shadow-sm"
+              @click="openEstimateDialog"
+            >
+              <Icon name="i-lucide-plus" class="size-3" />
+              Create New Estimate
+            </button>
           </div>
         </template>
 
@@ -1097,6 +1137,9 @@ function totalSqft(blocks: any[]) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <!-- ── Estimate Form Dialog ──────────────────────────────── -->
+    <CrmEstimateFormDialog ref="estimateFormDialog" @saved="onEstimateSaved" />
   </div>
 </template>
 
