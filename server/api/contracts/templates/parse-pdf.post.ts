@@ -22,43 +22,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const runtimeConfig = useRuntimeConfig()
-
-  // Prefer Vertex AI (service account) since the Gemini API key is blocked
-  const projectId = runtimeConfig.googleCloudProjectId
-  const location = runtimeConfig.googleCloudLocation || 'us-central1'
-  const clientEmail = runtimeConfig.googleClientEmail
-  const privateKey = runtimeConfig.googlePrivateKey
-  const apiKey = runtimeConfig.geminiApiKey
-
-  if (!projectId && !apiKey) {
-    throw createError({
-      statusCode: 500,
-      message: 'Neither Vertex AI credentials nor Gemini API Key configured',
-    })
+  const apiKey = useRuntimeConfig().geminiApiKey
+  if (!apiKey) {
+    throw createError({ statusCode: 500, message: 'GEMINI_API_KEY is not configured in .env' })
   }
 
   try {
-    let ai: GoogleGenAI
-    if (projectId && clientEmail && privateKey) {
-      // Use Vertex AI with service account credentials
-      ai = new GoogleGenAI({
-        vertexai: true,
-        project: projectId,
-        location,
-        googleAuthOptions: {
-          credentials: {
-            client_email: clientEmail,
-            private_key: privateKey.replace(/\\n/g, '\n'),
-          },
-        },
-      })
-    }
-    else {
-      // Fallback to API key
-      ai = new GoogleGenAI({ apiKey })
-    }
-
+    const ai = new GoogleGenAI({ apiKey })
     const prompt = `You are a document analysis expert. Analyze this PDF document and extract its content.
 
 Your task:
@@ -105,7 +75,7 @@ Return your response as a valid JSON object with this exact structure:
 }`
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.0-flash',
       contents: [
         {
           role: 'user',
