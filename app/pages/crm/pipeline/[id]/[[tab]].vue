@@ -128,6 +128,145 @@ function onEstimateSaved() {
   fetchRelatedEstimates()
 }
 
+// ─── PDF Download & Send Email logic for latestEstimate ───
+const sendingEmailId = ref<string | null>(null)
+const showSendEmailModal = ref(false)
+const sendEmailEstimate = ref<any>(null)
+const sendEmailAddresses = ref<string[]>([])
+const sendEmailInput = ref('')
+
+function openSendEmailModal(ct: any) {
+  sendEmailEstimate.value = ct
+  sendEmailAddresses.value = ct.customerEmail ? [ct.customerEmail] : []
+  sendEmailInput.value = ''
+  showSendEmailModal.value = true
+}
+
+function addEmailTag() {
+  const raw = sendEmailInput.value.trim()
+  if (!raw) return
+  const emails = raw.split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean)
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  for (const email of emails) {
+    if (emailRe.test(email) && !sendEmailAddresses.value.includes(email)) {
+      sendEmailAddresses.value.push(email)
+    }
+  }
+  sendEmailInput.value = ''
+}
+
+function removeEmailTag(idx: number) {
+  sendEmailAddresses.value.splice(idx, 1)
+}
+
+function handleEmailInputKeydown(e: KeyboardEvent) {
+  if (['Enter', ',', ';', 'Tab'].includes(e.key)) {
+    e.preventDefault()
+    addEmailTag()
+  }
+  if (e.key === 'Backspace' && !sendEmailInput.value && sendEmailAddresses.value.length > 0) {
+    sendEmailAddresses.value.pop()
+  }
+}
+
+async function confirmSendEmail() {
+  const ct = sendEmailEstimate.value
+  if (!ct)
+    return
+  addEmailTag()
+  if (sendEmailAddresses.value.length === 0) {
+    toast.error('Please enter at least one email address')
+    return
+  }
+  sendingEmailId.value = ct._id
+  try {
+    const res = await $fetch<{ success: boolean, message: string }>('/api/estimates/send-email', {
+      method: 'POST',
+      body: { estimateId: ct._id, overrideEmail: sendEmailAddresses.value.join(', ') },
+    })
+    toast.success('Email Sent!', { description: res.message })
+    showSendEmailModal.value = false
+    fetchRelatedEstimates()
+  }
+  catch (e: any) {
+    toast.error('Failed to send email', { description: e?.data?.message || e?.message })
+  }
+  finally {
+    sendingEmailId.value = null
+  }
+}
+
+async function downloadPDF(ct: any) {
+  toast.loading('Generating Estimate PDF...')
+
+  try {
+    const response = await fetch(`/api/estimates/download-pdf/${ct._id}`, {
+      method: 'GET',
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(text || `Server returned ${response.status}`)
+    }
+
+    const contentType = response.headers.get('content-type') || ''
+
+    if (contentType.includes('application/json')) {
+      const data = await response.json() as { downloadUrl?: string, filename?: string }
+      if (!data?.downloadUrl) {
+        throw new Error('Server returned JSON without a downloadUrl')
+      }
+
+      toast.loading('Fetching large PDF...')
+      const fileRes = await fetch(data.downloadUrl)
+      if (!fileRes.ok) {
+        throw new Error(`Failed to fetch PDF: ${fileRes.status}`)
+      }
+      const fileBlob = await fileRes.blob()
+      const fileObjUrl = URL.createObjectURL(fileBlob)
+
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = fileObjUrl
+      a.download = data.filename || `Estimate_${ct.estimateNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(fileObjUrl)
+        toast.dismiss()
+        toast.success('PDF downloaded successfully')
+      }, 400)
+      return
+    }
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.style.display = 'none'
+    a.href = url
+    a.download = `Estimate_${ct.estimateNumber}.pdf`
+    document.body.appendChild(a)
+    a.click()
+
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.dismiss()
+      toast.success('PDF downloaded successfully')
+    }, 600)
+  }
+  catch (err: any) {
+    toast.dismiss()
+    toast.error('Could not generate PDF', { description: err?.message || 'Server error' })
+  }
+}
+
+function displayTitle(title: string): string {
+  return (title || '').replace(/^Ann Arbor Hardwoods\s+/i, '').trim()
+}
+
 async function fetchAllData(email: string, phone: string) {
   if (!email && !phone) { allSubmissions.value = []; return }
   loadingAllSubmissions.value = true
@@ -480,10 +619,19 @@ function totalSqft(blocks: any[]) {
               <div class="p-2 border-b border-border/50">
                 <input ref="stageSearchInput" v-model="stageSearch" type="text" placeholder="Search status..." class="w-full bg-background border border-border/50 rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary font-medium" @click.stop>
               </div>
-              <div class="max-h-[200px] overflow-y-auto py-1.5">
-                <button v-for="st in filteredStageOptions" :key="st.id" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 transition-colors flex items-center gap-2" @click.stop="handleStageSelect(st.id)">
-                  <div class="size-2 rounded-full" :style="st.color ? { backgroundColor: st.color } : {}" />
-                  <span class="truncate">{{ st.label }}</span>
+              <div class="max-h-[220px] overflow-y-auto py-1.5">
+                <button
+                  v-for="st in filteredStageOptions"
+                  :key="st.id"
+                  class="w-full text-left px-3 py-2 text-[10.5px] uppercase tracking-wider transition-colors flex items-center gap-2"
+                  :class="customer && String(customer.status) === String(st.id)
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'font-normal hover:bg-muted/60 text-foreground'"
+                  @click.stop="handleStageSelect(st.id)"
+                >
+                  <div class="size-2 rounded-full shrink-0" :style="st.color ? { backgroundColor: st.color } : {}" />
+                  <span class="truncate flex-1">{{ st.label }}</span>
+                  <Icon v-if="customer && String(customer.status) === String(st.id)" name="i-lucide-check" class="size-3.5 text-primary shrink-0" />
                 </button>
               </div>
             </div>
@@ -638,13 +786,40 @@ function totalSqft(blocks: any[]) {
             <span class="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
               #{{ latestEstimate.estimateNumber }}
             </span>
-            <button
-              class="ml-auto inline-flex items-center gap-1.5 h-7 px-3 rounded-lg bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-700 transition-all shadow-sm"
-              @click="openEstimateDialog"
-            >
-              <Icon name="i-lucide-copy-plus" class="size-3" />
-              Update Estimate
-            </button>
+            <div class="ml-auto flex items-center gap-1.5 shrink-0">
+              <!-- Download PDF -->
+              <button
+                class="inline-flex items-center justify-center size-7 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+                title="Download PDF"
+                @click="downloadPDF(latestEstimate)"
+              >
+                <Icon name="i-lucide-download" class="size-3.5" />
+              </button>
+
+              <!-- Send Email -->
+              <button
+                class="inline-flex items-center justify-center size-7 rounded-lg border transition-all"
+                :class="latestEstimate.status === 'sent'
+                  ? 'border-primary/20 bg-primary/5 text-primary hover:bg-primary/10'
+                  : 'border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted'"
+                :title="latestEstimate.status === 'sent' ? 'Resend email' : 'Send to client'"
+                :disabled="sendingEmailId === latestEstimate._id"
+                @click="openSendEmailModal(latestEstimate)"
+              >
+                <Icon v-if="sendingEmailId === latestEstimate._id" name="i-lucide-loader-circle" class="size-3.5 animate-spin" />
+                <Icon v-else-if="latestEstimate.status === 'sent'" name="i-lucide-mail-check" class="size-3.5" />
+                <Icon v-else name="i-lucide-send" class="size-3.5" />
+              </button>
+
+              <!-- Update -->
+              <button
+                class="inline-flex items-center gap-1.5 h-7 px-3 rounded-lg bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-700 transition-all shadow-sm"
+                @click="openEstimateDialog"
+              >
+                <Icon name="i-lucide-copy-plus" class="size-3" />
+                Update
+              </button>
+            </div>
           </div>
           <hr class="border-border/50" />
           <div class="text-xs space-y-0">
@@ -1140,6 +1315,80 @@ function totalSqft(blocks: any[]) {
 
     <!-- ── Estimate Form Dialog ──────────────────────────────── -->
     <CrmEstimateFormDialog ref="estimateFormDialog" @saved="onEstimateSaved" />
+
+    <!-- Send Email Modal -->
+    <Dialog v-model:open="showSendEmailModal">
+      <DialogContent class="max-w-md p-0 border-0 rounded-2xl overflow-hidden bg-background shadow-2xl">
+        <div class="px-6 py-5 border-b border-border/50 bg-muted/20">
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <Icon name="i-lucide-mail" class="size-5 text-primary" />
+            Send Estimate via Email
+          </h2>
+          <p class="text-sm text-muted-foreground mt-1">
+            Send <strong>{{ displayTitle(sendEmailEstimate?.title) }}</strong> to client for review.
+          </p>
+        </div>
+
+        <div class="p-6">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-semibold mb-1.5">Recipient Email Addresses</label>
+              <!-- Tags + Input Container -->
+              <div
+                class="min-h-[40px] w-full rounded-lg border border-input bg-background px-2 py-1.5 flex flex-wrap items-center gap-1.5 cursor-text focus-within:ring-2 focus-within:ring-primary/20 transition-all"
+                @click="($refs.emailInputRef as HTMLInputElement)?.focus()"
+              >
+                <!-- Email Tags -->
+                <span
+                  v-for="(email, idx) in sendEmailAddresses"
+                  :key="idx"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold border border-primary/20 shrink-0"
+                >
+                  {{ email }}
+                  <button
+                    class="size-3.5 rounded-full flex items-center justify-center hover:bg-primary/20 text-primary/60 hover:text-primary transition-colors"
+                    @click.stop="removeEmailTag(idx)"
+                  >
+                    <Icon name="i-lucide-x" class="size-2.5" />
+                  </button>
+                </span>
+                <!-- Input -->
+                <input
+                  ref="emailInputRef"
+                  v-model="sendEmailInput"
+                  type="text"
+                  placeholder="Type email and press Enter..."
+                  class="flex-1 min-w-[120px] h-7 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground/50"
+                  @keydown="handleEmailInputKeydown"
+                  @blur="addEmailTag()"
+                >
+              </div>
+              <p class="text-xs text-muted-foreground mt-1.5">
+                Press <kbd class="px-1 py-0.5 rounded border bg-muted text-[10px] font-mono">Enter</kbd>,
+                <kbd class="px-1 py-0.5 rounded border bg-muted text-[10px] font-mono">,</kbd> or
+                <kbd class="px-1 py-0.5 rounded border bg-muted text-[10px] font-mono">;</kbd>
+                to add multiple recipients. Each will receive the estimate with PDF attached.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-border/50 bg-muted/20 flex justify-end gap-2">
+          <Button variant="outline" @click="showSendEmailModal = false">
+            Cancel
+          </Button>
+          <Button
+            :disabled="sendEmailAddresses.length === 0 && !sendEmailInput.trim() || sendingEmailId === sendEmailEstimate?._id"
+            class="min-w-[120px]"
+            @click="confirmSendEmail"
+          >
+            <Icon v-if="sendingEmailId === sendEmailEstimate?._id" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
+            <Icon v-else name="i-lucide-send" class="mr-2 size-4" />
+            {{ sendingEmailId === sendEmailEstimate?._id ? 'Sending...' : sendEmailAddresses.length > 1 ? `Send to ${sendEmailAddresses.length}` : 'Send Estimate' }}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 

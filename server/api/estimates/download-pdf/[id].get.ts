@@ -236,8 +236,15 @@ export default defineEventHandler(async (event) => {
 
     const filename = `Estimate_${estimate.estimateNumber || estimate._id}`
 
+    const query = getQuery(event)
+    const isDownload = query.download === 'true' || query.download === '1'
+
     setResponseHeader(event, 'Content-Type', 'application/pdf')
-    setResponseHeader(event, 'Content-Disposition', `attachment; filename="${filename}.pdf"`)
+    if (isDownload) {
+      setResponseHeader(event, 'Content-Disposition', `attachment; filename="${filename}.pdf"`)
+    } else {
+      setResponseHeader(event, 'Content-Disposition', `inline; filename="${filename}.pdf"`)
+    }
 
     if (finalPdfBuffer.length > VERCEL_BODY_LIMIT_BYTES) {
       log.info(`[pdf-download] PDF over ${VERCEL_BODY_LIMIT_BYTES} bytes → Streaming response`)

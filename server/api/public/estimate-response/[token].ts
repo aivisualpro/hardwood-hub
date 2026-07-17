@@ -113,8 +113,15 @@ export default defineEventHandler(async (event) => {
 
     let performedBy = 'System'
     if (action === 'approved') {
-      const sentEntry = [...estimate.statusTimeline].reverse().find((t: any) => t.action === 'sent')
-      performedBy = sentEntry?.sentToEmail || estimate.customerEmail || 'Client'
+      const query = getQuery(event)
+      const queryEmail = query?.email as string || ''
+      if (queryEmail) {
+        performedBy = queryEmail
+      }
+      else {
+        const sentEntry = [...estimate.statusTimeline].reverse().find((t: any) => t.action === 'sent')
+        performedBy = sentEntry?.sentToEmail || estimate.customerEmail || 'Client'
+      }
     }
     else {
       const emp = await Employee.findOne({ email: 'michael@annarborhardwoods.com' }).lean() as any

@@ -46,22 +46,55 @@ export async function generatePdfFromHtml(htmlContent: string): Promise<Buffer> 
     },
   }
 
-  log.info('POST → Browserless …')
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
+  const FETCH_TIMEOUT_MS = 60_000 // 60 seconds
+  const MAX_RETRIES = 1
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '')
-    throw new Error(
-      `Browserless responded ${res.status}: ${errText.slice(0, 500)}`,
-    )
+  async function attemptFetch(): Promise<Buffer> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
+    try {
+      log.info('POST → Browserless …')
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '')
+        throw new Error(
+          `Browserless responded ${res.status}: ${errText.slice(0, 500)}`,
+        )
+      }
+
+      const arrayBuffer = await res.arrayBuffer()
+      const pdfBuffer = Buffer.from(arrayBuffer)
+      log.info(`PDF bytes: ${(pdfBuffer.length / 1024).toFixed(0)}KB`)
+      return pdfBuffer
+    }
+    finally {
+      clearTimeout(timer)
+    }
   }
 
-  const arrayBuffer = await res.arrayBuffer()
-  const pdfBuffer = Buffer.from(arrayBuffer)
-  log.info(`PDF bytes: ${(pdfBuffer.length / 1024).toFixed(0)}KB`)
-  return pdfBuffer
+  // Retry once on timeout / network errors
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await attemptFetch()
+    }
+    catch (err: any) {
+      const isTimeout = err?.name === 'AbortError'
+        || err?.cause?.code === 'UND_ERR_HEADERS_TIMEOUT'
+        || err?.message?.includes('Timeout')
+        || err?.message?.includes('fetch failed')
+      if (isTimeout && attempt < MAX_RETRIES) {
+        log.info(`[pdf-generator] Timeout on attempt ${attempt + 1}, retrying…`)
+        continue
+      }
+      throw err
+    }
+  }
+  throw new Error('PDF generation failed after retries')
 }

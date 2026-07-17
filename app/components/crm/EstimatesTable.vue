@@ -109,27 +109,60 @@ async function deleteEstimate(id: string) {
 const sendingEmailId = ref<string | null>(null)
 const showSendEmailModal = ref(false)
 const sendEmailEstimate = ref<any>(null)
-const sendEmailAddress = ref('')
+const sendEmailAddresses = ref<string[]>([])
+const sendEmailInput = ref('')
 
 function openSendEmailModal(ct: any) {
   sendEmailEstimate.value = ct
-  sendEmailAddress.value = ct.customerEmail || ''
+  sendEmailAddresses.value = ct.customerEmail ? [ct.customerEmail] : []
+  sendEmailInput.value = ''
   showSendEmailModal.value = true
+}
+
+function addEmailTag() {
+  const raw = sendEmailInput.value.trim()
+  if (!raw) return
+  // Split by comma, semicolon or space
+  const emails = raw.split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean)
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  for (const email of emails) {
+    if (emailRe.test(email) && !sendEmailAddresses.value.includes(email)) {
+      sendEmailAddresses.value.push(email)
+    }
+  }
+  sendEmailInput.value = ''
+}
+
+function removeEmailTag(idx: number) {
+  sendEmailAddresses.value.splice(idx, 1)
+}
+
+function handleEmailInputKeydown(e: KeyboardEvent) {
+  if (['Enter', ',', ';', 'Tab'].includes(e.key)) {
+    e.preventDefault()
+    addEmailTag()
+  }
+  // Backspace removes last tag when input is empty
+  if (e.key === 'Backspace' && !sendEmailInput.value && sendEmailAddresses.value.length > 0) {
+    sendEmailAddresses.value.pop()
+  }
 }
 
 async function confirmSendEmail() {
   const ct = sendEmailEstimate.value
   if (!ct)
     return
-  if (!sendEmailAddress.value?.trim()) {
-    toast.error('Please enter an email address')
+  // Flush any pending input
+  addEmailTag()
+  if (sendEmailAddresses.value.length === 0) {
+    toast.error('Please enter at least one email address')
     return
   }
   sendingEmailId.value = ct._id
   try {
     const res = await $fetch<{ success: boolean, message: string }>('/api/estimates/send-email', {
       method: 'POST',
-      body: { estimateId: ct._id, overrideEmail: sendEmailAddress.value.trim() },
+      body: { estimateId: ct._id, overrideEmail: sendEmailAddresses.value.join(', ') },
     })
     toast.success('Email Sent!', { description: res.message })
     showSendEmailModal.value = false
@@ -276,11 +309,21 @@ async function downloadPDF(ct: any) {
                   <div class="size-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Icon name="i-lucide-user" class="size-3.5 text-primary" />
                   </div>
-                  <span class="text-xs font-semibold">{{ ct.customerName || '—' }}</span>
+                  <span
+                    class="text-xs font-semibold hover:text-primary hover:underline cursor-pointer transition-colors"
+                    @click.stop="ct.customerId && navigateTo(`/crm/customers/${ct.customerId}`)"
+                  >
+                    {{ ct.customerName || '—' }}
+                  </span>
                 </div>
               </td>
               <td v-if="!compact" class="px-4 py-3">
-                <span class="text-xs font-medium text-foreground/80">{{ ct.projectName || '—' }}</span>
+                <span
+                  class="text-xs font-medium text-foreground/80 hover:text-primary hover:underline cursor-pointer transition-colors"
+                  @click.stop="ct.projectId && navigateTo(`/crm/pipeline/${ct.projectId}`)"
+                >
+                  {{ ct.projectName || '—' }}
+                </span>
               </td>
               <td v-if="!compact" class="px-4 py-3">
                 <span class="text-sm font-semibold">{{ displayTitle(ct.title) }}</span>
@@ -448,12 +491,27 @@ async function downloadPDF(ct: any) {
           </div>
 
           <div class="grid grid-cols-2 gap-3 bg-muted/30 p-2.5 rounded-lg border border-border/40">
-            <div class="flex flex-col min-w-0">
+            <div
+              class="flex flex-col min-w-0"
+              :class="ct.customerId ? 'cursor-pointer hover:text-primary hover:underline transition-colors' : ''"
+              @click.stop="ct.customerId && navigateTo(`/crm/customers/${ct.customerId}`)"
+            >
               <span class="text-[10px] text-muted-foreground uppercase font-bold mb-0.5 flex items-center gap-1"><Icon name="i-lucide-user" class="size-3 pl-0.5 text-primary" /> Customer</span>
               <span class="text-xs font-bold truncate">{{ ct.customerName || '—' }}</span>
               <span class="text-[11px] text-muted-foreground truncate">{{ ct.customerEmail || ct.customerPhone || '—' }}</span>
             </div>
-            <div class="flex flex-col min-w-0">
+            <!-- If project exists, show it and make it clickable; otherwise show Template -->
+            <div
+              v-if="ct.projectName"
+              class="flex flex-col min-w-0"
+              :class="ct.projectId ? 'cursor-pointer hover:text-primary hover:underline transition-colors' : ''"
+              @click.stop="ct.projectId && navigateTo(`/crm/pipeline/${ct.projectId}`)"
+            >
+              <span class="text-[10px] text-muted-foreground uppercase font-bold mb-0.5">Project</span>
+              <span class="text-xs font-bold truncate pt-px">{{ ct.projectName }}</span>
+              <span class="text-[11px] text-muted-foreground truncate">{{ ct.templateName || '—' }}</span>
+            </div>
+            <div v-else class="flex flex-col min-w-0">
               <span class="text-[10px] text-muted-foreground uppercase font-bold mb-0.5">Template</span>
               <span class="text-xs font-medium truncate pt-px">{{ ct.templateName || '—' }}</span>
             </div>
@@ -505,16 +563,42 @@ async function downloadPDF(ct: any) {
         <div class="p-6">
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-semibold mb-1.5">Recipient Email Address</label>
-              <Input
-                v-model="sendEmailAddress"
-                type="email"
-                placeholder="client@example.com"
-                class="h-10"
-                @keyup.enter="confirmSendEmail"
-              />
+              <label class="block text-sm font-semibold mb-1.5">Recipient Email Addresses</label>
+              <!-- Tags + Input Container -->
+              <div
+                class="min-h-[40px] w-full rounded-lg border border-input bg-background px-2 py-1.5 flex flex-wrap items-center gap-1.5 cursor-text focus-within:ring-2 focus-within:ring-primary/20 transition-all"
+                @click="($refs.emailInputRef as HTMLInputElement)?.focus()"
+              >
+                <!-- Email Tags -->
+                <span
+                  v-for="(email, idx) in sendEmailAddresses"
+                  :key="idx"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold border border-primary/20 shrink-0"
+                >
+                  {{ email }}
+                  <button
+                    class="size-3.5 rounded-full flex items-center justify-center hover:bg-primary/20 text-primary/60 hover:text-primary transition-colors"
+                    @click.stop="removeEmailTag(idx)"
+                  >
+                    <Icon name="i-lucide-x" class="size-2.5" />
+                  </button>
+                </span>
+                <!-- Input -->
+                <input
+                  ref="emailInputRef"
+                  v-model="sendEmailInput"
+                  type="text"
+                  placeholder="Type email and press Enter..."
+                  class="flex-1 min-w-[120px] h-7 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground/50"
+                  @keydown="handleEmailInputKeydown"
+                  @blur="addEmailTag()"
+                >
+              </div>
               <p class="text-xs text-muted-foreground mt-1.5">
-                They will receive a link to download this estimate document.
+                Press <kbd class="px-1 py-0.5 rounded border bg-muted text-[10px] font-mono">Enter</kbd>,
+                <kbd class="px-1 py-0.5 rounded border bg-muted text-[10px] font-mono">,</kbd> or
+                <kbd class="px-1 py-0.5 rounded border bg-muted text-[10px] font-mono">;</kbd>
+                to add multiple recipients. Each will receive the estimate with PDF attached.
               </p>
             </div>
           </div>
@@ -525,13 +609,13 @@ async function downloadPDF(ct: any) {
             Cancel
           </Button>
           <Button
-            :disabled="!sendEmailAddress.trim() || sendingEmailId === sendEmailEstimate?._id"
+            :disabled="sendEmailAddresses.length === 0 && !sendEmailInput.trim() || sendingEmailId === sendEmailEstimate?._id"
             class="min-w-[120px]"
             @click="confirmSendEmail"
           >
             <Icon v-if="sendingEmailId === sendEmailEstimate?._id" name="i-lucide-loader-circle" class="mr-2 size-4 animate-spin" />
             <Icon v-else name="i-lucide-send" class="mr-2 size-4" />
-            {{ sendingEmailId === sendEmailEstimate?._id ? 'Sending...' : 'Send Estimate' }}
+            {{ sendingEmailId === sendEmailEstimate?._id ? 'Sending...' : sendEmailAddresses.length > 1 ? `Send to ${sendEmailAddresses.length}` : 'Send Estimate' }}
           </Button>
         </div>
       </DialogContent>

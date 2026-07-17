@@ -200,7 +200,11 @@ function downloadAllFiles(doc: any) {
   const files = doc.files || []
   for (const file of files) {
     const a = document.createElement('a')
-    a.href = file.url
+    let downloadUrl = file.url
+    if (downloadUrl.includes('/api/estimates/download-pdf/')) {
+      downloadUrl += downloadUrl.includes('?') ? '&download=1' : '?download=1'
+    }
+    a.href = downloadUrl
     a.download = file.name || 'download'
     a.target = '_blank'
     a.rel = 'noopener'
@@ -242,7 +246,7 @@ function fileExt(name: string) {
  * request page-1 rendered as jpg. For images, add a small resize transform.
  */
 function thumbnailUrl(url: string, type: string) {
-  if (!url) return ''
+  if (!url || !url.includes('cloudinary.com')) return ''
   // Images — add resize transformation
   if (type?.startsWith('image/')) {
     return url.replace('/upload/', '/upload/c_fill,w_120,h_120,q_60/')
@@ -256,17 +260,21 @@ function thumbnailUrl(url: string, type: string) {
 
 // ─── File Preview Dialog ─────────────────────────────────
 const showPreview = ref(false)
-const previewFile = ref<{ url: string, name: string, size: number, type: string, docId: string, fileIdx: number } | null>(null)
+const previewFile = ref<{ url: string, name: string, size: number, type: string, docId: string, isEstimate?: boolean, fileIdx: number } | null>(null)
 
-function openPreview(file: any, docId: string, fileIdx: number) {
-  previewFile.value = { ...file, docId, fileIdx }
+function openPreview(file: any, doc: any, fileIdx: number) {
+  previewFile.value = { ...file, docId: doc._id, isEstimate: doc.isEstimate, fileIdx }
   showPreview.value = true
 }
 
 function downloadFile() {
   if (!previewFile.value) return
   const a = document.createElement('a')
-  a.href = previewFile.value.url
+  let downloadUrl = previewFile.value.url
+  if (downloadUrl.includes('/api/estimates/download-pdf/')) {
+    downloadUrl += downloadUrl.includes('?') ? '&download=1' : '?download=1'
+  }
+  a.href = downloadUrl
   a.download = previewFile.value.name || 'download'
   a.target = '_blank'
   a.rel = 'noopener'
@@ -439,7 +447,7 @@ defineExpose({
           <button class="size-5 rounded flex items-center justify-center text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-all shrink-0" title="Download all files" @click="downloadAllFiles(doc)">
             <Icon name="i-lucide-download" class="size-3" />
           </button>
-          <button class="size-5 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-all shrink-0" @click="confirmDeleteDoc(doc._id)">
+          <button v-if="!doc.isEstimate" class="size-5 rounded flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-all shrink-0" @click="confirmDeleteDoc(doc._id)">
             <Icon name="i-lucide-trash-2" class="size-3" />
           </button>
         </div>
@@ -451,7 +459,7 @@ defineExpose({
               :key="fIdx"
               class="group relative shrink-0 size-14 rounded-lg border border-border/50 bg-muted/30 overflow-hidden hover:ring-2 hover:ring-primary/40 transition-all"
               :title="file.name || 'File'"
-              @click="openPreview(file, doc._id, Number(fIdx))"
+              @click="openPreview(file, doc, Number(fIdx))"
             >
               <!-- Image / PDF thumbnail via Cloudinary -->
               <img
@@ -538,6 +546,7 @@ defineExpose({
                 Download
               </button>
               <button
+                v-if="!previewFile.isEstimate"
                 class="h-9 px-4 rounded-lg bg-destructive/10 text-destructive text-xs font-bold hover:bg-destructive hover:text-white transition-all flex items-center gap-2"
                 @click="deleteSingleFile"
               >

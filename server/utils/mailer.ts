@@ -63,7 +63,7 @@ export async function sendMail(opts: {
 }
 
 export async function sendMailEstimates(opts: {
-  to: string
+  to: string | string[]
   subject: string
   html: string
   from?: string

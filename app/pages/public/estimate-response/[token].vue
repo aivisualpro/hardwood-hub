@@ -25,7 +25,9 @@ async function fetchEstimate() {
   loading.value = true
   error.value = ''
   try {
-    const res = await $fetch<{ success: boolean, data: any }>(`/api/public/estimate-response/${token}`)
+    const res = await $fetch<{ success: boolean, data: any }>(`/api/public/estimate-response/${token}`, {
+      query: { email: route.query.email }
+    })
     estimate.value = res.data
     company.value = res.data.company || {}
     alreadyResponded.value = res.data.alreadyResponded || false
@@ -65,6 +67,7 @@ async function submitResponse() {
         action: selectedAction.value,
         message: changeMessage.value.trim(),
       },
+      query: { email: route.query.email }
     })
     if (res.alreadyResponded) {
       alreadyResponded.value = true

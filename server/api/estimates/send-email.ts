@@ -18,8 +18,21 @@ import { z } from 'zod'
 
 const EstimateSendEmailSchema = z.object({
   estimateId: z.string().regex(/^[0-9a-f]{24}$/i, 'Must be a valid ObjectId'),
-  overrideEmail: z.string().email().or(z.literal('')).optional(),
+  overrideEmail: z.string().or(z.literal('')).optional(),
 })
+
+/** Parse and validate a comma/semicolon-separated email string */
+function parseEmails(raw: string | undefined, fallback: string): string[] {
+  const combined = (raw?.trim() || fallback || '').trim()
+  if (!combined) return []
+  const emails = combined.split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean)
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const invalid = emails.filter(e => !emailRe.test(e))
+  if (invalid.length > 0) {
+    throw createError({ statusCode: 400, message: `Invalid email(s): ${invalid.join(', ')}` })
+  }
+  return [...new Set(emails)] // deduplicate
+}
 
 async function safeFetch(url: string, timeoutMs = 15000, options: RequestInit = {}) {
   const controller = new AbortController()
@@ -47,9 +60,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Estimate not found' })
   }
 
-  const emailTarget = overrideEmail?.trim() || estimate.customerEmail
-  if (!emailTarget) {
-    throw createError({ statusCode: 400, message: 'Customer has no email address' })
+  const emailTargets = parseEmails(overrideEmail, estimate.customerEmail)
+  if (emailTargets.length === 0) {
+    throw createError({ statusCode: 400, message: 'No valid email address provided' })
   }
 
   // Generate response token for Approve/Change Request/Decline buttons
@@ -60,20 +73,24 @@ export default defineEventHandler(async (event) => {
   estimate.status = 'sent'
   estimate.sentAt = new Date()
   estimate.responseToken = responseToken
+  // Update customer email to the first recipient if overridden
   if (overrideEmail?.trim()) {
-    estimate.customerEmail = overrideEmail.trim()
+    estimate.customerEmail = emailTargets[0] || overrideEmail.trim()
   }
 
   const senderEmail = (event.context as any).session?.email || 'System'
   if (!estimate.statusTimeline) {
     estimate.statusTimeline = []
   }
-  estimate.statusTimeline.push({
-    action: 'sent',
-    timestamp: new Date(),
-    performedBy: senderEmail,
-    sentToEmail: emailTarget,
-  })
+  // Record a timeline entry for each recipient
+  for (const target of emailTargets) {
+    estimate.statusTimeline.push({
+      action: 'sent',
+      timestamp: new Date(),
+      performedBy: senderEmail,
+      sentToEmail: target,
+    })
+  }
 
   await estimate.save()
 
@@ -288,8 +305,10 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // ─── Build simple email with rendered template body ───────
-  const emailHTML = `
+  // ─── Build simple email with rendered template body (dynamic function to support personalization) ───
+  const getEmailHTML = (targetEmail: string) => {
+    const emailQuery = `&email=${encodeURIComponent(targetEmail)}`
+    return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -331,13 +350,13 @@ export default defineEventHandler(async (event) => {
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                     <tr>
                       <td align="center" style="padding: 0 4px;">
-                        <a href="${responseBaseUrl}?action=approve" target="_blank" style="display: inline-block; background: #059669; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: 10px; min-width: 100px; text-align: center; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">✅ Approve</a>
+                        <a href="${responseBaseUrl}?action=approve${emailQuery}" target="_blank" style="display: inline-block; background: #059669; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: 10px; min-width: 100px; text-align: center; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">✅ Approve</a>
                       </td>
                       <td align="center" style="padding: 0 4px;">
-                        <a href="${responseBaseUrl}?action=change_request" target="_blank" style="display: inline-block; background: #d97706; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: 10px; min-width: 100px; text-align: center; box-shadow: 0 2px 8px rgba(217,119,6,0.3);">✏️ Changes</a>
+                        <a href="${responseBaseUrl}?action=change_request${emailQuery}" target="_blank" style="display: inline-block; background: #d97706; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: 10px; min-width: 100px; text-align: center; box-shadow: 0 2px 8px rgba(217,119,6,0.3);">✏️ Changes</a>
                       </td>
                       <td align="center" style="padding: 0 4px;">
-                        <a href="${responseBaseUrl}?action=decline" target="_blank" style="display: inline-block; background: #dc2626; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: 10px; min-width: 100px; text-align: center; box-shadow: 0 2px 8px rgba(220,38,38,0.3);">❌ Decline</a>
+                        <a href="${responseBaseUrl}?action=decline${emailQuery}" target="_blank" style="display: inline-block; background: #dc2626; color: #ffffff; font-size: 13px; font-weight: 700; text-decoration: none; padding: 12px 20px; border-radius: 10px; min-width: 100px; text-align: center; box-shadow: 0 2px 8px rgba(220,38,38,0.3);">❌ Decline</a>
                       </td>
                     </tr>
                   </table>
@@ -364,20 +383,23 @@ export default defineEventHandler(async (event) => {
       </table>
     </body>
     </html>
-  `
+    `
+  }
 
-  // ─── Send the email ───────────────────────────────────────
+  // ─── Send the emails ───────────────────────────────────────
   try {
-    await sendMailEstimates({
-      to: emailTarget,
-      subject: `Estimate — ${estimate.title}`,
-      html: emailHTML,
-      attachments,
-    })
-    console.log(`[estimates/send-email] ✅ Email sent to ${emailTarget} with ${attachments.length} attachment(s) for estimate ${estimate.estimateNumber}`)
+    for (const target of emailTargets) {
+      await sendMailEstimates({
+        to: target,
+        subject: `Estimate — ${estimate.title}`,
+        html: getEmailHTML(target),
+        attachments,
+      })
+    }
+    console.log(`[estimates/send-email] ✅ Emails sent to ${emailTargets.join(', ')} with ${attachments.length} attachment(s) for estimate ${estimate.estimateNumber}`)
   }
   catch (mailErr: any) {
-    console.error(`[estimates/send-email] ❌ Failed to send email to ${emailTarget}:`, mailErr?.message || mailErr)
+    console.error(`[estimates/send-email] ❌ Failed to send email to ${emailTargets.join(', ')}:`, mailErr?.message || mailErr)
     estimate.status = 'draft'
     estimate.sentAt = undefined
     await estimate.save()
@@ -389,7 +411,10 @@ export default defineEventHandler(async (event) => {
 
   return {
     success: true,
-    message: `Estimate sent to ${emailTarget} with PDF attached`,
+    message: emailTargets.length === 1
+      ? `Estimate sent to ${emailTargets[0]} with PDF attached`
+      : `Estimate sent to ${emailTargets.length} recipients with PDF attached`,
     sentAt: estimate.sentAt,
+    recipients: emailTargets,
   }
 })

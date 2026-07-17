@@ -2,8 +2,9 @@
  * GET  /api/documents      — list documents (filter by projectId or customerId)
  * POST /api/documents      — create a new document record
  */
-import { defineEventHandler, readBody } from 'h3'
+import { defineEventHandler, readBody, getQuery } from 'h3'
 import { Document } from '../../models/Document'
+import { Estimate } from '../../models/Estimate'
 import { connectDB } from '../../utils/mongoose'
 
 export default defineEventHandler(async (event) => {
@@ -30,7 +31,35 @@ export default defineEventHandler(async (event) => {
       customerId: d.customerId ? String(d.customerId) : null,
     }))
 
-    return { success: true, data: serialized }
+    let virtualDocs: any[] = []
+    if (projectId || customerId) {
+      const estFilter: Record<string, any> = {}
+      if (projectId) estFilter.projectId = projectId
+      if (customerId) estFilter.customerId = customerId
+
+      const estimates = await Estimate.find(estFilter).lean()
+      virtualDocs = estimates.map((est: any) => ({
+        _id: `est_${est._id}`,
+        projectId: est.projectId ? String(est.projectId) : null,
+        customerId: est.customerId ? String(est.customerId) : null,
+        date: est.createdAt || est.updatedAt || new Date(),
+        documentType: 'Estimate',
+        isEstimate: true,
+        files: [{
+          url: `/api/estimates/download-pdf/${est._id}`,
+          name: `${est.title || 'Estimate'}_#${est.estimateNumber || est._id}.pdf`,
+          size: 0,
+          type: 'application/pdf'
+        }],
+        uploadedAt: est.createdAt || est.updatedAt || new Date()
+      }))
+    }
+
+    const combined = [...serialized, ...virtualDocs].sort(
+      (a, b) => new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime()
+    )
+
+    return { success: true, data: combined }
   }
 
   if (method === 'POST') {

@@ -583,22 +583,35 @@ async function openEditEstimate(ct: any) {
   }
 }
 
-async function saveEstimate() {
+async function saveAndGetId(): Promise<string | null> {
   if (!selectedCustomer.value || !selectedModalTemplate.value) {
     toast.error('Please select a customer and template')
-    return
+    return null
   }
   if (!estimateTitle.value.trim()) {
     toast.error('Estimate title is required')
-    return
+    return null
   }
   if (!String(variableValues.value.estimate_number || '').trim()) {
     toast.error('Estimate Number is required')
-    return
+    return null
   }
+
+  // Validate required template variables
+  const vars = selectedModalTemplate.value.variables || []
+  for (const v of vars) {
+    if (!v.required) continue
+    if (['company_name', 'companyName', 'client_name', 'clientName', 'customer_name', 'customerName'].includes(v.key)) continue
+    const val = variableValues.value[v.key]
+    if (!val || !String(val).trim()) {
+      toast.error(`"${v.label || v.key}" is required`)
+      return null
+    }
+  }
+
   if (!attachedPdf.value) {
     toast.error('PDF document is required', { description: 'Please upload the estimate PDF before creating.' })
-    return
+    return null
   }
 
   savingEstimate.value = true
@@ -620,7 +633,7 @@ async function saveEstimate() {
       content: selectedModalTemplate.value.content,
       attachedPdf: finalAttachedPdf,
       attachedGalleryImages: attachedGalleryImages.value,
-      status: 'draft',
+      status: editingEstimateId.value ? undefined : 'draft',
       lineItems: lineItems.value,
       materialTotal: materialTotal.value,
       laborTotal: laborTotal.value,
@@ -629,26 +642,183 @@ async function saveEstimate() {
       totalAmount: totalAmount.value,
     }
 
+    let savedId = editingEstimateId.value
     if (editingEstimateId.value) {
       await $fetch(`/api/estimates/detail/${editingEstimateId.value}`, { method: 'PUT', body: payload })
       toast.success('Estimate updated successfully')
     }
     else {
-      await $fetch('/api/estimates', { method: 'POST', body: payload })
+      const res = await $fetch<{ success: boolean, data: any }>('/api/estimates', { method: 'POST', body: payload })
+      savedId = res.data?._id || null
       toast.success('Estimate created successfully')
     }
 
-    showCreateModal.value = false
     emit('saved')
+    return savedId
   }
   catch (e: any) {
     toast.error(editingEstimateId.value ? 'Failed to update estimate' : 'Failed to create estimate', {
       description: e?.data?.message || e?.message || 'Unknown error',
     })
+    return null
   }
   finally {
     savingEstimate.value = false
   }
+}
+
+async function saveEstimate() {
+  const id = await saveAndGetId()
+  if (id) {
+    showCreateModal.value = false
+  }
+}
+
+async function downloadPDFDirect() {
+  const id = await saveAndGetId()
+  if (!id) return
+
+  toast.loading('Generating Estimate PDF...')
+  try {
+    const response = await fetch(`/api/estimates/download-pdf/${id}`, {
+      method: 'GET',
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(text || `Server returned ${response.status}`)
+    }
+
+    const contentType = response.headers.get('content-type') || ''
+
+    if (contentType.includes('application/json')) {
+      const data = await response.json() as { downloadUrl?: string, filename?: string }
+      if (!data?.downloadUrl) {
+        throw new Error('Server returned JSON without a downloadUrl')
+      }
+
+      toast.loading('Fetching large PDF...')
+      const fileRes = await fetch(data.downloadUrl)
+      if (!fileRes.ok) {
+        throw new Error(`Failed to fetch PDF: ${fileRes.status}`)
+      }
+      const fileBlob = await fileRes.blob()
+      const fileObjUrl = URL.createObjectURL(fileBlob)
+
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = fileObjUrl
+      a.download = data.filename || `Estimate_${variableValues.value.estimate_number || id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(fileObjUrl)
+        toast.dismiss()
+        toast.success('PDF downloaded successfully')
+        showCreateModal.value = false
+      }, 400)
+      return
+    }
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.style.display = 'none'
+    a.href = url
+    a.download = `Estimate_${variableValues.value.estimate_number || id}.pdf`
+    document.body.appendChild(a)
+    a.click()
+
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.dismiss()
+      toast.success('PDF downloaded successfully')
+      showCreateModal.value = false
+    }, 600)
+  }
+  catch (err: any) {
+    toast.dismiss()
+    toast.error('Could not generate PDF', { description: err?.message || 'Server error' })
+  }
+}
+
+// Send email logic inside the modal
+const sendingEmailId = ref<string | null>(null)
+const showSendEmailModal = ref(false)
+const sendEmailEstimateId = ref<string | null>(null)
+const sendEmailEstimateTitle = ref('')
+const sendEmailAddresses = ref<string[]>([])
+const sendEmailInput = ref('')
+
+async function sendEmailDirect() {
+  const id = await saveAndGetId()
+  if (!id) return
+
+  sendEmailEstimateId.value = id
+  sendEmailEstimateTitle.value = estimateTitle.value
+  sendEmailAddresses.value = selectedCustomer.value?.email ? [selectedCustomer.value.email] : []
+  sendEmailInput.value = ''
+  showSendEmailModal.value = true
+}
+
+function addEmailTag() {
+  const raw = sendEmailInput.value.trim()
+  if (!raw) return
+  const emails = raw.split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean)
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  for (const email of emails) {
+    if (emailRe.test(email) && !sendEmailAddresses.value.includes(email)) {
+      sendEmailAddresses.value.push(email)
+    }
+  }
+  sendEmailInput.value = ''
+}
+
+function removeEmailTag(idx: number) {
+  sendEmailAddresses.value.splice(idx, 1)
+}
+
+function handleEmailInputKeydown(e: KeyboardEvent) {
+  if (['Enter', ',', ';', 'Tab'].includes(e.key)) {
+    e.preventDefault()
+    addEmailTag()
+  }
+  if (e.key === 'Backspace' && !sendEmailInput.value && sendEmailAddresses.value.length > 0) {
+    sendEmailAddresses.value.pop()
+  }
+}
+
+async function confirmSendEmail() {
+  if (!sendEmailEstimateId.value)
+    return
+  addEmailTag()
+  if (sendEmailAddresses.value.length === 0) {
+    toast.error('Please enter at least one email address')
+    return
+  }
+  sendingEmailId.value = sendEmailEstimateId.value
+  try {
+    const res = await $fetch<{ success: boolean, message: string }>('/api/estimates/send-email', {
+      method: 'POST',
+      body: { estimateId: sendEmailEstimateId.value, overrideEmail: sendEmailAddresses.value.join(', ') },
+    })
+    toast.success('Email Sent!', { description: res.message })
+    showSendEmailModal.value = false
+    showCreateModal.value = false
+  }
+  catch (e: any) {
+    toast.error('Failed to send email', { description: e?.data?.message || e?.message })
+  }
+  finally {
+    sendingEmailId.value = null
+  }
+}
+
+function displayTitle(title: string): string {
+  return (title || '').replace(/^Ann Arbor Hardwoods\s+/i, '').trim()
 }
 
 function openForCustomer(customer: any) {
@@ -728,20 +898,48 @@ async function openForCustomerWithPrefill(customer: any, existingEstimate: any) 
   }
 }
 
-// Computed: can the estimate be submitted?
-const canSubmitEstimate = computed(() => {
-  if (!estimateTitle.value.trim()) return false
-  if (!selectedCustomer.value || !selectedModalTemplate.value) return false
-  if (!attachedPdf.value) return false
-  const vars = selectedModalTemplate.value.variables || []
-  for (const v of vars) {
-    if (!v.required) continue
-    if (['company_name', 'companyName', 'client_name', 'clientName', 'customer_name', 'customerName'].includes(v.key)) continue
-    const val = variableValues.value[v.key]
-    if (!val || !String(val).trim()) return false
-  }
-  return true
+// Searchable Dropdowns logic for Customers, Projects, and Templates
+const customerDropdownOpen = ref(false)
+const customerSearchInput = ref('')
+const filteredCustomersSearch = computed(() => {
+  const query = customerSearchInput.value.trim().toLowerCase()
+  if (!query) return customers.value
+  return customers.value.filter(c => (c.name || '').toLowerCase().includes(query) || (c.email || '').toLowerCase().includes(query))
 })
+function handleCustomerBlur() {
+  setTimeout(() => {
+    customerDropdownOpen.value = false
+    customerSearchInput.value = ''
+  }, 200)
+}
+
+const projectDropdownOpen = ref(false)
+const projectSearchInput = ref('')
+const filteredProjectsSearch = computed(() => {
+  const query = projectSearchInput.value.trim().toLowerCase()
+  if (!query) return projects.value
+  return projects.value.filter(p => (p.projectName || p.name || '').toLowerCase().includes(query) || (p.address || '').toLowerCase().includes(query))
+})
+function handleProjectBlur() {
+  setTimeout(() => {
+    projectDropdownOpen.value = false
+    projectSearchInput.value = ''
+  }, 200)
+}
+
+const templateDropdownOpenGrid = ref(false)
+const templateSearchInput = ref('')
+const filteredTemplatesSearch = computed(() => {
+  const query = templateSearchInput.value.trim().toLowerCase()
+  if (!query) return templates.value
+  return templates.value.filter(t => (t.name || '').toLowerCase().includes(query) || (t.description || '').toLowerCase().includes(query))
+})
+function handleTemplateBlurGrid() {
+  setTimeout(() => {
+    templateDropdownOpenGrid.value = false
+    templateSearchInput.value = ''
+  }, 200)
+}
 
 defineExpose({ openCreateModal, openEditEstimate, openForCustomer, openForCustomerWithPrefill })
 </script>
@@ -752,7 +950,7 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer, openForCustom
     <DialogContent :class="['max-h-[90vh] overflow-hidden flex flex-col p-0 transition-all duration-300', lineItems.length > 0 ? '!max-w-[95vw]' : '!max-w-5xl']">
       <!-- Modal Header -->
       <div class="px-6 pt-6 pb-4 border-b border-border/50">
-        <div class="flex items-center gap-3 mb-4">
+        <div class="flex items-center gap-3">
           <div class="size-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
             <Icon name="i-lucide-file-text" class="size-5 text-primary" />
           </div>
@@ -760,293 +958,193 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer, openForCustom
             <DialogTitle class="text-base font-bold">
               {{ editingEstimateId ? `Edit Estimate (${editingEstimateId})` : 'Create New Estimate' }}
             </DialogTitle>
-            <DialogDescription class="text-xs text-muted-foreground mt-0.5">
-              {{ createStep === 1 ? 'Select a customer from your CRM' : createStep === 2 ? 'Select a project for this customer' : createStep === 3 ? 'Choose an estimate template' : '' }}
-            </DialogDescription>
           </div>
-        </div>
-
-        <!-- Step Indicator -->
-        <div class="flex items-center gap-1">
-          <button
-            v-for="s in 4"
-            :key="s"
-            class="h-1.5 flex-1 rounded-full transition-all"
-            :class="s <= createStep ? 'bg-primary' : 'bg-muted'"
-            @click="s < createStep ? goToStep(s) : null"
-          />
         </div>
       </div>
 
       <!-- Modal Body -->
-      <div class="flex-1 overflow-y-auto">
-        <!-- ─── Step 1: Select Customer ─── -->
-        <div v-if="createStep === 1" class="p-6">
-          <div class="relative mb-5">
-            <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              v-model="customerSearch"
-              placeholder="Search customers..."
-              class="pl-10 h-11 bg-muted/30"
-              @input="fetchCustomers"
-            />
-          </div>
-
-          <div v-if="loadingCustomers" class="space-y-2">
-            <div v-for="i in 3" :key="i" class="h-16 bg-muted/40 rounded-xl animate-pulse" />
-          </div>
-
-          <div v-else class="space-y-2 max-h-[400px] overflow-y-auto">
-            <button
-              v-for="c in filteredCustomers"
-              :key="c._id"
-              class="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all text-left group"
-              @click="selectCustomer(c)"
-            >
-              <div class="size-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                <Icon :name="TYPE_ICONS[c.type?.value || 'default'] || TYPE_ICONS.default || 'i-lucide-user'" class="size-4.5 text-primary" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-bold group-hover:text-primary transition-colors">
-                  {{ c.name }}
-                </p>
-                <p class="text-xs text-muted-foreground truncate">
-                  {{ c.email || c.phone || 'No contact info' }}
-                </p>
-              </div>
-              <Icon name="i-lucide-chevron-right" class="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </button>
-          </div>
-        </div>
-
-        <!-- ─── Step 2: Select Project ─── -->
-        <div v-else-if="createStep === 2" class="p-6">
-          <div v-if="selectedCustomer" class="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 mb-5">
-            <div class="size-8 rounded-md bg-emerald-500/15 flex items-center justify-center">
-              <Icon name="i-lucide-check" class="size-4 text-emerald-500" />
+      <div class="flex-1 overflow-y-auto p-6">
+        <!-- Selections Grid (Customer, Project, Template) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-muted/20 p-4 rounded-xl border border-border/50">
+          <!-- Customer Select -->
+          <div class="flex flex-col gap-1 relative">
+            <label class="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Customer</label>
+            <div v-if="editingEstimateId || selectedCustomer" class="flex items-center justify-between h-9 px-3 rounded-lg bg-background border border-border/30">
+              <span class="text-xs font-bold text-foreground truncate">{{ selectedCustomer?.name }}</span>
+              <button v-if="!editingEstimateId" class="text-[10px] text-primary font-bold hover:underline" @click="selectedCustomer = null; selectedProject = null;">Change</button>
             </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                Customer
-              </p>
-              <p class="text-xs text-foreground font-semibold">
-                {{ selectedCustomer.name }}
-              </p>
-            </div>
-            <button class="text-[10px] text-emerald-600 font-semibold hover:underline" @click="createStep = 1">
-              Change
-            </button>
-          </div>
-
-          <div class="relative mb-5">
-            <Icon name="i-lucide-search" class="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              v-model="projectSearch"
-              placeholder="Search projects..."
-              class="pl-10 h-11 bg-muted/30"
-            />
-          </div>
-
-          <div v-if="loadingProjects" class="space-y-2">
-            <div v-for="i in 3" :key="i" class="h-16 bg-muted/40 rounded-xl animate-pulse" />
-          </div>
-
-          <div v-else-if="filteredProjects.length === 0" class="text-center py-12 text-muted-foreground">
-            <Icon name="i-lucide-folder-kanban" class="size-10 mx-auto mb-3 opacity-20" />
-            <p class="text-sm font-semibold">
-              No projects found
-            </p>
-          </div>
-
-          <div v-else class="space-y-2 max-h-[400px] overflow-y-auto">
-            <button
-              v-for="p in filteredProjects"
-              :key="p._id"
-              class="w-full flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:border-primary/30 hover:bg-primary/5 transition-all text-left group"
-              @click="selectProject(p)"
-            >
-              <div class="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                <Icon name="i-lucide-folder-kanban" class="size-4.5 text-primary" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-bold group-hover:text-primary transition-colors">
-                  {{ p.projectName || p.name }}
-                </p>
-                <p class="text-xs text-muted-foreground truncate">
-                  {{ p.address || p.email || '' }}
-                </p>
-              </div>
-              <Icon name="i-lucide-chevron-right" class="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </button>
-          </div>
-        </div>
-
-        <!-- ─── Step 3: Select Template ─── -->
-        <div v-else-if="createStep === 3" class="p-6">
-          <div v-if="selectedCustomer" class="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 mb-3">
-            <div class="size-8 rounded-md bg-emerald-500/15 flex items-center justify-center">
-              <Icon name="i-lucide-check" class="size-4 text-emerald-500" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                Customer
-              </p>
-              <p class="text-xs text-foreground font-semibold">
-                {{ selectedCustomer.name }}
-              </p>
-            </div>
-            <button class="text-[10px] text-emerald-600 font-semibold hover:underline" @click="createStep = 1">
-              Change
-            </button>
-          </div>
-          <div v-if="selectedProject" class="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 mb-5">
-            <div class="size-8 rounded-md bg-emerald-500/15 flex items-center justify-center">
-              <Icon name="i-lucide-check" class="size-4 text-emerald-500" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                Project
-              </p>
-              <p class="text-xs text-foreground font-semibold">
-                {{ selectedProject.projectName || selectedProject.name }}
-              </p>
-            </div>
-            <button class="text-[10px] text-emerald-600 font-semibold hover:underline" @click="createStep = 2">
-              Change
-            </button>
-          </div>
-
-          <div v-if="loadingTemplates" class="space-y-2">
-            <div v-for="i in 3" :key="i" class="h-24 bg-muted/40 rounded-xl animate-pulse" />
-          </div>
-
-          <div v-else-if="templates.length === 0" class="text-center py-12">
-            <Icon name="i-lucide-layout-template" class="size-10 text-muted-foreground/20 mx-auto mb-3" />
-            <p class="text-sm font-semibold text-muted-foreground">
-              No templates available
-            </p>
-            <p class="text-xs text-muted-foreground/70 mt-1 mb-4">
-              Create a template first in the Templates tab
-            </p>
-          </div>
-
-          <div v-else class="py-8 pb-64 space-y-6">
-            <div class="space-y-2">
-              <Label class="text-xs font-bold text-muted-foreground uppercase tracking-wider block ml-1">Estimate Template</Label>
-              <div class="relative">
-                <div
-                  class="w-full h-12 pl-4 pr-3 flex items-center rounded-xl border border-border/60 bg-card hover:bg-muted/10 focus-within:bg-background focus-within:ring-2 focus-within:ring-primary/20 shadow-sm cursor-text transition-all"
-                  @click="templateDropdownOpen = true"
+            <div class="else relative" v-else>
+              <div
+                class="w-full h-9 pl-3 pr-2 flex items-center rounded-lg border border-border bg-background hover:bg-muted/10 focus-within:bg-background focus-within:ring-1 focus-within:ring-primary shadow-sm cursor-text transition-all"
+                @click="customerDropdownOpen = true"
+              >
+                <Icon name="i-lucide-search" class="size-3.5 text-muted-foreground mr-2 shrink-0" />
+                <input
+                  v-model="customerSearchInput"
+                  placeholder="Search Customer..."
+                  class="flex-1 bg-transparent border-none focus:outline-none text-xs font-medium placeholder:text-muted-foreground w-full"
+                  @focus="customerDropdownOpen = true"
+                  @blur="handleCustomerBlur"
                 >
-                  <Icon name="i-lucide-search" class="size-4 text-primary/60 mr-3 shrink-0" />
-                  <input
-                    v-model="templateSearch"
-                    :placeholder="selectedModalTemplate ? selectedModalTemplate.name : 'Search templates...'"
-                    class="flex-1 bg-transparent border-none focus:outline-none text-sm font-bold placeholder:text-foreground/90 w-full"
-                    @focus="templateDropdownOpen = true"
-                    @blur="handleTemplateBlur"
-                  >
-                  <div v-if="selectedModalTemplate" class="cursor-pointer hover:bg-muted/50 p-1 px-1.5 rounded-md mr-1 transition-colors" @click.stop="selectedModalTemplate = null">
-                    <Icon name="i-lucide-x" class="size-3.5 text-muted-foreground hover:text-destructive" />
-                  </div>
-                  <div class="size-6 rounded-md bg-muted/50 flex items-center justify-center pointer-events-none">
-                    <Icon name="i-lucide-chevron-down" class="size-3.5 text-muted-foreground" />
-                  </div>
+                <div class="size-5 rounded bg-muted/50 flex items-center justify-center pointer-events-none">
+                  <Icon name="i-lucide-chevron-down" class="size-3 text-muted-foreground" />
                 </div>
+              </div>
 
-                <!-- Dropdown -->
-                <transition name="fade">
-                  <div
-                    v-if="templateDropdownOpen"
-                    class="absolute z-50 w-full mt-2 bg-popover/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto"
-                  >
-                    <div v-if="filteredTemplates.length === 0" class="p-4 text-center text-sm font-semibold text-muted-foreground">
-                      No templates found.
-                    </div>
-                    <button
-                      v-for="t in filteredTemplates"
-                      :key="t._id"
-                      class="w-full flex items-center text-left px-4 py-3 hover:bg-primary/10 transition-colors border-b border-border/30 last:border-0 group"
-                      @click="chooseTemplate(t)"
-                    >
-                      <div
-                        class="size-8 rounded-lg flex items-center justify-center shrink-0 mr-3 border"
-                        :class="selectedModalTemplate?._id === t._id ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border/30 text-muted-foreground group-hover:text-primary group-hover:border-primary/20'"
-                      >
-                        <Icon name="i-lucide-file-text" class="size-4" />
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-bold text-foreground group-hover:text-primary transition-colors break-words" :class="{ 'text-primary': selectedModalTemplate?._id === t._id }">
-                          {{ t.name }}
-                        </p>
-                      </div>
-                      <Icon v-if="selectedModalTemplate?._id === t._id" name="i-lucide-check" class="size-4 text-primary shrink-0 ml-2" />
-                    </button>
+              <!-- Customer Dropdown List -->
+              <transition name="fade">
+                <div
+                  v-if="customerDropdownOpen"
+                  class="absolute left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+                >
+                  <div v-if="filteredCustomersSearch.length === 0" class="p-3 text-center text-xs font-semibold text-muted-foreground">
+                    No customers found.
                   </div>
-                </transition>
-              </div>
-              <div v-if="selectedModalTemplate" class="px-1 mt-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-                <p class="text-xs text-muted-foreground font-medium leading-relaxed">
-                  {{ selectedModalTemplate.description || 'No description provided for this template.' }}
-                </p>
-              </div>
+                  <button
+                    v-for="c in filteredCustomersSearch"
+                    :key="c._id"
+                    type="button"
+                    class="w-full flex items-center text-left px-3 py-2 hover:bg-primary/10 transition-colors border-b border-border/10 last:border-0 group"
+                    @mousedown="selectCustomer(c); customerDropdownOpen = false;"
+                  >
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                        {{ c.name }}
+                      </p>
+                      <p class="text-[10px] text-muted-foreground truncate">
+                        {{ c.email || c.phone || 'No contact info' }}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </transition>
             </div>
+          </div>
 
-            <Button
-              class="w-full h-11 font-bold shadow-md shadow-primary/20 group"
-              :disabled="!selectedModalTemplate"
-              @click="selectModalTemplate(selectedModalTemplate)"
-            >
-              Continue Details
-              <Icon name="i-lucide-arrow-right" class="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
+          <!-- Project Select -->
+          <div class="flex flex-col gap-1 relative">
+            <label class="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Project</label>
+            <div v-if="editingEstimateId || selectedProject" class="flex items-center justify-between h-9 px-3 rounded-lg bg-background border border-border/30">
+              <span class="text-xs font-bold text-foreground truncate">{{ selectedProject?.projectName || selectedProject?.name }}</span>
+              <button v-if="!editingEstimateId && selectedCustomer" class="text-[10px] text-primary font-bold hover:underline" @click="selectedProject = null">Change</button>
+            </div>
+            <div class="else relative" v-else>
+              <div
+                class="w-full h-9 pl-3 pr-2 flex items-center rounded-lg border border-border bg-background hover:bg-muted/10 focus-within:bg-background focus-within:ring-1 focus-within:ring-primary shadow-sm cursor-text transition-all"
+                :class="{ 'opacity-50 pointer-events-none': !selectedCustomer }"
+                @click="selectedCustomer && (projectDropdownOpen = true)"
+              >
+                <Icon name="i-lucide-search" class="size-3.5 text-muted-foreground mr-2 shrink-0" />
+                <input
+                  v-model="projectSearchInput"
+                  :placeholder="selectedCustomer ? 'Search Project...' : 'Select Customer first'"
+                  :disabled="!selectedCustomer"
+                  class="flex-1 bg-transparent border-none focus:outline-none text-xs font-medium placeholder:text-muted-foreground w-full"
+                  @focus="projectDropdownOpen = true"
+                  @blur="handleProjectBlur"
+                >
+                <div class="size-5 rounded bg-muted/50 flex items-center justify-center pointer-events-none">
+                  <Icon name="i-lucide-chevron-down" class="size-3 text-muted-foreground" />
+                </div>
+              </div>
+
+              <!-- Project Dropdown List -->
+              <transition name="fade">
+                <div
+                  v-if="projectDropdownOpen && selectedCustomer"
+                  class="absolute left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+                >
+                  <div v-if="filteredProjectsSearch.length === 0" class="p-3 text-center text-xs font-semibold text-muted-foreground">
+                    No projects found.
+                  </div>
+                  <button
+                    v-for="p in filteredProjectsSearch"
+                    :key="p._id"
+                    type="button"
+                    class="w-full flex items-center text-left px-3 py-2 hover:bg-primary/10 transition-colors border-b border-border/10 last:border-0 group"
+                    @mousedown="selectProject(p); projectDropdownOpen = false;"
+                  >
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                        {{ p.projectName || p.name }}
+                      </p>
+                      <p class="text-[10px] text-muted-foreground truncate">
+                        {{ p.address || '' }}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </transition>
+            </div>
+          </div>
+
+          <!-- Template Select -->
+          <div class="flex flex-col gap-1 relative">
+            <label class="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Template</label>
+            <div v-if="editingEstimateId || selectedModalTemplate" class="flex items-center justify-between h-9 px-3 rounded-lg bg-background border border-border/30">
+              <span class="text-xs font-bold text-foreground truncate">{{ selectedModalTemplate?.name }}</span>
+              <button v-if="!editingEstimateId" class="text-[10px] text-primary font-bold hover:underline" @click="selectedModalTemplate = null">Change</button>
+            </div>
+            <div class="else relative" v-else>
+              <div
+                class="w-full h-9 pl-3 pr-2 flex items-center rounded-lg border border-border bg-background hover:bg-muted/10 focus-within:bg-background focus-within:ring-1 focus-within:ring-primary shadow-sm cursor-text transition-all"
+                @click="templateDropdownOpenGrid = true"
+              >
+                <Icon name="i-lucide-search" class="size-3.5 text-muted-foreground mr-2 shrink-0" />
+                <input
+                  v-model="templateSearchInput"
+                  placeholder="Search Template..."
+                  class="flex-1 bg-transparent border-none focus:outline-none text-xs font-medium placeholder:text-muted-foreground w-full"
+                  @focus="templateDropdownOpenGrid = true"
+                  @blur="handleTemplateBlurGrid"
+                >
+                <div class="size-5 rounded bg-muted/50 flex items-center justify-center pointer-events-none">
+                  <Icon name="i-lucide-chevron-down" class="size-3 text-muted-foreground" />
+                </div>
+              </div>
+
+              <!-- Template Dropdown List -->
+              <transition name="fade">
+                <div
+                  v-if="templateDropdownOpenGrid"
+                  class="absolute left-0 right-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto"
+                >
+                  <div v-if="filteredTemplatesSearch.length === 0" class="p-3 text-center text-xs font-semibold text-muted-foreground">
+                    No templates found.
+                  </div>
+                  <button
+                    v-for="t in filteredTemplatesSearch"
+                    :key="t._id"
+                    type="button"
+                    class="w-full flex items-center text-left px-3 py-2 hover:bg-primary/10 transition-colors border-b border-border/10 last:border-0 group"
+                    @mousedown="selectModalTemplate(t); templateDropdownOpenGrid = false;"
+                  >
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                        {{ t.name }}
+                      </p>
+                      <p class="text-[10px] text-muted-foreground truncate">
+                        {{ t.description || 'No description' }}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </transition>
+            </div>
           </div>
         </div>
 
-        <!-- ─── Step 4: Variable Form + Confirm ─── -->
-        <div v-else-if="createStep === 4" class="p-6">
-          <!-- Selections Summary -->
-          <div class="flex flex-col sm:flex-row items-stretch gap-3 mb-6 bg-muted/20 p-1.5 rounded-xl border border-border/50">
-            <div class="flex-1 flex items-center gap-3 p-3 rounded-lg bg-background shadow-sm border border-border/30">
-              <div class="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Icon name="i-lucide-user" class="size-4 text-primary" />
-              </div>
-              <div class="min-w-0">
-                <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">
-                  Customer
-                </p>
-                <p class="text-xs font-bold truncate text-foreground">
-                  {{ selectedCustomer?.name }}
-                </p>
-              </div>
-            </div>
-            <div class="flex-1 flex items-center gap-3 p-3 rounded-lg bg-background shadow-sm border border-border/30">
-              <div class="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Icon name="i-lucide-folder-kanban" class="size-4 text-primary" />
-              </div>
-              <div class="min-w-0">
-                <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">
-                  Project
-                </p>
-                <p class="text-xs font-bold truncate text-foreground">
-                  {{ selectedProject?.projectName || selectedProject?.name }}
-                </p>
-              </div>
-            </div>
-            <div class="flex-1 flex items-center gap-3 p-3 rounded-lg bg-background shadow-sm border border-border/30">
-              <div class="size-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Icon name="i-lucide-file-text" class="size-4 text-primary" />
-              </div>
-              <div class="min-w-0">
-                <p class="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">
-                  Template
-                </p>
-                <p class="text-xs font-bold truncate text-foreground">
-                  {{ selectedModalTemplate?.name }}
-                </p>
-              </div>
-            </div>
-          </div>
+        <!-- Selections Incomplete Placeholder -->
+        <div v-if="!selectedCustomer || !selectedProject || !selectedModalTemplate" class="text-center py-16 bg-muted/5 rounded-2xl border border-dashed border-border/60">
+          <Icon name="i-lucide-file-signature" class="size-12 mx-auto text-muted-foreground/30 mb-4 animate-bounce duration-1000" />
+          <h3 class="text-base font-bold text-foreground/80 mb-1">Configure Estimate Selections</h3>
+          <p class="text-xs text-muted-foreground max-w-md mx-auto">
+            Please choose a <strong>Customer</strong>, <strong>Project</strong>, and <strong>Template</strong> using the selectors above to display the estimate variables and extraction tools.
+          </p>
+        </div>
+
+        <!-- ─── Dynamic Variable Form ─── -->
+        <div v-else>
 
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
             <!-- Left Side: Variables and uploads -->
@@ -1228,9 +1326,9 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer, openForCustom
                   Select images from the customer's gallery to append to the estimate, or upload new ones.
                 </p>
 
-                <div v-if="selectedCustomer.gallery?.length || galleryUploadQueue.length" class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                <div v-if="selectedCustomer?.gallery?.length || galleryUploadQueue.length" class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
                   <button
-                    v-for="(img, idx) in selectedCustomer.gallery"
+                    v-for="(img, idx) in (selectedCustomer?.gallery || [])"
                     :key="idx"
                     class="relative size-20 sm:size-24 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer group"
                     :class="attachedGalleryImages.includes(img.url) ? 'border-primary ring-2 ring-primary/20 scale-95' : 'border-transparent hover:border-border'"
@@ -1426,20 +1524,36 @@ defineExpose({ openCreateModal, openEditEstimate, openForCustomer, openForCustom
 
       <!-- Modal Footer -->
       <div class="px-6 py-4 border-t border-border/50 flex items-center justify-between bg-muted/10">
-        <Button v-if="createStep > 1" variant="ghost" size="sm" @click="goToStep(createStep - 1)">
-          <Icon name="i-lucide-arrow-left" class="mr-1.5 size-3.5" />
-          Back
-        </Button>
-        <div v-else />
+        <div />
         <div class="flex items-center gap-2">
           <Button variant="outline" size="sm" @click="showCreateModal = false">
             Cancel
           </Button>
+          <template v-if="createStep === 4">
+            <Button
+              variant="outline"
+              size="sm"
+              :disabled="savingEstimate || isUploadingPdf"
+              @click="downloadPDFDirect"
+            >
+              <Icon name="i-lucide-download" class="mr-1.5 size-3.5" />
+              Download
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              :disabled="savingEstimate || isUploadingPdf"
+              @click="sendEmailDirect"
+            >
+              <Icon name="i-lucide-send" class="mr-1.5 size-3.5" />
+              Send
+            </Button>
+          </template>
           <Button
             v-if="createStep === 4"
             size="sm"
             class="shadow-lg shadow-primary/20"
-            :disabled="savingEstimate || isUploadingPdf || !canSubmitEstimate"
+            :disabled="savingEstimate || isUploadingPdf"
             @click="saveEstimate"
           >
             <Icon v-if="savingEstimate || isUploadingPdf" name="i-lucide-loader-circle" class="mr-1.5 size-3.5 animate-spin" />
