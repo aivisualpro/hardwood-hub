@@ -344,7 +344,7 @@ async function downloadPDF(ct: any) {
                       {{ STATUS_LABELS[getLatestTimelineAction(ct)] || getLatestTimelineAction(ct) }}
                     </span>
                   </HoverCardTrigger>
-                  <HoverCardContent class="w-64 p-4 z-[100] bg-background border border-primary/50 shadow-xl shadow-primary/5 rounded-xl text-left" side="bottom" align="start">
+                  <HoverCardContent class="w-96 max-w-[calc(100vw-2rem)] p-4 z-[100] bg-background border border-primary/50 shadow-xl shadow-primary/5 rounded-xl text-left" side="bottom" align="start">
                     <div class="mb-4">
                       <h4 class="text-sm font-bold leading-none">
                         Estimate Timeline
@@ -373,7 +373,7 @@ async function downloadPDF(ct: any) {
                           <p class="text-[10px] text-muted-foreground mt-1">
                             By: {{ t.performedBy || 'System' }}
                           </p>
-                          <p v-if="t.sentToEmail" class="text-[9px] text-primary/80 truncate font-medium">
+                          <p v-if="t.sentToEmail" class="text-[9px] text-primary/80 break-all font-medium">
                             To: {{ t.sentToEmail }}
                           </p>
                           <p v-if="t.message" class="text-[9px] italic text-muted-foreground mt-1 line-clamp-2">
@@ -438,7 +438,7 @@ async function downloadPDF(ct: any) {
                       {{ STATUS_LABELS[getLatestTimelineAction(ct)] || getLatestTimelineAction(ct) }}
                     </span>
                   </HoverCardTrigger>
-                  <HoverCardContent class="w-64 p-4 z-[100] bg-background border border-primary/50 shadow-xl shadow-primary/5 rounded-xl text-left" side="bottom" align="start">
+                  <HoverCardContent class="w-96 max-w-[calc(100vw-2rem)] p-4 z-[100] bg-background border border-primary/50 shadow-xl shadow-primary/5 rounded-xl text-left" side="bottom" align="start">
                     <div class="mb-4">
                       <h4 class="text-sm font-bold leading-none">
                         Estimate Timeline
@@ -467,7 +467,7 @@ async function downloadPDF(ct: any) {
                           <p class="text-[10px] text-muted-foreground mt-1">
                             By: {{ t.performedBy || 'System' }}
                           </p>
-                          <p v-if="t.sentToEmail" class="text-[9px] text-primary/80 truncate font-medium">
+                          <p v-if="t.sentToEmail" class="text-[9px] text-primary/80 break-all font-medium">
                             To: {{ t.sentToEmail }}
                           </p>
                           <p v-if="t.message" class="text-[9px] italic text-muted-foreground mt-1 line-clamp-2">

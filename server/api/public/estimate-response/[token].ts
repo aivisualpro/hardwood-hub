@@ -7,9 +7,34 @@
  */
 import { Estimate } from '../../../models/Estimate'
 import { AppSetting } from '../../../models/AppSetting'
-import { Employee } from '../../../models/Employee'
 import { connectDB } from '../../../utils/mongoose'
 import { fireAutomations } from '../../../utils/automationEngine'
+
+/**
+ * Timeline entries that belong to the CURRENT send cycle (everything after the
+ * most recent 'sent' entry). This makes resends work correctly: when a revised
+ * estimate is re-sent after a client already responded (e.g. change_request),
+ * the old response no longer blocks them from responding to the new version.
+ */
+function currentCycleEntries(estimate: any): any[] {
+  const tl: any[] = estimate.statusTimeline || []
+  let lastSentIdx = -1
+  tl.forEach((t: any, i: number) => {
+    if (t.action === 'sent') lastSentIdx = i
+  })
+  return tl.slice(lastSentIdx + 1)
+}
+
+const RESPONSE_ACTIONS = ['approved', 'change_request', 'declined']
+
+/** Best-effort identification of the responding client for timeline attribution */
+function resolveClientIdentity(event: any, estimate: any): string {
+  const query = getQuery(event)
+  const queryEmail = (query?.email as string || '').trim()
+  if (queryEmail) return queryEmail
+  const sentEntry = [...(estimate.statusTimeline || [])].reverse().find((t: any) => t.action === 'sent')
+  return sentEntry?.sentToEmail || estimate.customerEmail || 'Client'
+}
 
 export default defineEventHandler(async (event) => {
   await connectDB()
@@ -29,26 +54,27 @@ export default defineEventHandler(async (event) => {
     const settingsDoc = await AppSetting.findOne({ key: 'companyProfile' }).lean() as any
     const company = settingsDoc?.value || {}
 
-    // Add 'received' to timeline if not already present
-    const hasReceived = estimate.statusTimeline?.some((t: any) => t.action === 'received')
-    const hasResponded = estimate.statusTimeline?.some((t: any) => ['approved', 'change_request', 'declined'].includes(t.action))
-    
+    const cycle = currentCycleEntries(estimate)
+    const hasReceived = cycle.some((t: any) => t.action === 'received')
+    const hasResponded = cycle.some((t: any) => RESPONSE_ACTIONS.includes(t.action))
+
+    // Add 'received' to the timeline the first time the client opens this send
     if (!hasReceived && !hasResponded) {
       if (!estimate.statusTimeline) {
         estimate.statusTimeline = []
       }
+      const beforeStatus = { ...estimate.toObject() }
       estimate.statusTimeline.push({
         action: 'received',
         timestamp: new Date(),
         performedBy: 'Client',
       })
-      const beforeStatus = { ...estimate.toObject() }
       estimate.status = 'received'
       await estimate.save()
       fireAutomations({ module: 'crm', submodule: 'estimates', action: 'update', before: beforeStatus, after: estimate.toObject(), actor: { name: estimate.customerName || 'Client' } })
     }
 
-    const respondedTimelineEntry = estimate.statusTimeline?.find((t: any) => ['approved', 'change_request', 'declined'].includes(t.action))
+    const respondedTimelineEntry = cycle.find((t: any) => RESPONSE_ACTIONS.includes(t.action))
 
     return {
       success: true,
@@ -80,8 +106,8 @@ export default defineEventHandler(async (event) => {
 
   // ─── POST: Submit client response ───
   if (event.method === 'POST') {
-    // Check if already responded
-    const respondedTimelineEntry = estimate.statusTimeline?.find((t: any) => ['approved', 'change_request', 'declined'].includes(t.action))
+    // Check if already responded for the CURRENT send cycle
+    const respondedTimelineEntry = currentCycleEntries(estimate).find((t: any) => RESPONSE_ACTIONS.includes(t.action))
     if (respondedTimelineEntry) {
       return {
         success: false,
@@ -95,10 +121,10 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await readBody(event)
-    const action = body.action as string
-    const message = (body.message as string || '').trim()
+    const action = body?.action as string
+    const message = (body?.message as string || '').trim()
 
-    if (!['approved', 'change_request', 'declined'].includes(action)) {
+    if (!RESPONSE_ACTIONS.includes(action)) {
       throw createError({ statusCode: 400, message: 'Invalid action. Must be approved, change_request, or declined.' })
     }
 
@@ -111,23 +137,12 @@ export default defineEventHandler(async (event) => {
       estimate.statusTimeline = []
     }
 
-    let performedBy = 'System'
-    if (action === 'approved') {
-      const query = getQuery(event)
-      const queryEmail = query?.email as string || ''
-      if (queryEmail) {
-        performedBy = queryEmail
-      }
-      else {
-        const sentEntry = [...estimate.statusTimeline].reverse().find((t: any) => t.action === 'sent')
-        performedBy = sentEntry?.sentToEmail || estimate.customerEmail || 'Client'
-      }
-    }
-    else {
-      const emp = await Employee.findOne({ email: 'michael@annarborhardwoods.com' }).lean() as any
-      performedBy = emp?.employee || 'Michael Cornaire'
-    }
+    // The response is always performed by the client — attribute it to their
+    // email so the timeline reads correctly (was previously mis-attributed to
+    // a hard-coded employee for change_request / declined).
+    const performedBy = resolveClientIdentity(event, estimate)
 
+    const beforeDoc = { ...estimate.toObject() }
     estimate.statusTimeline.push({
       action,
       message: message || '',
@@ -136,7 +151,6 @@ export default defineEventHandler(async (event) => {
     })
 
     // Update estimate status to match the response
-    const beforeDoc = { ...estimate.toObject() }
     estimate.status = action
 
     await estimate.save()

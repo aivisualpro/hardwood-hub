@@ -65,36 +65,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'No valid email address provided' })
   }
 
-  // Generate response token for Approve/Change Request/Decline buttons
-  const responseToken = crypto.randomBytes(32).toString('hex')
-
-  // Update estimate status
-  const beforeSendDoc = { ...estimate.toObject() }
-  estimate.status = 'sent'
-  estimate.sentAt = new Date()
-  estimate.responseToken = responseToken
-  // Update customer email to the first recipient if overridden
-  if (overrideEmail?.trim()) {
-    estimate.customerEmail = emailTargets[0] || overrideEmail.trim()
-  }
-
-  const senderEmail = (event.context as any).session?.email || 'System'
-  if (!estimate.statusTimeline) {
-    estimate.statusTimeline = []
-  }
-  // Record a timeline entry for each recipient
-  for (const target of emailTargets) {
-    estimate.statusTimeline.push({
-      action: 'sent',
-      timestamp: new Date(),
-      performedBy: senderEmail,
-      sentToEmail: target,
-    })
-  }
-
-  await estimate.save()
-
-  fireAutomations({ module: 'crm', submodule: 'estimates', action: 'update', before: beforeSendDoc, after: estimate.toObject(), actor: actorFromEvent(event) })
+  // Response token for the Approve / Change Request / Decline links.
+  // IMPORTANT: reuse the existing token on resends. Regenerating it on every
+  // send invalidated the links in previously-sent emails, so a client opening
+  // an older email saw "Estimate not found or link has expired" and could
+  // never approve or submit a change request.
+  const responseToken = estimate.responseToken || crypto.randomBytes(32).toString('hex')
 
   // Build the response URLs
   const host = getRequestURL(event).origin
@@ -267,10 +243,7 @@ export default defineEventHandler(async (event) => {
   }
   catch (pdfErr: any) {
     console.error('[estimates/send-email] PDF generation failed:', pdfErr?.message)
-    // Revert status
-    estimate.status = 'draft'
-    estimate.sentAt = undefined
-    await estimate.save()
+    // Nothing has been saved yet, so there is nothing to revert
     throw createError({ statusCode: 500, message: `PDF generation failed: ${pdfErr?.message}` })
   }
 
@@ -400,14 +373,42 @@ export default defineEventHandler(async (event) => {
   }
   catch (mailErr: any) {
     console.error(`[estimates/send-email] ❌ Failed to send email to ${emailTargets.join(', ')}:`, mailErr?.message || mailErr)
-    estimate.status = 'draft'
-    estimate.sentAt = undefined
-    await estimate.save()
+    // Nothing was saved yet — the estimate keeps its previous status/timeline
     throw createError({
       statusCode: 500,
       message: `Failed to send email: ${mailErr?.message || 'Unknown mailer error'}`,
     })
   }
+
+  // ─── Mark as sent ONLY after the emails actually went out ──
+  // (previously the estimate was flagged "sent" before PDF generation and
+  // mailing, leaving bogus "Sent" timeline entries behind when either failed)
+  const beforeSendDoc = { ...estimate.toObject() }
+  estimate.status = 'sent'
+  estimate.sentAt = new Date()
+  estimate.responseToken = responseToken
+  // Update customer email to the first recipient if overridden
+  if (overrideEmail?.trim()) {
+    estimate.customerEmail = emailTargets[0] || overrideEmail.trim()
+  }
+
+  const senderEmail = (event.context as any).session?.email || 'System'
+  if (!estimate.statusTimeline) {
+    estimate.statusTimeline = []
+  }
+  // Record a timeline entry for each recipient
+  for (const target of emailTargets) {
+    estimate.statusTimeline.push({
+      action: 'sent',
+      timestamp: new Date(),
+      performedBy: senderEmail,
+      sentToEmail: target,
+    })
+  }
+
+  await estimate.save()
+
+  fireAutomations({ module: 'crm', submodule: 'estimates', action: 'update', before: beforeSendDoc, after: estimate.toObject(), actor: actorFromEvent(event) })
 
   return {
     success: true,

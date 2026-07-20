@@ -459,16 +459,34 @@ async function deleteCustomer() {
 function formatDate(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy') : '—' }
 function formatDateTime(d: string) { return d ? format(new Date(d), 'MMM dd, yyyy · h:mm a') : '—' }
 
+// Map an estimate's real progress onto the 3-step bar (draft → sent → approved).
+// Statuses like 'received' / 'change_request' / 'declined' still mean the estimate
+// was sent, so they light up through the "Sent" step (never "Approved").
+function estimateStepIndex(est: any): number {
+  if (!est) return -1
+  if (est.status === 'approved' || est.status === 'completed') return 2
+  const wasSent = !!est.sentAt
+    || (est.statusTimeline || []).some((t: any) => t.action === 'sent')
+    || ['sent', 'received', 'change_request', 'declined'].includes(est.status)
+  return wasSent ? 1 : 0
+}
+
 function getStepDateTime(step: string): string {
   if (!latestEstimate.value) return '—'
+  const tl: any[] = latestEstimate.value.statusTimeline || []
   if (step === 'draft') {
     return latestEstimate.value.createdAt ? format(new Date(latestEstimate.value.createdAt), 'MM/dd/yy · h:mm a') : '—'
   }
   if (step === 'sent') {
-    return latestEstimate.value.sentAt ? format(new Date(latestEstimate.value.sentAt), 'MM/dd/yy · h:mm a') : '—'
+    const lastSent = [...tl].reverse().find((t: any) => t.action === 'sent')
+    const t = latestEstimate.value.sentAt || lastSent?.timestamp
+    return t ? format(new Date(t), 'MM/dd/yy · h:mm a') : '—'
   }
   if (step === 'approved') {
-    const approvedEntry = latestEstimate.value.statusTimeline?.find((t: any) => t.action === 'approved')
+    // Only show a date when the estimate has actually been approved —
+    // never fall back to updatedAt (that showed the last save/send time).
+    if (!['approved', 'completed'].includes(latestEstimate.value.status)) return '—'
+    const approvedEntry = [...tl].reverse().find((t: any) => t.action === 'approved')
     const t = approvedEntry?.timestamp || latestEstimate.value.updatedAt
     return t ? format(new Date(t), 'MM/dd/yy · h:mm a') : '—'
   }
@@ -830,18 +848,18 @@ function totalSqft(blocks: any[]) {
                   <div class="flex flex-col items-center gap-1 flex-1 min-w-0">
                     <div
                       class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all text-[8px] font-bold"
-                      :class="['draft', 'sent', 'approved'].indexOf(step) <= ['draft', 'sent', 'approved'].indexOf(latestEstimate.status)
+                      :class="idx <= estimateStepIndex(latestEstimate)
                         ? 'bg-emerald-500 text-white'
                         : 'bg-muted text-muted-foreground'"
                     >
                       <Icon
-                        :name="['draft', 'sent', 'approved'].indexOf(step) <= ['draft', 'sent', 'approved'].indexOf(latestEstimate.status) ? 'i-lucide-check' : 'i-lucide-circle'"
+                        :name="idx <= estimateStepIndex(latestEstimate) ? 'i-lucide-check' : 'i-lucide-circle'"
                         class="size-3"
                       />
                     </div>
                     <span
                       class="text-[8px] font-bold uppercase tracking-wider text-center leading-none"
-                      :class="['draft', 'sent', 'approved'].indexOf(step) <= ['draft', 'sent', 'approved'].indexOf(latestEstimate.status) ? 'text-emerald-600' : 'text-muted-foreground/50'"
+                      :class="idx <= estimateStepIndex(latestEstimate) ? 'text-emerald-600' : 'text-muted-foreground/50'"
                     >{{ ESTIMATE_STATUS_LABELS[step] }}</span>
                     <span class="text-[7.5px] text-muted-foreground text-center mt-0.5 leading-tight font-medium">
                       {{ getStepDateTime(step) }}
@@ -850,7 +868,7 @@ function totalSqft(blocks: any[]) {
                   <div
                     v-if="idx < 2"
                     class="h-0.5 flex-1 -mx-1 mt-[-24px]"
-                    :class="['draft', 'sent', 'approved'].indexOf(step) < ['draft', 'sent', 'approved'].indexOf(latestEstimate.status) ? 'bg-emerald-500' : 'bg-border'"
+                    :class="idx < estimateStepIndex(latestEstimate) ? 'bg-emerald-500' : 'bg-border'"
                   />
                 </template>
               </div>
